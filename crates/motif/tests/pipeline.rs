@@ -1,3 +1,4 @@
+use motif::diff::equiv_diff;
 use motif::theories::group::group_theory;
 use motif::theories::lattice::lattice_theory;
 use motif::theories::monoid::monoid_theory;
@@ -150,6 +151,41 @@ fn axiom_preservation_group_to_monoid() {
     assert!(preserved.contains(&"right_identity"));
     assert!(preserved.contains(&"left_identity"));
     assert!(preserved.contains(&"associativity"));
+}
+
+/// Cross-compilation diff: translate a ring expression to both group and monoid,
+/// then compare what each theory can prove. Group has inverse so it can simplify
+/// (-a) + (a + b) = b, while monoid cannot.
+#[test]
+fn cross_compilation_diff() {
+    let group = group_theory();
+    let monoid = monoid_theory();
+
+    let mut ring_to_group = Translation::new("ring_to_group", "Ring", "Group");
+    ring_to_group.map_op("add", "mul");
+    ring_to_group.map_op("zero", "e");
+    ring_to_group.map_op("negate", "inv");
+
+    let mut ring_to_monoid = Translation::new("ring_to_monoid", "Ring", "Monoid");
+    ring_to_monoid.map_op("add", "mul");
+    ring_to_monoid.map_op("zero", "e");
+
+    let ring_expr = "(add (negate (Var \"a\")) (add (Var \"a\") (Var \"b\")))";
+    let group_expr = ring_to_group.apply(ring_expr);
+    let monoid_expr = ring_to_monoid.apply(ring_expr);
+
+    let config = SaturationConfig { iter_limit: 5 };
+    let diff = equiv_diff(&group_expr, &["(Var \"b\")"], &group, &monoid, &config);
+
+    // Group simplifies to b (has inverse); monoid cannot (expression uses inv)
+    assert_eq!(diff.only_first(), vec!["(Var \"b\")"]);
+    assert!(diff.only_second().is_empty());
+
+    // Sanity: the monoid expression doesn't even use inv, but it still has
+    // negate (unmapped), so equiv fails in monoid too
+    assert!(!monoid
+        .equiv(&monoid_expr, "(Var \"b\")", &config)
+        .unwrap_or(false));
 }
 
 /// Lattice theory: absorption simplification (different algebraic flavor).
