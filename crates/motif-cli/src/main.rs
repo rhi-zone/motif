@@ -108,6 +108,9 @@ enum Command {
         source: PathBuf,
         /// Path to the target theory
         target: PathBuf,
+        /// Template expression depth (0 = rename-only, 1+ = also try compound templates)
+        #[arg(long, default_value = "0")]
+        depth: usize,
     },
     /// Discover subtheory relationships between theories
     Lattice {
@@ -336,16 +339,26 @@ fn main() {
                 }
             }
         }
-        Command::Discover { source, target } => {
+        Command::Discover {
+            source,
+            target,
+            depth,
+        } => {
             let src = load_theory(&source);
             let tgt = load_theory(&target);
 
             eprintln!(
-                "Discovering morphisms: {} → {}...",
-                src.theory.name, tgt.theory.name
+                "Discovering morphisms: {} → {}...{}",
+                src.theory.name,
+                tgt.theory.name,
+                if depth > 0 {
+                    format!(" (template depth {depth})")
+                } else {
+                    String::new()
+                }
             );
 
-            match discover_morphisms(&src.theory, &tgt.theory, &config) {
+            match discover_morphisms(&src.theory, &tgt.theory, &config, depth) {
                 Ok(results) => {
                     if results.is_empty() {
                         println!("No axiom-preserving morphisms found.");
