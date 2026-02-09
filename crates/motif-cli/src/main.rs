@@ -6,7 +6,7 @@ use motif::explore::explore;
 use motif::inclusion::check_inclusion;
 use motif::lean;
 use motif::parse::parse_theory;
-use motif::pretty::{ascii_notation, latex_notation, pretty, unicode_notation, Notation};
+use motif::pretty::{ascii_notation, latex_notation, pretty, unicodemath_notation, Notation};
 use motif::theory::{SaturationConfig, Theory};
 use std::path::PathBuf;
 use std::process;
@@ -22,14 +22,15 @@ struct Cli {
     iters: usize,
 
     /// Output format for mathematical expressions
-    #[arg(long, default_value = "unicode", global = true)]
+    #[arg(long, default_value = "unicodemath", global = true)]
     format: OutputFormat,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
 enum OutputFormat {
-    /// Unicode math symbols: a · b, a⁻¹, ¬a
-    Unicode,
+    /// UnicodeMath: a · b, a⁻¹, ¬a
+    #[value(name = "unicodemath")]
+    UnicodeMath,
     /// LaTeX math mode: a \cdot b, a^{-1}, \lnot a
     Latex,
     /// Plain ASCII: a * b, a^(-1), ~a
@@ -112,7 +113,7 @@ enum Command {
 
 fn notation_for(fmt: OutputFormat) -> Notation {
     match fmt {
-        OutputFormat::Unicode => unicode_notation(),
+        OutputFormat::UnicodeMath => unicodemath_notation(),
         OutputFormat::Latex => latex_notation(),
         OutputFormat::Ascii => ascii_notation(),
     }

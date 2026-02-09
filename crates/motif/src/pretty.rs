@@ -5,8 +5,8 @@ use crate::sexpr::split_top_level;
 /// Output format for pretty-printing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Format {
-    /// Unicode math symbols: a · b, a⁻¹, ¬a, a ∧ b
-    Unicode,
+    /// UnicodeMath: a · b, a⁻¹, ¬a, a ∧ b
+    UnicodeMath,
     /// LaTeX math mode: a \cdot b, a^{-1}, \lnot a, a \land b
     Latex,
     /// Plain ASCII: a * b, a^(-1), ~a, a /\ b
@@ -21,7 +21,7 @@ pub enum OpNotation {
     /// Unary prefix: symbol before the argument (e.g., `-a`).
     Prefix(String),
     /// Unary postfix: symbol after the argument.
-    /// For Unicode: appended directly (e.g., `⁻¹`).
+    /// For UnicodeMath: appended directly (e.g., `⁻¹`).
     /// For LaTeX: placed in superscript (e.g., `-1` → `^{-1}`).
     /// For ASCII: placed in caret parens (e.g., `-1` → `^(-1)`).
     Postfix(String),
@@ -54,14 +54,14 @@ impl Notation {
     }
 }
 
-/// Default Unicode notation for common algebraic operations.
+/// Default notation (UnicodeMath) for common algebraic operations.
 pub fn default_notation() -> Notation {
-    unicode_notation()
+    unicodemath_notation()
 }
 
-/// Unicode notation: a · b, a⁻¹, ¬a, a ∧ b
-pub fn unicode_notation() -> Notation {
-    let mut n = Notation::new(Format::Unicode);
+/// UnicodeMath notation: a · b, a⁻¹, ¬a, a ∧ b
+pub fn unicodemath_notation() -> Notation {
+    let mut n = Notation::new(Format::UnicodeMath);
     // Group-like
     n.add("e", OpNotation::Constant("e".to_string()));
     n.add("inv", OpNotation::Postfix("\u{207b}\u{00b9}".to_string())); // ⁻¹
@@ -172,7 +172,7 @@ fn pretty_inner(expr: &str, notation: &Notation, parent_prec: u8) -> String {
             let arg = pretty_inner(arg_expr, notation, 0);
             let compound = is_compound(arg_expr, notation);
             match notation.format {
-                Format::Unicode => {
+                Format::UnicodeMath => {
                     if compound {
                         format!("({arg}){sym}")
                     } else {
@@ -248,10 +248,10 @@ mod tests {
     use super::*;
 
     fn uni() -> Notation {
-        unicode_notation()
+        unicodemath_notation()
     }
 
-    // --- Unicode format ---
+    // --- UnicodeMath format ---
 
     #[test]
     fn unicode_variable() {
