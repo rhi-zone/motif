@@ -2,15 +2,19 @@
 
 Where motif is heading, roughly ordered by readiness.
 
-## 1. Deepen algebra (current)
+## 1. Deepen algebra (mostly done)
 
 Stay in the universal algebra lane and make it robust before generalizing.
 
-- More theories: monoid, abelian group, lattice, field, vector space
-- Translation composition: chain forgetful functors (ring → group → monoid)
-- Axiom preservation checking: validate that translations are structure-preserving
-- Datalog rules for structural properties ("has commutativity → abelian")
-- Diff: compare saturation results across theories to surface structural residuals
+- ~~More theories: monoid, abelian group, lattice, field~~ ✓ (+ semiring, boolean algebra)
+- ~~Translation composition: chain forgetful functors (ring → group → monoid)~~ ✓
+- ~~Axiom preservation checking: validate that translations are structure-preserving~~ ✓
+- ~~Structural property detection and classification from axiom patterns~~ ✓
+- ~~Saturation diff: compare equivalences across theories~~ ✓
+- ~~Theory inclusion / subtheory checking~~ ✓
+- ~~Automatic theory lattice from pairwise inclusion~~ ✓
+- ~~Theory definition DSL parser~~ ✓
+- Remaining: vector space (requires scalar field + module axioms)
 
 ## 2. Structural primitives
 
