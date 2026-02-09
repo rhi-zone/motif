@@ -247,6 +247,29 @@ adding the interval to the type theory itself.
 - Only Cubical Agda is production-quality
 - Narya / Higher Observational TT may deliver benefits without cubical overhead
 
+**How motif differs from HoTT:**
+
+HoTT says "equivalence is identity" *within* HoTT. Motif says "equivalence is
+identity" *across systems*, including HoTT. HoTT is a foundation — one specific
+bottom. Motif is infrastructure — the translation layer between many bottoms.
+
+| Dimension | HoTT | Motif |
+|---|---|---|
+| Equivalences live... | Inside the type theory (paths are terms) | Outside, in the e-graph layer (meta-level data) |
+| Univalence is... | Exact: A ≃ B means A = B, period | Partial: backends overlap on fragments, diverge elsewhere |
+| You must... | Formalize in cubical TT | Not write in any specific system |
+| Explores... | Internal structure of equivalence | External structure of math across representations |
+| Is a... | Foundation (one bottom) | Infrastructure (between many bottoms) |
+
+The sharpest distinction: HoTT's univalence is all-or-nothing. Motif's backends
+are intentionally not equivalent — CIC expresses things HOL can't, Dafny
+decides things CIC can't. The translations are partial. Where they *fail* is
+where the genuine structural disagreements live. HoTT can't express "equivalent
+on this fragment but not that one." That's exactly what motif cares about.
+
+HoTT is a theorem about one system. Motif is an experiment about the space
+between systems.
+
 **Status:** Design influence and potential future backend. Not a near-term
 implementation target. The theoretical framework for reasoning about why
 translations preserve meaning — but the engineering of those translations is
