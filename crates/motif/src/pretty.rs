@@ -54,6 +54,38 @@ impl Notation {
     }
 }
 
+/// A format-independent notation specification for an operation.
+///
+/// Parsed from `.theory` files and converted to a format-specific
+/// `OpNotation` when rendering.
+#[derive(Debug, Clone)]
+pub enum NotationSpec {
+    /// Nullary constant with display symbol.
+    Constant(String),
+    /// Unary prefix with display symbol.
+    Prefix(String),
+    /// Unary postfix with display symbol.
+    Postfix(String),
+    /// Binary infix with display symbol and precedence.
+    Infix(String, u8),
+}
+
+impl Notation {
+    /// Merge notation specs into this notation, converting to format-specific
+    /// `OpNotation` values.
+    pub fn add_specs(&mut self, specs: &[(String, NotationSpec)]) {
+        for (op, spec) in specs {
+            let notation = match spec {
+                NotationSpec::Constant(sym) => OpNotation::Constant(sym.clone()),
+                NotationSpec::Prefix(sym) => OpNotation::Prefix(sym.clone()),
+                NotationSpec::Postfix(sym) => OpNotation::Postfix(sym.clone()),
+                NotationSpec::Infix(sym, prec) => OpNotation::Infix(sym.clone(), *prec),
+            };
+            self.add(op, notation);
+        }
+    }
+}
+
 /// Default notation (UnicodeMath) for common algebraic operations.
 pub fn default_notation() -> Notation {
     unicodemath_notation()

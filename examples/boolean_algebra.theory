@@ -1,0 +1,19 @@
+# Boolean algebra: complemented distributive lattice
+theory BooleanAlgebra {
+  ops: meet/2, join/2, complement/1, zero/0, one/0
+  notation: meet = infix "∧" 6, join = infix "∨" 4, complement = prefix "¬", zero = const "0", one = const "1"
+  axiom meet_commutative: (meet a b) = (meet b a)
+  axiom join_commutative: (join a b) = (join b a)
+  axiom meet_associative: (meet (meet a b) c) = (meet a (meet b c))
+  axiom join_associative: (join (join a b) c) = (join a (join b c))
+  axiom absorption_1: (meet a (join a b)) = a
+  axiom absorption_2: (join a (meet a b)) = a
+  axiom meet_idempotent: (meet a a) = a
+  axiom join_idempotent: (join a a) = a
+  axiom complement_meet: (meet a (complement a)) = (zero)
+  axiom complement_join: (join a (complement a)) = (one)
+  axiom distributivity: (meet a (join b c)) = (join (meet a b) (meet a c))
+  axiom meet_identity: (meet a (one)) = a
+  axiom join_identity: (join a (zero)) = a
+  axiom double_complement: (complement (complement a)) = a
+}

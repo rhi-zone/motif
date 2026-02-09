@@ -5,9 +5,11 @@ use motif::diff::equiv_diff;
 use motif::explore::explore;
 use motif::inclusion::check_inclusion;
 use motif::lean;
-use motif::parse::parse_theory;
-use motif::pretty::{ascii_notation, latex_notation, pretty, unicodemath_notation, Notation};
-use motif::theory::{SaturationConfig, Theory};
+use motif::parse::{parse_theory_full, ParsedTheory};
+use motif::pretty::{
+    ascii_notation, latex_notation, pretty, unicodemath_notation, Notation, NotationSpec,
+};
+use motif::theory::SaturationConfig;
 use std::path::PathBuf;
 use std::process;
 
@@ -111,15 +113,17 @@ enum Command {
     },
 }
 
-fn notation_for(fmt: OutputFormat) -> Notation {
-    match fmt {
+fn notation_for(fmt: OutputFormat, specs: &[(String, NotationSpec)]) -> Notation {
+    let mut n = match fmt {
         OutputFormat::UnicodeMath => unicodemath_notation(),
         OutputFormat::Latex => latex_notation(),
         OutputFormat::Ascii => ascii_notation(),
-    }
+    };
+    n.add_specs(specs);
+    n
 }
 
-fn load_theory(path: &PathBuf) -> Theory {
+fn load_theory(path: &PathBuf) -> ParsedTheory {
     let content = match std::fs::read_to_string(path) {
         Ok(c) => c,
         Err(e) => {
@@ -127,7 +131,7 @@ fn load_theory(path: &PathBuf) -> Theory {
             process::exit(1);
         }
     };
-    match parse_theory(&content) {
+    match parse_theory_full(&content) {
         Ok(t) => t,
         Err(e) => {
             eprintln!("error: {}: {e}", path.display());
@@ -141,15 +145,15 @@ fn main() {
     let config = SaturationConfig {
         iter_limit: cli.iters,
     };
-    let notation = notation_for(cli.format);
+    let fmt = cli.format;
 
     match cli.command {
         Command::Classify { file } => {
-            let theory = load_theory(&file);
-            let props = detect_properties(&theory);
-            let classes = classify(&theory);
+            let parsed = load_theory(&file);
+            let props = detect_properties(&parsed.theory);
+            let classes = classify(&parsed.theory);
 
-            println!("Theory: {}", theory.name);
+            println!("Theory: {}", parsed.theory.name);
             println!();
             println!("Properties:");
             for prop in &props {
@@ -166,16 +170,18 @@ fn main() {
             }
         }
         Command::Explore { file, depth, vars } => {
-            let theory = load_theory(&file);
+            let parsed = load_theory(&file);
+            let notation = notation_for(fmt, &parsed.notation);
             let var_list: Vec<&str> = vars.split(',').map(|s| s.trim()).collect();
-            let expr_count = motif::explore::enumerate(&theory.signature, &var_list, depth).len();
+            let expr_count =
+                motif::explore::enumerate(&parsed.theory.signature, &var_list, depth).len();
 
             eprintln!(
                 "Exploring {} with {} expressions (depth {}, vars: {})...",
-                theory.name, expr_count, depth, vars
+                parsed.theory.name, expr_count, depth, vars
             );
 
-            match explore(&theory, &var_list, depth, &config) {
+            match explore(&parsed.theory, &var_list, depth, &config) {
                 Ok(classes) => {
                     if classes.is_empty() {
                         println!("No non-trivial equivalences found.");
@@ -196,15 +202,15 @@ fn main() {
             }
         }
         Command::Check { sub, sup } => {
-            let sub_theory = load_theory(&sub);
-            let sup_theory = load_theory(&sup);
+            let sub_parsed = load_theory(&sub);
+            let sup_parsed = load_theory(&sup);
 
-            match check_inclusion(&sub_theory, &sup_theory, &config) {
+            match check_inclusion(&sub_parsed.theory, &sup_parsed.theory, &config) {
                 Ok(result) => {
                     println!(
                         "{} ⊂ {} : {}",
-                        sub_theory.name,
-                        sup_theory.name,
+                        sub_parsed.theory.name,
+                        sup_parsed.theory.name,
                         if result.is_included { "yes" } else { "no" }
                     );
                     if !result.signature_compatible {
@@ -227,8 +233,8 @@ fn main() {
             expr_a,
             expr_b,
         } => {
-            let theory = load_theory(&file);
-            match theory.equiv(&expr_a, &expr_b, &config) {
+            let parsed = load_theory(&file);
+            match parsed.theory.equiv(&expr_a, &expr_b, &config) {
                 Ok(true) => println!("equivalent"),
                 Ok(false) => println!("not equivalent"),
                 Err(e) => {
@@ -243,16 +249,23 @@ fn main() {
             depth,
             vars,
         } => {
-            let base_theory = load_theory(&base);
-            let ext_theory = load_theory(&extended);
+            let base_parsed = load_theory(&base);
+            let ext_parsed = load_theory(&extended);
+            let notation = notation_for(fmt, &ext_parsed.notation);
             let var_list: Vec<&str> = vars.split(',').map(|s| s.trim()).collect();
 
             eprintln!(
                 "Conjecturing: what does {} prove that {} can't? (depth {}, vars: {})...",
-                ext_theory.name, base_theory.name, depth, vars
+                ext_parsed.theory.name, base_parsed.theory.name, depth, vars
             );
 
-            match conjecture(&base_theory, &ext_theory, &var_list, depth, &config) {
+            match conjecture(
+                &base_parsed.theory,
+                &ext_parsed.theory,
+                &var_list,
+                depth,
+                &config,
+            ) {
                 Ok(conjectures) => {
                     if conjectures.is_empty() {
                         println!("No novel equivalences found.");
@@ -283,18 +296,18 @@ fn main() {
             depth,
             vars,
         } => {
-            let theory = load_theory(&file);
-            println!("{}", lean::theory_to_lean(&theory));
+            let parsed = load_theory(&file);
+            println!("{}", lean::theory_to_lean(&parsed.theory));
 
             if do_explore {
                 let var_list: Vec<&str> = vars.split(',').map(|s| s.trim()).collect();
-                match motif::explore::explore(&theory, &var_list, depth, &config) {
+                match motif::explore::explore(&parsed.theory, &var_list, depth, &config) {
                     Ok(classes) => {
                         if !classes.is_empty() {
                             println!();
                             println!(
                                 "{}",
-                                lean::equiv_classes_to_lean(&theory, &classes, "discovered")
+                                lean::equiv_classes_to_lean(&parsed.theory, &classes, "discovered")
                             );
                         }
                     }
@@ -311,30 +324,39 @@ fn main() {
             expr,
             candidates,
         } => {
-            let theory_a = load_theory(&first);
-            let theory_b = load_theory(&second);
+            let first_parsed = load_theory(&first);
+            let second_parsed = load_theory(&second);
             let candidate_refs: Vec<&str> = candidates.iter().map(|s| s.as_str()).collect();
 
-            let diff = equiv_diff(&expr, &candidate_refs, &theory_a, &theory_b, &config);
+            let diff = equiv_diff(
+                &expr,
+                &candidate_refs,
+                &first_parsed.theory,
+                &second_parsed.theory,
+                &config,
+            );
 
             let only_a = diff.only_first();
             let only_b = diff.only_second();
             let both = diff.in_both();
 
             if !both.is_empty() {
-                println!("Both {} and {}:", theory_a.name, theory_b.name);
+                println!(
+                    "Both {} and {}:",
+                    first_parsed.theory.name, second_parsed.theory.name
+                );
                 for c in &both {
                     println!("  {c}");
                 }
             }
             if !only_a.is_empty() {
-                println!("Only {}:", theory_a.name);
+                println!("Only {}:", first_parsed.theory.name);
                 for c in &only_a {
                     println!("  {c}");
                 }
             }
             if !only_b.is_empty() {
-                println!("Only {}:", theory_b.name);
+                println!("Only {}:", second_parsed.theory.name);
                 for c in &only_b {
                     println!("  {c}");
                 }

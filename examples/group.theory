@@ -1,6 +1,7 @@
 # Group theory: identity, inverse, associativity
 theory Group {
   ops: e/0, inv/1, mul/2
+  notation: e = const "e", inv = postfix "⁻¹", mul = infix "·" 6
   axiom right_identity: (mul a (e)) = a
   axiom left_identity: (mul (e) a) = a
   axiom right_inverse: (mul a (inv a)) = (e)

@@ -1,0 +1,13 @@
+# Lattice: two binary operations with absorption
+theory Lattice {
+  ops: meet/2, join/2
+  notation: meet = infix "∧" 6, join = infix "∨" 4
+  axiom meet_commutative: (meet a b) = (meet b a)
+  axiom join_commutative: (join a b) = (join b a)
+  axiom meet_associative: (meet (meet a b) c) = (meet a (meet b c))
+  axiom join_associative: (join (join a b) c) = (join a (join b c))
+  axiom absorption_1: (meet a (join a b)) = a
+  axiom absorption_2: (join a (meet a b)) = a
+  axiom meet_idempotent: (meet a a) = a
+  axiom join_idempotent: (join a a) = a
+}

@@ -11,4 +11,3 @@
 - Vector space theory (scalar field + module axioms — first parameterized theory)
 - Morphisms as first-class objects (homomorphisms within a theory, not just translations between)
 - Pretty printing in `diff` command output (currently shows raw s-expressions)
-- Notation customization in `.theory` files (per-theory display preferences)
