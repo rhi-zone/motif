@@ -1,0 +1,7 @@
+# Monoid: identity + associativity, no inverse
+theory Monoid {
+  ops: e/0, mul/2
+  axiom right_identity: (mul a (e)) = a
+  axiom left_identity: (mul (e) a) = a
+  axiom associativity: (mul (mul a b) c) = (mul a (mul b c))
+}

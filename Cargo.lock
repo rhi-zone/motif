@@ -775,6 +775,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "motif-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "motif",
+]
+
+[[package]]
 name = "num"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -1,0 +1,9 @@
+# Group theory: identity, inverse, associativity
+theory Group {
+  ops: e/0, inv/1, mul/2
+  axiom right_identity: (mul a (e)) = a
+  axiom left_identity: (mul (e) a) = a
+  axiom right_inverse: (mul a (inv a)) = (e)
+  axiom left_inverse: (mul (inv a) a) = (e)
+  axiom associativity: (mul (mul a b) c) = (mul a (mul b c))
+}

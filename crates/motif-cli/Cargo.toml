@@ -1,0 +1,12 @@
+[package]
+name = "motif-cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "motif"
+path = "src/main.rs"
+
+[dependencies]
+motif = { version = "0.1.0", path = "../motif" }
+clap = { version = "4", features = ["derive"] }
