@@ -8,6 +8,7 @@ pub mod lean;
 pub mod morphism;
 pub mod parse;
 pub mod pretty;
+pub mod sexpr;
 pub mod signature;
 pub mod theories;
 pub mod theory;
