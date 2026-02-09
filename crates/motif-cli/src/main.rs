@@ -4,6 +4,7 @@ use motif::conjecture::conjecture;
 use motif::diff::equiv_diff;
 use motif::explore::explore;
 use motif::inclusion::check_inclusion;
+use motif::lean;
 use motif::parse::parse_theory;
 use motif::theory::{SaturationConfig, Theory};
 use std::path::PathBuf;
@@ -65,6 +66,20 @@ enum Command {
         depth: usize,
         /// Variable names to use (comma-separated)
         #[arg(long, default_value = "a")]
+        vars: String,
+    },
+    /// Export a theory as Lean 4 code
+    Lean {
+        /// Path to a .theory file
+        file: PathBuf,
+        /// Also explore and export discovered equivalences as theorems
+        #[arg(long)]
+        explore: bool,
+        /// Expression depth limit (with --explore)
+        #[arg(long, default_value = "1")]
+        depth: usize,
+        /// Variable names (with --explore, comma-separated)
+        #[arg(long, default_value = "a,b")]
         vars: String,
     },
     /// Compare what two theories prove about an expression
@@ -232,6 +247,34 @@ fn main() {
                 Err(e) => {
                     eprintln!("error: {e}");
                     process::exit(1);
+                }
+            }
+        }
+        Command::Lean {
+            file,
+            explore: do_explore,
+            depth,
+            vars,
+        } => {
+            let theory = load_theory(&file);
+            println!("{}", lean::theory_to_lean(&theory));
+
+            if do_explore {
+                let var_list: Vec<&str> = vars.split(',').map(|s| s.trim()).collect();
+                match motif::explore::explore(&theory, &var_list, depth, &config) {
+                    Ok(classes) => {
+                        if !classes.is_empty() {
+                            println!();
+                            println!(
+                                "{}",
+                                lean::equiv_classes_to_lean(&theory, &classes, "discovered")
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("error exploring: {e}");
+                        process::exit(1);
+                    }
                 }
             }
         }
