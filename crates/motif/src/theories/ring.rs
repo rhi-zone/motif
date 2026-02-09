@@ -53,6 +53,11 @@ pub fn ring_theory() -> Theory {
             lhs: "(mul a (one))".to_string(),
             rhs: "a".to_string(),
         },
+        Axiom {
+            name: "mul_associativity".to_string(),
+            lhs: "(mul (mul a b) c)".to_string(),
+            rhs: "(mul a (mul b c))".to_string(),
+        },
         // Distributivity
         Axiom {
             name: "left_distributivity".to_string(),
