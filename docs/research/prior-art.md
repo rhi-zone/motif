@@ -192,6 +192,68 @@ These are structural forks, not ergonomic differences:
 | **Verification method** | Type checking vs. SMT decision vs. LCF inference | DTT: type checking. Dafny: SMT. HOL: LCF. |
 | **Trusted base** | Small kernel vs. whole checker vs. large toolchain | Lean/Coq/HOL: small kernel. Agda/Idris: whole checker. Dafny: large toolchain. |
 | **Interchangeable foundations** | Fixed vs. framework | All except Isabelle: fixed. Isabelle: logical framework (hosts HOL, ZF, FOL, CTT). |
+| **Higher identity structure** | UIP (all paths equal) vs. non-trivial (homotopy levels) | All 7: UIP or agnostic. HoTT/Cubical: non-trivial higher paths. |
+
+### HoTT / Cubical Type Theory
+
+**Foundation:** Martin-Lof Type Theory reinterpreted through homotopy theory.
+Types are spaces, identity proofs are paths, and paths have higher structure.
+
+**The univalence axiom (Voevodsky):**
+```
+(A =_U B) ≃ (A ≃ B)
+```
+Equivalent types are identical. Not merely isomorphic — *identical* in the
+foundational sense. Every well-typed construction is automatically invariant
+under equivalence.
+
+**Cubical Type Theory** makes univalence computational (not just axiomatic) by
+adding the interval to the type theory itself.
+
+**Kernel primitives beyond standard MLTT:**
+- `I` — interval (dimension sort, not a type)
+- `i0`, `i1` — interval endpoints
+- `∧`, `∨`, `~` — De Morgan operations on `I`
+- `PathP` — path type (replaces identity type `Id`)
+- `transp` — generalized transport along a path of types
+- `hcomp` — homogeneous composition (fills open boxes)
+- `Glue`/`unglue` — construct types by gluing along equivalences
+- Higher Inductive Types — types with path constructors (e.g., circle S1)
+
+**Homotopy levels** (a new structural axis):
+- (-2)-truncated: contractible
+- (-1)-truncated: propositions (mere existence)
+- 0-truncated: sets (where UIP holds — standard math lives here)
+- 1-truncated: groupoids (non-trivial paths)
+- n-truncated: non-trivial up to dimension n
+- untruncated: infinity-groupoids
+
+**Relevance to motif:**
+
+*Strong resonance:*
+- Univalence IS motif's "truth lives in invariants across translations" stated
+  as a theorem
+- Path types as structured equivalence witnesses match e-graph provenance
+  tracking
+- `transp` is exactly "proof about A transfers to equivalent B" — what motif
+  needs between backends
+- Genuinely new structural primitive (homotopy dimension) absent from all other
+  7 systems
+
+*Not practical now:*
+- Cubical normalization has known exponential blowups
+- 0-truncated mathematics (motif's starting domain) pays cubical complexity tax
+  for unused structure
+- Only Cubical Agda is production-quality
+- Narya / Higher Observational TT may deliver benefits without cubical overhead
+
+**Status:** Design influence and potential future backend. Not a near-term
+implementation target. The theoretical framework for reasoning about why
+translations preserve meaning — but the engineering of those translations is
+a separate problem.
+
+**Implementations:** Cubical Agda (mature), cubicaltt (research prototype),
+cooltt (early), Narya/HOTT (active, different approach — worth watching).
 
 ### Dafny (SMT-backed verification)
 
@@ -420,9 +482,10 @@ Active research, few mature implementations:
 
 ### No Single Bottom
 
-The prior art confirms: there is no singular correct kernel IR. Seven production
-systems chose seven different structural primitives. The differences are not
-ergonomic — they reflect genuine disagreements about what's primitive.
+The prior art confirms: there is no singular correct kernel IR. Eight systems
+across five paradigms chose eight different structural primitives. The
+differences are not ergonomic — they reflect genuine disagreements about what's
+primitive.
 
 | System | Foundation | Kernel size |
 |---|---|---|
@@ -433,6 +496,7 @@ ergonomic — they reflect genuine disagreements about what's primitive.
 | ATS | Separated statics/dynamics | Type checker + constraint solver |
 | Dafny | FOL + SMT theories (no proof terms) | Large (Dafny + Boogie + Z3) |
 | HOL Light | Simple type theory (4 term constructors) | ~400 LOC OCaml |
+| Cubical Agda | MLTT + interval + Kan ops + Glue | Large (whole checker) |
 
 What's invariant across ALL of them:
 - Binding + application
@@ -467,6 +531,7 @@ equivalence engine (e-graph / egglog)                      ← core data structu
 ───────────────────────────────────────────────────────────
 backend adapters                                           ← pluggable, not singular
   ├── DTT-style (CIC / MLTT / QTT variants)
+  ├── Cubical-style (HoTT / paths / transport)
   ├── STT-style (HOL)
   ├── SMT-style (FOL + theories)
   └── framework-style (Isabelle/Pure-like meta-logic)
