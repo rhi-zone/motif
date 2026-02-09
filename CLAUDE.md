@@ -10,7 +10,14 @@ Part of the [rhi ecosystem](https://rhi.zone).
 
 ## Architecture
 
-<!-- Project-specific architecture notes -->
+Rust types (Signature, Theory, Axiom, Translation) compile to egglog DSL programs via `.to_egglog()` methods. egglog handles equality saturation.
+
+- `crates/motif/src/signature.rs` — `Op`, `Signature` (universal algebra operations + arities)
+- `crates/motif/src/theory.rs` — `Axiom`, `Theory`, `SaturationConfig` (egglog integration)
+- `crates/motif/src/theories/` — Concrete theories (group, ring)
+- `crates/motif/src/translate.rs` — `Translation` (s-expression symbol renaming between theories)
+
+**egglog caveats:** `neg` is a reserved primitive (use `negate`). Bidirectional rewrites that introduce new terms on the reverse direction cause e-graph blowup — only emit reverse rewrites when both sides are constructor expressions with the same free variables.
 
 ## Development
 
@@ -67,6 +74,14 @@ Types:
 - `test` - Adding or updating tests
 
 Scope is optional but recommended for multi-crate repos.
+
+**Commit discipline:**
+- Commit only when explicitly asked. Never auto-commit.
+- All tests must pass (`cargo clippy --all-targets --all-features -- -D warnings && cargo test`) before committing. Do not commit broken code.
+- Stage files explicitly by name — never use `git add -A` or `git add .`.
+- Write the message body explaining *why*, not *what* — the diff shows the what.
+- Keep subject line under 72 characters. Use imperative mood ("add X", not "added X").
+- One logical change per commit. Don't bundle unrelated changes.
 
 ## Negative Constraints
 
