@@ -4,6 +4,7 @@ use motif::conjecture::conjecture;
 use motif::diff::equiv_diff;
 use motif::explore::explore;
 use motif::inclusion::check_inclusion;
+use motif::lattice::TheoryLattice;
 use motif::lean;
 use motif::parse::{parse_theory_full, ParsedTheory};
 use motif::pretty::{
@@ -20,7 +21,7 @@ struct Cli {
     command: Command,
 
     /// Saturation iteration limit
-    #[arg(long, default_value = "10", global = true)]
+    #[arg(long, default_value = "5", global = true)]
     iters: usize,
 
     /// Output format for mathematical expressions
@@ -99,6 +100,12 @@ enum Command {
         /// Variable names (with --explore, comma-separated)
         #[arg(long, default_value = "a,b")]
         vars: String,
+    },
+    /// Discover subtheory relationships between theories
+    Lattice {
+        /// Paths to .theory files
+        #[arg(required = true)]
+        files: Vec<PathBuf>,
     },
     /// Compare what two theories prove about an expression
     Diff {
@@ -315,6 +322,36 @@ fn main() {
                         eprintln!("error exploring: {e}");
                         process::exit(1);
                     }
+                }
+            }
+        }
+        Command::Lattice { files } => {
+            let parsed: Vec<ParsedTheory> = files.iter().map(load_theory).collect();
+            let theory_refs: Vec<(&str, &motif::theory::Theory)> = parsed
+                .iter()
+                .map(|p| (p.theory.name.as_str(), &p.theory))
+                .collect();
+
+            eprintln!(
+                "Checking pairwise inclusion for {} theories...",
+                theory_refs.len()
+            );
+
+            match TheoryLattice::from_theories(&theory_refs, &config) {
+                Ok(lattice) => {
+                    let reduced = lattice.reduce();
+                    if reduced.is_empty() {
+                        println!("No subtheory relationships found.");
+                    } else {
+                        println!("Subtheory relationships (transitive reduction):\n");
+                        for edge in &reduced {
+                            println!("  {} ⊂ {}", edge.sub, edge.sup);
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    process::exit(1);
                 }
             }
         }

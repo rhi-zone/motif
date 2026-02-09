@@ -1,6 +1,7 @@
 # Monoid: identity + associativity, no inverse
 theory Monoid {
   ops: e/0, mul/2
+  notation: e = const "e", mul = infix "·" 6
   axiom right_identity: (mul a (e)) = a
   axiom left_identity: (mul (e) a) = a
   axiom associativity: (mul (mul a b) c) = (mul a (mul b c))

@@ -1,0 +1,18 @@
+# Ring: additive abelian group + multiplicative monoid + distributivity
+theory Ring {
+  ops: zero/0, one/0, negate/1, add/2, mul/2
+  notation: zero = const "0", one = const "1", negate = prefix "-", add = infix "+" 4, mul = infix "·" 6
+  axiom add_right_identity: (add a (zero)) = a
+  axiom add_left_identity: (add (zero) a) = a
+  axiom add_right_inverse: (add a (negate a)) = (zero)
+  axiom add_left_inverse: (add (negate a) a) = (zero)
+  axiom add_associativity: (add (add a b) c) = (add a (add b c))
+  axiom add_commutativity: (add a b) = (add b a)
+  axiom mul_left_identity: (mul (one) a) = a
+  axiom mul_right_identity: (mul a (one)) = a
+  axiom mul_associativity: (mul (mul a b) c) = (mul a (mul b c))
+  axiom zero_right_annihilation: (mul a (zero)) = (zero)
+  axiom zero_left_annihilation: (mul (zero) a) = (zero)
+  axiom left_distributivity: (mul a (add b c)) = (add (mul a b) (mul a c))
+  axiom right_distributivity: (mul (add a b) c) = (add (mul a c) (mul b c))
+}
