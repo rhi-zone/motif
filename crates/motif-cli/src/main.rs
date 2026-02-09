@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use motif::classify::{classify, detect_properties};
 use motif::conjecture::conjecture;
 use motif::diff::equiv_diff;
+use motif::discover::discover_morphisms;
 use motif::explore::explore;
 use motif::inclusion::check_inclusion;
 use motif::lattice::TheoryLattice;
@@ -100,6 +101,13 @@ enum Command {
         /// Variable names (with --explore, comma-separated)
         #[arg(long, default_value = "a,b")]
         vars: String,
+    },
+    /// Discover operation mappings between theories that preserve axioms
+    Discover {
+        /// Path to the source theory
+        source: PathBuf,
+        /// Path to the target theory
+        target: PathBuf,
     },
     /// Discover subtheory relationships between theories
     Lattice {
@@ -325,6 +333,53 @@ fn main() {
                         eprintln!("error exploring: {e}");
                         process::exit(1);
                     }
+                }
+            }
+        }
+        Command::Discover { source, target } => {
+            let src = load_theory(&source);
+            let tgt = load_theory(&target);
+
+            eprintln!(
+                "Discovering morphisms: {} → {}...",
+                src.theory.name, tgt.theory.name
+            );
+
+            match discover_morphisms(&src.theory, &tgt.theory, &config) {
+                Ok(results) => {
+                    if results.is_empty() {
+                        println!("No axiom-preserving morphisms found.");
+                    } else {
+                        println!(
+                            "Found {} morphism(s) from {} → {}:\n",
+                            results.len(),
+                            src.theory.name,
+                            tgt.theory.name
+                        );
+                        for (i, m) in results.iter().enumerate() {
+                            let mapping_str: Vec<String> = m
+                                .mapping
+                                .iter()
+                                .map(|(s, t)| format!("{s} → {t}"))
+                                .collect();
+                            println!(
+                                "  {}.  {{{}}}  ({}/{} axioms preserved)",
+                                i + 1,
+                                mapping_str.join(", "),
+                                m.preserved_count,
+                                m.total_count
+                            );
+                            for (name, preserved) in &m.axioms {
+                                let mark = if *preserved { "✓" } else { "✗" };
+                                println!("      {mark} {name}");
+                            }
+                            println!();
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    process::exit(1);
                 }
             }
         }

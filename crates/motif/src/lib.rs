@@ -1,6 +1,7 @@
 pub mod classify;
 pub mod conjecture;
 pub mod diff;
+pub mod discover;
 pub mod explore;
 pub mod inclusion;
 pub mod lattice;

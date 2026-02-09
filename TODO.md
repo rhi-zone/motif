@@ -10,4 +10,4 @@
 
 - Vector space theory (scalar field + module axioms — first parameterized theory)
 - Morphisms as first-class objects (homomorphisms within a theory, not just translations between)
-- Pretty printing in `diff` command output (currently shows raw s-expressions)
+- Translation/morphism DSL files for file-based workflow
