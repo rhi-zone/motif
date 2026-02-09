@@ -106,6 +106,9 @@ enum Command {
         /// Paths to .theory files
         #[arg(required = true)]
         files: Vec<PathBuf>,
+        /// Output DOT (Graphviz) format
+        #[arg(long)]
+        dot: bool,
     },
     /// Compare what two theories prove about an expression
     Diff {
@@ -325,7 +328,7 @@ fn main() {
                 }
             }
         }
-        Command::Lattice { files } => {
+        Command::Lattice { files, dot } => {
             let parsed: Vec<ParsedTheory> = files.iter().map(load_theory).collect();
             let theory_refs: Vec<(&str, &motif::theory::Theory)> = parsed
                 .iter()
@@ -340,7 +343,17 @@ fn main() {
             match TheoryLattice::from_theories(&theory_refs, &config) {
                 Ok(lattice) => {
                     let reduced = lattice.reduce();
-                    if reduced.is_empty() {
+                    if dot {
+                        println!("digraph theories {{");
+                        println!("  rankdir=BT;");
+                        for name in &lattice.theories {
+                            println!("  \"{name}\";");
+                        }
+                        for edge in &reduced {
+                            println!("  \"{}\" -> \"{}\";", edge.sub, edge.sup);
+                        }
+                        println!("}}");
+                    } else if reduced.is_empty() {
                         println!("No subtheory relationships found.");
                     } else {
                         println!("Subtheory relationships (transitive reduction):\n");
@@ -363,6 +376,7 @@ fn main() {
         } => {
             let first_parsed = load_theory(&first);
             let second_parsed = load_theory(&second);
+            let notation = notation_for(fmt, &first_parsed.notation);
             let candidate_refs: Vec<&str> = candidates.iter().map(|s| s.as_str()).collect();
 
             let diff = equiv_diff(
@@ -373,6 +387,7 @@ fn main() {
                 &config,
             );
 
+            let pp = |s: &str| pretty(s, &notation);
             let only_a = diff.only_first();
             let only_b = diff.only_second();
             let both = diff.in_both();
@@ -383,19 +398,19 @@ fn main() {
                     first_parsed.theory.name, second_parsed.theory.name
                 );
                 for c in &both {
-                    println!("  {c}");
+                    println!("  {} = {}", pp(&diff.expr), pp(c));
                 }
             }
             if !only_a.is_empty() {
                 println!("Only {}:", first_parsed.theory.name);
                 for c in &only_a {
-                    println!("  {c}");
+                    println!("  {} = {}", pp(&diff.expr), pp(c));
                 }
             }
             if !only_b.is_empty() {
                 println!("Only {}:", second_parsed.theory.name);
                 for c in &only_b {
-                    println!("  {c}");
+                    println!("  {} = {}", pp(&diff.expr), pp(c));
                 }
             }
             if both.is_empty() && only_a.is_empty() && only_b.is_empty() {
