@@ -2,6 +2,7 @@ pub mod classify;
 pub mod diff;
 pub mod inclusion;
 pub mod lattice;
+pub mod parse;
 pub mod signature;
 pub mod theories;
 pub mod theory;
