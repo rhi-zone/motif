@@ -26,7 +26,10 @@ pub enum Classification {
     Group { op: String },
     AbelianGroup { op: String },
     Lattice { meet: String, join: String },
+    Semiring { add: String, mul: String },
     Ring { add: String, mul: String },
+    Field { add: String, mul: String },
+    BooleanAlgebra { meet: String, join: String },
 }
 
 /// Analyze a theory's axioms and return detected structural properties.
@@ -130,8 +133,25 @@ pub fn classify(theory: &Theory) -> Vec<Classification> {
         }
     }
 
-    // Ring: two ops where one is an abelian group and the other distributes over it
-    // and has identity + associativity
+    // Semiring: two monoids (identity + assoc) + distributivity, no additive inverse required
+    for (add_op, _add_id) in &identities {
+        if !assoc.contains(add_op) {
+            continue;
+        }
+        for (mul_op, _mul_id) in &identities {
+            if mul_op == add_op || !assoc.contains(mul_op) {
+                continue;
+            }
+            if distributes.contains(&(mul_op, add_op)) {
+                classes.push(Classification::Semiring {
+                    add: add_op.to_string(),
+                    mul: mul_op.to_string(),
+                });
+            }
+        }
+    }
+
+    // Ring: semiring where the additive op also has inverse
     for (add_op, _add_id) in &identities {
         if !assoc.contains(add_op) || !inverses.contains(add_op) {
             continue;
@@ -144,6 +164,55 @@ pub fn classify(theory: &Theory) -> Vec<Classification> {
                 classes.push(Classification::Ring {
                     add: add_op.to_string(),
                     mul: mul_op.to_string(),
+                });
+            }
+        }
+    }
+
+    // Field: ring where mul is also commutative and has inverse
+    for (add_op, _add_id) in &identities {
+        if !assoc.contains(add_op) || !inverses.contains(add_op) {
+            continue;
+        }
+        for (mul_op, _mul_id) in &identities {
+            if mul_op == add_op || !assoc.contains(mul_op) {
+                continue;
+            }
+            if distributes.contains(&(mul_op, add_op))
+                && commut.contains(mul_op)
+                && inverses.contains(mul_op)
+            {
+                classes.push(Classification::Field {
+                    add: add_op.to_string(),
+                    mul: mul_op.to_string(),
+                });
+            }
+        }
+    }
+
+    // Boolean algebra: lattice (mutual absorption) + bounded (identities) +
+    // complement (inverse for both ops) + distributivity
+    for (op1, op2) in &absorbs {
+        if !absorbs.contains(&(op2, op1)) {
+            continue;
+        }
+        // Both ops must have identity (bounded lattice)
+        let op1_has_id = identities.iter().any(|(o, _)| o == op1);
+        let op2_has_id = identities.iter().any(|(o, _)| o == op2);
+        if !op1_has_id || !op2_has_id {
+            continue;
+        }
+        // Both ops must have inverse (complement)
+        if !inverses.contains(op1) || !inverses.contains(op2) {
+            continue;
+        }
+        // One must distribute over the other
+        if distributes.contains(&(op1, op2)) || distributes.contains(&(op2, op1)) {
+            // Only emit once (alphabetical order)
+            if op1 < op2 {
+                classes.push(Classification::BooleanAlgebra {
+                    meet: op1.to_string(),
+                    join: op2.to_string(),
                 });
             }
         }
@@ -466,8 +535,9 @@ fn detect_distributivity(lhs: &str, rhs: &str, props: &mut Vec<Property>) {
 mod tests {
     use super::*;
     use crate::theories::{
-        abelian_group::abelian_group_theory, group::group_theory, lattice::lattice_theory,
-        monoid::monoid_theory, ring::ring_theory,
+        abelian_group::abelian_group_theory, boolean_algebra::boolean_algebra_theory,
+        field::field_theory, group::group_theory, lattice::lattice_theory, monoid::monoid_theory,
+        ring::ring_theory, semiring::semiring_theory,
     };
 
     #[test]
@@ -585,7 +655,62 @@ mod tests {
             add: "add".into(),
             mul: "mul".into()
         }));
+        // Ring is also a semiring
+        assert!(classes.contains(&Classification::Semiring {
+            add: "add".into(),
+            mul: "mul".into()
+        }));
         // Ring's additive part is also a group
         assert!(classes.contains(&Classification::Group { op: "add".into() }));
+    }
+
+    #[test]
+    fn classify_semiring() {
+        let classes = classify(&semiring_theory());
+        assert!(classes.contains(&Classification::Semiring {
+            add: "add".into(),
+            mul: "mul".into()
+        }));
+        // Semiring is NOT a ring (no additive inverse)
+        assert!(!classes.contains(&Classification::Ring {
+            add: "add".into(),
+            mul: "mul".into()
+        }));
+        // Both ops are monoids
+        assert!(classes.contains(&Classification::Monoid { op: "add".into() }));
+        assert!(classes.contains(&Classification::Monoid { op: "mul".into() }));
+    }
+
+    #[test]
+    fn classify_field() {
+        let classes = classify(&field_theory());
+        assert!(classes.contains(&Classification::Field {
+            add: "add".into(),
+            mul: "mul".into()
+        }));
+        // Field is also a ring and semiring
+        assert!(classes.contains(&Classification::Ring {
+            add: "add".into(),
+            mul: "mul".into()
+        }));
+        assert!(classes.contains(&Classification::Semiring {
+            add: "add".into(),
+            mul: "mul".into()
+        }));
+        // Both ops are abelian groups
+        assert!(classes.contains(&Classification::AbelianGroup { op: "add".into() }));
+        assert!(classes.contains(&Classification::AbelianGroup { op: "mul".into() }));
+    }
+
+    #[test]
+    fn classify_boolean_algebra() {
+        let classes = classify(&boolean_algebra_theory());
+        // Should be classified as both lattice and boolean algebra
+        assert!(classes
+            .iter()
+            .any(|c| matches!(c, Classification::Lattice { .. })));
+        assert!(classes
+            .iter()
+            .any(|c| matches!(c, Classification::BooleanAlgebra { .. })));
     }
 }
