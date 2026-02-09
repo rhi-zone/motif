@@ -3,10 +3,12 @@
 //! Given a source and target theory, enumerate arity-compatible operation
 //! mappings and check which ones preserve axioms.
 //!
-//! Uses a shared e-graph: all candidate-translated axiom expressions are added
-//! to one e-graph and saturated once, then per-axiom equivalence checks are
-//! O(1) lookups. Per-axiom decomposition keeps the expression count manageable
-//! (each axiom's Cartesian product is over only the 1-3 ops it references).
+//! All candidate-translated axiom expressions are added to a single shared
+//! e-graph and saturated once; per-axiom equivalence checks are then O(1)
+//! lookups. The shared graph is strictly more powerful than individual
+//! per-check e-graphs because more intermediate terms enable more rewrites.
+//! Per-axiom decomposition keeps the expression count manageable (each
+//! axiom's Cartesian product is over only the 1-3 ops it references).
 
 use std::collections::{HashMap, HashSet};
 
@@ -40,23 +42,17 @@ enum Candidate {
 }
 
 /// Convert enumerated expression from `(Var "$1")` form to `$1` placeholder form.
-fn var_to_placeholder(expr: &str) -> String {
+///
+/// Replaces all `(Var "$N")` patterns regardless of which N values are present,
+/// so expressions that use only a subset of args (e.g., `$2` without `$1`) are
+/// handled correctly.
+fn var_to_placeholder(expr: &str, arity: usize) -> String {
     let mut result = expr.to_string();
-    let mut i = 1;
-    loop {
+    for i in 1..=arity {
         let var_form = format!("(Var \"${}\")", i);
-        if !result.contains(&var_form) {
-            break;
-        }
         result = result.replace(&var_form, &format!("${}", i));
-        i += 1;
     }
     result
-}
-
-/// Check that a template uses all positional args $1..$arity.
-fn uses_all_args(template: &str, arity: usize) -> bool {
-    (1..=arity).all(|i| template.contains(&format!("${i}")))
 }
 
 /// Check if a template is just a simple op application like `(op $1 $2)`,
@@ -78,6 +74,11 @@ fn is_simple_rename(template: &str, arity: usize) -> bool {
 }
 
 /// Generate template candidates from the target signature for a given source op arity.
+///
+/// Always includes projections (`$1`, `$2`) and constant expressions (`(zero)`,
+/// `(one)`) — these represent valid morphism interpretations that were previously
+/// rejected. For compound templates (using both ops and variables), requires all
+/// positional args to avoid exponential blowup in distributive theories.
 fn generate_template_candidates(target: &Theory, arity: usize, depth: usize) -> Vec<String> {
     if arity == 0 || depth == 0 {
         return Vec::new();
@@ -86,10 +87,36 @@ fn generate_template_candidates(target: &Theory, arity: usize, depth: usize) -> 
     let var_refs: Vec<&str> = vars.iter().map(|s| s.as_str()).collect();
     let exprs = enumerate(&target.signature, &var_refs, depth);
 
+    let nullary_ops: Vec<String> = target
+        .signature
+        .ops()
+        .iter()
+        .filter(|op| op.arity == 0)
+        .map(|op| format!("({})", op.name))
+        .collect();
+
     exprs
         .into_iter()
-        .map(|e| var_to_placeholder(&e))
-        .filter(|t| uses_all_args(t, arity) && !is_simple_rename(t, arity))
+        .map(|e| var_to_placeholder(&e, arity))
+        .filter(|t| {
+            if is_simple_rename(t, arity) {
+                return false;
+            }
+            // Projections (bare $N): always kept.
+            if !t.contains('(') {
+                return true;
+            }
+            let has_any_arg = (1..=arity).any(|i| t.contains(&format!("${i}")));
+            if !has_any_arg {
+                // Pure constant: keep only nullary constructors (e.g., (zero)).
+                // Compound constants like (add (zero) (one)) are redundant with
+                // simpler constants under saturation.
+                return nullary_ops.contains(&t.to_string());
+            }
+            // Compound with variables: require all positional args to limit
+            // candidate explosion in distributive theories.
+            (1..=arity).all(|i| t.contains(&format!("${i}")))
+        })
         .collect()
 }
 
@@ -263,10 +290,10 @@ pub fn discover_morphisms(
         });
     }
 
-    // 3. For each axiom, check each per-axiom combo individually.
-    //    Each combo gets its own e-graph with just 2 expressions (LHS + RHS)
-    //    to avoid saturation blowup from putting many expressions together
-    //    in theories with distributivity/commutativity.
+    // 3. Check axiom combos. Use a shared e-graph when expression count is
+    //    small (more intermediate terms → more complete). Fall back to
+    //    per-combo e-graphs for large counts to avoid saturation blowup
+    //    with distributive theories.
     let base_program = {
         let mut p = target.to_egglog();
         target.seed_constants(&mut p);
@@ -278,34 +305,67 @@ pub fn discover_morphisms(
         idx_to_expr[idx] = expr;
     }
 
+    let use_shared = all_exprs.len() <= 50;
+
+    let mut shared_egraph = if use_shared {
+        let mut program = base_program.clone();
+        for (idx, expr) in idx_to_expr.iter().enumerate() {
+            program.push_str(&format!("\n(let expr_{idx}__ {expr})"));
+        }
+        program.push_str(&format!(
+            "\n(run-schedule (repeat {} (run axioms)))",
+            config.iter_limit
+        ));
+        let mut egraph = EGraph::default();
+        egraph.parse_and_run_program(None, &program)?;
+        Some(egraph)
+    } else {
+        None
+    };
+
     let mut axiom_checks: Vec<AxiomCheckData> = Vec::new();
     for entry in &axiom_combo_data {
         let mut viable = Vec::new();
         let combos: Vec<Vec<usize>> = entry.checks.iter().map(|(c, _, _)| c.clone()).collect();
 
         for (combo_idx, (_, li, ri)) in entry.checks.iter().enumerate() {
-            let mut program = base_program.clone();
-            program.push_str(&format!(
-                "\n(let chk_lhs__ {})\n(let chk_rhs__ {})",
-                idx_to_expr[*li], idx_to_expr[*ri]
-            ));
-            program.push_str(&format!(
-                "\n(run-schedule (repeat {} (run axioms)))",
-                config.iter_limit
-            ));
-
-            let mut egraph = EGraph::default();
-            egraph.parse_and_run_program(None, &program)?;
-
-            let check_cmd = "(check (= chk_lhs__ chk_rhs__))";
-            match egraph.parse_and_run_program(None, check_cmd) {
-                Ok(_) => viable.push(combo_idx),
-                Err(e) => {
-                    let msg = e.to_string();
-                    if !msg.contains("Check failed") && !msg.contains("check failed") {
-                        return Err(e);
+            let is_equiv = if let Some(ref mut egraph) = shared_egraph {
+                let check_cmd = format!("(check (= expr_{}__ expr_{}__))", li, ri);
+                match egraph.parse_and_run_program(None, &check_cmd) {
+                    Ok(_) => true,
+                    Err(e) => {
+                        let msg = e.to_string();
+                        if !msg.contains("Check failed") && !msg.contains("check failed") {
+                            return Err(e);
+                        }
+                        false
                     }
                 }
+            } else {
+                let mut program = base_program.clone();
+                program.push_str(&format!(
+                    "\n(let chk_lhs__ {})\n(let chk_rhs__ {})",
+                    idx_to_expr[*li], idx_to_expr[*ri]
+                ));
+                program.push_str(&format!(
+                    "\n(run-schedule (repeat {} (run axioms)))",
+                    config.iter_limit
+                ));
+                let mut egraph = EGraph::default();
+                egraph.parse_and_run_program(None, &program)?;
+                match egraph.parse_and_run_program(None, "(check (= chk_lhs__ chk_rhs__))") {
+                    Ok(_) => true,
+                    Err(e) => {
+                        let msg = e.to_string();
+                        if !msg.contains("Check failed") && !msg.contains("check failed") {
+                            return Err(e);
+                        }
+                        false
+                    }
+                }
+            };
+            if is_equiv {
+                viable.push(combo_idx);
             }
         }
 
@@ -587,19 +647,16 @@ mod tests {
 
     #[test]
     fn var_to_placeholder_converts_correctly() {
-        assert_eq!(var_to_placeholder("(Var \"$1\")"), "$1");
+        assert_eq!(var_to_placeholder("(Var \"$1\")", 1), "$1");
         assert_eq!(
-            var_to_placeholder("(add (Var \"$1\") (negate (Var \"$2\")))"),
+            var_to_placeholder("(add (Var \"$1\") (negate (Var \"$2\")))", 2),
             "(add $1 (negate $2))"
         );
-    }
-
-    #[test]
-    fn uses_all_args_checks_correctly() {
-        assert!(uses_all_args("(add $1 $2)", 2));
-        assert!(!uses_all_args("(add $1 $1)", 2));
-        assert!(uses_all_args("(negate $1)", 1));
-        assert!(!uses_all_args("(zero)", 1));
+        // Non-sequential: only uses $2
+        assert_eq!(
+            var_to_placeholder("(add (Var \"$2\") (Var \"$2\"))", 2),
+            "(add $2 $2)"
+        );
     }
 
     #[test]
@@ -608,5 +665,86 @@ mod tests {
         assert!(is_simple_rename("(negate $1)", 1));
         assert!(!is_simple_rename("(add $1 (negate $2))", 2));
         assert!(!is_simple_rename("(add $2 $1)", 2)); // wrong order
+    }
+
+    #[test]
+    fn discovers_projection_template() {
+        // Source: proj/2 with axiom proj(a, proj(b, c)) = proj(a, c)
+        // This is satisfied by proj → $1 (first-arg projection).
+        let mut sig = Signature::new();
+        sig.add_op("proj", 2).unwrap();
+        let source = Theory {
+            name: "ProjTheory".to_string(),
+            signature: sig,
+            axioms: vec![Axiom {
+                name: "proj_assoc".to_string(),
+                lhs: "(proj a (proj b c))".to_string(),
+                rhs: "(proj a c)".to_string(),
+            }],
+        };
+
+        let mut tgt_sig = Signature::new();
+        tgt_sig.add_op("zero", 0).unwrap();
+        tgt_sig.add_op("add", 2).unwrap();
+        let target = Theory {
+            name: "Target".to_string(),
+            signature: tgt_sig,
+            axioms: vec![Axiom {
+                name: "add_assoc".to_string(),
+                lhs: "(add (add a b) c)".to_string(),
+                rhs: "(add a (add b c))".to_string(),
+            }],
+        };
+
+        let results = discover_morphisms(&source, &target, &config(), 1).unwrap();
+
+        let has_projection = results.iter().any(|r| {
+            r.mapping.iter().any(|(s, t)| s == "proj" && t == "$1") && r.preserved_count > 0
+        });
+        assert!(
+            has_projection,
+            "expected to find proj → $1, got: {:?}",
+            results.iter().map(|r| &r.mapping).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn discovers_constant_map_template() {
+        // Source: absorb/1 with axiom absorb(absorb(a)) = absorb(a)
+        // This is satisfied by absorb → (zero) (constant map to zero).
+        let mut sig = Signature::new();
+        sig.add_op("absorb", 1).unwrap();
+        let source = Theory {
+            name: "AbsorbTheory".to_string(),
+            signature: sig,
+            axioms: vec![Axiom {
+                name: "idempotent".to_string(),
+                lhs: "(absorb (absorb a))".to_string(),
+                rhs: "(absorb a)".to_string(),
+            }],
+        };
+
+        let mut tgt_sig = Signature::new();
+        tgt_sig.add_op("zero", 0).unwrap();
+        tgt_sig.add_op("negate", 1).unwrap();
+        let target = Theory {
+            name: "Target".to_string(),
+            signature: tgt_sig,
+            axioms: vec![],
+        };
+
+        let results = discover_morphisms(&source, &target, &config(), 1).unwrap();
+
+        let has_constant = results.iter().any(|r| {
+            r.mapping
+                .iter()
+                .any(|(s, t)| s == "absorb" && t == "(zero)")
+                && r.preserved_count > 0
+        });
+        assert!(
+            has_constant,
+            "expected to find absorb → (zero), got: {:?}",
+            results.iter().map(|r| &r.mapping).collect::<Vec<_>>()
+        );
     }
 }
