@@ -75,19 +75,13 @@ Types:
 
 Scope is optional but recommended for multi-crate repos.
 
-**Commit discipline:**
-- Commit only when explicitly asked. Never auto-commit.
-- All tests must pass (`cargo clippy --all-targets --all-features -- -D warnings && cargo test`) before committing. Do not commit broken code.
-- Stage files explicitly by name — never use `git add -A` or `git add .`.
-- Write the message body explaining *why*, not *what* — the diff shows the what.
-- Keep subject line under 72 characters. Use imperative mood ("add X", not "added X").
-- One logical change per commit. Don't bundle unrelated changes.
+**When a task is done and tests pass, commit immediately.** Do not wait to be asked.
 
 ## Negative Constraints
 
 Do not:
 - Announce actions ("I will now...") - just do them
-- Leave work uncommitted
+- Leave work uncommitted - when tests pass, commit. Don't wait.
 - Use path dependencies in Cargo.toml - causes clippy to stash changes across repos
 - Use `--no-verify` - fix the issue or fix the hook
 - Assume tools are missing - check if `nix develop` is available for the right environment
