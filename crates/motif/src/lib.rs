@@ -7,6 +7,7 @@ pub mod lattice;
 pub mod lean;
 pub mod morphism;
 pub mod parse;
+pub mod pretty;
 pub mod signature;
 pub mod theories;
 pub mod theory;

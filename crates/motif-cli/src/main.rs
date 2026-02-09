@@ -6,6 +6,7 @@ use motif::explore::explore;
 use motif::inclusion::check_inclusion;
 use motif::lean;
 use motif::parse::parse_theory;
+use motif::pretty::{default_notation, pretty};
 use motif::theory::{SaturationConfig, Theory};
 use std::path::PathBuf;
 use std::process;
@@ -150,6 +151,7 @@ fn main() {
                 theory.name, expr_count, depth, vars
             );
 
+            let notation = default_notation();
             match explore(&theory, &var_list, depth, &config) {
                 Ok(classes) => {
                     if classes.is_empty() {
@@ -157,10 +159,9 @@ fn main() {
                     } else {
                         println!("Found {} equivalence classes:\n", classes.len());
                         for (i, class) in classes.iter().enumerate() {
-                            println!("  {}.", i + 1);
-                            for member in &class.members {
-                                println!("    {member}");
-                            }
+                            let members: Vec<String> =
+                                class.members.iter().map(|m| pretty(m, &notation)).collect();
+                            println!("  {}.  {}", i + 1, members.join("  =  "));
                             println!();
                         }
                     }
@@ -228,6 +229,7 @@ fn main() {
                 ext_theory.name, base_theory.name, depth, vars
             );
 
+            let notation = default_notation();
             match conjecture(&base_theory, &ext_theory, &var_list, depth, &config) {
                 Ok(conjectures) => {
                     if conjectures.is_empty() {
@@ -235,11 +237,14 @@ fn main() {
                     } else {
                         println!("Found {} novel equivalence(s):\n", conjectures.len());
                         for (i, c) in conjectures.iter().enumerate() {
-                            println!("  {}. Novel pairs:", i + 1);
+                            println!("  {}.", i + 1);
                             for (a, b) in &c.novel_pairs {
-                                println!("    {a}  =  {b}");
+                                println!(
+                                    "    {}  =  {}",
+                                    pretty(a, &notation),
+                                    pretty(b, &notation)
+                                );
                             }
-                            println!("    (from class: {} members)", c.equiv_class.members.len());
                             println!();
                         }
                     }
