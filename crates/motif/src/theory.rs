@@ -167,7 +167,7 @@ impl Theory {
     /// even when they don't appear in the input expressions. Without this,
     /// axioms referencing these constants (identity laws, complement laws)
     /// cannot fire.
-    fn seed_constants(&self, program: &mut String) {
+    pub(crate) fn seed_constants(&self, program: &mut String) {
         for op in self.signature.ops() {
             if op.arity == 0 {
                 program.push_str(&format!("\n(let seed_{}__ ({}))", op.name, op.name));

@@ -1,5 +1,6 @@
 pub mod classify;
 pub mod diff;
+pub mod explore;
 pub mod inclusion;
 pub mod lattice;
 pub mod parse;

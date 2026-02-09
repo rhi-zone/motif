@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use motif::classify::{classify, detect_properties};
 use motif::diff::equiv_diff;
+use motif::explore::explore;
 use motif::inclusion::check_inclusion;
 use motif::parse::parse_theory;
 use motif::theory::{SaturationConfig, Theory};
@@ -40,6 +41,17 @@ enum Command {
         expr_a: String,
         /// Second expression (s-expression with Var)
         expr_b: String,
+    },
+    /// Explore: enumerate expressions and discover equivalences
+    Explore {
+        /// Path to a .theory file
+        file: PathBuf,
+        /// Expression depth limit
+        #[arg(long, default_value = "2")]
+        depth: usize,
+        /// Variable names to use (comma-separated)
+        #[arg(long, default_value = "a,b")]
+        vars: String,
     },
     /// Compare what two theories prove about an expression
     Diff {
@@ -96,6 +108,37 @@ fn main() {
             } else {
                 for class in &classes {
                     println!("  {class:?}");
+                }
+            }
+        }
+        Command::Explore { file, depth, vars } => {
+            let theory = load_theory(&file);
+            let var_list: Vec<&str> = vars.split(',').map(|s| s.trim()).collect();
+            let expr_count = motif::explore::enumerate(&theory.signature, &var_list, depth).len();
+
+            eprintln!(
+                "Exploring {} with {} expressions (depth {}, vars: {})...",
+                theory.name, expr_count, depth, vars
+            );
+
+            match explore(&theory, &var_list, depth, &config) {
+                Ok(classes) => {
+                    if classes.is_empty() {
+                        println!("No non-trivial equivalences found.");
+                    } else {
+                        println!("Found {} equivalence classes:\n", classes.len());
+                        for (i, class) in classes.iter().enumerate() {
+                            println!("  {}.", i + 1);
+                            for member in &class.members {
+                                println!("    {member}");
+                            }
+                            println!();
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    process::exit(1);
                 }
             }
         }
