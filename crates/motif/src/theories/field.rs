@@ -80,6 +80,17 @@ pub fn field_theory() -> Theory {
             lhs: "(mul a b)".to_string(),
             rhs: "(mul b a)".to_string(),
         },
+        // Zero annihilation (derivable but not via saturation)
+        Axiom {
+            name: "zero_right_annihilation".to_string(),
+            lhs: "(mul a (zero))".to_string(),
+            rhs: "(zero)".to_string(),
+        },
+        Axiom {
+            name: "zero_left_annihilation".to_string(),
+            lhs: "(mul (zero) a)".to_string(),
+            rhs: "(zero)".to_string(),
+        },
         // Distributivity
         Axiom {
             name: "left_distributivity".to_string(),

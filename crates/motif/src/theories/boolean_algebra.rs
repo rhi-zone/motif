@@ -75,6 +75,17 @@ pub fn boolean_algebra_theory() -> Theory {
             lhs: "(meet a (join b c))".to_string(),
             rhs: "(join (meet a b) (meet a c))".to_string(),
         },
+        // Idempotence (derivable from absorption but not via restricted saturation)
+        Axiom {
+            name: "meet_idempotence".to_string(),
+            lhs: "(meet a a)".to_string(),
+            rhs: "a".to_string(),
+        },
+        Axiom {
+            name: "join_idempotence".to_string(),
+            lhs: "(join a a)".to_string(),
+            rhs: "a".to_string(),
+        },
         // Involution: complement is self-inverse.
         // Derivable from the other axioms, but the proof requires reverse
         // identity rules (a → meet(a, one)) that cause e-graph blowup,

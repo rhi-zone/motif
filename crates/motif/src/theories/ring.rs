@@ -1,12 +1,12 @@
 use crate::signature::Signature;
 use crate::theory::{Axiom, Theory};
 
-/// Construct the theory of (non-commutative) rings: signature
-/// `{zero/0, one/0, negate/1, add/2, mul/2}` with additive group axioms,
-/// multiplicative identity, and distributivity.
+/// Construct the theory of rings: signature
+/// `{zero/0, one/0, negate/1, add/2, mul/2}` with additive abelian group
+/// axioms, multiplicative monoid, zero annihilation, and distributivity.
 ///
-/// Commutativity of addition and multiplication are deliberately omitted
-/// to avoid associative-commutative blowup during saturation.
+/// Multiplication is NOT commutative (this is a general ring, not a
+/// commutative ring). Addition IS commutative, as in every ring.
 pub fn ring_theory() -> Theory {
     let mut sig = Signature::new();
     sig.add_op("zero", 0).unwrap();
@@ -42,6 +42,12 @@ pub fn ring_theory() -> Theory {
             lhs: "(add (add a b) c)".to_string(),
             rhs: "(add a (add b c))".to_string(),
         },
+        // Additive commutativity (derivable in any ring, but not via saturation)
+        Axiom {
+            name: "add_commutativity".to_string(),
+            lhs: "(add a b)".to_string(),
+            rhs: "(add b a)".to_string(),
+        },
         // Multiplicative identity
         Axiom {
             name: "mul_left_identity".to_string(),
@@ -57,6 +63,17 @@ pub fn ring_theory() -> Theory {
             name: "mul_associativity".to_string(),
             lhs: "(mul (mul a b) c)".to_string(),
             rhs: "(mul a (mul b c))".to_string(),
+        },
+        // Zero annihilation (derivable in any ring, but not via saturation)
+        Axiom {
+            name: "zero_right_annihilation".to_string(),
+            lhs: "(mul a (zero))".to_string(),
+            rhs: "(zero)".to_string(),
+        },
+        Axiom {
+            name: "zero_left_annihilation".to_string(),
+            lhs: "(mul (zero) a)".to_string(),
+            rhs: "(zero)".to_string(),
         },
         // Distributivity
         Axiom {
