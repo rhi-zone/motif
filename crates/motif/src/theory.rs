@@ -161,6 +161,20 @@ impl Theory {
         parts.join("\n")
     }
 
+    /// Seed the egglog program with all nullary constructors from the signature.
+    ///
+    /// This ensures constants like `(zero)` and `(one)` exist in the e-graph
+    /// even when they don't appear in the input expressions. Without this,
+    /// axioms referencing these constants (identity laws, complement laws)
+    /// cannot fire.
+    fn seed_constants(&self, program: &mut String) {
+        for op in self.signature.ops() {
+            if op.arity == 0 {
+                program.push_str(&format!("\n(let seed_{}__ ({}))", op.name, op.name));
+            }
+        }
+    }
+
     /// Saturate the given expressions under this theory's axioms.
     ///
     /// Each expression is bound as a `let` in the egglog program, then
@@ -172,6 +186,7 @@ impl Theory {
         config: &SaturationConfig,
     ) -> Result<EGraph, egglog::Error> {
         let mut program = self.to_egglog();
+        self.seed_constants(&mut program);
         for (name, expr) in exprs {
             program.push_str(&format!("\n(let {name} {expr})"));
         }
@@ -193,6 +208,7 @@ impl Theory {
         config: &SaturationConfig,
     ) -> Result<bool, egglog::Error> {
         let mut program = self.to_egglog();
+        self.seed_constants(&mut program);
         program.push_str(&format!("\n(let a__ {expr_a})"));
         program.push_str(&format!("\n(let b__ {expr_b})"));
         program.push_str(&format!(
