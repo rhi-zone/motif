@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use motif::classify::{classify, detect_properties};
+use motif::conjecture::conjecture;
 use motif::diff::equiv_diff;
 use motif::explore::explore;
 use motif::inclusion::check_inclusion;
@@ -51,6 +52,19 @@ enum Command {
         depth: usize,
         /// Variable names to use (comma-separated)
         #[arg(long, default_value = "a,b")]
+        vars: String,
+    },
+    /// Discover novel equivalences in a theory relative to a base
+    Conjecture {
+        /// Path to the base (weaker) .theory file
+        base: PathBuf,
+        /// Path to the extended (stronger) .theory file
+        extended: PathBuf,
+        /// Expression depth limit
+        #[arg(long, default_value = "2")]
+        depth: usize,
+        /// Variable names to use (comma-separated)
+        #[arg(long, default_value = "a")]
         vars: String,
     },
     /// Compare what two theories prove about an expression
@@ -178,6 +192,43 @@ fn main() {
             match theory.equiv(&expr_a, &expr_b, &config) {
                 Ok(true) => println!("equivalent"),
                 Ok(false) => println!("not equivalent"),
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    process::exit(1);
+                }
+            }
+        }
+        Command::Conjecture {
+            base,
+            extended,
+            depth,
+            vars,
+        } => {
+            let base_theory = load_theory(&base);
+            let ext_theory = load_theory(&extended);
+            let var_list: Vec<&str> = vars.split(',').map(|s| s.trim()).collect();
+
+            eprintln!(
+                "Conjecturing: what does {} prove that {} can't? (depth {}, vars: {})...",
+                ext_theory.name, base_theory.name, depth, vars
+            );
+
+            match conjecture(&base_theory, &ext_theory, &var_list, depth, &config) {
+                Ok(conjectures) => {
+                    if conjectures.is_empty() {
+                        println!("No novel equivalences found.");
+                    } else {
+                        println!("Found {} novel equivalence(s):\n", conjectures.len());
+                        for (i, c) in conjectures.iter().enumerate() {
+                            println!("  {}. Novel pairs:", i + 1);
+                            for (a, b) in &c.novel_pairs {
+                                println!("    {a}  =  {b}");
+                            }
+                            println!("    (from class: {} members)", c.equiv_class.members.len());
+                            println!();
+                        }
+                    }
+                }
                 Err(e) => {
                     eprintln!("error: {e}");
                     process::exit(1);
