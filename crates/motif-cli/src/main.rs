@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use motif::classify::{classify, detect_properties};
 use motif::conjecture::conjecture;
 use motif::diff::equiv_diff;
@@ -6,7 +6,7 @@ use motif::explore::explore;
 use motif::inclusion::check_inclusion;
 use motif::lean;
 use motif::parse::parse_theory;
-use motif::pretty::{default_notation, pretty};
+use motif::pretty::{ascii_notation, latex_notation, pretty, unicode_notation, Notation};
 use motif::theory::{SaturationConfig, Theory};
 use std::path::PathBuf;
 use std::process;
@@ -20,6 +20,20 @@ struct Cli {
     /// Saturation iteration limit
     #[arg(long, default_value = "10", global = true)]
     iters: usize,
+
+    /// Output format for mathematical expressions
+    #[arg(long, default_value = "unicode", global = true)]
+    format: OutputFormat,
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum OutputFormat {
+    /// Unicode math symbols: a · b, a⁻¹, ¬a
+    Unicode,
+    /// LaTeX math mode: a \cdot b, a^{-1}, \lnot a
+    Latex,
+    /// Plain ASCII: a * b, a^(-1), ~a
+    Ascii,
 }
 
 #[derive(Subcommand)]
@@ -96,6 +110,14 @@ enum Command {
     },
 }
 
+fn notation_for(fmt: OutputFormat) -> Notation {
+    match fmt {
+        OutputFormat::Unicode => unicode_notation(),
+        OutputFormat::Latex => latex_notation(),
+        OutputFormat::Ascii => ascii_notation(),
+    }
+}
+
 fn load_theory(path: &PathBuf) -> Theory {
     let content = match std::fs::read_to_string(path) {
         Ok(c) => c,
@@ -118,6 +140,7 @@ fn main() {
     let config = SaturationConfig {
         iter_limit: cli.iters,
     };
+    let notation = notation_for(cli.format);
 
     match cli.command {
         Command::Classify { file } => {
@@ -151,7 +174,6 @@ fn main() {
                 theory.name, expr_count, depth, vars
             );
 
-            let notation = default_notation();
             match explore(&theory, &var_list, depth, &config) {
                 Ok(classes) => {
                     if classes.is_empty() {
@@ -229,7 +251,6 @@ fn main() {
                 ext_theory.name, base_theory.name, depth, vars
             );
 
-            let notation = default_notation();
             match conjecture(&base_theory, &ext_theory, &var_list, depth, &config) {
                 Ok(conjectures) => {
                     if conjectures.is_empty() {
