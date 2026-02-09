@@ -185,7 +185,7 @@ fn tokenize(s: &str) -> Vec<&str> {
 /// In axiom patterns, bare lowercase identifiers that aren't constructor names
 /// are pattern variables. This converts them to concrete Var expressions so
 /// they can be fed to `Theory::equiv()`.
-fn pattern_to_expr(pattern: &str, constructors: &[&str]) -> String {
+pub(crate) fn pattern_to_expr(pattern: &str, constructors: &[&str]) -> String {
     let tokens = tokenize(pattern);
     let mut result = Vec::with_capacity(tokens.len());
     let mut prev_open = false;

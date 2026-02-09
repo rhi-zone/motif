@@ -3,6 +3,7 @@ pub mod diff;
 pub mod explore;
 pub mod inclusion;
 pub mod lattice;
+pub mod morphism;
 pub mod parse;
 pub mod signature;
 pub mod theories;
