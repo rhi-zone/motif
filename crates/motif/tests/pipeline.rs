@@ -1,4 +1,6 @@
 use motif::theories::group::group_theory;
+use motif::theories::lattice::lattice_theory;
+use motif::theories::monoid::monoid_theory;
 use motif::theories::ring::ring_theory;
 use motif::theory::SaturationConfig;
 use motif::translate::Translation;
@@ -19,23 +21,18 @@ fn ring_to_group_cross_compilation() {
     let _ring = ring_theory();
     let group = group_theory();
 
-    // Build the forgetful functor: Ring → (additive) Group
     let mut translate = Translation::new("ring_to_additive_group", "Ring", "Group");
     translate.map_op("add", "mul");
     translate.map_op("zero", "e");
     translate.map_op("negate", "inv");
 
-    // Ring expression: (-a) + (a + b) — simplifies to b without commutativity
     let ring_expr = "(add (negate (Var \"a\")) (add (Var \"a\") (Var \"b\")))";
-
-    // Translate to group language
     let group_expr = translate.apply(ring_expr);
     assert_eq!(
         group_expr,
         "(mul (inv (Var \"a\")) (mul (Var \"a\") (Var \"b\")))"
     );
 
-    // Saturate under group theory and check equivalence with b
     let config = SaturationConfig { iter_limit: 5 };
     let result = group.equiv(&group_expr, "(Var \"b\")", &config);
     assert!(
@@ -50,7 +47,6 @@ fn ring_additive_simplification() {
     let ring = ring_theory();
     let config = SaturationConfig { iter_limit: 5 };
 
-    // (-a) + (a + b) should equal b under ring axioms
     let result = ring.equiv(
         "(add (negate (Var \"a\")) (add (Var \"a\") (Var \"b\")))",
         "(Var \"b\")",
@@ -60,4 +56,123 @@ fn ring_additive_simplification() {
         result.unwrap(),
         "(-a) + (a + b) should simplify to b in ring theory"
     );
+}
+
+/// Translation composition: ring → group → monoid via chained forgetful functors.
+#[test]
+fn ring_to_monoid_via_composition() {
+    let monoid = monoid_theory();
+
+    // Ring → Group (forget multiplicative structure, keep additive)
+    let mut ring_to_group = Translation::new("ring_to_group", "Ring", "Group");
+    ring_to_group.map_op("add", "mul");
+    ring_to_group.map_op("zero", "e");
+    ring_to_group.map_op("negate", "inv");
+
+    // Group → Monoid (forget inverse)
+    let group_to_monoid = Translation::new("group_to_monoid", "Group", "Monoid");
+    // identity: e→e, mul→mul (same names, no mapping needed)
+    // inv is simply dropped (monoid has no inverse)
+
+    let ring_to_monoid = ring_to_group.compose(&group_to_monoid);
+    assert_eq!(ring_to_monoid.source, "Ring");
+    assert_eq!(ring_to_monoid.target, "Monoid");
+
+    // Ring expression using only additive identity: (add a (zero)) = a
+    let ring_expr = "(add (Var \"a\") (zero))";
+    let monoid_expr = ring_to_monoid.apply(ring_expr);
+    assert_eq!(monoid_expr, "(mul (Var \"a\") (e))");
+
+    let config = SaturationConfig { iter_limit: 5 };
+    assert!(monoid.equiv(&monoid_expr, "(Var \"a\")", &config).unwrap());
+}
+
+/// Axiom preservation: ring→group preserves additive axioms but not
+/// distributivity (which references mul, unmapped in group theory).
+#[test]
+fn axiom_preservation_ring_to_group() {
+    let ring = ring_theory();
+    let group = group_theory();
+
+    let mut translate = Translation::new("ring_to_group", "Ring", "Group");
+    translate.map_op("add", "mul");
+    translate.map_op("zero", "e");
+    translate.map_op("negate", "inv");
+
+    let config = SaturationConfig { iter_limit: 5 };
+    let results = translate.preserves_axioms(&ring, &group, &config).unwrap();
+
+    let preserved: Vec<&str> = results
+        .iter()
+        .filter(|(_, p)| *p)
+        .map(|(name, _)| name.as_str())
+        .collect();
+    let not_preserved: Vec<&str> = results
+        .iter()
+        .filter(|(_, p)| !*p)
+        .map(|(name, _)| name.as_str())
+        .collect();
+
+    // Additive group axioms should be preserved
+    assert!(preserved.contains(&"add_right_identity"));
+    assert!(preserved.contains(&"add_left_identity"));
+    assert!(preserved.contains(&"add_right_inverse"));
+    assert!(preserved.contains(&"add_left_inverse"));
+    assert!(preserved.contains(&"add_associativity"));
+
+    // Multiplicative/distributive axioms should NOT be preserved
+    // (they translate to expressions involving unmapped ring `mul`)
+    assert!(not_preserved.contains(&"left_distributivity"));
+    assert!(not_preserved.contains(&"right_distributivity"));
+}
+
+/// Group→Monoid forgetful functor preserves identity + associativity.
+#[test]
+fn axiom_preservation_group_to_monoid() {
+    let group = group_theory();
+    let monoid = monoid_theory();
+
+    // e→e, mul→mul (same names), inv is dropped
+    let translate = Translation::new("group_to_monoid", "Group", "Monoid");
+
+    let config = SaturationConfig { iter_limit: 5 };
+    let results = translate
+        .preserves_axioms(&group, &monoid, &config)
+        .unwrap();
+
+    let preserved: Vec<&str> = results
+        .iter()
+        .filter(|(_, p)| *p)
+        .map(|(name, _)| name.as_str())
+        .collect();
+
+    // Identity and associativity should be preserved (same op names)
+    assert!(preserved.contains(&"right_identity"));
+    assert!(preserved.contains(&"left_identity"));
+    assert!(preserved.contains(&"associativity"));
+}
+
+/// Lattice theory: absorption simplification (different algebraic flavor).
+#[test]
+fn lattice_absorption() {
+    let l = lattice_theory();
+    let config = SaturationConfig { iter_limit: 5 };
+
+    // meet(a, join(a, b)) = a
+    assert!(l
+        .equiv(
+            "(meet (Var \"a\") (join (Var \"a\") (Var \"b\")))",
+            "(Var \"a\")",
+            &config,
+        )
+        .unwrap());
+
+    // Double absorption: join(a, meet(a, join(a, b))) = a
+    assert!(l
+        .equiv(
+            "(join (Var \"a\") (meet (Var \"a\") (join (Var \"a\") (Var \"b\"))))",
+            "(Var \"a\")",
+            &config,
+        )
+        .unwrap());
 }

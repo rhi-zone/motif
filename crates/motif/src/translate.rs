@@ -1,3 +1,5 @@
+use crate::theory::{SaturationConfig, Theory};
+
 /// A translation between theories: maps operation names from source to target.
 ///
 /// Works at the s-expression string level — renames symbols in expressions
@@ -64,6 +66,71 @@ impl Translation {
         }
         out
     }
+
+    /// Compose two translations: `self` (A→B) then `other` (B→C), producing A→C.
+    ///
+    /// For each mapping `a→b` in self: if other maps `b→c`, emit `a→c`.
+    /// Otherwise, carry `a→b` through unchanged.
+    pub fn compose(&self, other: &Translation) -> Translation {
+        let mut result = Translation::new(
+            &format!("{};{}", self.name, other.name),
+            &self.source,
+            &other.target,
+        );
+        for (from, to) in &self.map {
+            if let Some((_, final_to)) = other.map.iter().find(|(k, _)| k == to) {
+                result.map_op(from, final_to);
+            } else {
+                result.map_op(from, to);
+            }
+        }
+        result
+    }
+
+    /// Check whether translating the source theory's axioms produces
+    /// valid equalities in the target theory.
+    ///
+    /// For each axiom, translates both sides, converts pattern variables
+    /// to `(Var "name")` expressions, and checks equivalence in the target
+    /// theory. Returns a list of `(axiom_name, preserved)`.
+    pub fn preserves_axioms(
+        &self,
+        source: &Theory,
+        target: &Theory,
+        config: &SaturationConfig,
+    ) -> Result<Vec<(String, bool)>, egglog::Error> {
+        // Collect all constructor names from the target theory
+        let constructors: Vec<&str> = target
+            .signature
+            .ops()
+            .iter()
+            .map(|op| op.name.as_str())
+            .collect();
+
+        let mut results = Vec::new();
+        for axiom in &source.axioms {
+            let translated_lhs = self.apply(&axiom.lhs);
+            let translated_rhs = self.apply(&axiom.rhs);
+            // Convert pattern variables to (Var "name") expressions
+            let expr_lhs = pattern_to_expr(&translated_lhs, &constructors);
+            let expr_rhs = pattern_to_expr(&translated_rhs, &constructors);
+            let preserved = match target.equiv(&expr_lhs, &expr_rhs, config) {
+                Ok(p) => p,
+                Err(e) => {
+                    let msg = e.to_string();
+                    // Axioms referencing constructors not in the target theory
+                    // can't be stated, so they're not preserved.
+                    if msg.contains("UnboundFunction") || msg.contains("Unbound") {
+                        false
+                    } else {
+                        return Err(e);
+                    }
+                }
+            };
+            results.push((axiom.name.clone(), preserved));
+        }
+        Ok(results)
+    }
 }
 
 /// Tokenize an s-expression into parens, strings, and symbols.
@@ -111,6 +178,52 @@ fn tokenize(s: &str) -> Vec<&str> {
         }
     }
     tokens
+}
+
+/// Convert axiom pattern variables to `(Var "name")` expressions.
+///
+/// In axiom patterns, bare lowercase identifiers that aren't constructor names
+/// are pattern variables. This converts them to concrete Var expressions so
+/// they can be fed to `Theory::equiv()`.
+fn pattern_to_expr(pattern: &str, constructors: &[&str]) -> String {
+    let tokens = tokenize(pattern);
+    let mut result = Vec::with_capacity(tokens.len());
+    let mut prev_open = false;
+
+    for token in &tokens {
+        if *token == "(" {
+            prev_open = true;
+            result.push(token.to_string());
+        } else if *token == ")" {
+            prev_open = false;
+            result.push(token.to_string());
+        } else if prev_open {
+            // Operator position — keep as-is
+            prev_open = false;
+            result.push(token.to_string());
+        } else if token.starts_with('"') {
+            // String literal — keep as-is
+            result.push(token.to_string());
+        } else if token.chars().next().is_some_and(|c| c.is_ascii_lowercase())
+            && !constructors.contains(token)
+            && *token != "Var"
+        {
+            // Bare variable — wrap in (Var "name")
+            result.push(format!("(Var \"{token}\")"));
+        } else {
+            result.push(token.to_string());
+        }
+    }
+
+    // Reconstruct with spacing
+    let mut out = String::new();
+    for (i, token) in result.iter().enumerate() {
+        if i > 0 && token != ")" && !result[i - 1].ends_with('(') {
+            out.push(' ');
+        }
+        out.push_str(token);
+    }
+    out
 }
 
 #[cfg(test)]
@@ -163,5 +276,41 @@ mod tests {
             t.apply("(add (add a b) (negate a))"),
             "(mul (mul a b) (inv a))"
         );
+    }
+
+    #[test]
+    fn compose_identity() {
+        let mut t = Translation::new("f_to_g", "A", "B");
+        t.map_op("f", "g");
+        let id = Translation::new("id", "B", "B");
+        let composed = t.compose(&id);
+        assert_eq!(composed.apply("(f x)"), "(g x)");
+        assert_eq!(composed.source, "A");
+        assert_eq!(composed.target, "B");
+    }
+
+    #[test]
+    fn compose_chain() {
+        let mut ab = Translation::new("a_to_b", "A", "B");
+        ab.map_op("f", "g");
+        let mut bc = Translation::new("b_to_c", "B", "C");
+        bc.map_op("g", "h");
+        let ac = ab.compose(&bc);
+        assert_eq!(ac.apply("(f x)"), "(h x)");
+        assert_eq!(ac.source, "A");
+        assert_eq!(ac.target, "C");
+    }
+
+    #[test]
+    fn compose_unmapped_passes_through() {
+        let mut ab = Translation::new("a_to_b", "A", "B");
+        ab.map_op("f", "g");
+        ab.map_op("h", "k");
+        // bc only maps g, not k
+        let mut bc = Translation::new("b_to_c", "B", "C");
+        bc.map_op("g", "z");
+        let ac = ab.compose(&bc);
+        // f→g→z, h→k (unchanged, bc doesn't touch k)
+        assert_eq!(ac.apply("(f (h x))"), "(z (k x))");
     }
 }
