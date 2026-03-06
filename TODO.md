@@ -11,6 +11,26 @@
 - **Discover: depth ceiling**: Template depth is bounded by enumeration. Interesting morphisms can require deep templates (depth 4+) where candidate counts are already intractable at depth 2 against larger signatures.
 - **One-way morphisms only**: `discover` finds source→target interpretations. Morita equivalence — two theories that interpret each other but share no direct signature morphism (e.g. groups via `{e, inv, mul}` vs `{div}`) — requires round-trip discovery and equivalence-of-interpretations checking, neither of which exists yet.
 
+## Vision: proof comprehension
+
+Long-term goal: given any proof, explain every step by finding its structural meaning — what move is being made, and where that same move appears elsewhere in mathematics. The "graph of all proofs" falls out naturally as exhaust from this process.
+
+Key ideas:
+- A proof step is represented in *all* extractable projections simultaneously (formal term, equational content, categorical structure, natural language, etc.) — all added to the e-graph as equivalent nodes
+- The architecture is intentionally substrate-neutral: nodes carry arbitrary content, edges are typed relations ("is a projection of," "is a proof of," "is an instance of"), e-graph handles equivalence
+- Content (which nodes matter, which rewrites are meaningful) is the research problem; the substrate shouldn't foreclose anything
+
+Near-term: **Lean/Mathlib proof step extraction and annotation**
+1. Pick a simple Mathlib proof (basic group theory result)
+2. Extract proof steps (tactic tree or term)
+3. Match each step against motif's existing theory/axiom vocabulary
+4. Identify what new structure unmatched steps require
+5. Output: annotated proof where each step is labeled with its structural meaning
+
+This is the smallest concrete exercise of the full vision, and the gaps it reveals drive what to build next.
+
+Relevant fields to eventually handle: Langlands program, HoTT/CoC, elliptic curves, harmonic analysis (Kakeya hierarchy), BB(5)-style exhaustive classification, Curry-Howard-Lambek correspondence.
+
 ## Potential next work
 
 - Vector space theory (scalar field + module axioms — first parameterized theory)
