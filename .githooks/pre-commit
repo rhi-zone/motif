@@ -3,12 +3,12 @@ set -e
 
 echo "Running cargo fmt..."
 staged=$(git diff --cached --name-only)
-cargo fmt --all
+nix develop --command bash -c 'cargo fmt --all'
 if [ -n "$staged" ]; then
   echo "$staged" | xargs git add
 fi
 
 echo "Running cargo clippy..."
-cargo clippy --all-targets --all-features -- -D warnings
+nix develop --command bash -c 'cargo clippy --all-targets --all-features -- -D warnings'
 
 echo "Pre-commit checks passed!"
