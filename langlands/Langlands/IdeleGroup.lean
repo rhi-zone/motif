@@ -39,6 +39,18 @@ group itself, the diagonal embedding of `Kˣ`, and the idèle class group as a q
 - `NumberField.IdeleClassGroup.toClassGroup` : the descent of `IdeleGroup.toClassGroup` along the
   quotient by principal idèles, since these map to the trivial ideal class
   (`IdeleGroup.toClassGroup_diagonalEmbedding`).
+- `NumberField.IdeleGroup.toClassGroup_eq_one_iff` : an idèle maps to the trivial class iff its
+  `toFractionalIdeal` is principal, i.e. the kernel of `toClassGroup`.
+- `NumberField.IdeleClassGroup.ker_mk`, `NumberField.IdeleClassGroup.mulExact_diagonalEmbedding_mk` :
+  the kernel of the quotient map `mk : IdeleGroup R K →* IdeleClassGroup R K` is the principal
+  idèles, packaged as the exactness of `1 → Kˣ → IdeleGroup R K → IdeleClassGroup R K → 1`.
+- `NumberField.IdeleClassGroup.ker_toClassGroup` : the kernel of the map to `ClassGroup R`,
+  as the image under `mk` of `ker IdeleGroup.toClassGroup`.
+- `NumberField.IdeleGroup.content` : the idèle norm (content map) `IdeleGroup R K → ℝ`, trivial
+  on principal idèles (`content_diagonalEmbedding`, the adelic product formula).
+- `NumberField.IdeleGroup.normMap` : the intended type of the idèle norm map for a finite
+  extension `L / K`; a `sorry` stub, since the local norm maps it needs are not yet in Mathlib
+  (see the survey in the "norm map on idèles" section below).
 
 ## Implementation notes
 
@@ -484,6 +496,139 @@ theorem toClassGroup_surjective : Function.Surjective (toClassGroup R K) := by
     rw [ha, FractionalIdeal.coe_mk0]
   rw [heq, ClassGroup.mk_mk0, hJ]
 
+/-- The kernel of `IdeleClassGroup.toClassGroup` is the image, under the quotient map `mk`, of
+the kernel of `IdeleGroup.toClassGroup`. This is the general fact about kernels of a
+`QuotientGroup.lift` (`QuotientGroup.ker_lift`), specialized to our situation; combined with
+`IdeleGroup.toClassGroup_eq_one_iff`, it identifies the classes of idèles whose determined
+fractional ideal is principal as exactly the kernel of the map to the class group. -/
+theorem ker_toClassGroup : (toClassGroup R K).ker =
+    Subgroup.map (mk R K) (IdeleGroup.toClassGroup (R := R) (K := K)).ker :=
+  QuotientGroup.ker_lift _ _ _
+
 end IdeleClassGroup
+
+/-! ### The idèle norm (content map)
+
+Mathlib already provides the archimedean half of this: `NumberField.InfiniteAdeleRing.instNorm`
+puts a multiplicative `‖·‖` on the infinite adèle ring, given by the product of the normalized
+absolute values across infinite places (`InfiniteAdeleRing.norm_def`), and
+`InfiniteAdeleRing.coe_norm_eq_abs_norm` shows this restricts to `|Algebra.norm ℚ x|` on
+principal elements -- the archimedean half of the product formula. The finite half is the
+absolute norm of a fractional ideal, `FractionalIdeal.absNorm : FractionalIdeal R⁰ K →*₀ ℚ`
+(Xavier Roblot, `Mathlib.RingTheory.FractionalIdeal.Norm`), which is already exactly
+multiplicative and already satisfies the matching principal-element identity
+(`FractionalIdeal.absNorm_span_singleton`). Multiplying the two together gives the idèle norm
+`‖·‖_𝔸 : IdeleGroup R K →* ℝ` (well, a `MonoidHom`-shaped function -- see `content_mul`),
+and the two known principal-element identities combine (via
+`IdeleGroup.toFractionalIdeal_diagonalEmbedding` and `Algebra.norm_inv`) to reprove the full
+product formula `‖(x)ᵥ‖_𝔸 = 1` as `content_diagonalEmbedding`. -/
+
+namespace IdeleGroup
+
+variable {R K} [NumberField K] [Module.Free ℤ R] [Module.Finite ℤ R]
+
+omit [NumberField K] [Module.Free ℤ R] [Module.Finite ℤ R] in
+/-- The infinite part of a principal idèle `(x)ᵥ` is the diagonal embedding of `x` into the
+infinite idèle group. -/
+theorem infinitePart_diagonalEmbedding (x : Kˣ) :
+    infinitePart R K (diagonalEmbedding R K x) =
+      Units.map (algebraMap K (InfiniteAdeleRing K)).toMonoidHom x := by
+  apply Units.ext
+  rw [show Units.val (infinitePart R K (diagonalEmbedding R K x)) =
+      (Units.val (diagonalEmbedding R K x)).1 from rfl,
+    coe_diagonalEmbedding_apply, Units.coe_map]
+  rfl
+
+/-- The idèle norm, or content: the product of the archimedean norm of the infinite part and
+the absolute norm of the fractional ideal determined by the finite part. This is the standard
+normalized idèle norm `‖·‖_𝔸`, extended multiplicatively from the local normalized absolute
+values `|·|ᵥ` (`content_mul`), and trivial on principal idèles (`content_diagonalEmbedding`) --
+the adelic form of the product formula. -/
+noncomputable def content (a : IdeleGroup R K) : ℝ :=
+  ‖Units.val (α := InfiniteAdeleRing K) (infinitePart R K a)‖ *
+    (FractionalIdeal.absNorm (toFractionalIdeal a) : ℝ)
+
+theorem content_mul (a b : IdeleGroup R K) : content (a * b) = content a * content b := by
+  have h1 : Units.val (α := InfiniteAdeleRing K) (infinitePart R K (a * b)) =
+      Units.val (α := InfiniteAdeleRing K) (infinitePart R K a) *
+        Units.val (α := InfiniteAdeleRing K) (infinitePart R K b) :=
+    map_mul ((Units.coeHom (InfiniteAdeleRing K)).comp (infinitePart R K)) a b
+  have h2 : ‖Units.val (α := InfiniteAdeleRing K) (infinitePart R K a) *
+      Units.val (α := InfiniteAdeleRing K) (infinitePart R K b)‖ =
+      ‖Units.val (α := InfiniteAdeleRing K) (infinitePart R K a)‖ *
+        ‖Units.val (α := InfiniteAdeleRing K) (infinitePart R K b)‖ := by
+    simp only [InfiniteAdeleRing.norm_def]
+    rw [show ∀ x y : InfiniteAdeleRing K, (x * y) = fun v => x v * y v from fun _ _ => rfl]
+    simp only [norm_mul, mul_pow]
+    exact Finset.prod_mul_distrib
+  unfold content
+  rw [h1, h2, toFractionalIdeal_mul, map_mul]
+  push_cast
+  ring
+
+/-- Principal idèles have content `1`: this is the adelic product formula, reassembled from its
+archimedean half (`InfiniteAdeleRing.coe_norm_eq_abs_norm`) and non-archimedean half
+(`FractionalIdeal.absNorm_span_singleton` applied to
+`IdeleGroup.toFractionalIdeal_diagonalEmbedding`). -/
+theorem content_diagonalEmbedding (x : Kˣ) : content (diagonalEmbedding R K x) = 1 := by
+  have hx : (Algebra.norm ℚ (x : K)) ≠ 0 :=
+    Algebra.norm_ne_zero_iff.mpr (Units.ne_zero x)
+  have hinf : Units.val (α := InfiniteAdeleRing K) (infinitePart R K (diagonalEmbedding R K x)) =
+      algebraMap K (InfiniteAdeleRing K) (x : K) := by
+    rw [infinitePart_diagonalEmbedding]; rfl
+  unfold content
+  rw [hinf, InfiniteAdeleRing.coe_norm_eq_abs_norm, toFractionalIdeal_diagonalEmbedding,
+    FractionalIdeal.absNorm_span_singleton, Algebra.norm_inv, abs_inv]
+  push_cast
+  rw [mul_inv_cancel₀]
+  exact_mod_cast abs_ne_zero.mpr hx
+
+end IdeleGroup
+
+/-! ### The norm map on idèles for a finite extension
+
+**Survey.** For a finite extension `L / K` of number fields (with rings of integers `S / R`),
+the classical idèle norm map `N_{L/K} : IdeleGroup S L →* IdeleGroup R K` sends an idèle `a` to
+the idèle whose component at each place `v` of `K` is `∏_{w ∣ v} N_{L_w / K_v}(a_w)`, the product
+of local norms over the (finitely many) places `w` of `L` lying above `v`.
+
+As of this writing, Mathlib does not have the pieces this needs:
+
+- No relation "`w` (a `HeightOneSpectrum S`) lies over `v` (a `HeightOneSpectrum R`)" for a finite
+  ring extension `S / R` of Dedekind domains, analogous to `Ideal.LiesOver` /
+  `IsDedekindDomain.HeightOneSpectrum.comap`-under-an-extension. (There is a `comap` along the
+  completion/localization equivalence at a *fixed* place, `AdicValuation.lean` line 662, but
+  nothing relating the spectra of `R` and `S`.) The infinite-place analogue is closer to
+  existing: `NumberField.InfinitePlace.comap` and `ComplexEmbedding.LiesOver` already give a
+  restriction map `InfinitePlace L → InfinitePlace K` and a "lies over" relation on embeddings
+  (`Mathlib.NumberTheory.NumberField.InfinitePlace.Embeddings`), but this file does not attempt
+  to build the finite-adèle analogue from only the archimedean half.
+- No local norm map `L_w →+* K_v` (or `N_{L_w/K_v} : L_w → K_v` as a monoid hom on units) between
+  completions at places of different fields; `Mathlib.RingTheory.Norm` gives `Algebra.norm K x`
+  for a finite extension `L / K` acting on `L` itself, not on completions at extended places.
+- No ring hom `AdeleRing S L →+* AdeleRing R K` (or its restriction to finite/infinite parts)
+  induced by a finite extension `L / K`, from which `IdeleGroup S L →* IdeleGroup R K` could be
+  obtained by restriction to units; nothing under the name `baseChange`/`extensionMap` for
+  `FiniteAdeleRing` or `InfiniteAdeleRing` was found by grep.
+
+Building `N_{L/K}` correctly therefore requires first formalizing the place-lying-over relation
+and the local norm maps it indexes -- genuinely new infrastructure, not a routine extension of
+what is already in the file. The declaration below records the intended type signature (matching
+the Lean 3 `ideles_K.lean` `norm_idele.map` up to naming) with a `sorry`, so that later work can
+fill in the construction without having to re-derive the statement. -/
+
+section NormMap
+
+variable (S L : Type*) [CommRing S] [IsDedekindDomain S] [Field L] [Algebra S L]
+  [IsFractionRing S L] [Algebra R S] [Algebra K L] [Algebra R L]
+  [IsScalarTower R S L] [IsScalarTower R K L] [Module.Finite K L]
+
+/-- The idèle norm map for a finite extension `L / K` (of fraction fields of Dedekind domains
+`S / R`), sending an idèle of `L` to its norm idèle of `K`. See the module-level survey above:
+this requires local norm maps at each extended place, which Mathlib does not yet provide, hence
+the `sorry`. -/
+noncomputable def IdeleGroup.normMap : IdeleGroup S L →* IdeleGroup R K := sorry
+
+end NormMap
 
 end NumberField
