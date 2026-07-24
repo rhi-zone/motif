@@ -225,14 +225,32 @@ open Filter IsDedekindDomain.HeightOneSpectrum
 
 variable {R K}
 
+/-- The local component at `v` of the finite part of an idèle `a`, as an element of the `v`-adic
+completion `v.adicCompletion K`. -/
+def localComponent (a : IdeleGroup R K) (v : HeightOneSpectrum R) : v.adicCompletion K :=
+  (RestrictedProduct.unitsEquiv _ (finitePart R K a) v : v.adicCompletion K)
+
+theorem localComponent_mul (a b : IdeleGroup R K) (v : HeightOneSpectrum R) :
+    localComponent (a * b) v = localComponent a v * localComponent b v := by
+  show (RestrictedProduct.unitsEquiv _ (finitePart R K (a * b)) v : v.adicCompletion K) = _
+  rw [map_mul (finitePart R K)]
+  exact congrArg (fun x => (x v : v.adicCompletion K))
+    (map_mul (RestrictedProduct.unitsEquiv (fun v : HeightOneSpectrum R => v.adicCompletion K))
+      (finitePart R K a) (finitePart R K b))
+
 /-- The `v`-adic exponent of a finite idèle: if `a` is a finite idèle, `exponent a v` is the
 integer `n` such that the `v`-component of `a` has valuation `ϖᵥ ^ (-n)` for a uniformizer `ϖᵥ`,
 i.e. the multiplicity of the maximal ideal `v` in the fractional ideal determined by `a`. -/
-noncomputable def exponent (a : IdeleGroup R K) (v : IsDedekindDomain.HeightOneSpectrum R) : ℤ :=
+noncomputable def exponent (a : IdeleGroup R K) (v : HeightOneSpectrum R) : ℤ :=
   Multiplicative.toAdd
-    (WithZero.unzero
-      (x := Valued.v ((RestrictedProduct.unitsEquiv _ (finitePart R K a) v : v.adicCompletion K)))
+    (WithZero.unzero (x := Valued.v (localComponent a v))
       ((Valued.v.ne_zero_iff).mpr (Units.ne_zero _)))
+
+theorem exponent_eq_log (a : IdeleGroup R K) (v : HeightOneSpectrum R) :
+    exponent a v = WithZero.log (Valued.v (localComponent a v)) := by
+  set h : Valued.v (localComponent a v) ≠ 0 := (Valued.v.ne_zero_iff).mpr (Units.ne_zero _) with hh
+  rw [← WithZero.coe_unzero h]
+  rfl
 
 /-- Only finitely many places `v` have nonzero exponent: this reflects the fact that a finite
 idèle lies in the local units `𝒪ᵥˣ` for all but finitely many `v`. -/
@@ -249,38 +267,30 @@ maximal ideals of `R`, i.e. the ideal-theoretic incarnation of the divisor of `a
 Lean 3 `map_to_fractional_ideals`. -/
 noncomputable def toFractionalIdeal (a : IdeleGroup R K) :
     FractionalIdeal (nonZeroDivisors R) K :=
-  ∏ᶠ v : IsDedekindDomain.HeightOneSpectrum R,
-    (v.asIdeal : FractionalIdeal (nonZeroDivisors R) K) ^ exponent a v
+  ∏ᶠ v : HeightOneSpectrum R, (v.asIdeal : FractionalIdeal (nonZeroDivisors R) K) ^ exponent a v
 
 theorem toFractionalIdeal_ne_zero (a : IdeleGroup R K) : toFractionalIdeal a ≠ 0 := by
   refine finprod_ne_zero fun v => ?_
   exact zpow_ne_zero _ (FractionalIdeal.coeIdeal_ne_zero.mpr v.ne_bot)
 
+/-- Only finitely many places `v` contribute a nontrivial factor `v ^ exponent a v` to
+`toFractionalIdeal a`: this is `exponent_eventually_zero` repackaged as a `HasFiniteMulSupport`
+statement, ready to feed to `finprod_mul_distrib`. -/
+theorem exponent_hasFiniteMulSupport (a : IdeleGroup R K) :
+    Function.HasFiniteMulSupport
+      fun v : HeightOneSpectrum R =>
+        (v.asIdeal : FractionalIdeal (nonZeroDivisors R) K) ^ exponent a v :=
+  Set.Finite.subset (Filter.eventually_cofinite.mp (exponent_eventually_zero a))
+    (fun v hv => by simp only [Function.mem_mulSupport] at hv ⊢; exact fun h => hv (by
+      rw [h, zpow_zero]))
+
 /-- The `v`-adic exponent is additive in the idèle: `exponent (a * b) v = exponent a v +
 exponent b v`. This reflects the multiplicativity of the valuation `Valued.v` at each place. -/
-theorem exponent_mul (a b : IdeleGroup R K) (v : IsDedekindDomain.HeightOneSpectrum R) :
+theorem exponent_mul (a b : IdeleGroup R K) (v : HeightOneSpectrum R) :
     exponent (a * b) v = exponent a v + exponent b v := by
-  have hcomp : (RestrictedProduct.unitsEquiv _ (finitePart R K (a * b)) v : v.adicCompletion K) =
-      (RestrictedProduct.unitsEquiv _ (finitePart R K a) v : v.adicCompletion K) *
-        (RestrictedProduct.unitsEquiv _ (finitePart R K b) v : v.adicCompletion K) := by
-    rw [map_mul (finitePart R K)]
-    exact congrArg (fun x => (x v : v.adicCompletion K))
-      (map_mul (RestrictedProduct.unitsEquiv
-        (fun v : IsDedekindDomain.HeightOneSpectrum R => v.adicCompletion K))
-        (finitePart R K a) (finitePart R K b))
-  have hval : Valued.v ((RestrictedProduct.unitsEquiv _ (finitePart R K (a * b)) v :
-      v.adicCompletion K)) =
-      Valued.v ((RestrictedProduct.unitsEquiv _ (finitePart R K a) v : v.adicCompletion K)) *
-        Valued.v ((RestrictedProduct.unitsEquiv _ (finitePart R K b) v : v.adicCompletion K)) := by
-    rw [hcomp, map_mul]
-  set h1 : Valued.v ((RestrictedProduct.unitsEquiv _ (finitePart R K (a * b)) v :
-      v.adicCompletion K)) ≠ 0 := (Valued.v.ne_zero_iff).mpr (Units.ne_zero _) with hh1
-  show (WithZero.unzero h1).toAdd = exponent a v + exponent b v
-  rw [WithZero.toAdd_unzero_eq_iff]
-  simp only [exponent]
-  rw [ofAdd_add, WithZero.coe_mul, ofAdd_toAdd, ofAdd_toAdd, WithZero.coe_unzero,
-    WithZero.coe_unzero]
-  exact hval
+  rw [exponent_eq_log, exponent_eq_log, exponent_eq_log, localComponent_mul, map_mul,
+    WithZero.log_mul ((Valued.v.ne_zero_iff).mpr (Units.ne_zero _))
+      ((Valued.v.ne_zero_iff).mpr (Units.ne_zero _))]
 
 /-- The finite part of a principal idèle `(x)ᵥ` is the diagonal embedding of `x` into the finite
 idèle group, i.e. the image of `x` under `Units.map (algebraMap K (FiniteAdeleRing R K))`. -/
@@ -297,18 +307,11 @@ theorem finitePart_diagonalEmbedding (x : Kˣ) :
 /-- The local component at `v` of the finite part of a principal idèle `(x)ᵥ` is the image of
 `x` under the canonical map `K → v.adicCompletion K`. -/
 theorem valuation_finitePart_diagonalEmbedding (x : Kˣ) (v : HeightOneSpectrum R) :
-    (RestrictedProduct.unitsEquiv _ (finitePart R K (diagonalEmbedding R K x)) v :
-        v.adicCompletion K) = ((x : K) : v.adicCompletion K) := by
+    localComponent (diagonalEmbedding R K x) v = ((x : K) : v.adicCompletion K) := by
+  show (RestrictedProduct.unitsEquiv _ (finitePart R K (diagonalEmbedding R K x)) v :
+      v.adicCompletion K) = _
   rw [RestrictedProduct.unitsEquiv_apply, finitePart_diagonalEmbedding, Units.coe_map]
   exact FiniteAdeleRing.algebraMap_apply R K (x : K) v
-
-theorem exponent_eq_log (a : IdeleGroup R K) (v : HeightOneSpectrum R) :
-    exponent a v = WithZero.log
-      (Valued.v ((RestrictedProduct.unitsEquiv _ (finitePart R K a) v : v.adicCompletion K))) := by
-  set h : Valued.v ((RestrictedProduct.unitsEquiv _ (finitePart R K a) v : v.adicCompletion K))
-      ≠ 0 := (Valued.v.ne_zero_iff).mpr (Units.ne_zero _) with hh
-  rw [← WithZero.coe_unzero h]
-  rfl
 
 theorem exponent_diagonalEmbedding_eq_log (x : Kˣ) (v : HeightOneSpectrum R) :
     exponent (diagonalEmbedding R K x) v = WithZero.log (v.valuation K (x : K)) := by
@@ -328,20 +331,8 @@ theorem exponent_diagonalEmbedding (x : Kˣ) {n : R} (hn : n ≠ 0) (d : nonZero
 
 theorem toFractionalIdeal_mul (a b : IdeleGroup R K) :
     toFractionalIdeal (a * b) = toFractionalIdeal a * toFractionalIdeal b := by
-  have hfa : Function.HasFiniteMulSupport
-      fun v : IsDedekindDomain.HeightOneSpectrum R =>
-        (v.asIdeal : FractionalIdeal (nonZeroDivisors R) K) ^ exponent a v :=
-    Set.Finite.subset (Filter.eventually_cofinite.mp (exponent_eventually_zero a))
-      (fun v hv => by simp only [Function.mem_mulSupport] at hv ⊢; exact fun h => hv (by
-        rw [h, zpow_zero]))
-  have hfb : Function.HasFiniteMulSupport
-      fun v : IsDedekindDomain.HeightOneSpectrum R =>
-        (v.asIdeal : FractionalIdeal (nonZeroDivisors R) K) ^ exponent b v :=
-    Set.Finite.subset (Filter.eventually_cofinite.mp (exponent_eventually_zero b))
-      (fun v hv => by simp only [Function.mem_mulSupport] at hv ⊢; exact fun h => hv (by
-        rw [h, zpow_zero]))
   unfold toFractionalIdeal
-  rw [← finprod_mul_distrib hfa hfb]
+  rw [← finprod_mul_distrib (exponent_hasFiniteMulSupport a) (exponent_hasFiniteMulSupport b)]
   refine finprod_congr fun v => ?_
   rw [exponent_mul, zpow_add₀ (FractionalIdeal.coeIdeal_ne_zero.mpr v.ne_bot)]
 
@@ -394,7 +385,9 @@ theorem exists_toFractionalIdeal_eq (I : FractionalIdeal (nonZeroDivisors R) K) 
   refine ⟨idele, ?_⟩
   have hexp : ∀ v, exponent idele v = FractionalIdeal.count K v I := by
     intro v
-    rw [exponent_eq_log, hfinite]
+    rw [exponent_eq_log]
+    unfold localComponent
+    rw [hfinite]
     show WithZero.log (Valued.v (a0.1 v : v.adicCompletion K)) = _
     have : (a0.1 v : v.adicCompletion K) = (k v : K) := rfl
     rw [this, valuedAdicCompletion_eq_valuation', hk v, WithZero.log_exp]
