@@ -99,11 +99,15 @@ exponent of a principal idèle `(x)ᵥ` (for `x = n/d`, `n : R`, `d ∈ R⁰`) a
 This gives `IdeleGroup.principalSubgroup_le_ker_toClassGroup`, so `toClassGroup` descends along
 the quotient by `QuotientGroup.lift` to `NumberField.IdeleClassGroup.toClassGroup :
 IdeleClassGroup R K →* ClassGroup R`. Surjectivity of this descended map
-(`IdeleClassGroup.toClassGroup_surjective`) is stated but not yet proved: it would follow from
-constructing, for each nonzero ideal `J = ∏_v v^(n_v)`, an idèle with `v`-adic exponent `n_v` at
-each of the finitely many ramified `v` (i.e. `ϖᵥ^(-n_v)` for a chosen uniformizer `ϖᵥ`) and a
-local unit elsewhere; this uniformizer-existence and restricted-product-assembly step is not yet
-formalized.
+(`IdeleClassGroup.toClassGroup_surjective`) is proved via `IdeleGroup.exists_toFractionalIdeal_eq`:
+every nonzero fractional ideal `I` arises as `toFractionalIdeal a` for some idèle `a`, built with
+local finite component at each place `v` a field element of valuation `WithZero.exp (count K v I)`
+(furnished by surjectivity of the local valuation,
+`IsDedekindDomain.HeightOneSpectrum.valuation_surjective`, applied pointwise via `choose`), which
+is a local unit (valuation `1`) at all but finitely many `v` since `count K v I` is eventually `0`
+(`FractionalIdeal.finite_factors`), and hence assembles into a genuine unit of the finite adèle
+ring via `RestrictedProduct.mkUnit`. Combined with `ClassGroup.mk0_surjective` (every ideal class
+is represented by a nonzero integral ideal), this gives surjectivity onto `ClassGroup R`.
 
 ## References
 * María Inés de Frutos-Fernández, *ideles* (Lean 3), `github.com/mariainesdff/ideles`.
@@ -359,6 +363,46 @@ theorem toFractionalIdeal_diagonalEmbedding (x : Kˣ) :
   rw [← hnd', ← FractionalIdeal.finprod_heightOneSpectrum_factorization_principal_fraction hd0 n']
   exact finprod_congr fun v => by rw [exponent_diagonalEmbedding x hn0 d hnd]
 
+/-- Every nonzero fractional ideal `I` is `toFractionalIdeal a` for some idèle `a`: build `a` with
+local finite components a uniformizer-like element of valuation `exp (count K v I)` at each place
+(using surjectivity of the local valuation `v.valuation_surjective`), which is `1` (a local unit)
+at all but finitely many `v` since `count K v I` is eventually `0`
+(`FractionalIdeal.finite_factors`). -/
+theorem exists_toFractionalIdeal_eq (I : FractionalIdeal (nonZeroDivisors R) K) (hI : I ≠ 0) :
+    ∃ a : IdeleGroup R K, toFractionalIdeal a = I := by
+  choose k hk using fun v : HeightOneSpectrum R =>
+    v.valuation_surjective K (WithZero.exp (FractionalIdeal.count K v I))
+  have hk0 : ∀ v, ((k v : K) : v.adicCompletion K) ≠ 0 := fun v => by
+    refine (Valued.v.ne_zero_iff).mp ?_
+    rw [valuedAdicCompletion_eq_valuation', hk v]
+    exact WithZero.exp_ne_zero
+  set x : (v : HeightOneSpectrum R) → (v.adicCompletion K)ˣ :=
+    fun v => Units.mk0 ((k v : K) : v.adicCompletion K) (hk0 v) with hx
+  have hev : ∀ᶠ v : HeightOneSpectrum R in Filter.cofinite,
+      x v ∈ (Submonoid.ofClass (v.adicCompletionIntegers K)).units := by
+    filter_upwards [FractionalIdeal.finite_factors I] with v hv
+    have : x v ∈ (v.adicCompletionIntegers K).units := by
+      rw [adicCompletionIntegers.mem_units_iff_valued_eq_one]
+      show Valued.v ((k v : K) : v.adicCompletion K) = 1
+      rw [valuedAdicCompletion_eq_valuation', hk v, hv, WithZero.exp_zero]
+    exact this
+  set a0 : FiniteIdeleGroup R K := RestrictedProduct.mkUnit x hev with ha0
+  set idele : IdeleGroup R K := (equivProd R K).symm (1, a0) with hidele
+  have hfinite : finitePart R K idele = a0 := by
+    show (equivProd R K idele).2 = a0
+    rw [hidele, (equivProd R K).apply_symm_apply]
+  refine ⟨idele, ?_⟩
+  have hexp : ∀ v, exponent idele v = FractionalIdeal.count K v I := by
+    intro v
+    rw [exponent_eq_log, hfinite]
+    show WithZero.log (Valued.v (a0.1 v : v.adicCompletion K)) = _
+    have : (a0.1 v : v.adicCompletion K) = (k v : K) := rfl
+    rw [this, valuedAdicCompletion_eq_valuation', hk v, WithZero.log_exp]
+  rw [show toFractionalIdeal idele = ∏ᶠ v : HeightOneSpectrum R,
+      (v.asIdeal : FractionalIdeal (nonZeroDivisors R) K) ^ FractionalIdeal.count K v I from
+    finprod_congr fun v => by rw [hexp v]]
+  exact FractionalIdeal.finprod_heightOneSpectrum_factorization' K hI
+
 /-- The multiplicative map from the idèle group to the group of (nonzero) fractional ideals of
 `K`, sending an idèle to the fractional ideal it determines via its valuations at each finite
 place. This is the Lean 3 `I_K.map_to_fractional_ideals`. -/
@@ -426,14 +470,26 @@ theorem toClassGroup_mk (a : IdeleGroup R K) : toClassGroup R K (mk R K a) =
     IdeleGroup.toClassGroup a := rfl
 
 /-- The map from the idèle class group to the ideal class group is surjective: every ideal
-class is represented by some idèle. Since every element of `ClassGroup R` is (via
-`ClassGroup.mk0_surjective`) the class of some nonzero integral ideal `I`, and `I` is a finite
-product `∏_v v^(n_v)` of maximal ideals (`Ideal.finprod_heightOneSpectrum_factorization`), it
-suffices to build an idèle whose `v`-adic exponent is `n_v` at each of the finitely many `v`
-dividing `I` and a local unit elsewhere; this requires choosing uniformizers at each ramified
-place and is not yet formalized here. -/
+class is represented by some idèle. Every element of `ClassGroup R` is (via
+`ClassGroup.mk0_surjective`) the class of some nonzero integral ideal `J`, and
+`IdeleGroup.exists_toFractionalIdeal_eq` produces an idèle `a` with
+`toFractionalIdeal a = (J : FractionalIdeal R⁰ K)`, whence `toFractionalIdealHom a` and
+`FractionalIdeal.mk0 K J` agree as units and `mk R K a` maps to the class of `J`. -/
 theorem toClassGroup_surjective : Function.Surjective (toClassGroup R K) := by
-  sorry
+  intro c
+  obtain ⟨J, hJ⟩ := ClassGroup.mk0_surjective (R := R) c
+  have hJ0 : (J : FractionalIdeal (nonZeroDivisors R) K) ≠ 0 :=
+    FractionalIdeal.coeIdeal_ne_zero.mpr (nonZeroDivisors.coe_ne_zero J)
+  obtain ⟨a, ha⟩ :=
+    IdeleGroup.exists_toFractionalIdeal_eq (J : FractionalIdeal (nonZeroDivisors R) K) hJ0
+  refine ⟨mk R K a, ?_⟩
+  rw [toClassGroup_mk]
+  show ClassGroup.mk K (IdeleGroup.toFractionalIdealHom a) = c
+  have heq : IdeleGroup.toFractionalIdealHom a = FractionalIdeal.mk0 K J := by
+    apply Units.ext
+    show IdeleGroup.toFractionalIdeal a = _
+    rw [ha, FractionalIdeal.coe_mk0]
+  rw [heq, ClassGroup.mk_mk0, hJ]
 
 end IdeleClassGroup
 
