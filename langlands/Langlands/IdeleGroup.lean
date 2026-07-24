@@ -36,6 +36,9 @@ group itself, the diagonal embedding of `Kˣ`, and the idèle class group as a q
   of `K`.
 - `NumberField.IdeleClassGroup R K` : the idèle class group, defined as the quotient of the
   idèle group by the principal idèles.
+- `NumberField.IdeleClassGroup.toClassGroup` : the descent of `IdeleGroup.toClassGroup` along the
+  quotient by principal idèles, since these map to the trivial ideal class
+  (`IdeleGroup.toClassGroup_diagonalEmbedding`).
 
 ## Implementation notes
 
@@ -81,6 +84,26 @@ component of `a`. The two supporting facts (`IdeleGroup.toFractionalIdeal_ne_zer
 structure on nonzero fractional ideals of a Dedekind domain) and via an auxiliary lemma
 `IdeleGroup.exponent_mul` showing `exponent` is additive in the idèle, which itself follows from
 multiplicativity of the valuation `Valued.v` at each place `v`.
+
+Principal idèles map to the trivial ideal class: `IdeleGroup.toFractionalIdeal_diagonalEmbedding`
+shows `toFractionalIdeal (diagonalEmbedding x) = (x⁻¹)` (a principal fractional ideal), from which
+`IdeleGroup.toClassGroup_diagonalEmbedding` deduces `toClassGroup (diagonalEmbedding x) = 1` via
+`ClassGroup.mk_eq_one_iff`. The identification of `toFractionalIdeal (diagonalEmbedding x)` uses
+`FractionalIdeal.finprod_heightOneSpectrum_factorization_principal_fraction` together with the
+auxiliary computation `IdeleGroup.exponent_diagonalEmbedding`, which expresses the `v`-adic
+exponent of a principal idèle `(x)ᵥ` (for `x = n/d`, `n : R`, `d ∈ R⁰`) as a difference of
+`Associates.count` factorization multiplicities, matched against the local valuation via
+`IsDedekindDomain.HeightOneSpectrum.valuation_of_mk'` and the exponential/logarithm API for
+`WithZero (Multiplicative ℤ)` (`WithZero.log`, `WithZero.log_div`, `WithZero.log_exp`).
+
+This gives `IdeleGroup.principalSubgroup_le_ker_toClassGroup`, so `toClassGroup` descends along
+the quotient by `QuotientGroup.lift` to `NumberField.IdeleClassGroup.toClassGroup :
+IdeleClassGroup R K →* ClassGroup R`. Surjectivity of this descended map
+(`IdeleClassGroup.toClassGroup_surjective`) is stated but not yet proved: it would follow from
+constructing, for each nonzero ideal `J = ∏_v v^(n_v)`, an idèle with `v`-adic exponent `n_v` at
+each of the finitely many ramified `v` (i.e. `ϖᵥ^(-n_v)` for a chosen uniformizer `ϖᵥ`) and a
+local unit elsewhere; this uniformizer-existence and restricted-product-assembly step is not yet
+formalized.
 
 ## References
 * María Inés de Frutos-Fernández, *ideles* (Lean 3), `github.com/mariainesdff/ideles`.
@@ -255,6 +278,50 @@ theorem exponent_mul (a b : IdeleGroup R K) (v : IsDedekindDomain.HeightOneSpect
     WithZero.coe_unzero]
   exact hval
 
+/-- The finite part of a principal idèle `(x)ᵥ` is the diagonal embedding of `x` into the finite
+idèle group, i.e. the image of `x` under `Units.map (algebraMap K (FiniteAdeleRing R K))`. -/
+theorem finitePart_diagonalEmbedding (x : Kˣ) :
+    finitePart R K (diagonalEmbedding R K x) =
+      Units.map (algebraMap K (FiniteAdeleRing R K)).toMonoidHom x := by
+  apply Units.ext
+  rw [show Units.val (finitePart R K (diagonalEmbedding R K x)) =
+      (Units.val (diagonalEmbedding R K x)).2 from rfl,
+    coe_diagonalEmbedding_apply, Units.coe_map]
+  ext v
+  rfl
+
+/-- The local component at `v` of the finite part of a principal idèle `(x)ᵥ` is the image of
+`x` under the canonical map `K → v.adicCompletion K`. -/
+theorem valuation_finitePart_diagonalEmbedding (x : Kˣ) (v : HeightOneSpectrum R) :
+    (RestrictedProduct.unitsEquiv _ (finitePart R K (diagonalEmbedding R K x)) v :
+        v.adicCompletion K) = ((x : K) : v.adicCompletion K) := by
+  rw [RestrictedProduct.unitsEquiv_apply, finitePart_diagonalEmbedding, Units.coe_map]
+  exact FiniteAdeleRing.algebraMap_apply R K (x : K) v
+
+theorem exponent_eq_log (a : IdeleGroup R K) (v : HeightOneSpectrum R) :
+    exponent a v = WithZero.log
+      (Valued.v ((RestrictedProduct.unitsEquiv _ (finitePart R K a) v : v.adicCompletion K))) := by
+  set h : Valued.v ((RestrictedProduct.unitsEquiv _ (finitePart R K a) v : v.adicCompletion K))
+      ≠ 0 := (Valued.v.ne_zero_iff).mpr (Units.ne_zero _) with hh
+  rw [← WithZero.coe_unzero h]
+  rfl
+
+theorem exponent_diagonalEmbedding_eq_log (x : Kˣ) (v : HeightOneSpectrum R) :
+    exponent (diagonalEmbedding R K x) v = WithZero.log (v.valuation K (x : K)) := by
+  rw [exponent_eq_log, valuation_finitePart_diagonalEmbedding,
+    valuedAdicCompletion_eq_valuation']
+
+theorem exponent_diagonalEmbedding (x : Kˣ) {n : R} (hn : n ≠ 0) (d : nonZeroDivisors R)
+    (hnd : IsLocalization.mk' K n d = (x : K)) (v : HeightOneSpectrum R) :
+    exponent (diagonalEmbedding R K x) v =
+      (Associates.mk v.asIdeal).count (Associates.mk (Ideal.span {(d : R)} : Ideal R)).factors -
+        (Associates.mk v.asIdeal).count (Associates.mk (Ideal.span {n} : Ideal R)).factors := by
+  rw [exponent_diagonalEmbedding_eq_log, ← hnd, v.valuation_of_mk',
+    WithZero.log_div (v.intValuation_ne_zero n hn) (v.intValuation_ne_zero' d),
+    v.intValuation_if_neg hn, v.intValuation_if_neg (nonZeroDivisors.coe_ne_zero d),
+    WithZero.log_exp, WithZero.log_exp]
+  ring
+
 theorem toFractionalIdeal_mul (a b : IdeleGroup R K) :
     toFractionalIdeal (a * b) = toFractionalIdeal a * toFractionalIdeal b := by
   have hfa : Function.HasFiniteMulSupport
@@ -274,6 +341,24 @@ theorem toFractionalIdeal_mul (a b : IdeleGroup R K) :
   refine finprod_congr fun v => ?_
   rw [exponent_mul, zpow_add₀ (FractionalIdeal.coeIdeal_ne_zero.mpr v.ne_bot)]
 
+/-- The fractional ideal determined by a principal idèle `(x)ᵥ` is the (principal) fractional
+ideal `(x⁻¹)`. This is the Lean 3 `map_to_fractional_ideals.map_units_K`-type fact underlying
+the triviality of `toClassGroup` on principal idèles. -/
+theorem toFractionalIdeal_diagonalEmbedding (x : Kˣ) :
+    toFractionalIdeal (diagonalEmbedding R K x) =
+      FractionalIdeal.spanSingleton (nonZeroDivisors R) ((x : K)⁻¹) := by
+  obtain ⟨n, d, hnd⟩ := IsLocalization.exists_mk'_eq (M := nonZeroDivisors R) (x : K)
+  have hn0 : n ≠ 0 := by
+    rintro rfl
+    exact Units.ne_zero x (by rw [← hnd, IsLocalization.mk'_zero])
+  have hd0 : (d : R) ≠ 0 := nonZeroDivisors.coe_ne_zero d
+  set n' : nonZeroDivisors R := ⟨n, mem_nonZeroDivisors_iff_ne_zero.mpr hn0⟩ with hn'
+  have hnd' : IsLocalization.mk' K (d : R) n' = (x : K)⁻¹ := by
+    rw [IsFractionRing.mk'_eq_div, ← hnd, IsFractionRing.mk'_eq_div, inv_div]
+  unfold toFractionalIdeal
+  rw [← hnd', ← FractionalIdeal.finprod_heightOneSpectrum_factorization_principal_fraction hd0 n']
+  exact finprod_congr fun v => by rw [exponent_diagonalEmbedding x hn0 d hnd]
+
 /-- The multiplicative map from the idèle group to the group of (nonzero) fractional ideals of
 `K`, sending an idèle to the fractional ideal it determines via its valuations at each finite
 place. This is the Lean 3 `I_K.map_to_fractional_ideals`. -/
@@ -286,6 +371,19 @@ noncomputable def toFractionalIdealHom :
 the class of the fractional ideal it determines. This is the Lean 3 `I_K.map_to_class_group`. -/
 noncomputable def toClassGroup : IdeleGroup R K →* ClassGroup R :=
   (ClassGroup.mk K).comp toFractionalIdealHom
+
+/-- Principal idèles map to the trivial class in the ideal class group: the fractional ideal
+`toFractionalIdeal (diagonalEmbedding x) = (x⁻¹)` is principal, hence trivial in `ClassGroup R`. -/
+theorem toClassGroup_diagonalEmbedding (x : Kˣ) : toClassGroup (diagonalEmbedding R K x) = 1 := by
+  show (ClassGroup.mk K) (toFractionalIdealHom (diagonalEmbedding R K x)) = 1
+  rw [ClassGroup.mk_eq_one_iff]
+  exact FractionalIdeal.isPrincipal_iff _ |>.mpr ⟨(x : K)⁻¹, toFractionalIdeal_diagonalEmbedding x⟩
+
+/-- The principal idèles lie in the kernel of `toClassGroup`. -/
+theorem principalSubgroup_le_ker_toClassGroup :
+    principalSubgroup R K ≤ (toClassGroup (R := R) (K := K)).ker := by
+  rintro _ ⟨x, rfl⟩
+  exact toClassGroup_diagonalEmbedding x
 
 end IdeleGroup
 
@@ -315,6 +413,27 @@ def mk : IdeleGroup R K →* IdeleClassGroup R K := QuotientGroup.mk' _
 theorem mk_surjective : Function.Surjective (mk R K) := QuotientGroup.mk'_surjective _
 
 theorem continuous_mk : Continuous (mk R K) := QuotientGroup.continuous_mk
+
+/-- The map from the idèle group to the ideal class group descends to the idèle class group,
+since principal idèles map to the trivial ideal class
+(`IdeleGroup.principalSubgroup_le_ker_toClassGroup`). This is the Lean 3
+`C_K.map_to_class_group`. -/
+noncomputable def toClassGroup : IdeleClassGroup R K →* ClassGroup R :=
+  QuotientGroup.lift (IdeleGroup.principalSubgroup R K) IdeleGroup.toClassGroup
+    IdeleGroup.principalSubgroup_le_ker_toClassGroup
+
+theorem toClassGroup_mk (a : IdeleGroup R K) : toClassGroup R K (mk R K a) =
+    IdeleGroup.toClassGroup a := rfl
+
+/-- The map from the idèle class group to the ideal class group is surjective: every ideal
+class is represented by some idèle. Since every element of `ClassGroup R` is (via
+`ClassGroup.mk0_surjective`) the class of some nonzero integral ideal `I`, and `I` is a finite
+product `∏_v v^(n_v)` of maximal ideals (`Ideal.finprod_heightOneSpectrum_factorization`), it
+suffices to build an idèle whose `v`-adic exponent is `n_v` at each of the finitely many `v`
+dividing `I` and a local unit elsewhere; this requires choosing uniformizers at each ramified
+place and is not yet formalized here. -/
+theorem toClassGroup_surjective : Function.Surjective (toClassGroup R K) := by
+  sorry
 
 end IdeleClassGroup
 
