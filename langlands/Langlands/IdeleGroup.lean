@@ -1,5 +1,9 @@
 import Mathlib.NumberTheory.NumberField.AdeleRing
 import Mathlib.Topology.Algebra.Group.Quotient
+import Mathlib.Topology.Algebra.Group.Units
+import Mathlib.Topology.Algebra.RestrictedProduct.Units
+import Mathlib.RingTheory.DedekindDomain.Factorization
+import Mathlib.RingTheory.ClassGroup.Basic
 
 /-!
 # The idèle group and idèle class group
@@ -23,6 +27,13 @@ group itself, the diagonal embedding of `Kˣ`, and the idèle class group as a q
   generally to allow e.g. `R = ℤ`, `K = ℚ`).
 - `NumberField.IdeleGroup.principalSubgroup R K` : the subgroup of principal idèles
   `(x)ᵥ`, `x ∈ Kˣ`.
+- `NumberField.FiniteIdeleGroup R K`, `NumberField.InfiniteIdeleGroup K` : the finite and
+  infinite idèle groups, and `NumberField.IdeleGroup.equivProd` : the topological-group
+  isomorphism `IdeleGroup R K ≃ₜ* InfiniteIdeleGroup K × FiniteIdeleGroup R K`, together with
+  the projections `IdeleGroup.infinitePart` / `IdeleGroup.finitePart`.
+- `NumberField.IdeleGroup.toFractionalIdealHom`, `NumberField.IdeleGroup.toClassGroup` : the
+  (currently `sorry`-backed) maps from the idèle group to the group of fractional ideals and to
+  the ideal class group of `K`.
 - `NumberField.IdeleClassGroup R K` : the idèle class group, defined as the quotient of the
   idèle group by the principal idèles.
 
@@ -48,19 +59,28 @@ This means the topological bookkeeping that occupies a significant fraction of t
 free in Lean 4, since Mathlib4's `AdeleRing` and `RestrictedProduct` infrastructure already
 carries the relevant topology and continuity lemmas.
 
+Injectivity of the diagonal embedding `diagonalEmbedding_injective` (the Lean 3
+`inj_units_K.injective`) is now proved: it follows directly from injectivity of
+`algebraMap K (AdeleRing R K)` (`NumberField.AdeleRing.algebraMap_injective`, already in
+Mathlib4) via `Units.map_injective`, with no need for the Lean 3 argument via nonempty
+`HeightOneSpectrum R`.
+
+The splitting `IdeleGroup R K ≃ₜ* FiniteIdeleGroup K × (InfiniteAdeleRing K)ˣ` (Lean 3
+`I_K.as_prod`) is also done, as `IdeleGroup.equivProd`, together with the projections
+`IdeleGroup.infinitePart` / `IdeleGroup.finitePart` (Lean 3 `I_K.fst`). This is transported
+directly from the definitional equality `AdeleRing R K = InfiniteAdeleRing K × FiniteAdeleRing R K`
+via the general topological-group isomorphism between the units of a product monoid and the
+product of the unit groups (`MulEquiv.prodUnits` / `Homeomorph.prodUnits`).
+
 What is genuinely missing and left as `sorry` / future work here:
 
-- The isomorphism `IdeleGroup K ≃ₜ* FiniteIdeleGroup K × (InfiniteAdeleRing K)ˣ` (the Lean 3
-  `I_K.as_prod`) and the associated projection `IdeleGroup.fst`.
-- Injectivity of the diagonal embedding `Kˣ →* IdeleGroup R K` (Lean 3
-  `inj_units_K.injective`), which in Lean 3 needed `HeightOneSpectrum R` to be nonempty (i.e.
-  `R` not a field); the Lean 4 proof should go via injectivity of
-  `algebraMap K (AdeleRing R K)` (`NumberField.AdeleRing.algebraMap_injective`, which already
-  exists in Mathlib4) plus a general fact that `Units.map` of an injective monoid hom between
-  cancellative monoids is injective.
-- The map from the idèle group to the group of fractional ideals / the ideal class group
-  (Lean 3 `map_to_fractional_ideals`, `I_K.map_to_class_group`, `C_K.map_to_class_group`),
-  which is the deepest part of the original development and is not attempted here.
+- The map from the idèle group to the group of fractional ideals (`IdeleGroup.toFractionalIdealHom`,
+  Lean 3 `map_to_fractional_ideals`) and its composite with the class group quotient
+  (`IdeleGroup.toClassGroup`, Lean 3 `I_K.map_to_class_group` / `C_K.map_to_class_group`) are
+  stated -- an idèle `a` is sent to `∏_v v^(exponent a v)`, where `exponent a v` is the `v`-adic
+  valuation of the finite component of `a` -- but the two supporting facts
+  (`IdeleGroup.toFractionalIdeal_ne_zero`, `IdeleGroup.toFractionalIdeal_mul`) are left as
+  `sorry`. This remains the deepest part of the original development.
 
 ## References
 * María Inés de Frutos-Fernández, *ideles* (Lean 3), `github.com/mariainesdff/ideles`.
@@ -115,8 +135,115 @@ injectivity of `inj_K : K →+* finite_adele_ring' R K`, which needed `R` to not
 (equivalently, `HeightOneSpectrum R` nonempty); here it should follow instead from
 `NumberField.AdeleRing.algebraMap_injective`. -/
 theorem diagonalEmbedding_injective [NumberField K] :
-    Function.Injective (diagonalEmbedding R K) := by
+    Function.Injective (diagonalEmbedding R K) :=
+  Units.map_injective (AdeleRing.algebraMap_injective R K)
+
+end IdeleGroup
+
+/-! ### The finite and infinite idèle groups -/
+
+/-- The group of finite idèles of `K`: the unit group of the finite adèle ring
+`IsDedekindDomain.FiniteAdeleRing R K`. This is the Lean 3 `finite_idele_group' R K`. -/
+def FiniteIdeleGroup := (FiniteAdeleRing R K)ˣ
+deriving CommGroup, TopologicalSpace
+
+/-- The group of infinite idèles of `K`: the unit group of the infinite adèle ring
+`NumberField.InfiniteAdeleRing K`. -/
+def InfiniteIdeleGroup := (InfiniteAdeleRing K)ˣ
+deriving CommGroup, TopologicalSpace
+
+namespace FiniteIdeleGroup
+
+instance : IsTopologicalGroup (FiniteIdeleGroup R K) :=
+  inferInstanceAs (IsTopologicalGroup (FiniteAdeleRing R K)ˣ)
+
+instance : Inhabited (FiniteIdeleGroup R K) := ⟨1⟩
+
+end FiniteIdeleGroup
+
+namespace InfiniteIdeleGroup
+
+instance : IsTopologicalGroup (InfiniteIdeleGroup K) :=
+  inferInstanceAs (IsTopologicalGroup (InfiniteAdeleRing K)ˣ)
+
+instance : Inhabited (InfiniteIdeleGroup K) := ⟨1⟩
+
+end InfiniteIdeleGroup
+
+namespace IdeleGroup
+
+/-- The idèle group splits, as a topological group, as the product of the infinite and finite
+idèle groups. This is transported directly from the definitional splitting
+`AdeleRing R K = InfiniteAdeleRing K × FiniteAdeleRing R K` via the general fact that the units
+of a product monoid are (topologically) the product of the unit groups
+(`MulEquiv.prodUnits` / `Homeomorph.prodUnits`). This is the Lean 3 `I_K.as_prod`. -/
+def equivProd : IdeleGroup R K ≃ₜ* InfiniteIdeleGroup K × FiniteIdeleGroup R K :=
+  ContinuousMulEquiv.mk' Homeomorph.prodUnits (map_mul MulEquiv.prodUnits)
+
+/-- The projection of an idèle onto its infinite component. -/
+def infinitePart : IdeleGroup R K →* InfiniteIdeleGroup K :=
+  (MonoidHom.fst _ _).comp (equivProd R K).toMonoidHom
+
+/-- The projection of an idèle onto its finite component. This is the Lean 3 `I_K.fst`. -/
+def finitePart : IdeleGroup R K →* FiniteIdeleGroup R K :=
+  (MonoidHom.snd _ _).comp (equivProd R K).toMonoidHom
+
+end IdeleGroup
+
+/-! ### The map to fractional ideals -/
+
+namespace IdeleGroup
+
+open Filter IsDedekindDomain.HeightOneSpectrum
+
+variable {R K}
+
+/-- The `v`-adic exponent of a finite idèle: if `a` is a finite idèle, `exponent a v` is the
+integer `n` such that the `v`-component of `a` has valuation `ϖᵥ ^ (-n)` for a uniformizer `ϖᵥ`,
+i.e. the multiplicity of the maximal ideal `v` in the fractional ideal determined by `a`. -/
+noncomputable def exponent (a : IdeleGroup R K) (v : IsDedekindDomain.HeightOneSpectrum R) : ℤ :=
+  Multiplicative.toAdd
+    (WithZero.unzero
+      (x := Valued.v ((RestrictedProduct.unitsEquiv _ (finitePart R K a) v : v.adicCompletion K)))
+      ((Valued.v.ne_zero_iff).mpr (Units.ne_zero _)))
+
+/-- Only finitely many places `v` have nonzero exponent: this reflects the fact that a finite
+idèle lies in the local units `𝒪ᵥˣ` for all but finitely many `v`. -/
+theorem exponent_eventually_zero (a : IdeleGroup R K) :
+    ∀ᶠ v in cofinite, exponent a v = 0 := by
+  filter_upwards [IsDedekindDomain.FiniteAdeleRing.unitsEquiv_finite_valued_eq_one
+    (finitePart R K a)] with v hv
+  simp only [exponent, toAdd_eq_zero]
+  rw [← WithZero.coe_inj, WithZero.coe_unzero, WithZero.coe_one]
+  exact hv
+
+/-- The fractional ideal determined by an idèle `a`: the product `∏_v v^(exponent a v)` over the
+maximal ideals of `R`, i.e. the ideal-theoretic incarnation of the divisor of `a`. This is the
+Lean 3 `map_to_fractional_ideals`. -/
+noncomputable def toFractionalIdeal (a : IdeleGroup R K) :
+    FractionalIdeal (nonZeroDivisors R) K :=
+  ∏ᶠ v : IsDedekindDomain.HeightOneSpectrum R,
+    (v.asIdeal : FractionalIdeal (nonZeroDivisors R) K) ^ exponent a v
+
+theorem toFractionalIdeal_ne_zero (a : IdeleGroup R K) : toFractionalIdeal a ≠ 0 := by
   sorry
+
+theorem toFractionalIdeal_mul (a b : IdeleGroup R K) :
+    toFractionalIdeal (a * b) = toFractionalIdeal a * toFractionalIdeal b := by
+  sorry
+
+/-- The multiplicative map from the idèle group to the group of (nonzero) fractional ideals of
+`K`, sending an idèle to the fractional ideal it determines via its valuations at each finite
+place. This is the Lean 3 `I_K.map_to_fractional_ideals`. -/
+noncomputable def toFractionalIdealHom :
+    IdeleGroup R K →* (FractionalIdeal (nonZeroDivisors R) K)ˣ :=
+  MonoidHom.mk' (fun a => Units.mk0 (toFractionalIdeal a) (toFractionalIdeal_ne_zero a))
+    (fun a b => Units.ext (toFractionalIdeal_mul a b))
+
+/-- The composite map from the idèle group to the ideal class group of `K`, sending an idèle to
+the class of the fractional ideal it determines. This is the Lean 3 `I_K.map_to_class_group`. -/
+noncomputable def toClassGroup : IdeleGroup R K →* ClassGroup R :=
+  (ClassGroup.mk K).comp toFractionalIdealHom
 
 end IdeleGroup
 
