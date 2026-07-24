@@ -5,6 +5,10 @@ target/
 result
 .direnv/
 
+# Lean / Lake (langlands/)
+langlands/.lake/
+langlands/.elan/
+
 # Node (docs)
 node_modules/
 docs/.vitepress/cache/
