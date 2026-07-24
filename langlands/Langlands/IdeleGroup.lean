@@ -32,8 +32,8 @@ group itself, the diagonal embedding of `Kˣ`, and the idèle class group as a q
   isomorphism `IdeleGroup R K ≃ₜ* InfiniteIdeleGroup K × FiniteIdeleGroup R K`, together with
   the projections `IdeleGroup.infinitePart` / `IdeleGroup.finitePart`.
 - `NumberField.IdeleGroup.toFractionalIdealHom`, `NumberField.IdeleGroup.toClassGroup` : the
-  (currently `sorry`-backed) maps from the idèle group to the group of fractional ideals and to
-  the ideal class group of `K`.
+  maps from the idèle group to the group of fractional ideals and to the ideal class group
+  of `K`.
 - `NumberField.IdeleClassGroup R K` : the idèle class group, defined as the quotient of the
   idèle group by the principal idèles.
 
@@ -72,15 +72,15 @@ directly from the definitional equality `AdeleRing R K = InfiniteAdeleRing K × 
 via the general topological-group isomorphism between the units of a product monoid and the
 product of the unit groups (`MulEquiv.prodUnits` / `Homeomorph.prodUnits`).
 
-What is genuinely missing and left as `sorry` / future work here:
-
-- The map from the idèle group to the group of fractional ideals (`IdeleGroup.toFractionalIdealHom`,
-  Lean 3 `map_to_fractional_ideals`) and its composite with the class group quotient
-  (`IdeleGroup.toClassGroup`, Lean 3 `I_K.map_to_class_group` / `C_K.map_to_class_group`) are
-  stated -- an idèle `a` is sent to `∏_v v^(exponent a v)`, where `exponent a v` is the `v`-adic
-  valuation of the finite component of `a` -- but the two supporting facts
-  (`IdeleGroup.toFractionalIdeal_ne_zero`, `IdeleGroup.toFractionalIdeal_mul`) are left as
-  `sorry`. This remains the deepest part of the original development.
+The map from the idèle group to the group of fractional ideals (`IdeleGroup.toFractionalIdealHom`,
+Lean 3 `map_to_fractional_ideals`) and its composite with the class group quotient
+(`IdeleGroup.toClassGroup`, Lean 3 `I_K.map_to_class_group` / `C_K.map_to_class_group`) send an
+idèle `a` to `∏_v v^(exponent a v)`, where `exponent a v` is the `v`-adic valuation of the finite
+component of `a`. The two supporting facts (`IdeleGroup.toFractionalIdeal_ne_zero`,
+`IdeleGroup.toFractionalIdeal_mul`) are proved via `finprod_ne_zero` (using the `Semifield`
+structure on nonzero fractional ideals of a Dedekind domain) and via an auxiliary lemma
+`IdeleGroup.exponent_mul` showing `exponent` is additive in the idèle, which itself follows from
+multiplicativity of the valuation `Valued.v` at each place `v`.
 
 ## References
 * María Inés de Frutos-Fernández, *ideles* (Lean 3), `github.com/mariainesdff/ideles`.
@@ -226,11 +226,53 @@ noncomputable def toFractionalIdeal (a : IdeleGroup R K) :
     (v.asIdeal : FractionalIdeal (nonZeroDivisors R) K) ^ exponent a v
 
 theorem toFractionalIdeal_ne_zero (a : IdeleGroup R K) : toFractionalIdeal a ≠ 0 := by
-  sorry
+  refine finprod_ne_zero fun v => ?_
+  exact zpow_ne_zero _ (FractionalIdeal.coeIdeal_ne_zero.mpr v.ne_bot)
+
+/-- The `v`-adic exponent is additive in the idèle: `exponent (a * b) v = exponent a v +
+exponent b v`. This reflects the multiplicativity of the valuation `Valued.v` at each place. -/
+theorem exponent_mul (a b : IdeleGroup R K) (v : IsDedekindDomain.HeightOneSpectrum R) :
+    exponent (a * b) v = exponent a v + exponent b v := by
+  have hcomp : (RestrictedProduct.unitsEquiv _ (finitePart R K (a * b)) v : v.adicCompletion K) =
+      (RestrictedProduct.unitsEquiv _ (finitePart R K a) v : v.adicCompletion K) *
+        (RestrictedProduct.unitsEquiv _ (finitePart R K b) v : v.adicCompletion K) := by
+    rw [map_mul (finitePart R K)]
+    exact congrArg (fun x => (x v : v.adicCompletion K))
+      (map_mul (RestrictedProduct.unitsEquiv
+        (fun v : IsDedekindDomain.HeightOneSpectrum R => v.adicCompletion K))
+        (finitePart R K a) (finitePart R K b))
+  have hval : Valued.v ((RestrictedProduct.unitsEquiv _ (finitePart R K (a * b)) v :
+      v.adicCompletion K)) =
+      Valued.v ((RestrictedProduct.unitsEquiv _ (finitePart R K a) v : v.adicCompletion K)) *
+        Valued.v ((RestrictedProduct.unitsEquiv _ (finitePart R K b) v : v.adicCompletion K)) := by
+    rw [hcomp, map_mul]
+  set h1 : Valued.v ((RestrictedProduct.unitsEquiv _ (finitePart R K (a * b)) v :
+      v.adicCompletion K)) ≠ 0 := (Valued.v.ne_zero_iff).mpr (Units.ne_zero _) with hh1
+  show (WithZero.unzero h1).toAdd = exponent a v + exponent b v
+  rw [WithZero.toAdd_unzero_eq_iff]
+  simp only [exponent]
+  rw [ofAdd_add, WithZero.coe_mul, ofAdd_toAdd, ofAdd_toAdd, WithZero.coe_unzero,
+    WithZero.coe_unzero]
+  exact hval
 
 theorem toFractionalIdeal_mul (a b : IdeleGroup R K) :
     toFractionalIdeal (a * b) = toFractionalIdeal a * toFractionalIdeal b := by
-  sorry
+  have hfa : Function.HasFiniteMulSupport
+      fun v : IsDedekindDomain.HeightOneSpectrum R =>
+        (v.asIdeal : FractionalIdeal (nonZeroDivisors R) K) ^ exponent a v :=
+    Set.Finite.subset (Filter.eventually_cofinite.mp (exponent_eventually_zero a))
+      (fun v hv => by simp only [Function.mem_mulSupport] at hv ⊢; exact fun h => hv (by
+        rw [h, zpow_zero]))
+  have hfb : Function.HasFiniteMulSupport
+      fun v : IsDedekindDomain.HeightOneSpectrum R =>
+        (v.asIdeal : FractionalIdeal (nonZeroDivisors R) K) ^ exponent b v :=
+    Set.Finite.subset (Filter.eventually_cofinite.mp (exponent_eventually_zero b))
+      (fun v hv => by simp only [Function.mem_mulSupport] at hv ⊢; exact fun h => hv (by
+        rw [h, zpow_zero]))
+  unfold toFractionalIdeal
+  rw [← finprod_mul_distrib hfa hfb]
+  refine finprod_congr fun v => ?_
+  rw [exponent_mul, zpow_add₀ (FractionalIdeal.coeIdeal_ne_zero.mpr v.ne_bot)]
 
 /-- The multiplicative map from the idèle group to the group of (nonzero) fractional ideals of
 `K`, sending an idèle to the fractional ideal it determines via its valuations at each finite
