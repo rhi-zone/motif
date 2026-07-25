@@ -50,8 +50,17 @@ isn't "write Rust structs by hand."
 
 ## Open questions (from vision doc, still unresolved)
 
-- Where does the e-graph layer meet structural primitives? Are they the same layer?
 - How to represent binders (lambda, quantifiers) in an e-graph-friendly way?
 - How to formalize "interestingness" for pruning the saturation space?
-- Can the equivalence set E be learned from examples, or must it be curated?
 - What's the right granularity for structural primitives?
+- ~~Where does the e-graph layer meet structural primitives? Are they the same
+  layer?~~ ~~Can the equivalence set E be learned from examples, or must it be
+  curated?~~ Resolved (2026-07-25, user direction — see vision doc principle
+  9): there's no single layer everything meets at. egglog/e-graphs are one
+  native representation among many (alongside Lean tactic-trees, categorical
+  statements, natural language, etc.), not a canonical target. E isn't curated
+  a priori — it's discovered by structural analysis across the whole corpus,
+  and "structure" includes gaps/density, not just equivalences. Still open:
+  the actual cross-representation relationship-finding machinery (generalizing
+  `discover.rs`/`explore.rs` beyond motif's own Signature type) doesn't exist
+  yet.

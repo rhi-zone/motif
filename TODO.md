@@ -23,9 +23,19 @@ Key ideas:
 Near-term: **Lean/Mathlib proof step extraction and annotation**
 1. Pick a simple Mathlib proof (basic group theory result)
 2. Extract proof steps (tactic tree or term)
-3. Match each step against motif's existing theory/axiom vocabulary
-4. Identify what new structure unmatched steps require
-5. Output: annotated proof where each step is labeled with its structural meaning
+3. Extracted data (tactic tree, premises, statement metadata) is itself a
+   valid native representation — not raw material to translate into motif's
+   `Signature`/`Theory` vocabulary before it "counts." (Corrected 2026-07-25,
+   user direction — see `docs/research/vision.md` principle 9: motif has no
+   single canonical substrate everything funnels through.)
+4. Once enough corpus data is extracted, look for structural relationships
+   across it directly in its native form: symmetries, isomorphisms,
+   translations between pieces/regions, and gaps/density variation in what's
+   proven vs. what neighboring structure would suggest. Kept intentionally
+   vague — this is a near-term *direction*, not a designed plan; concrete
+   cross-representation relationship-finding machinery is future work.
+5. Output: annotated proof/corpus region where structural relationships found
+   so far are recorded
 
 This is the smallest concrete exercise of the full vision, and the gaps it reveals drive what to build next.
 
@@ -54,12 +64,11 @@ This is the smallest concrete exercise of the full vision, and the gaps it revea
 
    Considered ntp-toolkit (CMU L3 lab) as an alternative — actively maintained, lighter footprint, but flatter output schema (flat `(state, nextTactic)` JSONL rows, no explicit tactic tree/premises) — chose the LeanDojo InfoTree-porting approach for full fidelity instead. LeanDojo-v2 (actively maintained successor to the deprecated v1 package) not evaluated in depth — unexplored.
 
-   Corpus scope (decided): mathlib4 (full, ~300K declarations order of magnitude) + lean-pool's own indexed projects + TauCeti (no extraction tooling of its own yet — needs the same approach pointed at it). Extract structure of both proofs and proven statements, eventually matched against motif's flat equational theory vocabulary — the known typeclass-hierarchy/binder-heavy-statement vs. flat quantifier-free `Signature` gap (see "No binder support" above) is unresolved by this scaffolding, not addressed by it.
+   Corpus scope (decided): mathlib4 (full, ~300K declarations order of magnitude) + lean-pool's own indexed projects + TauCeti (no extraction tooling of its own yet — needs the same approach pointed at it). Extract structure of both proofs and proven statements, kept in their native Lean-derived form (tactic tree, premises, statement metadata) — no requirement to flatten into motif's quantifier-free `Signature` representation first (see "No single substrate" correction above; the typeclass-hierarchy/binder-heavy-statement vs. flat `Signature` gap noted in "No binder support" above is a real gap for *that one representation*, not a blocker for corpus analysis in general).
 
    Next steps (unstarted):
    - Run `ExtractOne.lean` across a small batch of files to check the porting note generalizes (only tested on one declaration so far).
-   - Design a matching/annotation step against motif's `Signature`/`Theory` vocabulary (step 3 of the near-term plan above) — how does a pretty-printed goal-state diff become a candidate axiom/rewrite?
-   - No decision yet on how typeclass hierarchies and binder-heavy statements get flattened (or whether they're translated at all) into motif's quantifier-free representation.
+   - Once there's enough extracted corpus data, start looking for structural relationships across it in its native form (step 4 of the near-term plan above) — direction only, no design yet.
 
 Relevant fields to eventually handle: Langlands program, HoTT/CoC, elliptic curves, harmonic analysis (Kakeya hierarchy), BB(5)-style exhaustive classification, Curry-Howard-Lambek correspondence.
 

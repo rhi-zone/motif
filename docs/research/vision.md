@@ -142,6 +142,27 @@ Math might be like a curved manifold: locally structured, approximate
 symmetries, no global isometry. You move far and see familiar patterns, but not
 perfectly.
 
+### 9. No single substrate — analysis over all formal mathematics, in whatever form it's in
+
+*(User's stated direction, 2026-07-25 conversation.)* motif's `Signature`/`Theory`
+pair — flat, quantifier-free, egglog-backed equational theories — is one native
+representation formal mathematics can take, not *the* canonical one that
+everything else must translate into to "count." Lean tactic-trees and proof
+terms, category-theoretic statements, natural-language exposition, and any
+other native form are peers, not inputs awaiting normalization. Nothing needs
+force-fitting into `Signature` first.
+
+The actual operation isn't pairwise equivalence-checking between two given
+theories — it's structure-discovery across a whole plural corpus of
+heterogeneous native representations: are there symmetries, isomorphisms,
+translations between regions? And, just as importantly, what's the topology of
+the corpus itself — gaps where structure is conspicuously missing, over-dense
+regions where the same content is redundantly re-derived, under-dense regions
+that are surprisingly sparse given their neighbors? This generalizes what
+`discover.rs`/`explore.rs` already do (finding morphisms between hand-authored
+`Theory` objects) from "within motif's own Signature type" to "across
+whatever representations the corpus is actually in."
+
 ## Non-Goals
 
 - **Human-writable language.** The IR is machine-targeted. Humans interact
@@ -159,8 +180,16 @@ perfectly.
 
 - What are the first structural primitives? Composition, morphisms, rewrite
   rules? At what granularity?
-- Where exactly does the e-graph layer meet the structural primitives layer?
 - How do you represent binders in an e-graph-friendly way?
 - What's the first concrete mathematical domain to ground the abstractions?
 - How do you formalize "interestingness" / structural salience for pruning?
-- Can the equivalence set E be learned, or must it be curated?
+- ~~Where exactly does the e-graph layer meet the structural primitives
+  layer?~~ ~~Can the equivalence set E be learned, or must it be curated?~~
+  Resolved (2026-07-25, user direction, principle 9 above): there is no single
+  meeting point — the e-graph/egglog substrate is one native representation
+  among many, not a canonical layer everything funnels through. E is not
+  curated a priori; it's discovered by structural analysis across the corpus,
+  and "structure" here includes non-equivalence relations too — gaps and
+  density variation, not just equivalences. What's still open: the concrete
+  machinery for finding relationships *across* heterogeneous representations
+  (not just within motif's own Signature type) is future work.
