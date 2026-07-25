@@ -28,11 +28,12 @@ decomposition subgroup of any such extension is all of `Gal(L/K)`.
   whose associated embedding `A.ValueGroup → ℝ≥0`, pulled back along
   `A.valuation.restrict ∘ algebraMap K L`, reproduces `‖·‖` on `K`. This packages the two
   genuinely deep facts described in the docstring below. As of this file's current state, the
-  existence half (`RankOne A.valuation` is nonempty, i.e. rank ≤ 1 is preserved) is proved in
-  full *modulo one precisely-scoped `sorry`* (`hLtoK` in the proof, a genuine reverse-direction
-  minimal-polynomial estimate not derivable from `Valuation.exists_pow_le_of_isAlgebraic` alone);
-  the compatible-normalization half is a second, separately-scoped `sorry` (a Hölder-uniqueness-
-  for-archimedean-groups argument, also not yet in Mathlib). See the two `sorry`-site comments
+  existence half (`RankOne A.valuation` is nonempty, i.e. rank ≤ 1 is preserved) is now proved in
+  full -- the former `hLtoK` gap (a reverse-direction minimal-polynomial estimate not derivable
+  from `Valuation.exists_pow_le_of_isAlgebraic` alone) is closed by the new
+  `Valuation.exists_pow_eq_of_isAlgebraic` lemma above it; the compatible-normalization half
+  remains a separately-scoped `sorry` (a Hölder-uniqueness-for-archimedean-groups argument, not
+  yet in Mathlib). See the `sorry`-site comment
   in the proof for the precise mathematical content each represents.
 * `LocalField.exists_rankOne_absoluteValue_extends` : given the same hypotheses, there is an
   `AbsoluteValue L ℝ` extending the norm on `K` (from a fixed rank-1 embedding for `K`) whose
@@ -172,6 +173,119 @@ theorem Valuation.exists_pow_le_of_isAlgebraic {K L Γ₀ : Type*} [Field K] [Fi
     rw [mul_comm (v x ^ i), mul_comm (v x ^ i)]; exact heq
   exact (mul_le_mul_iff_right₀ hvxi_pos).mp heq'
 
+/-- **Exact archimedean bound via the minimal polynomial (reverse direction).** If `v` is a
+valuation on `L` and `x : L` is algebraic (and nonzero) over a subfield `K`, then some power
+`x ^ m` (with `1 ≤ m ≤ (minpoly K x).natDegree`) has *exactly* the same `v`-valuation as
+`algebraMap K L c` for some nonzero `c : K`. Combined with `exists_pow_le_of_isAlgebraic` (which
+only bounds `v x` from *above* by a `K`-value), this supplies the missing reverse-direction bound:
+since the equality is exact, `1 < v x` forces `1 < v (algebraMap K L c) = v x ^ m`, i.e. some
+`K`-anchor exceeding `1` is *dominated* by a power of `x`, not just dominating one -- this is
+exactly what `Bourbaki, *Comm. Alg.* VI §10.1` / `Engler-Prestel, *Valued Fields* Thm. 3.2.4` use
+(via the reversed-minimal-polynomial relationship) to show rank ≤ 1 is preserved under algebraic
+extension; this lemma reaches the same conclusion directly, without introducing `Polynomial.
+reverse` or the minimal polynomial of `x⁻¹` as separate infrastructure.
+
+Proof idea: the minimal polynomial relation `∑_{i=0}^n c_i x^i = 0` (`c_n = 1`, monic) expresses
+`0` as a sum of `n+1` terms `t_i := algebraMap K L c_i * x ^ i`. If the valuations `v (t_i)` were
+pairwise distinct among the terms with nonzero coefficient, the (unique) maximal term would
+dominate the whole sum (`Valuation.map_sum_eq_of_lt`), forcing `v 0 = v (t_j) ≠ 0`, absurd. So two
+distinct indices `i ≠ j` (both with nonzero coefficient) must tie in valuation:
+`v (algebraMap c_i) * v x ^ i = v (algebraMap c_j) * v x ^ j`; canceling the smaller power of `v x`
+(nonzero, since `x ≠ 0`) and setting `m := max i j - min i j`, `c :=` the corresponding ratio of
+coefficients gives `v (algebraMap c) = v x ^ m` exactly. -/
+theorem Valuation.exists_pow_eq_of_isAlgebraic {K L Γ₀ : Type*} [Field K] [Field L] [Algebra K L]
+    [LinearOrderedCommGroupWithZero Γ₀] (v : Valuation L Γ₀) {x : L} (hx : x ≠ 0)
+    (halg : IsAlgebraic K x) :
+    ∃ (m : ℕ) (c : K), 1 ≤ m ∧ m ≤ (minpoly K x).natDegree ∧ c ≠ 0 ∧
+      v (algebraMap K L c) = v x ^ m := by
+  classical
+  have hxi : IsIntegral K x := halg.isIntegral
+  set p := minpoly K x with hp
+  set n := p.natDegree with hn
+  have hn0 : 0 < n := minpoly.natDegree_pos hxi
+  have hmonic : p.Monic := minpoly.monic hxi
+  have haeval : (Polynomial.aeval x) p = 0 := minpoly.aeval K x
+  set t : ℕ → L := fun i => algebraMap K L (p.coeff i) * x ^ i with ht
+  have hsum0 : ∑ i ∈ Finset.range (n + 1), t i = 0 := by
+    have hrw := Polynomial.aeval_eq_sum_range (R := K) (S := L) (p := p) x
+    simp only [Algebra.smul_def] at hrw
+    rw [ht, ← hrw]
+    exact haeval
+  have hvx_ne : v x ≠ 0 := (Valuation.ne_zero_iff v).mpr hx
+  have halgmap_inj : Function.Injective (algebraMap K L) := (algebraMap K L).injective
+  have ht_eq_zero_iff : ∀ i, t i = 0 ↔ p.coeff i = 0 := by
+    intro i
+    simp only [ht, mul_eq_zero, pow_eq_zero_iff' , hx, ne_eq, false_and, or_false,
+      map_eq_zero_iff _ halgmap_inj]
+  -- **Step 1**: `S`, the support of the coefficient sequence within `range (n + 1)`. Nonempty
+  -- since the leading coefficient `p.coeff n = 1 ≠ 0` (monic).
+  set S : Finset ℕ := (Finset.range (n + 1)).filter (fun i => p.coeff i ≠ 0) with hS
+  have hnS : n ∈ S := by
+    simp only [hS, Finset.mem_filter, Finset.mem_range]
+    exact ⟨Nat.lt_succ_self n, by rw [hmonic.coeff_natDegree]; exact one_ne_zero⟩
+  have hSne : S.Nonempty := ⟨n, hnS⟩
+  have hsub : ∑ i ∈ S, t i = ∑ i ∈ Finset.range (n + 1), t i := by
+    refine Finset.sum_subset (Finset.filter_subset _ _) ?_
+    intro i hiR hiS
+    have hi0 : p.coeff i = 0 := by
+      by_contra hne
+      exact hiS (Finset.mem_filter.mpr ⟨hiR, hne⟩)
+    exact (ht_eq_zero_iff i).mpr hi0
+  have hsumS : ∑ i ∈ S, t i = 0 := hsub.trans hsum0
+  -- **Step 2**: some two distinct indices in `S` must tie in `v`-valuation of their terms --
+  -- otherwise the (uniquely) maximal term would dominate the sum `∑ i ∈ S, t i = 0`, forcing its
+  -- (nonzero) valuation to be `0`.
+  have hexists_tie : ∃ i ∈ S, ∃ j ∈ S, i ≠ j ∧ v (t i) = v (t j) := by
+    by_contra hcon
+    push Not at hcon
+    obtain ⟨j, hjS, hmax⟩ := Finset.exists_max_image S (fun i => v (t i)) hSne
+    have hstrict : ∀ i ∈ S \ {j}, v (t i) < v (t j) := by
+      intro i hi
+      simp only [Finset.mem_sdiff, Finset.mem_singleton] at hi
+      exact lt_of_le_of_ne (hmax i hi.1) (hcon i hi.1 j hjS hi.2)
+    have hdom := v.map_sum_eq_of_lt hjS hstrict
+    rw [hsumS, Valuation.map_zero] at hdom
+    have hcj0 : p.coeff j ≠ 0 := (Finset.mem_filter.mp hjS).2
+    have htj_ne : t j ≠ 0 := fun h => hcj0 ((ht_eq_zero_iff j).mp h)
+    exact (Valuation.ne_zero_iff v).mpr htj_ne hdom.symm
+  obtain ⟨i, hiS, j, hjS, hij, hveq⟩ := hexists_tie
+  -- **Step 3**: WLOG `i < j`; cancel the common factor `v x ^ i` to get `v (algebraMap c) = v x ^
+  -- m` exactly, for `c := p.coeff i * (p.coeff j)⁻¹` and `m := j - i`.
+  have hiS' := Finset.mem_filter.mp hiS
+  have hjS' := Finset.mem_filter.mp hjS
+  have hci : p.coeff i ≠ 0 := hiS'.2
+  have hcj : p.coeff j ≠ 0 := hjS'.2
+  have hile : i ≤ n := Nat.lt_succ_iff.mp (Finset.mem_range.mp hiS'.1)
+  have hjle : j ≤ n := Nat.lt_succ_iff.mp (Finset.mem_range.mp hjS'.1)
+  -- symmetric core argument, applied to whichever of `i, j` is smaller
+  have hcore : ∀ a b : ℕ, a < b → b ≤ n → p.coeff a ≠ 0 → p.coeff b ≠ 0 →
+      v (t a) = v (t b) →
+      ∃ (m : ℕ) (c : K), 1 ≤ m ∧ m ≤ n ∧ c ≠ 0 ∧ v (algebraMap K L c) = v x ^ m := by
+    intro a b hab hbn hca hcb hveq'
+    refine ⟨b - a, p.coeff a * (p.coeff b)⁻¹, by omega, by omega, mul_ne_zero hca (inv_ne_zero hcb),
+      ?_⟩
+    have hxpow_ne : v x ^ a ≠ 0 := pow_ne_zero a hvx_ne
+    have hveq_terms : v (algebraMap K L (p.coeff a)) * v x ^ a
+        = v (algebraMap K L (p.coeff b)) * v x ^ b := by
+      simpa only [ht, Valuation.map_mul, Valuation.map_pow] using hveq'
+    have hveq'' : v (algebraMap K L (p.coeff a)) * v x ^ a
+        = v (algebraMap K L (p.coeff b)) * (v x ^ a * v x ^ (b - a)) := by
+      rw [← pow_add, Nat.add_sub_cancel' hab.le]; exact hveq_terms
+    have hveq''' : v (algebraMap K L (p.coeff a))
+        = v (algebraMap K L (p.coeff b)) * v x ^ (b - a) := by
+      have hshuf := hveq''
+      rw [mul_comm (v x ^ a) (v x ^ (b-a)), ← mul_assoc] at hshuf
+      exact mul_right_cancel₀ hxpow_ne hshuf
+    have hcb0 : v (algebraMap K L (p.coeff b)) ≠ 0 :=
+      (Valuation.ne_zero_iff v).mpr (fun h => hcb ((map_eq_zero_iff _ halgmap_inj).mp h))
+    rw [map_mul, map_inv₀, map_mul, map_inv₀, hveq''',
+      mul_comm (v (algebraMap K L (p.coeff b))) (v x ^ (b - a)), mul_assoc,
+      mul_inv_cancel₀ hcb0, mul_one]
+  rcases lt_or_gt_of_ne hij with hlt | hgt
+  · exact hcore i j hlt hjle hci hcj hveq
+  · obtain ⟨m, c, hm1, hmn, hc0, hceq⟩ := hcore j i hgt hile hcj hci hveq.symm
+    exact ⟨m, c, hm1, hmn, hc0, hceq⟩
+
 end ReusableInfrastructure
 
 section NormedFieldValuativeRelBridge
@@ -244,24 +358,27 @@ extension" argument. The proof below carries this out as far as it goes:
   `K`-internal archimedean bound `valuation K c ≤ (valuation K d) ^ M` for any `c` and any `d`
   with `1 < valuation K d` (`hKboundPos`/`hAanchorPos`, via `hRK`'s `MulArchimedean` value group
   and `nonempty_rankOne_iff_mulArchimedean`).
-* Step 3d (`hLtoK`) is the **first genuine remaining gap**: the *reverse*-direction bound (some
-  `K`-anchor dominated *by* a power of an arbitrary `y : L`, not the other way round). This is
-  not obtainable from `Valuation.exists_pow_le_of_isAlgebraic` by any combination of applications
-  to `y`, `y⁻¹`, or auxiliary elements -- see the `sorry`-site comment for why -- and needs the
-  explicit reversed-minimal-polynomial relationship between `minpoly K y` and `minpoly K y⁻¹`
-  (Bourbaki, *Comm. Alg.* VI §10.1; Engler-Prestel, *Valued Fields* Thm. 3.2.4), which is new
-  infrastructure not yet written down anywhere.
+* Step 3d (`hLtoK`) was the reverse-direction bound (some `K`-anchor dominated *by* a power of an
+  arbitrary `y : L`, not the other way round) -- not obtainable from
+  `Valuation.exists_pow_le_of_isAlgebraic` by any combination of applications to `y`, `y⁻¹`, or
+  auxiliary elements. **This gap is now closed** by `Valuation.exists_pow_eq_of_isAlgebraic`
+  (proved in `ReusableInfrastructure` above): rather than going through the explicit
+  reversed-minimal-polynomial relationship between `minpoly K y` and `minpoly K y⁻¹` (the route
+  Bourbaki, *Comm. Alg.* VI §10.1 / Engler-Prestel, *Valued Fields* Thm. 3.2.4 take), it directly
+  extracts an *exact* equality `v (algebraMap K L c) = v y ^ m` from a tie between two terms of
+  the minimal-polynomial sum (forced by `Valuation.map_sum_eq_of_lt`, since no term can uniquely
+  dominate a sum that equals `0`).
 * Steps 3e-3f assemble `hbound`, `hLtoK`, and `hAanchorPos` into `MulArchimedean A.ValueGroup`
   directly (`hMArchA`, via the `MulArchimedean` class's `arch` field) and transfer this to obtain
   `Nonempty (RankOne A.valuation)` (`hR`) via `nonempty_rankOne_iff_mulArchimedean` -- i.e. rank
-  ≤ 1 of `A.valuation` is fully proved *modulo* `hLtoK`.
-* Step 3g is the **second genuine remaining gap**: `hR` is *some* `RankOne` instance, not
+  ≤ 1 of `A.valuation` is now **fully proved**, with no remaining `sorry`.
+* Step 3g is the **one remaining genuine gap**: `hR` is *some* `RankOne` instance, not
   necessarily the one matching `‖·‖` on `K`. Fixing the normalization needs Hölder's uniqueness
   theorem for archimedean linearly ordered groups (any two strictly monotone monoid homs into
   `ℝ≥0` agree up to a positive real power), which is not in Mathlib; see the `sorry`-site comment
   for the intended rescaling construction once it is available.
 
-Both gaps are self-contained, precisely-scoped pieces of missing infrastructure -- not
+This last gap is a self-contained, precisely-scoped piece of missing infrastructure -- not
 tactic-closable, and not resolvable by further exploration of what is already proved above. -/
 theorem exists_rankOne_compatible [Algebra.IsAlgebraic K L]
     (A : ValuationSubring L) (hA : A.comap (algebraMap K L) = (valuation K).valuationSubring) :
@@ -400,27 +517,22 @@ theorem exists_rankOne_compatible [Algebra.IsAlgebraic K L]
     refine ⟨M, ?_⟩
     have h := (hequiv.le_iff_le (x := c) (y := d ^ M)).mpr (by rwa [map_pow])
     rwa [Valuation.comap_apply, Valuation.comap_apply, map_pow, map_pow] at h
-  -- **Step 3d, the first genuine remaining gap.** `hbound` above (via `Valuation.
-  -- exists_pow_le_of_isAlgebraic`) only ever bounds a power of an element `x : L` *above* by a
-  -- `K`-value: `A.valuation x ^ (n - i) ≤ A.valuation (algebraMap c_i)`. That one-sidedness is a
-  -- structural feature of the ultrametric-on-the-minimal-polynomial argument (it comes from
-  -- `Valuation.map_sum_le`, an inequality, not an equality), and no combination of applications
-  -- of `hbound` to `y`, `y⁻¹`, or auxiliary `K`-elements yields the *reverse* containment needed
-  -- here: some `K`-anchor dominated *by* a power of `y` (as opposed to dominating a power of
-  -- `y`). Concretely: applying `hbound` to `y` gives `y ≤ (K-anchor)`; applying it to `y⁻¹` gives
-  -- `(K-anchor)⁻¹ ≤ y`, but that anchor's sign (`≤ 1` or `> 1`) is not controlled by the
-  -- existential, so it need not be informative (if the anchor is `≥ 1`, `(anchor)⁻¹ ≤ 1 < y` is
-  -- vacuous). The standard fix (Bourbaki, *Comm. Alg.* VI §10.1; Engler-Prestel, *Valued
-  -- Fields* Thm. 3.2.4) uses the *explicit* relationship between the coefficients of
-  -- `minpoly K y` and `minpoly K y⁻¹` (the latter is, up to the nonzero constant term of the
-  -- former, the "reversed" polynomial), which is not yet available in this file or in Mathlib as
-  -- a reusable lemma. Formalizing that relationship (and redoing the ultrametric argument with
-  -- it) is the real remaining content of "rank ≤ 1 is preserved under algebraic extension"; it
-  -- is a self-contained, well-scoped piece of new infrastructure, not a tactic-closable gap. -/
+  -- **Step 3d.** `hbound` above (via `Valuation.exists_pow_le_of_isAlgebraic`) only ever bounds a
+  -- power of an element `x : L` *above* by a `K`-value. The reverse bound needed here -- some
+  -- `K`-anchor exceeding `1` *dominated* by a power of `y` -- is now supplied directly by
+  -- `Valuation.exists_pow_eq_of_isAlgebraic` (proved above in `ReusableInfrastructure`): applied
+  -- to `y`, it gives `m ≥ 1` and `d : K` (both from ties in the minimal-polynomial-term
+  -- valuations, per that lemma's docstring) with `A.valuation (algebraMap K L d) = A.valuation y
+  -- ^ m` *exactly*. Since `1 < A.valuation y` and `m ≥ 1`, this anchor is automatically `> 1`.
   have hLtoK : ∀ y : L, y ≠ 0 → 1 < A.valuation y →
       ∃ (d : K) (N : ℕ), 1 < A.valuation (algebraMap K L d) ∧
         A.valuation (algebraMap K L d) ≤ A.valuation y ^ N := by
-    sorry
+    intro y hy0 hy1
+    obtain ⟨m, d, hm1, -, hd0, hdeq⟩ :=
+      Valuation.exists_pow_eq_of_isAlgebraic A.valuation hy0 (Algebra.IsAlgebraic.isAlgebraic (R := K) y)
+    refine ⟨d, m, ?_, hdeq.le⟩
+    rw [hdeq]
+    exact one_lt_pow₀ hy1 (by omega)
   -- Step 3e: assemble `MulArchimedean A.ValueGroup` from `hbound`, `hLtoK`, `hAanchorPos`.
   have hMArchA : MulArchimedean A.ValueGroup := by
     refine ⟨fun x {y} hy1 => ?_⟩
