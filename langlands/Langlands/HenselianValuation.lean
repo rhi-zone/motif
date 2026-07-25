@@ -110,6 +110,7 @@ captured by the two lemmas above, ready to be assembled once the signature is co
 noncomputable section
 
 open ValuativeRel Valuation IsLocalRing
+open scoped NNReal
 
 section ReusableInfrastructure
 
@@ -168,46 +169,131 @@ theorem Valuation.exists_pow_le_of_isAlgebraic {K L Γ₀ : Type*} [Field K] [Fi
 
 end ReusableInfrastructure
 
+section NormedFieldValuativeRelBridge
+
+/-- **Bridging lemma, closing the gap documented above.** If the norm on `K` literally equals
+`hv.hom ∘ v.restrict` for some `Compatible`, `RankOne` valuation `v` on `K` -- which is exactly
+what happens whenever the `NormedField`/`Valued` structure on `K` is *built from* `v` (e.g. via
+`Valued.toNormedField`/`Valued.toNontriviallyNormedField`, using
+`Valued.toNormedField.coe_valuation_eq_rankOne_hom_comp_valuation` to see the hypothesis `hnorm`
+holds by `rfl` in that case) -- then the norm's own canonical valuation `NormedField.valuation` is
+again `Compatible` with the ambient `ValuativeRel K`. This is precisely the extra hypothesis added
+to `LocalField.exists_rankOne_compatible` below to rule out instantiating a `ValuativeRel K`
+independent of (in particular, trivial relative to) the norm. -/
+theorem NormedField.valuation_compatible_of_eq_rankOne_hom_comp_restrict
+    {K Γ₀ : Type*} [NormedField K] [IsUltrametricDist K] [ValuativeRel K]
+    [LinearOrderedCommGroupWithZero Γ₀]
+    (v : Valuation K Γ₀) [hv : RankOne v] [v.Compatible]
+    (hnorm : ∀ x : K, (NormedField.valuation x : ℝ≥0) = RankOne.hom v (v.restrict x)) :
+    (NormedField.valuation (K := K)).Compatible where
+  vle_iff_le x y := by
+    rw [Valuation.Compatible.vle_iff_le (v := v), ← v.restrict_le_iff,
+      ← (RankOne.strictMono v).le_iff_le, ← hnorm x, ← hnorm y]
+
+end NormedFieldValuativeRelBridge
+
 namespace LocalField
 
 section NormedFieldBridge
 
 variable (K : Type*) [NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K]
+  [(NormedField.valuation (K := K)).Compatible]
   {L : Type*} [Field L] [Algebra K L]
 
-/-- **Deep fact, not yet in Mathlib** (see the module docstring for the precise gap): a
-`ValuationSubring A` of an algebraic extension `L` of `K` with `A.comap (algebraMap K L) = 𝒪[K]`
-admits a `RankOne` structure on `A.valuation` (i.e. `A` has rank ≤ 1, and is nontrivial since
-`𝒪[K]` is) whose associated embedding `A.ValueGroup → ℝ≥0` is normalized to agree with the fixed
-`NontriviallyNormedField` structure on `K`: pulling the resulting embedding back along
-`A.valuation.restrict ∘ algebraMap K L` reproduces `‖·‖` on `K`.
+/-- **Fixed statement** (see the module docstring for the counterexample this repairs, and the
+`## Fix` section below for what changed and why): a `ValuationSubring A` of an algebraic extension
+`L` of `K` with `A.comap (algebraMap K L) = 𝒪[K]` admits a `RankOne` structure on `A.valuation`
+(i.e. `A` has rank ≤ 1, and is nontrivial since `𝒪[K]` is) whose associated embedding
+`A.ValueGroup → ℝ≥0` is normalized to agree with the fixed `NontriviallyNormedField` structure on
+`K`: pulling the resulting embedding back along `A.valuation.restrict ∘ algebraMap K L` reproduces
+`‖·‖` on `K`.
 
 This packages the two facts described in the module docstring:
 1. rank preservation of a rank-≤-1 valuation under an algebraic extension (equivalently, that
    `MonoidWithZeroHom.ValueGroup₀ (.ofClass A.valuation)` is `MulArchimedean`; see
    `Valuation.nonempty_rankOne_iff_mulArchimedean`), and
 2. that the resulting embedding into `ℝ≥0` can be normalized to match the one already fixed on
-   `K`, not just something equivalent to it. -/
+   `K`, not just something equivalent to it.
+
+## Fix
+
+The extra hypothesis `[(NormedField.valuation (K := K)).Compatible]` (added to the
+`NormedFieldBridge` section variables) ties `valuation K` to `‖·‖`: it is the `Valuation.Compatible`
+class from `Mathlib.RingTheory.Valuation.ValuativeRel.Basic`, saying `x ≤ᵥ y ↔ ‖x‖ ≤ ‖y‖`. This
+rules out the counterexample from the module docstring: with `ValuativeRel K := .ofValuation
+(1 : Valuation K ℝ≥0)` (trivial), `x ≤ᵥ y` holds unconditionally (for `x ≠ 0`), so `Compatible`
+would force `‖x‖ ≤ ‖y‖` for *all* `x ≠ 0, y`, contradicting nontriviality of `‖·‖`. Concretely, this
+hypothesis is what's needed to derive `ValuativeRel.IsNontrivial K` and `ValuativeRel.IsRankLeOne K`
+(hence a `RankOne (valuation K)` instance, built explicitly below with `hom'` matching `‖·‖`
+on the nose, not just up to equivalence -- see `hRK_compat`), which is fact #1 + fact #2 restricted
+to the base field `K` itself (i.e. the case `L = K`, `A = 𝒪[K]`).
+
+What remains genuinely open (and is the one `sorry` left in this file): extending this rank-≤-1-ness
+from `K` to all of `L`. Via `hequiv` below, the K-restriction of `A.valuation` is equivalent to
+`valuation K`, hence itself rank ≤ 1 with matching normalization; but `A.valuation` on the whole of
+`L` could a priori still have larger rank. Bridging this needs the "rank preservation under
+algebraic extension" argument sketched in the module docstring: bound every `x ≠ 0` in `L` above
+and below (via `x` and `x⁻¹`'s minimal polynomials, using `Valuation.exists_pow_le_of_isAlgebraic`
+above) by powers of `K`-values, chain through `MulArchimedeanClass.mk_eq_mk` using the
+archimedean-ness of `valuation K`'s value group (now genuinely available, via `hRK` below and
+`MulArchimedean.of_units`), and invoke `Valuation.nonempty_rankOne_iff_mulArchimedean`. This is not
+yet in Mathlib and is not attempted here; only the (now correct, and no longer a counterexample)
+statement and its `K`-restricted special case are established. -/
 theorem exists_rankOne_compatible [Algebra.IsAlgebraic K L]
     (A : ValuationSubring L) (hA : A.comap (algebraMap K L) = (valuation K).valuationSubring) :
     ∃ hR : RankOne A.valuation, ∀ x : K,
       (hR.hom' (A.valuation.restrict (algebraMap K L x)) : ℝ) = ‖x‖ := by
-  -- **Genuine gap, confirmed by a counterexample (see the module docstring).** The current
-  -- hypotheses `[NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K]` do not force
-  -- `valuation K` to be nontrivial, let alone equivalent to `‖·‖`: instantiating
-  -- `ValuativeRel K := .ofValuation (1 : Valuation K ℝ≥0)` (trivial) with `A := ⊤` satisfies `hA`
-  -- while making the conclusion false, since `A.valuation` (trivial) has no `RankOne` instance.
-  -- Fixing the statement needs an extra hypothesis such as `[ValuativeRel.IsNontrivial K]`
-  -- together with an explicit compatibility fact tying `valuation K` to the norm (e.g.
-  -- `[Fact (NormedField.valuation (K := K)).Compatible]`, via `Valuation.Compatible`). With that
-  -- hypothesis in hand, fact #1 (rank preservation) follows from `MulArchimedean.of_units` and
-  -- `Valuation.exists_pow_le_of_isAlgebraic` above (bound every `x ≠ 0` in `L` above and below by
-  -- powers of `K`-values via `x` and `x⁻¹`'s minimal polynomials, chain through
-  -- `MulArchimedeanClass.mk_eq_mk` using the archimedean-ness of `valuation K`'s value group
-  -- coming from the norm compatibility, then invoke
-  -- `Valuation.nonempty_rankOne_iff_mulArchimedean`); fact #2 (compatible normalization) is then
-  -- a Hölder-uniqueness-up-to-scalar argument on the resulting real embedding. Neither of these
-  -- remaining steps is attempted here since the statement itself needs correcting first.
+  -- **Step 1**: build the `Compatible`, norm-matching `RankOne (valuation K)` instance from the
+  -- new hypothesis.
+  haveI hvK_nontrivial : ValuativeRel.IsNontrivial K :=
+    (ValuativeRel.isNontrivial_iff_isNontrivial (NormedField.valuation (K := K))).mpr inferInstance
+  haveI hvK_rankLeOne : ValuativeRel.IsRankLeOne K :=
+    ValuativeRel.IsRankLeOne.of_compatible_mulArchimedean (NormedField.valuation (K := K))
+  set eK : ValuativeRel.RankLeOneStruct K :=
+    { emb := (RankOne.hom (NormedField.valuation (K := K))).comp
+        (ValuativeRel.ValueGroupWithZero.orderMonoidIso
+          (NormedField.valuation (K := K))).toMonoidWithZeroHom
+      strictMono := (RankOne.strictMono (NormedField.valuation (K := K))).comp
+        (ValuativeRel.ValueGroupWithZero.orderMonoidIso_strictMono
+          (NormedField.valuation (K := K))) } with heK
+  set hRK : RankOne (valuation K) := Valuation.RankOne.ofRankLeOneStruct eK with hRK_def
+  have hRK_compat : ∀ x : K, (hRK.hom' ((valuation K).restrict x) : ℝ) = ‖x‖ := by
+    intro x
+    have hgoal : hRK.hom' ((valuation K).restrict x)
+        = RankOne.hom (NormedField.valuation (K := K))
+            ((NormedField.valuation (K := K)).restrict x) := by
+      show (eK.emb.comp MonoidWithZeroHom.ValueGroup₀.embedding)
+        ((valuation K).restrict x) = _
+      rw [MonoidWithZeroHom.comp_apply, Valuation.embedding_restrict, heK]
+      show (RankOne.hom (NormedField.valuation (K := K))).comp
+        (ValuativeRel.ValueGroupWithZero.orderMonoidIso
+          (NormedField.valuation (K := K))).toMonoidWithZeroHom (valuation K x) = _
+      rw [MonoidWithZeroHom.comp_apply]
+      congr 1
+      show ValuativeRel.ValueGroupWithZero.orderMonoidIso
+        (NormedField.valuation (K := K)) (valuation K x) = _
+      rw [ValuativeRel.ValueGroupWithZero.orderMonoidIso_valuation_eq_restrict₀,
+        ← Valuation.restrict_def]
+    rw [hgoal]
+    have hfun : RankOne.hom (NormedField.valuation (K := K)) =
+        MonoidWithZeroHom.ValueGroup₀.embedding
+          (f := MonoidWithZeroHom.ofClass (NormedField.valuation (K := K))) := rfl
+    rw [hfun, Valuation.embedding_restrict, NormedField.valuation_apply]
+    rfl
+  -- **Step 2**: relate `A.valuation` restricted to `K` to `valuation K` via the fact that two
+  -- valuations on a field with the same valuation subring are equivalent
+  -- (`Valuation.isEquiv_iff_valuationSubring`).
+  have hw : (A.valuation.comap (algebraMap K L)).valuationSubring
+      = (valuation K).valuationSubring := by
+    rw [← hA]
+    ext x
+    rw [Valuation.mem_valuationSubring_iff, Valuation.comap_apply, ValuationSubring.mem_comap,
+      ← A.valuation_le_one_iff]
+  have hequiv : (A.valuation.comap (algebraMap K L)).IsEquiv (valuation K) :=
+    (Valuation.isEquiv_iff_valuationSubring _ _).mpr hw
+  -- **Step 3**, the genuine remaining gap: extend rank ≤ 1 (and the compatible normalization)
+  -- from `valuation K` (via `hequiv`, i.e. from the K-part of `A.valuation`) to the whole of
+  -- `A.valuation` on `L`. See the "What remains genuinely open" paragraph of the docstring above.
   sorry
 
 /-- Given a rank-1 structure on `A.valuation` compatible with `‖·‖` on `K` (packaged by

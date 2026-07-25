@@ -11,6 +11,10 @@ import Mathlib.FieldTheory.IsAlgClosed.Basic
 import Mathlib.FieldTheory.Finite.Basic
 import Mathlib.FieldTheory.Finite.Extension
 import Mathlib.Topology.Algebra.Category.ProfiniteGrp.Completion
+import Mathlib.FieldTheory.IsSepClosed
+import Mathlib.FieldTheory.PurelyInseparable.Basic
+import Mathlib.FieldTheory.Galois.Profinite
+import Mathlib.Algebra.CharP.Reduced
 
 /-!
 # The Weil group of a nonarchimedean local field
@@ -279,6 +283,16 @@ theorem decompositionSubgroup_eq_top :
   letI : NontriviallyNormedField K := Valued.toNontriviallyNormedField K (ValueGroupWithZero K)
   haveI : IsUltrametricDist K := inferInstance
   haveI : CompleteSpace K := inferInstance
+  -- The `NontriviallyNormedField K` structure above is built *from* `Valued.v = valuation K`
+  -- (via `Valued.toNontriviallyNormedField`/`Valued.toNormedField`), so its own
+  -- `NormedField.valuation` agrees with `Valued.v` on the nose
+  -- (`Valued.coe_valuation_eq_rankOne_hom_comp_valuation`), giving the `Compatible` instance
+  -- `LocalField.valuationSubring_eq_of_comap_eq` now requires.
+  have hnorm : ∀ x : K, (NormedField.valuation x : NNReal)
+      = RankOne.hom (Valued.v (R := K)) ((Valued.v (R := K)).restrict x) := fun x =>
+    congrFun (Valued.coe_valuation_eq_rankOne_hom_comp_valuation K (ValueGroupWithZero K)) x
+  haveI : (NormedField.valuation (K := K)).Compatible :=
+    NormedField.valuation_compatible_of_eq_rankOne_hom_comp_restrict (Valued.v (R := K)) hnorm
   rw [Subgroup.eq_top_iff']
   intro σ
   rw [MulAction.mem_stabilizer_iff]
@@ -574,6 +588,7 @@ theorem residueAction'_apply (σ : Field.absoluteGaloisGroup K) (x : kbar) :
     residueAction' K σ x = residueAction K σ x := by
   simp [residueAction', AlgEquiv.ofRingEquiv]
 
+omit [ValuativeRel K] [TopologicalSpace K] [IsNonarchimedeanLocalField K] in
 /-- **Not yet in Mathlib and not proved here**: `Field.absoluteGaloisGroup K = Gal(K̄/K)` is
 compact for the Krull topology. This is true (it is a standard fact that the absolute Galois group
 of any field is profinite, via `Gal(K̄/K) ≅ Gal(K_sep/K)` -- an isomorphism holding even when `K`
@@ -585,7 +600,102 @@ L]`, i.e. `L/k` separable, which can fail for `K̄/K` when `K` has positive char
 not perfect (e.g. `𝔽_q((t))`, a genuine non-archimedean local field). Bridging this gap (matching
 `Gal(K̄/K)` against `Gal(K_sep/K)` as topological groups) is not carried out here. -/
 theorem compactSpace_absoluteGaloisGroup : CompactSpace (Field.absoluteGaloisGroup K) := by
-  sorry
+  classical
+  haveI hNormalL : Normal K L := IsAlgClosure.normal K L
+  set Ksep : IntermediateField K L := separableClosure K L with hKsepdef
+  haveI : IsGalois K Ksep := by rw [hKsepdef]; exact separableClosure.isGalois K L
+  set φ : Field.absoluteGaloisGroup K →* (Ksep ≃ₐ[K] Ksep) :=
+    AlgEquiv.restrictNormalHom (F := K) (K₁ := L) Ksep with hφdef
+  have hφcont : Continuous φ := InfiniteGalois.restrictNormalHom_continuous Ksep
+  have hφsurj : Function.Surjective φ :=
+    AlgEquiv.restrictNormalHom_surjective (F := K) (K₁ := Ksep) (E := L)
+  haveI hpi : IsPurelyInseparable Ksep L := by
+    rw [hKsepdef]; exact separableClosure.isPurelyInseparable K L
+  have hφinj : Function.Injective φ := by
+    rw [injective_iff_map_eq_one]
+    intro σ hσ
+    have hfix := (AlgEquiv.restrictNormal_eq_one_iff Ksep σ).1 hσ
+    let e : L →ₐ[Ksep] L := ⟨σ.toAlgHom.toRingHom, fun x => hfix x x.2⟩
+    have he : e = IsScalarTower.toAlgHom Ksep L L := Subsingleton.elim _ _
+    have : (e : L → L) = id := by
+      have := AlgHom.ext_iff.1 he
+      funext x
+      simpa using this x
+    exact AlgEquiv.ext fun x => congrFun this x
+  have hφbij : Function.Bijective φ := ⟨hφinj, hφsurj⟩
+  let ψ : Field.absoluteGaloisGroup K ≃* (Ksep ≃ₐ[K] Ksep) := MulEquiv.ofBijective φ hφbij
+  have hψsymm_cont : Continuous ψ.symm := by
+    apply continuous_of_continuousAt_one _ (continuousAt_def.mpr _)
+    intro W hW
+    rw [map_one] at hW
+    -- `Field.absoluteGaloisGroup K` is a `def`, not reducible, so `rw` cannot see through it to
+    -- match `krullTopology_mem_nhds_one_iff`'s `Gal(L/K)`-shaped statement even though the two
+    -- are defeq (and share the same Krull topology, since `absoluteGaloisGroup` derives its
+    -- `TopologicalSpace` instance from exactly this identification). Applying the `Iff` directly
+    -- (rather than `rw`) lets ordinary defeq-checking bridge the gap.
+    obtain ⟨M, hMfd, hMW⟩ := (krullTopology_mem_nhds_one_iff K L W).mp hW
+    haveI : FiniteDimensional K M := hMfd
+    -- `N0` = separable closure of `K` in `M`.
+    set N0 : IntermediateField K M := separableClosure K M with hN0def
+    haveI hpiN0 : IsPurelyInseparable N0 M := by
+      rw [hN0def]; exact separableClosure.isPurelyInseparable K M
+    -- push `N0` into `Ksep` along the inclusion `M ↪ L`.
+    let ι : M →ₐ[K] L := IsScalarTower.toAlgHom K M L
+    have hle : N0.map ι ≤ Ksep := separableClosure.map_le_of_algHom ι
+    let N' : IntermediateField K Ksep := IntermediateField.restrict hle
+    haveI hN0fd : FiniteDimensional K N0 := inferInstance
+    haveI hN0mapfd : FiniteDimensional K (N0.map ι) :=
+      Module.Finite.equiv (N0.equivMap ι).toLinearEquiv
+    haveI hN'fd : FiniteDimensional K N' :=
+      Module.Finite.equiv (IntermediateField.restrict_algEquiv hle).toLinearEquiv
+    rw [krullTopology_mem_nhds_one_iff]
+    refine ⟨N', hN'fd, fun σ hσ => ?_⟩
+    rw [SetLike.mem_coe, IntermediateField.mem_fixingSubgroup_iff] at hσ
+    have hliftM : σ.liftNormal L ∈ M.fixingSubgroup := by
+      rw [IntermediateField.mem_fixingSubgroup_iff]
+      intro y hyM
+      set ym : M := ⟨y, hyM⟩ with hymdef
+      obtain ⟨n, a, ha⟩ := IsPurelyInseparable.pow_mem N0 (ringExpChar K) ym
+      -- `aKsep : Ksep` is the image of `a` under `M ↪ L`, landing in `N'` by construction.
+      have haMap : ι (a : M) ∈ N0.map ι := N0.mem_map.2 ⟨a, a.2, rfl⟩
+      set aKsep : Ksep := ⟨ι (a : M), hle haMap⟩ with haKsepdef
+      have haKsep : aKsep ∈ N' := (IntermediateField.mem_restrict hle aKsep).2 haMap
+      have hfixed : σ aKsep = aKsep := hσ aKsep haKsep
+      -- `liftNormal` commutes with `algebraMap Ksep L`.
+      have hcomm : σ.liftNormal L (algebraMap Ksep L aKsep) =
+          algebraMap Ksep L (σ aKsep) := AlgEquiv.liftNormal_commutes σ L aKsep
+      have hcommL : σ.liftNormal L ((a : M) : L) = ((a : M) : L) := by
+        have hcoe : algebraMap Ksep L aKsep = ((a : M) : L) := rfl
+        rw [hcoe, hfixed, hcoe] at hcomm
+        exact hcomm
+      -- `(a : M) : L = ym ^ q ^ n = y ^ q ^ n`, so `liftNormal` fixes `y ^ q ^ n`.
+      have hpow : ((ym : M) : L) ^ (ringExpChar K) ^ n = ((a : M) : L) := by
+        have h1 : (a : M) = ym ^ (ringExpChar K) ^ n := ha
+        have h2 : ((a : M) : L) = ((ym ^ (ringExpChar K) ^ n : M) : L) := by rw [h1]
+        rw [h2]; push_cast; ring
+      have hy : y ^ (ringExpChar K) ^ n = ((a : M) : L) := by
+        rw [← hpow]
+      have hfixpow : σ.liftNormal L y ^ (ringExpChar K) ^ n = y ^ (ringExpChar K) ^ n := by
+        have hstep : σ.liftNormal L (y ^ (ringExpChar K) ^ n) = y ^ (ringExpChar K) ^ n := by
+          rw [hy]; exact hcommL
+        rwa [map_pow] at hstep
+      haveI hExpCharL : ExpChar L (ringExpChar K) :=
+        expChar_of_injective_algebraMap (algebraMap K L).injective (ringExpChar K)
+      have hinj : Function.Injective
+          (iterateFrobenius L (ringExpChar K) n) := iterateFrobenius_inj L (ringExpChar K) n
+      have : iterateFrobenius L (ringExpChar K) n (σ.liftNormal L y) =
+          iterateFrobenius L (ringExpChar K) n y := by
+        simpa [iterateFrobenius_def] using hfixpow
+      exact hinj this
+    have hkey : ψ.symm σ = σ.liftNormal L := by
+      have hφeq : φ (σ.liftNormal L) = σ := σ.restrict_liftNormal L
+      conv_lhs => rw [← hφeq]
+      exact ψ.symm_apply_apply _
+    rw [Set.mem_preimage, hkey]
+    exact hMW hliftM
+  let e : (Ksep ≃ₐ[K] Ksep) ≃ₜ Field.absoluteGaloisGroup K :=
+    { toEquiv := ψ.symm.toEquiv, continuous_toFun := hψsymm_cont, continuous_invFun := hφcont }
+  exact e.compactSpace
 
 /-- **Not yet in Mathlib and not proved here**: `residueAction' K` (equivalently `residueAction
 K`) is continuous, for the Krull topology on `G_K` and the Krull topology on `Gal(kbar/𝓀[K])`.
