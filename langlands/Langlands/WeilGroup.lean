@@ -2,6 +2,7 @@ import Mathlib.FieldTheory.AbsoluteGaloisGroup
 import Mathlib.NumberTheory.LocalField.Basic
 import Mathlib.RingTheory.Valuation.RamificationGroup
 import Mathlib.RingTheory.Valuation.Extension
+import Mathlib.RingTheory.Valuation.LocalSubring
 import Mathlib.Algebra.CharP.Lemmas
 import Mathlib.FieldTheory.IsAlgClosed.Basic
 import Mathlib.FieldTheory.Finite.Basic
@@ -137,19 +138,56 @@ local notation "L" => AlgebraicClosure K
 
 /-! ### The valuation subring of `K̄` extending `𝒪[K]` -/
 
+omit [TopologicalSpace K] [IsNonarchimedeanLocalField K] in
 /-- **Chevalley's extension theorem** (not yet in Mathlib): every valuation on a field extends to
 an algebraic closure. We record the existence of a valuation subring of `L = AlgebraicClosure K`
 lying over `𝒪[K] = (valuation K).valuationSubring` as a `sorry`-ed fact, and fix a choice of such
 an extension via `valuationSubringExtension`. -/
 theorem exists_valuationSubring_extends :
     ∃ A : ValuationSubring L, A.comap (algebraMap K L) = (valuation K).valuationSubring := by
-  sorry
+  set O := (valuation K).valuationSubring with hO
+  set f : ↥O →+* L := (algebraMap K L).comp O.subtype with hf
+  obtain ⟨A, hA, hloc⟩ := IsLocalRing.exists_factor_valuationRing f
+  haveI : IsLocalHom (f.codRestrict A.toSubring hA) := hloc
+  refine ⟨A, ValuationSubring.ext _ _ fun x => ?_⟩
+  rw [ValuationSubring.mem_comap]
+  constructor
+  · intro hx
+    by_contra hxO
+    -- `x ∉ O`, so `x⁻¹ ∈ O` (and `x⁻¹` is a non-unit in `O`, since otherwise `x ∈ O`).
+    have hx0 : x ≠ 0 := fun h => hxO (h ▸ O.zero_mem)
+    have hxinv : x⁻¹ ∈ O := (O.mem_or_inv_mem x).resolve_left hxO
+    set b : ↥O := ⟨x⁻¹, hxinv⟩ with hb
+    have hfb : f b ∈ A.toSubring := hA b
+    have hfb' : f b = (algebraMap K L x)⁻¹ := by
+      show (algebraMap K L) x⁻¹ = (algebraMap K L x)⁻¹
+      exact map_inv₀ _ _
+    -- both `algebraMap K L x` and its inverse lie in `A`, so it (equivalently, `f b`) is a unit.
+    have hne : algebraMap K L x ≠ 0 := (map_ne_zero_iff (algebraMap K L) (algebraMap K L).injective).mpr hx0
+    have hub : IsUnit (f.codRestrict A.toSubring hA b) := by
+      refine isUnit_iff_exists_inv.mpr ⟨⟨algebraMap K L x, hx⟩, Subtype.ext ?_⟩
+      show f b * algebraMap K L x = 1
+      rw [hfb', inv_mul_cancel₀ hne]
+    have hbunit : IsUnit b := IsLocalHom.map_nonunit b hub
+    -- but then `x = (x⁻¹)⁻¹ ∈ O`, contradicting `hxO`.
+    obtain ⟨c, hc⟩ := isUnit_iff_exists_inv.mp hbunit
+    have hcx : (c : K) = x := by
+      have hbc : (b : K) * (c : K) = 1 := congrArg Subtype.val hc
+      rw [hb] at hbc
+      show (c : K) = x
+      field_simp at hbc
+      rw [hbc]
+    exact hxO (hcx ▸ c.2)
+  · intro hxO
+    exact hA ⟨x, hxO⟩
 
+omit [TopologicalSpace K] [IsNonarchimedeanLocalField K] in
 /-- A choice of valuation subring of `L = AlgebraicClosure K` extending `𝒪[K]`, i.e. "the" ring
 of integers `𝒪[K̄]` of the algebraic closure (for our fixed choice of extended valuation). -/
 def valuationSubringExtension : ValuationSubring L :=
   (exists_valuationSubring_extends K).choose
 
+omit [TopologicalSpace K] [IsNonarchimedeanLocalField K] in
 @[simp]
 theorem valuationSubringExtension_comap :
     (valuationSubringExtension K).comap (algebraMap K L) = (valuation K).valuationSubring :=
@@ -161,7 +199,28 @@ theorem valuationSubringExtension_comap :
 equivalence) to any algebraic extension of `K`, so every automorphism of `K̄` over `K` stabilizes
 `valuationSubringExtension K`. Equivalently: the decomposition subgroup of
 `valuationSubringExtension K` is all of `G_K`. This is a standard fact about Henselian valued
-fields, not yet in Mathlib. -/
+fields, not yet in Mathlib as such (searched thoroughly: `Mathlib.RingTheory.Henselian` only has
+the local lifting property, not a statement about uniqueness of extension of a valuation/norm to
+an algebraic extension; `Mathlib.RingTheory.Valuation.LocalSubring` /
+`Mathlib.RingTheory.Valuation.Extension` only give *existence* of extensions, which is what
+powers `exists_valuationSubring_extends` above, not uniqueness).
+
+The closest genuine uniqueness statement in Mathlib is on the *normed-field* side, not the
+`ValuativeRel`/`ValuationSubring` side used here:
+`Mathlib.Analysis.Normed.Unbundled.SpectralNorm.spectralNorm_unique_field_norm_ext` (via
+`NormedAlgebra.norm_eq_spectralNorm`) shows that for `K` a complete nonarchimedean normed field and
+`L / K` algebraic, *any* multiplicative norm on `L` extending the norm on `K` equals the spectral
+norm, i.e. the norm extension is unique. Bridging this to the present statement would require: (1)
+transporting `K`'s `ValuativeRel`/rank-≤-1 valuation to a `NormedField` structure (the machinery
+exists in `Mathlib.Topology.Algebra.Valued.NormedValued`, e.g. `Valuation.RankOne.toNormedField`)
+together with a compatible `CompleteSpace K` instance (available once a `UniformSpace K` compatible
+with the topology is fixed, per the module docstring of `IsNonarchimedeanLocalField`); (2) showing
+that a `ValuationSubring` of `L` extending `𝒪[K]` in the sense used here (`comap = 𝒪[K]`)
+corresponds to a rank-≤-1 (hence normable) valuation on `L`, which itself requires the standard
+fact that an algebraic extension of a rank-1-valued field is again rank 1; and (3) using
+`spectralNorm_unique_field_norm_ext` to conclude the norms -- and hence the valuation subrings, as
+their closed unit balls -- agree, giving stabilization by every automorphism. None of this bridging
+work exists in Mathlib yet, so this remains a `sorry`. -/
 theorem decompositionSubgroup_eq_top :
     ValuationSubring.decompositionSubgroup K (valuationSubringExtension K) = ⊤ := by
   sorry
@@ -228,6 +287,25 @@ theorem residueField_isAlgClosed : IsAlgClosed kbar := by
 /-- The residue field `kbar` of `valuationSubringExtension K` is algebraic over `𝓀[K]`. -/
 theorem residueField_isAlgebraic : Algebra.IsAlgebraic 𝓀[K] kbar := by
   sorry
+
+instance : Fact (IsAlgClosed kbar) := ⟨residueField_isAlgClosed K⟩
+
+instance : Algebra.IsAlgebraic 𝓀[K] kbar := residueField_isAlgebraic K
+
+/-- `kbar` is an algebraic closure of `𝓀[K]`, packaging `residueField_isAlgClosed` and
+`residueField_isAlgebraic` into the `IsAlgClosure` typeclass. This is what lets us invoke the
+general theory of algebraic closures (`IsAlgClosure.normal`, giving `Normal 𝓀[K] kbar`) below,
+rather than reproving normality of `kbar/𝓀[K]` by hand. -/
+instance : IsAlgClosure 𝓀[K] kbar where
+  isAlgClosed := residueField_isAlgClosed K
+  isAlgebraic := residueField_isAlgebraic K
+
+/-- `kbar/𝓀[K]` is Galois: it is normal (`IsAlgClosure.normal`, since `kbar` is an algebraic
+closure of `𝓀[K]`) and separable (`Algebra.IsAlgebraic.isSeparable_of_perfectField`, since `𝓀[K]`
+is finite, hence perfect, and `kbar/𝓀[K]` is algebraic). Unlike the general
+`IsAlgClosure.separable` instance in Mathlib, this does not need `CharZero 𝓀[K]` (which would be
+false: `𝓀[K]` has positive characteristic), only that `𝓀[K]` is perfect. -/
+instance residueField_isGalois : IsGalois 𝓀[K] kbar := ⟨⟩
 
 /-- The action of the decomposition subgroup (i.e., via `decompositionEquiv`, of all of `G_K`) on
 `valuationSubringExtension K` induces an action on its residue field `kbar`, giving a
