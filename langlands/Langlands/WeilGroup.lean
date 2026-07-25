@@ -3,6 +3,7 @@ import Mathlib.NumberTheory.LocalField.Basic
 import Mathlib.RingTheory.Valuation.RamificationGroup
 import Mathlib.RingTheory.Valuation.Extension
 import Mathlib.RingTheory.Valuation.LocalSubring
+import Langlands.HenselianValuation
 import Mathlib.Algebra.CharP.Lemmas
 import Mathlib.FieldTheory.IsAlgClosed.Basic
 import Mathlib.FieldTheory.Finite.Basic
@@ -84,7 +85,15 @@ recorded as `sorry`s rather than proved:
 * `exists_valuationSubring_extends` : Chevalley's theorem that every valuation on a field extends
   to any algebraic (or indeed arbitrary) field extension.
 * `decompositionSubgroup_eq_top` : uniqueness of the extension of the valuation of a complete
-  (Henselian) field to an algebraic extension.
+  (Henselian) field to an algebraic extension. Unlike the other four items in this list,
+  `decompositionSubgroup_eq_top` itself is *not* `sorry`-ed: it is proved from
+  `LocalField.valuationSubring_eq_of_comap_eq` (in `Langlands.HenselianValuation`), a real theorem
+  built on Mathlib's `spectralNorm_unique_field_norm_ext`. The remaining gap is pushed one level
+  down into that file's `LocalField.exists_rankOne_absoluteValue_extends`, which packages the two
+  facts not yet in Mathlib needed to bridge the `ValuationSubring`/`ValuativeRel` formalism used
+  here with the `NormedField`/`AbsoluteValue` formalism `spectralNorm_unique_field_norm_ext` needs:
+  rank preservation of a valuation under an algebraic extension, and compatible normalization of
+  the extended rank-one embedding into `ℝ≥0` (see that file's module docstring for details).
 * `residueField_isAlgClosed` / `residueField_isAlgebraic` : the residue field of `𝒪[K̄]` is an
   algebraic closure of `𝓀[K]`.
 * `frobenius_mem_residueAction_range` : `residueAction` surjects onto `Gal(𝓀[K̄]/𝓀[K])`, i.e.
@@ -136,6 +145,7 @@ definitions are considered the primary deliverable of this file.
 noncomputable section
 
 open ValuativeRel Valuation IsLocalRing CategoryTheory
+open scoped Pointwise
 
 namespace LocalField
 
@@ -214,25 +224,40 @@ an algebraic extension; `Mathlib.RingTheory.Valuation.LocalSubring` /
 `Mathlib.RingTheory.Valuation.Extension` only give *existence* of extensions, which is what
 powers `exists_valuationSubring_extends` above, not uniqueness).
 
-The closest genuine uniqueness statement in Mathlib is on the *normed-field* side, not the
-`ValuativeRel`/`ValuationSubring` side used here:
-`Mathlib.Analysis.Normed.Unbundled.SpectralNorm.spectralNorm_unique_field_norm_ext` (via
-`NormedAlgebra.norm_eq_spectralNorm`) shows that for `K` a complete nonarchimedean normed field and
-`L / K` algebraic, *any* multiplicative norm on `L` extending the norm on `K` equals the spectral
-norm, i.e. the norm extension is unique. Bridging this to the present statement would require: (1)
-transporting `K`'s `ValuativeRel`/rank-≤-1 valuation to a `NormedField` structure (the machinery
-exists in `Mathlib.Topology.Algebra.Valued.NormedValued`, e.g. `Valuation.RankOne.toNormedField`)
-together with a compatible `CompleteSpace K` instance (available once a `UniformSpace K` compatible
-with the topology is fixed, per the module docstring of `IsNonarchimedeanLocalField`); (2) showing
-that a `ValuationSubring` of `L` extending `𝒪[K]` in the sense used here (`comap = 𝒪[K]`)
-corresponds to a rank-≤-1 (hence normable) valuation on `L`, which itself requires the standard
-fact that an algebraic extension of a rank-1-valued field is again rank 1; and (3) using
-`spectralNorm_unique_field_norm_ext` to conclude the norms -- and hence the valuation subrings, as
-their closed unit balls -- agree, giving stabilization by every automorphism. None of this bridging
-work exists in Mathlib yet, so this remains a `sorry`. -/
+The proof is bridged through the *normed-field* side, via `Langlands.HenselianValuation`:
+`Mathlib.Analysis.Normed.Unbundled.SpectralNorm.spectralNorm_unique_field_norm_ext` shows that for
+`K` a complete nonarchimedean normed field and `L / K` algebraic, *any* multiplicative norm on `L`
+extending the norm on `K` equals the spectral norm, i.e. the norm extension is unique. We transport
+`K`'s `ValuativeRel`/rank-≤-1 valuation to a `NontriviallyNormedField` structure (via
+`Valued.toNontriviallyNormedField`, from the automatic `Valuation.RankOne (valuation K)` instance
+for `IsNonarchimedeanLocalField K`, and a `Valued K _` instance built from a local right-uniformity
+on `K`'s topology) together with the `CompleteSpace K` instance already available for that
+uniformity (`IsNonarchimedeanLocalField.instCompleteSpace`), and apply
+`LocalField.valuationSubring_eq_of_comap_eq` to `valuationSubringExtension K` and its `σ`-translate
+for `σ` ranging over `G_K` (using `ValuationSubring.comap_smul_eq`, a purely formal fact that
+`σ`-translates restrict to the same subring of `K` since `σ` fixes `K` pointwise). The only
+remaining gap is `LocalField.exists_rankOne_absoluteValue_extends`, which packages: (1) rank
+preservation of a valuation under an algebraic extension, and (2) compatible normalization of the
+extended embedding into `ℝ≥0` -- see its docstring for details. None of this bridging work existed
+in Mathlib before, and the two facts it packages remain `sorry`s there. -/
 theorem decompositionSubgroup_eq_top :
     ValuationSubring.decompositionSubgroup K (valuationSubringExtension K) = ⊤ := by
-  sorry
+  letI := IsTopologicalAddGroup.rightUniformSpace K
+  haveI := isUniformAddGroup_of_addCommGroup (G := K)
+  letI : (Valued.v (R := K)).RankOne :=
+    { hom' := IsRankLeOne.nonempty.some.emb (R := K).comp MonoidWithZeroHom.ValueGroup₀.embedding
+      strictMono' := IsRankLeOne.nonempty.some.strictMono.comp
+          MonoidWithZeroHom.ValueGroup₀.embedding_strictMono }
+  letI : NontriviallyNormedField K := Valued.toNontriviallyNormedField K (ValueGroupWithZero K)
+  haveI : IsUltrametricDist K := inferInstance
+  haveI : CompleteSpace K := inferInstance
+  rw [Subgroup.eq_top_iff']
+  intro σ
+  rw [MulAction.mem_stabilizer_iff]
+  apply LocalField.valuationSubring_eq_of_comap_eq (K := K)
+  · rw [ValuationSubring.comap_smul_eq]
+    exact valuationSubringExtension_comap K
+  · exact valuationSubringExtension_comap K
 
 /-- The canonical isomorphism `G_K ≃* (decomposition subgroup of `𝒪[K̄]`)`, using
 `decompositionSubgroup_eq_top`. -/
