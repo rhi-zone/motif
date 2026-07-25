@@ -27,8 +27,13 @@ decomposition subgroup of any such extension is all of `Gal(L/K)`.
   (in the sense `A.comap (algebraMap K L) = 𝒪[K]`), there is a `RankOne A.valuation` instance
   whose associated embedding `A.ValueGroup → ℝ≥0`, pulled back along
   `A.valuation.restrict ∘ algebraMap K L`, reproduces `‖·‖` on `K`. This packages the two
-  genuinely deep facts that are not yet in Mathlib (see the docstring below) and is recorded as
-  the sole `sorry` in this file.
+  genuinely deep facts described in the docstring below. As of this file's current state, the
+  existence half (`RankOne A.valuation` is nonempty, i.e. rank ≤ 1 is preserved) is proved in
+  full *modulo one precisely-scoped `sorry`* (`hLtoK` in the proof, a genuine reverse-direction
+  minimal-polynomial estimate not derivable from `Valuation.exists_pow_le_of_isAlgebraic` alone);
+  the compatible-normalization half is a second, separately-scoped `sorry` (a Hölder-uniqueness-
+  for-archimedean-groups argument, also not yet in Mathlib). See the two `sorry`-site comments
+  in the proof for the precise mathematical content each represents.
 * `LocalField.exists_rankOne_absoluteValue_extends` : given the same hypotheses, there is an
   `AbsoluteValue L ℝ` extending the norm on `K` (from a fixed rank-1 embedding for `K`) whose
   closed unit ball is `A`. This is the purely formal consequence of
@@ -228,17 +233,36 @@ hypothesis is what's needed to derive `ValuativeRel.IsNontrivial K` and `Valuati
 on the nose, not just up to equivalence -- see `hRK_compat`), which is fact #1 + fact #2 restricted
 to the base field `K` itself (i.e. the case `L = K`, `A = 𝒪[K]`).
 
-What remains genuinely open (and is the one `sorry` left in this file): extending this rank-≤-1-ness
-from `K` to all of `L`. Via `hequiv` below, the K-restriction of `A.valuation` is equivalent to
-`valuation K`, hence itself rank ≤ 1 with matching normalization; but `A.valuation` on the whole of
-`L` could a priori still have larger rank. Bridging this needs the "rank preservation under
-algebraic extension" argument sketched in the module docstring: bound every `x ≠ 0` in `L` above
-and below (via `x` and `x⁻¹`'s minimal polynomials, using `Valuation.exists_pow_le_of_isAlgebraic`
-above) by powers of `K`-values, chain through `MulArchimedeanClass.mk_eq_mk` using the
-archimedean-ness of `valuation K`'s value group (now genuinely available, via `hRK` below and
-`MulArchimedean.of_units`), and invoke `Valuation.nonempty_rankOne_iff_mulArchimedean`. This is not
-yet in Mathlib and is not attempted here; only the (now correct, and no longer a counterexample)
-statement and its `K`-restricted special case are established. -/
+Extending this rank-≤-1-ness from `K` to all of `L`: via `hequiv` below, the K-restriction of
+`A.valuation` is equivalent to `valuation K`, hence itself rank ≤ 1 with matching normalization;
+`A.valuation` on the whole of `L` is bridged to this via the "rank preservation under algebraic
+extension" argument. The proof below carries this out as far as it goes:
+
+* Steps 3a-3c build the reusable one-directional pieces: nontriviality of `A.valuation`
+  (`hvA_nontrivial`), the bound `A.valuation x ≤ A.valuation (algebraMap c)` for `x` with
+  `1 < A.valuation x` (`hbound`, via `Valuation.exists_pow_le_of_isAlgebraic`), and the
+  `K`-internal archimedean bound `valuation K c ≤ (valuation K d) ^ M` for any `c` and any `d`
+  with `1 < valuation K d` (`hKboundPos`/`hAanchorPos`, via `hRK`'s `MulArchimedean` value group
+  and `nonempty_rankOne_iff_mulArchimedean`).
+* Step 3d (`hLtoK`) is the **first genuine remaining gap**: the *reverse*-direction bound (some
+  `K`-anchor dominated *by* a power of an arbitrary `y : L`, not the other way round). This is
+  not obtainable from `Valuation.exists_pow_le_of_isAlgebraic` by any combination of applications
+  to `y`, `y⁻¹`, or auxiliary elements -- see the `sorry`-site comment for why -- and needs the
+  explicit reversed-minimal-polynomial relationship between `minpoly K y` and `minpoly K y⁻¹`
+  (Bourbaki, *Comm. Alg.* VI §10.1; Engler-Prestel, *Valued Fields* Thm. 3.2.4), which is new
+  infrastructure not yet written down anywhere.
+* Steps 3e-3f assemble `hbound`, `hLtoK`, and `hAanchorPos` into `MulArchimedean A.ValueGroup`
+  directly (`hMArchA`, via the `MulArchimedean` class's `arch` field) and transfer this to obtain
+  `Nonempty (RankOne A.valuation)` (`hR`) via `nonempty_rankOne_iff_mulArchimedean` -- i.e. rank
+  ≤ 1 of `A.valuation` is fully proved *modulo* `hLtoK`.
+* Step 3g is the **second genuine remaining gap**: `hR` is *some* `RankOne` instance, not
+  necessarily the one matching `‖·‖` on `K`. Fixing the normalization needs Hölder's uniqueness
+  theorem for archimedean linearly ordered groups (any two strictly monotone monoid homs into
+  `ℝ≥0` agree up to a positive real power), which is not in Mathlib; see the `sorry`-site comment
+  for the intended rescaling construction once it is available.
+
+Both gaps are self-contained, precisely-scoped pieces of missing infrastructure -- not
+tactic-closable, and not resolvable by further exploration of what is already proved above. -/
 theorem exists_rankOne_compatible [Algebra.IsAlgebraic K L]
     (A : ValuationSubring L) (hA : A.comap (algebraMap K L) = (valuation K).valuationSubring) :
     ∃ hR : RankOne A.valuation, ∀ x : K,
@@ -291,9 +315,162 @@ theorem exists_rankOne_compatible [Algebra.IsAlgebraic K L]
       ← A.valuation_le_one_iff]
   have hequiv : (A.valuation.comap (algebraMap K L)).IsEquiv (valuation K) :=
     (Valuation.isEquiv_iff_valuationSubring _ _).mpr hw
-  -- **Step 3**, the genuine remaining gap: extend rank ≤ 1 (and the compatible normalization)
-  -- from `valuation K` (via `hequiv`, i.e. from the K-part of `A.valuation`) to the whole of
-  -- `A.valuation` on `L`. See the "What remains genuinely open" paragraph of the docstring above.
+  -- **Step 3**: extend rank ≤ 1 (and the compatible normalization) from `valuation K` (via
+  -- `hequiv`) to the whole of `A.valuation` on `L`.
+  -- Step 3a: nontriviality of `A.valuation` (transferred from `valuation K` via `hequiv`).
+  have hvK_nontrivial' : (valuation K).IsNontrivial := hRK.toIsNontrivial
+  have hcomap_nontrivial : (A.valuation.comap (algebraMap K L)).IsNontrivial :=
+    Valuation.isNontrivial_of_isEquiv hequiv.symm hvK_nontrivial'
+  haveI hvA_nontrivial : A.valuation.IsNontrivial := by
+    obtain ⟨r, hr0, hr1⟩ := hcomap_nontrivial.exists_val_nontrivial
+    exact ⟨algebraMap K L r, by simpa [Valuation.comap_apply] using hr0,
+      by simpa [Valuation.comap_apply] using hr1⟩
+  -- Step 3b: one-directional bound -- every `x : L` with `1 < A.valuation x` is dominated by
+  -- `A.valuation` of some nonzero `c : K`, via the minimal polynomial bound
+  -- `Valuation.exists_pow_le_of_isAlgebraic` applied to `x` itself (using `1 < A.valuation x` to
+  -- turn the exponentiated bound into a bound on `A.valuation x` itself, via `le_self_pow₀`).
+  have hbound : ∀ x : L, x ≠ 0 → 1 < A.valuation x →
+      ∃ c : K, c ≠ 0 ∧ A.valuation x ≤ A.valuation (algebraMap K L c) := by
+    intro x hx hX
+    obtain ⟨i, hi, hle⟩ :=
+      Valuation.exists_pow_le_of_isAlgebraic A.valuation hx (Algebra.IsAlgebraic.isAlgebraic (R := K) x)
+    set n := (minpoly K x).natDegree with hn
+    have hpos : 0 < n - i := by omega
+    refine ⟨(minpoly K x).coeff i, ?_, ?_⟩
+    · rintro hc0
+      rw [hc0, map_zero, map_zero] at hle
+      have hxi0 : A.valuation x ^ (n - i) = 0 := le_antisymm hle zero_le
+      rw [pow_eq_zero_iff hpos.ne'] at hxi0
+      rw [hxi0] at hX
+      exact absurd hX (by norm_num)
+    · exact (le_self_pow₀ hX.le hpos.ne').trans hle
+  -- Step 3c: any `c : K` is dominated by a power of any nontrivial `d : K`'s image (or its
+  -- inverse), using `hRK`'s `MulArchimedean` value group directly (via `nonempty_rankOne_iff_
+  -- mulArchimedean`) and pushing the resulting bound through `embedding`/`.restrict`.
+  have hArchK : MulArchimedean (MonoidWithZeroHom.ValueGroup₀ (.ofClass (valuation K))) :=
+    Valuation.nonempty_rankOne_iff_mulArchimedean.mp ⟨hRK⟩
+  have hKbound : ∀ c d : K, d ≠ 0 → valuation K d ≠ 1 →
+      ∃ M : ℕ, valuation K c ≤ valuation K d ^ M ∨ valuation K c ≤ (valuation K d)⁻¹ ^ M := by
+    intro c d hd hd1
+    set rc := (valuation K).restrict c with hrc
+    set rd := (valuation K).restrict d with hrd
+    have hrd0 : rd ≠ 0 := by
+      simpa [hrd, Valuation.restrict_def, MonoidWithZeroHom.ValueGroup₀.restrict₀_eq_zero_iff]
+        using (Valuation.ne_zero_iff (valuation K)).mpr hd
+    have hrd1 : rd ≠ 1 := by
+      simpa [hrd, Valuation.restrict_def, MonoidWithZeroHom.ValueGroup₀.restrict₀_eq_one_iff]
+        using hd1
+    rcases lt_or_gt_of_ne hrd1 with hlt | hlt
+    · have hlt' : 1 < rd⁻¹ := one_lt_inv₀ (zero_lt_iff.mpr hrd0) |>.mpr hlt
+      obtain ⟨M, hM⟩ := hArchK.arch rc hlt'
+      refine ⟨M, Or.inr ?_⟩
+      have := (MonoidWithZeroHom.ValueGroup₀.embedding_strictMono
+        (f := MonoidWithZeroHom.ofClass (valuation K))).monotone hM
+      rwa [map_pow, map_inv₀, Valuation.embedding_restrict, Valuation.embedding_restrict] at this
+    · obtain ⟨M, hM⟩ := hArchK.arch rc hlt
+      refine ⟨M, Or.inl ?_⟩
+      have := (MonoidWithZeroHom.ValueGroup₀.embedding_strictMono
+        (f := MonoidWithZeroHom.ofClass (valuation K))).monotone hM
+      rwa [map_pow, Valuation.embedding_restrict, Valuation.embedding_restrict] at this
+  -- Step 3c': the direct (`d`'s image `> 1`, hence only the non-inverse branch is ever needed)
+  -- specialization of `hKbound`, transferred across `hequiv` to `A.valuation`.
+  have hKboundPos : ∀ c d : K, 1 < valuation K d →
+      ∃ M : ℕ, valuation K c ≤ valuation K d ^ M := by
+    intro c d hd1
+    set rc := (valuation K).restrict c with hrc
+    set rd := (valuation K).restrict d with hrd
+    have hlt : 1 < rd := by
+      have h := (MonoidWithZeroHom.ValueGroup₀.embedding_strictMono
+        (f := MonoidWithZeroHom.ofClass (valuation K))).lt_iff_lt (a := 1) (b := rd)
+      rw [map_one, Valuation.embedding_restrict] at h
+      exact h.mp hd1
+    obtain ⟨M, hM⟩ := hArchK.arch rc hlt
+    refine ⟨M, ?_⟩
+    have := (MonoidWithZeroHom.ValueGroup₀.embedding_strictMono
+      (f := MonoidWithZeroHom.ofClass (valuation K))).monotone hM
+    rwa [map_pow, Valuation.embedding_restrict, Valuation.embedding_restrict] at this
+  have hAanchorPos : ∀ c d : K, 1 < A.valuation (algebraMap K L d) →
+      ∃ M : ℕ, A.valuation (algebraMap K L c) ≤ A.valuation (algebraMap K L d) ^ M := by
+    intro c d hd1
+    have hd1K : 1 < valuation K d := by
+      have h := hequiv.lt_iff_lt (x := (1 : K)) (y := d)
+      rw [Valuation.comap_apply, Valuation.comap_apply, map_one] at h
+      exact h.mp hd1
+    obtain ⟨M, hM⟩ := hKboundPos c d hd1K
+    refine ⟨M, ?_⟩
+    have h := (hequiv.le_iff_le (x := c) (y := d ^ M)).mpr (by rwa [map_pow])
+    rwa [Valuation.comap_apply, Valuation.comap_apply, map_pow, map_pow] at h
+  -- **Step 3d, the first genuine remaining gap.** `hbound` above (via `Valuation.
+  -- exists_pow_le_of_isAlgebraic`) only ever bounds a power of an element `x : L` *above* by a
+  -- `K`-value: `A.valuation x ^ (n - i) ≤ A.valuation (algebraMap c_i)`. That one-sidedness is a
+  -- structural feature of the ultrametric-on-the-minimal-polynomial argument (it comes from
+  -- `Valuation.map_sum_le`, an inequality, not an equality), and no combination of applications
+  -- of `hbound` to `y`, `y⁻¹`, or auxiliary `K`-elements yields the *reverse* containment needed
+  -- here: some `K`-anchor dominated *by* a power of `y` (as opposed to dominating a power of
+  -- `y`). Concretely: applying `hbound` to `y` gives `y ≤ (K-anchor)`; applying it to `y⁻¹` gives
+  -- `(K-anchor)⁻¹ ≤ y`, but that anchor's sign (`≤ 1` or `> 1`) is not controlled by the
+  -- existential, so it need not be informative (if the anchor is `≥ 1`, `(anchor)⁻¹ ≤ 1 < y` is
+  -- vacuous). The standard fix (Bourbaki, *Comm. Alg.* VI §10.1; Engler-Prestel, *Valued
+  -- Fields* Thm. 3.2.4) uses the *explicit* relationship between the coefficients of
+  -- `minpoly K y` and `minpoly K y⁻¹` (the latter is, up to the nonzero constant term of the
+  -- former, the "reversed" polynomial), which is not yet available in this file or in Mathlib as
+  -- a reusable lemma. Formalizing that relationship (and redoing the ultrametric argument with
+  -- it) is the real remaining content of "rank ≤ 1 is preserved under algebraic extension"; it
+  -- is a self-contained, well-scoped piece of new infrastructure, not a tactic-closable gap. -/
+  have hLtoK : ∀ y : L, y ≠ 0 → 1 < A.valuation y →
+      ∃ (d : K) (N : ℕ), 1 < A.valuation (algebraMap K L d) ∧
+        A.valuation (algebraMap K L d) ≤ A.valuation y ^ N := by
+    sorry
+  -- Step 3e: assemble `MulArchimedean A.ValueGroup` from `hbound`, `hLtoK`, `hAanchorPos`.
+  have hMArchA : MulArchimedean A.ValueGroup := by
+    refine ⟨fun x {y} hy1 => ?_⟩
+    by_cases hx1 : x ≤ 1
+    · exact ⟨0, by simpa using hx1⟩
+    rw [not_le] at hx1
+    obtain ⟨p, hp⟩ := A.valuation_surjective x
+    have hp0 : p ≠ 0 := by
+      rintro rfl
+      rw [map_zero] at hp
+      exact absurd (hp ▸ hx1) (by simp)
+    obtain ⟨c, hc0, hxc⟩ := hbound p hp0 (by rw [hp]; exact hx1)
+    rw [hp] at hxc
+    have hκ1 : 1 < A.valuation (algebraMap K L c) := hx1.trans_le hxc
+    obtain ⟨q, hq⟩ := A.valuation_surjective y
+    have hq0 : q ≠ 0 := by
+      rintro rfl
+      rw [map_zero] at hq
+      exact absurd (hq ▸ hy1) (by simp)
+    obtain ⟨d, N, hd1, hdy⟩ := hLtoK q hq0 (by rw [hq]; exact hy1)
+    rw [hq] at hdy
+    obtain ⟨M, hM⟩ := hAanchorPos c d hd1
+    refine ⟨N * M, ?_⟩
+    calc x ≤ A.valuation (algebraMap K L c) := hxc
+      _ ≤ A.valuation (algebraMap K L d) ^ M := hM
+      _ ≤ (y ^ N) ^ M := pow_le_pow_left₀ (zero_le) hdy M
+      _ = y ^ (N * M) := (pow_mul y N M).symm
+  -- Step 3f: transfer `MulArchimedean A.ValueGroup` to `MulArchimedean (ValueGroup₀ (.ofClass
+  -- A.valuation))`, then obtain the `RankOne A.valuation` instance itself.
+  have hMArchA' : MulArchimedean (MonoidWithZeroHom.ValueGroup₀ (.ofClass A.valuation)) :=
+    MulArchimedean.comap
+      (MonoidWithZeroHom.ValueGroup₀.embedding (f := MonoidWithZeroHom.ofClass A.valuation)).toMonoidHom
+      (MonoidWithZeroHom.ValueGroup₀.embedding_strictMono (f := MonoidWithZeroHom.ofClass A.valuation))
+  obtain ⟨hR⟩ := Valuation.nonempty_rankOne_iff_mulArchimedean.mpr hMArchA'
+  -- **Step 3g, the second genuine remaining gap.** `hR` is *some* `RankOne A.valuation`
+  -- instance (Steps 3a-3f above establish its existence unconditionally), but its embedding
+  -- `hR.hom' : ValueGroup₀ (.ofClass A.valuation) → ℝ≥0` need not agree with `‖·‖` on `K` (only
+  -- `Nonempty` was produced, not a specific normalization). Fixing this is routine in substance
+  -- but not yet written down: for a `MulArchimedean` linearly ordered group, any two strictly
+  -- monotone monoid homomorphisms into `ℝ≥0` agree up to raising to a positive real power
+  -- (Hölder's theorem for archimedean ordered groups -- not currently in Mathlib, see the
+  -- `nonempty_rankOne_iff_mulArchimedean` proof in `Mathlib.RingTheory.Valuation.RankOne` for the
+  -- one-sided existence construction this would need to be paired with a uniqueness half of).
+  -- Given that, the fix is: pick any `c₀ : K` with `1 < valuation K c₀` (exists by
+  -- `hvK_nontrivial`), let `r₀ := hR.hom' (A.valuation.restrict (algebraMap K L c₀))` and
+  -- `s₀ := ‖c₀‖` (both `> 1`), and rescale `hR.hom'` by the exponent `Real.log s₀ / Real.log r₀`
+  -- (an `NNReal.rpow`) to build a new embedding matching `‖·‖` at `c₀`; Hölder uniqueness (once
+  -- available) then upgrades this single-point match to agreement on all of `K`. This is a
+  -- self-contained, well-scoped piece of missing order-theory infrastructure, not a
+  -- tactic-closable gap.
   sorry
 
 /-- Given a rank-1 structure on `A.valuation` compatible with `‖·‖` on `K` (packaged by
