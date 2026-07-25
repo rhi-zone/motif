@@ -100,12 +100,15 @@ recorded as `sorry`s rather than proved:
   (Henselian) field to an algebraic extension. Unlike the other four items in this list,
   `decompositionSubgroup_eq_top` itself is *not* `sorry`-ed: it is proved from
   `LocalField.valuationSubring_eq_of_comap_eq` (in `Langlands.HenselianValuation`), a real theorem
-  built on Mathlib's `spectralNorm_unique_field_norm_ext`. The remaining gap is pushed one level
-  down into that file's `LocalField.exists_rankOne_absoluteValue_extends`, which packages the two
-  facts not yet in Mathlib needed to bridge the `ValuationSubring`/`ValuativeRel` formalism used
-  here with the `NormedField`/`AbsoluteValue` formalism `spectralNorm_unique_field_norm_ext` needs:
-  rank preservation of a valuation under an algebraic extension, and compatible normalization of
-  the extended rank-one embedding into `ℝ≥0` (see that file's module docstring for details).
+  built on Mathlib's `spectralNorm_unique_field_norm_ext`. That file's own remaining gap,
+  `LocalField.exists_rankOne_absoluteValue_extends` (bridging the `ValuationSubring`/`ValuativeRel`
+  formalism used here with the `NormedField`/`AbsoluteValue` formalism
+  `spectralNorm_unique_field_norm_ext` needs: rank preservation of a valuation under an algebraic
+  extension, and compatible normalization of the extended rank-one embedding into `ℝ≥0`), is now
+  **fully proved, no `sorry`** — closed via the two general-purpose lemmas
+  `Valuation.exists_pow_eq_of_isAlgebraic` and `Valuation.exists_rpow_eq_of_isEquiv` (see that
+  file's module docstring for details). So this item, too, has no remaining `sorry` anywhere in its
+  dependency chain.
 * `frobenius_mem_residueAction_range` : `residueAction` surjects onto `Gal(𝓀[K̄]/𝓀[K])`, i.e.
   `frobenius K` lies in `(residueAction K).range`. **Now proved outright** from three more
   precisely-scoped facts (no direct `sorry` on this theorem itself):
@@ -267,11 +270,13 @@ on `K`'s topology) together with the `CompleteSpace K` instance already availabl
 uniformity (`IsNonarchimedeanLocalField.instCompleteSpace`), and apply
 `LocalField.valuationSubring_eq_of_comap_eq` to `valuationSubringExtension K` and its `σ`-translate
 for `σ` ranging over `G_K` (using `ValuationSubring.comap_smul_eq`, a purely formal fact that
-`σ`-translates restrict to the same subring of `K` since `σ` fixes `K` pointwise). The only
-remaining gap is `LocalField.exists_rankOne_absoluteValue_extends`, which packages: (1) rank
-preservation of a valuation under an algebraic extension, and (2) compatible normalization of the
-extended embedding into `ℝ≥0` -- see its docstring for details. None of this bridging work existed
-in Mathlib before, and the two facts it packages remain `sorry`s there. -/
+`σ`-translates restrict to the same subring of `K` since `σ` fixes `K` pointwise).
+`LocalField.exists_rankOne_absoluteValue_extends`, which packages: (1) rank preservation of a
+valuation under an algebraic extension, and (2) compatible normalization of the extended embedding
+into `ℝ≥0` -- see its docstring for details -- is now **fully proved, no remaining `sorry`**: (1) is
+`Valuation.exists_pow_eq_of_isAlgebraic` and (2) is `Valuation.exists_rpow_eq_of_isEquiv`, both
+general-purpose lemmas new to this project and not otherwise in Mathlib. None of this bridging work
+existed in Mathlib before; it is now complete here. -/
 theorem decompositionSubgroup_eq_top :
     ValuationSubring.decompositionSubgroup K (valuationSubringExtension K) = ⊤ := by
   letI := IsTopologicalAddGroup.rightUniformSpace K
