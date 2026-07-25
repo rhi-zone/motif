@@ -4,6 +4,7 @@ import Mathlib.RingTheory.Valuation.RamificationGroup
 import Mathlib.RingTheory.Valuation.Extension
 import Mathlib.RingTheory.Valuation.LocalSubring
 import Langlands.HenselianValuation
+import Langlands.ResidueField
 import Mathlib.Algebra.CharP.Lemmas
 import Mathlib.FieldTheory.IsAlgClosed.Basic
 import Mathlib.FieldTheory.Finite.Basic
@@ -94,8 +95,6 @@ recorded as `sorry`s rather than proved:
   here with the `NormedField`/`AbsoluteValue` formalism `spectralNorm_unique_field_norm_ext` needs:
   rank preservation of a valuation under an algebraic extension, and compatible normalization of
   the extended rank-one embedding into `ℝ≥0` (see that file's module docstring for details).
-* `residueField_isAlgClosed` / `residueField_isAlgebraic` : the residue field of `𝒪[K̄]` is an
-  algebraic closure of `𝓀[K]`.
 * `frobenius_mem_residueAction_range` : `residueAction` surjects onto `Gal(𝓀[K̄]/𝓀[K])`, i.e.
   `frobenius K` lies in `(residueAction K).range`. Genuinely local-field-theoretic (not about
   finite fields at all): for a Henselian complete field, the residue extension of an algebraic
@@ -308,19 +307,40 @@ instance : IsLocalHom (algebraMap ↥(𝒪[K]) (valuationSubringExtension K)) :=
   exact (Valuation.mem_integer_iff _ _).mpr ((Valuation.mem_valuationSubring_iff _ _).mp hmem)
 
 /-- The residue field of the algebraic-closure integers `valuationSubringExtension K`: this is
-(a `sorry`-ed fact away from being, via `residueField_isAlgClosed` / `residueField_isAlgebraic`)
+(via `residueField_isAlgClosed` / `residueField_isAlgebraic`, proved in `Langlands.ResidueField`)
 an algebraic closure `𝓀[K]bar` of the (finite) residue field `𝓀[K]`. -/
 local notation "kbar" => IsLocalRing.ResidueField (valuationSubringExtension K)
 
+omit [TopologicalSpace K] [IsNonarchimedeanLocalField K] in
 /-- The residue field `kbar` of `valuationSubringExtension K` is algebraically closed. This
 reflects the general fact that the residue field of a valuation ring inside an algebraically
-closed field is algebraically closed; not yet in Mathlib. -/
-theorem residueField_isAlgClosed : IsAlgClosed kbar := by
-  sorry
+closed field is algebraically closed (`ValuationSubring.residueField_isAlgClosed`, proved in
+`Langlands.ResidueField` for an arbitrary valuation subring of an algebraically closed field, not
+needing anything about `K` or `decompositionSubgroup_eq_top`). -/
+theorem residueField_isAlgClosed : IsAlgClosed kbar :=
+  ValuationSubring.residueField_isAlgClosed (valuationSubringExtension K)
 
-/-- The residue field `kbar` of `valuationSubringExtension K` is algebraic over `𝓀[K]`. -/
+/-- The residue field `kbar` of `valuationSubringExtension K` is algebraic over `𝓀[K]`. Every
+`x : kbar` is the residue of some `b : valuationSubringExtension K`; `b` is integral over `𝒪[K]`
+by `ValuationSubring.isIntegralElem_of_decompositionSubgroup_eq_top` (using
+`decompositionSubgroup_eq_top`), and the residue of an integral element is algebraic over the
+residue field of the base (`IsIntegral.isAlgebraic_residue`). -/
 theorem residueField_isAlgebraic : Algebra.IsAlgebraic 𝓀[K] kbar := by
-  sorry
+  set A := valuationSubringExtension K with hAdef
+  refine ⟨fun x => ?_⟩
+  obtain ⟨b, rfl⟩ := IsLocalRing.residue_surjective (R := A) x
+  -- `b`, viewed inside `L`, is integral over `A.comap (algebraMap K L)`.
+  have hbint : RingHom.IsIntegralElem
+      ((algebraMap K L).comp (algebraMap (A.comap (algebraMap K L)) K)) (b : L) :=
+    ValuationSubring.isIntegralElem_of_decompositionSubgroup_eq_top A
+      (decompositionSubgroup_eq_top K) b.2
+  rw [valuationSubringExtension_comap K] at hbint
+  -- The "long way" `𝒪[K] → K → L` and the "short way" `𝒪[K] → A → L` agree (definitionally),
+  -- so `hbint` already has the type needed to descend along the (injective) map `A → L`.
+  have hAL_inj : Function.Injective (algebraMap A L) := IsFractionRing.injective A L
+  have hbint' : RingHom.IsIntegralElem (algebraMap ↥(𝒪[K]) A) b :=
+    RingHom.IsIntegralElem.of_map hAL_inj hbint
+  exact IsIntegral.isAlgebraic_residue hbint'
 
 instance : Fact (IsAlgClosed kbar) := ⟨residueField_isAlgClosed K⟩
 
