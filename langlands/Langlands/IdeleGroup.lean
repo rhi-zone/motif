@@ -615,7 +615,19 @@ Building `N_{L/K}` correctly therefore requires first formalizing the place-lyin
 and the local norm maps it indexes -- genuinely new infrastructure, not a routine extension of
 what is already in the file. The declaration below records the intended type signature (matching
 the Lean 3 `ideles_K.lean` `norm_idele.map` up to naming) with a `sorry`, so that later work can
-fill in the construction without having to re-derive the statement. -/
+fill in the construction without having to re-derive the statement.
+
+**Update:** `Langlands/NormMap.lean` fills in the first two gaps above (not a routine extension,
+but already present in Mathlib under different names than the original survey looked for):
+the place-lying-over relation is `w.asIdeal.LiesOver v.asIdeal` (`Mathlib.RingTheory.Ideal.Over`,
+`IsDedekindDomain.HeightOneSpectrum.under`), and the local norm map between completions is built
+(genuinely, not `sorry`'d) as `IsDedekindDomain.HeightOneSpectrum.localNormMap`, via
+`UniformSpace.Completion.mapRingHom` applied to the uniform continuity of `algebraMap K L` between
+valued fields, `IsDedekindDomain.HeightOneSpectrum.uniformContinuous_algebraMap_liesOver` (a 2026
+Mathlib addition in `Mathlib.NumberTheory.RamificationInertia.Valuation`). What remains missing --
+the base-change ring hom on adèle rings, i.e. the proof that the local norm map sends local units
+to local units at all but finitely many places -- is still a genuine gap, so `normMap` below
+remains a `sorry`. -/
 
 section NormMap
 
