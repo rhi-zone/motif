@@ -36,7 +36,15 @@ an arbitrary element of the profinite closure `ℤ̂` of the subgroup generated 
 topology from `G_K`), rather than the subspace topology from `G_K` -- under the latter, `I_K`
 would still be closed but not open, since `⟨Frob⟩ ≅ ℤ` sits densely inside `Gal(𝓀[K̄]/𝓀[K]) ≅ ℤ̂`.
 Concretely: `W_K ≅ I_K ⋊ ℤ` as topological groups, where `ℤ` is discrete and `I_K` carries its
-profinite topology, and the topology on `W_K` is the one transported along this splitting.
+profinite topology. Rather than building this topology by transporting the product topology along
+a set-theoretic splitting `W_K ≃ I_K × ℤ`, we build it directly as a `GroupFilterBasis` (see
+`WeilGroup.groupFilterBasis`) whose basic neighborhoods of `1` are the intersections of `I_K` with
+(the restriction to `W_K` of) open subgroups of `G_K` -- this makes `I_K` open by construction,
+without needing the splitting itself, and continuity of multiplication/inversion/conjugation
+follows directly from the fact that they already hold in `G_K`. The projection `W_K →* ℤ`
+(`WeilGroup.toArt`, the local Artin/"art" map) is defined directly from `toZhatHom`, with kernel
+`I_K` (`WeilGroup.toArt_ker`); it is *not* yet shown to be continuous for this topology (nor is
+the fully set-theoretic splitting `W_K ≃ I_K × ℤ` constructed), which is left for later.
 
 ## Main definitions
 
@@ -56,9 +64,15 @@ profinite topology, and the topology on `W_K` is the one transported along this 
   of `residueAction K` with `ℤ̂`, sending Frobenius to (the image of) `1`.
 * `LocalField.WeilGroup K` : the Weil group `W_K ≤ G_K`, the preimage of `ℤ ≤ ℤ̂` under (the
   composite of `residueAction K` with) `residueGaloisGroup_equiv_Zhat`.
-* `LocalField.WeilGroup.topologicalSpace` : the topology on `W_K` making `I_K` open, built by
-  transporting the product topology on `I_K × ℤ` (with `ℤ` discrete) along the (`sorry`-ed)
-  splitting `W_K ≃ I_K × ℤ`.
+* `LocalField.toZhat_injective` : `toZhat : ℤ → ℤ̂` is injective (`ℤ` is residually finite), so
+  `ℤ ≤ ℤ̂` (`integerSubgroup`) really is (a copy of) `ℤ` (`integerSubgroupEquiv`).
+* `LocalField.WeilGroup.toArt` : the Artin ("art") map `W_K →* ℤ`, with kernel `I_K`
+  (`WeilGroup.toArt_ker`).
+* `LocalField.WeilGroup.groupFilterBasis` : the `GroupFilterBasis` on `W_K` making `I_K` open,
+  whose basic neighborhoods of `1` are intersections of `I_K` with open subgroups of `G_K`.
+* `LocalField.WeilGroup.instTopologicalSpace` / `instIsTopologicalGroup` : the resulting topology
+  on `W_K` and the fact that it makes `W_K` a topological group.
+* `LocalField.WeilGroup.isOpen_inertiaSubgroupOf` : `I_K` is open in `W_K` for this topology.
 
 ## Implementation notes
 
@@ -75,8 +89,9 @@ recorded as `sorry`s rather than proved:
   the classical computation of the absolute Galois group of a finite field. This is stated as an
   abstract group isomorphism sending Frobenius to `1`; upgrading it to a homeomorphism (matching
   the Krull topology on the left against the profinite topology on the right) is left for later.
-* `WeilGroup.splitting` : the (set-theoretic, not just group-theoretic) splitting
-  `W_K ≃ I_K × ℤ` used to transport the topology onto `W_K`.
+The full set-theoretic splitting `W_K ≃ I_K × ℤ` (as opposed to just the topology, which is built
+directly via `WeilGroup.groupFilterBasis` without needing it) and continuity of `WeilGroup.toArt`
+for that topology are not yet constructed either; both are left for later.
 
 None of these are needed for the *definitions* of `inertiaSubgroup`, `residueAction`, `Zhat`,
 `frobenius`, or `WeilGroup` themselves to typecheck; they are only needed for the expected
@@ -212,9 +227,36 @@ def toZhat : Multiplicative ℤ →* Zhat :=
 theorem denseRange_toZhat : DenseRange (toZhat) :=
   ProfiniteGrp.ProfiniteCompletion.denseRange (GrpCat.of (Multiplicative ℤ))
 
-/-- The subgroup `ℤ ≤ ℤ̂` given by the (injective, since `ℤ̂` is `sorry`-ed to be its profinite
-completion faithfully) image of `toZhat`. -/
+/-- `Multiplicative ℤ` is residually finite: given `g ≠ 1`, i.e. `n := g.toAdd ≠ 0`, reduction mod
+any modulus exceeding `|n|` is a homomorphism to a finite group not killing `g`. This is what makes
+`toZhat` injective (`toZhat_injective`), i.e. makes `ℤ̂` genuinely contain (a copy of) `ℤ`. -/
+instance : Group.ResiduallyFinite (Multiplicative ℤ) := by
+  apply Group.residuallyFinite_of_forall_exists_finite_monoidHom
+  intro g hg
+  set n : ℤ := g.toAdd with hn
+  have hn0 : n ≠ 0 := fun h => hg (toAdd_eq_zero.mp h)
+  refine ⟨Multiplicative (ZMod (n.natAbs + 1)), inferInstance, inferInstance,
+    (Int.castAddHom (ZMod (n.natAbs + 1))).toMultiplicative, fun h => hn0 ?_⟩
+  have h' : (n : ZMod (n.natAbs + 1)) = 0 := by
+    simpa [AddMonoidHom.toMultiplicative, ← hn, toAdd_eq_zero] using h
+  rw [ZMod.intCast_zmod_eq_zero_iff_dvd] at h'
+  have h'' : ((n.natAbs + 1 : ℕ) : ℤ) ∣ (n.natAbs : ℤ) := Int.dvd_natAbs.mpr h'
+  have hpos : (0 : ℤ) < (n.natAbs : ℤ) := by exact_mod_cast Int.natAbs_pos.mpr hn0
+  have hle := Int.le_of_dvd hpos h''
+  omega
+
+/-- `toZhat` is injective: `ℤ` really does embed into its profinite completion `ℤ̂`. -/
+theorem toZhat_injective : Function.Injective (toZhat) :=
+  (ProfiniteGrp.ProfiniteCompletion.etaFn_injective_iff_residuallyFinite
+    (GrpCat.of (Multiplicative ℤ))).mpr inferInstance
+
+/-- The subgroup `ℤ ≤ ℤ̂` given by the (injective, by `toZhat_injective`) image of `toZhat`. -/
 def integerSubgroup : Subgroup Zhat := (toZhat).range
+
+/-- The isomorphism `ℤ ≃* integerSubgroup`, i.e. `ℤ ≤ ℤ̂` really is (a copy of) `ℤ` and not some
+quotient of it, using injectivity of `toZhat`. -/
+def integerSubgroupEquiv : Multiplicative ℤ ≃* integerSubgroup :=
+  MonoidHom.ofInjective toZhat_injective
 
 /-- The (arithmetic) Frobenius automorphism `x ↦ x ^ #𝓀[K]` of `kbar`, generating (topologically)
 the Galois group `Gal(kbar/𝓀[K])`. Well-definedness as a ring automorphism (as opposed to merely
@@ -263,5 +305,104 @@ def WeilGroup : Subgroup (Field.absoluteGaloisGroup K) :=
 /-- The inertia subgroup is contained in the Weil group (it maps to `1 ∈ ℤ ≤ ℤ̂`). -/
 theorem inertiaSubgroup_le_weilGroup : inertiaSubgroup K ≤ WeilGroup K := by
   sorry
+
+/-- `inertiaSubgroup K` is normal in `G_K`: it is (via `residueAction_ker`) the kernel of
+`residueAction K`, and kernels of group homomorphisms are always normal. -/
+instance inertiaSubgroup_normal : (inertiaSubgroup K).Normal := by
+  rw [← residueAction_ker]; infer_instance
+
+/-- The **Artin map** (or "art" map, or valuation map) `W_K →* ℤ`: every `σ ∈ W_K` induces an
+*integer* power of Frobenius on the residue field (by definition of `WeilGroup`), and this is that
+integer, packaged via the isomorphism `ℤ ≃* integerSubgroup` (`integerSubgroupEquiv`). Its kernel
+is `I_K` (`toArt_ker`). -/
+def toArt : WeilGroup K →* Multiplicative ℤ :=
+  integerSubgroupEquiv.symm.toMonoidHom.comp
+    (((toZhatHom K).restrict (WeilGroup K)).codRestrict integerSubgroup
+      fun w => Subgroup.mem_comap.mp w.2)
+
+/-- The kernel of `toZhatHom` is `I_K`: `σ` induces the trivial power of Frobenius iff it acts
+trivially on the residue field, i.e. lies in the kernel of `residueAction` (which is `I_K` by
+`residueAction_ker`). -/
+theorem toZhatHom_ker : (toZhatHom K).ker = inertiaSubgroup K := by
+  unfold toZhatHom
+  rw [MonoidHom.ker_comp_of_injective _ _ (residueGaloisGroupEquivZhat K).injective,
+    MonoidHom.ker_rangeRestrict, residueAction_ker]
+
+theorem toArt_ker : (toArt K).ker = (inertiaSubgroup K).subgroupOf (WeilGroup K) := by
+  unfold toArt
+  rw [MonoidHom.ker_comp_of_injective _ _ integerSubgroupEquiv.symm.injective,
+    MonoidHom.ker_codRestrict, MonoidHom.ker_restrict, toZhatHom_ker]
+
+/-! ### The topology on `W_K` -/
+
+/-- The "basic neighborhood of `1`" subgroup of `W_K` associated to an open subgroup `U` of `G_K`:
+elements of `W_K` lying in both `U` and the inertia subgroup. As `U` ranges over open subgroups of
+`G_K`, these form a filter basis at `1` for the topology on `W_K` (`WeilGroup.groupFilterBasis`)
+making `I_K` open -- *not* the subspace topology from `G_K`, under which `I_K` is not open since
+`⟨Frob⟩ ≅ ℤ` is dense in `Gal(kbar/𝓀[K]) ≅ ℤ̂`. -/
+def basicSubgroup (U : OpenSubgroup (Field.absoluteGaloisGroup K)) : Subgroup (WeilGroup K) :=
+  (U.toSubgroup ⊓ inertiaSubgroup K).subgroupOf (WeilGroup K)
+
+/-- The `GroupFilterBasis` on `W_K` whose basic neighborhoods of `1` are `basicSubgroup K U` for
+`U` an open subgroup of `G_K`. This realizes the topology described in the module docstring:
+`I_K = basicSubgroup K ⊤` is open, and multiplication/inversion/conjugation are continuous because
+they already are in `G_K` (whose topology `I_K`'s basic neighborhoods are built from). -/
+@[implicit_reducible]
+def groupFilterBasis : GroupFilterBasis (WeilGroup K) where
+  sets := Set.range fun U : OpenSubgroup (Field.absoluteGaloisGroup K) =>
+    (basicSubgroup K U : Set (WeilGroup K))
+  nonempty := Set.range_nonempty _
+  inter_sets := by
+    rintro _ _ ⟨U, rfl⟩ ⟨V, rfl⟩
+    refine ⟨_, Set.mem_range_self (⟨U.toSubgroup ⊓ V.toSubgroup, U.isOpen.inter V.isOpen⟩ :
+      OpenSubgroup (Field.absoluteGaloisGroup K)), fun w hw => ?_⟩
+    simp only [basicSubgroup, SetLike.mem_coe, Subgroup.mem_subgroupOf, Subgroup.mem_inf,
+      OpenSubgroup.mem_toSubgroup, Set.mem_inter_iff] at hw ⊢
+    tauto
+  one' := by rintro _ ⟨U, rfl⟩; exact (basicSubgroup K U).one_mem
+  mul' := by
+    rintro _ ⟨U, rfl⟩
+    exact ⟨_, Set.mem_range_self U, fun w ⟨a, ha, b, hb, hab⟩ => hab ▸ Subgroup.mul_mem _ ha hb⟩
+  inv' := by
+    rintro _ ⟨U, rfl⟩
+    exact ⟨_, Set.mem_range_self U, fun w hw => Subgroup.inv_mem _ hw⟩
+  conj' := by
+    rintro x₀ _ ⟨U, rfl⟩
+    refine ⟨_, Set.mem_range_self (U.comap (MulAut.conj (x₀ : Field.absoluteGaloisGroup K)).toMonoidHom
+      (IsTopologicalGroup.continuous_conj _)), fun w hw => ?_⟩
+    simp only [Set.mem_preimage, basicSubgroup, SetLike.mem_coe, Subgroup.mem_subgroupOf,
+      Subgroup.mem_inf] at hw ⊢
+    have hcoe : ((x₀ * w * x₀⁻¹ : WeilGroup K) : Field.absoluteGaloisGroup K) =
+        (x₀ : Field.absoluteGaloisGroup K) * (w : Field.absoluteGaloisGroup K) *
+          (x₀ : Field.absoluteGaloisGroup K)⁻¹ := by
+      simp [Subgroup.coe_mul]
+    rw [hcoe]
+    refine ⟨?_, (inertiaSubgroup_normal K).conj_mem _ hw.2 _⟩
+    simpa [OpenSubgroup.mem_comap, MulAut.conj_apply] using hw.1
+
+/-- The topology on `W_K` making `I_K` an open subgroup, transported from `G_K`'s Krull topology
+along the filter basis `groupFilterBasis`. This is the topology described in the module docstring,
+*not* the subspace topology `W_K` would inherit directly from `G_K`. -/
+instance instTopologicalSpace : TopologicalSpace (WeilGroup K) := (groupFilterBasis K).topology
+
+/-- `W_K`, with the topology `instTopologicalSpace`, is a topological group. -/
+instance instIsTopologicalGroup : IsTopologicalGroup (WeilGroup K) :=
+  (groupFilterBasis K).isTopologicalGroup
+
+/-- `I_K` (viewed as a subgroup of `W_K`) is open in `W_K`'s topology: this is the defining feature
+of the Weil group topology, distinguishing it from the subspace topology from `G_K`. -/
+theorem isOpen_inertiaSubgroupOf :
+    IsOpen ((inertiaSubgroup K).subgroupOf (WeilGroup K) : Set (WeilGroup K)) := by
+  have hmem : ((inertiaSubgroup K).subgroupOf (WeilGroup K) : Set (WeilGroup K)) ∈
+      groupFilterBasis K := ⟨⊤, by simp [basicSubgroup, OpenSubgroup.toSubgroup_top]⟩
+  exact Subgroup.isOpen_of_mem_nhds _ ((groupFilterBasis K).mem_nhds_one hmem)
+
+/-- The quotient `W_K / I_K` is discrete: since `I_K` is open (`isOpen_inertiaSubgroupOf`), its
+cosets partition `W_K` into open sets, so the quotient topology is discrete. Combined with
+`toArt_ker`, this says the induced map `W_K / I_K → ℤ` (an isomorphism, via `toArt`) matches the
+discrete topology on `ℤ` against the quotient topology on `W_K / I_K`. -/
+theorem discreteTopology_quotient_inertiaSubgroupOf :
+    DiscreteTopology (WeilGroup K ⧸ (inertiaSubgroup K).subgroupOf (WeilGroup K)) :=
+  QuotientGroup.discreteTopology (isOpen_inertiaSubgroupOf K)
 
 end LocalField
