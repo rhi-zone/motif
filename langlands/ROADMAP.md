@@ -382,11 +382,63 @@ general case, is the only path that avoids stalling on (a).
 - **Size:** large. This is a genuine theorem (not just a definition) with a
   real proof burden (local existence theorem, norm groups, Brauer group
   computation over local fields).
+- **Scope correction (review):** "`BrauerGroup + Hilbert90`" in the
+  dependency list above is the route marker, not the distance covered. The
+  local Artin map is not just an isomorphism `K_v^× ≅ W_{K_v}^ab` — it needs
+  to be *characterized*: norm functoriality (the map is compatible with norm
+  maps for finite extensions), Frobenius compatibility (uniformizers map to
+  Frobenius lifts on unramified extensions), and the existence theorem
+  (open subgroups of finite index in `K_v^×` correspond to abelian
+  extensions). Getting from the raw Brauer-group `H²` computation to an
+  Artin map *with these characterizing properties* is the bulk of Serre's
+  *Local Fields*, chapters VIII–XIII — this is comparable in size to
+  everything else in Phase 2 combined, not a footnote to it.
 - **Upstreamable:** yes, high-value — local CFT is a named, citable theorem
   many other projects would want.
 - **Note:** not strictly required to *state* the four core conjectures (they
   can be stated with the Artin map as an assumed/axiomatized black box), but
   required to make any of Phase 3+ meaningful rather than vacuous.
+- **Before building: check for prior formalization.** Of every phase in this
+  roadmap, Phase 2 is the likeliest to already exist in some form elsewhere
+  — local/global class field theory is a natural target for other
+  formalization efforts (e.g. community CFT work adjacent to the
+  Mathlib `FLT` project, `Mathlib/NumberTheory/FLT/`, §1.10). Check that
+  effort, and any Zulip/roadmap discussion around it, before writing new CFT
+  proofs in-repo — duplicating an in-flight class field theory formalization
+  would be the single most wasteful outcome in this whole plan.
+
+### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
+- **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
+  double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
+  compact `GL_n(𝒪_v)`) and the Satake isomorphism identifying it with the
+  ring of symmetric polynomials in `n` variables (equivalently, with
+  representations of the dual torus/Weyl-invariant functions on it — for
+  `GL_n` the dual group is again `GL_n`, so this needs none of Phase 3).
+- **Why it goes here:** this is the best value-per-effort item in the whole
+  roadmap. It is **self-contained** — needs only `GL_n(K_v)`'s double-coset
+  structure, the existing `HeckeRing/Defs.lean` abstract Hecke-ring formalism
+  (have, §1.6), and Mathlib's polynomial-ring/symmetric-function library
+  (not audited above but standard Mathlib territory) — and it **yields a
+  provable theorem**, not just a stated conjecture: the unramified local
+  Langlands correspondence (Satake parameters ↔ unramified irreducible
+  admissible representations) drops out of the Satake isomorphism directly,
+  giving the roadmap its first genuine, non-vacuous local Langlands result
+  well before the general Phase 5 statement is reachable.
+- **Depends on:** `NumberTheory/HeckeRing/Defs.lean` (have), Phase 4's
+  `GL_n`-track admissible representations (for the unramified-representations
+  side of the correspondence), `GeneralLinearGroup` (have). Does **not**
+  depend on Phase 3.
+- **Feeds:** the unramified case of Phase 5's local Langlands statement
+  (directly, as a proved special case rather than a stated conjecture), and
+  Phase 8's restricted tensor products (an automorphic representation is
+  unramified — i.e. has a fixed vector under the maximal compact — at almost
+  all places, and the Satake isomorphism is exactly what controls the local
+  factor at those places).
+- **Size:** medium. Bounded, classical, and well-documented in standard
+  references (Bump's *Automorphic Forms*, Gelbart's `GL_2` notes generalize
+  cleanly to `GL_n`).
+- **Upstreamable:** yes — the Satake isomorphism is a named, citable result
+  independent of the rest of Langlands.
 
 ### Phase 3 — Reductive groups over a field (the dual-group blocker)
 - **Build, in order:**
@@ -423,6 +475,33 @@ general case, is the only path that avoids stalling on (a).
   communities) — worth checking Mathlib's Zulip/roadmap for parallel effort
   before starting, since duplicating a large in-flight project would be
   the worst outcome here.
+- **Reframing (review):** this is not a project phase in the same sense as
+  the others in this roadmap — it is a **Mathlib-core campaign**. The dual
+  group `^L G` needs Chevalley existence/uniqueness for reductive groups
+  built from root data, and that is Mathlib's largest relevant crater: as of
+  this writing there is no settled maintainer consensus even on the base
+  definitions (what a "reductive group" *is* as a Mathlib structure — scheme-
+  theoretic vs. functor-of-points vs. combinatorial-root-datum-first — is an
+  open design question upstream, not just an unfilled gap). Treating Phase 3
+  as a phase this project completes on its own timeline is the wrong frame;
+  treating it as an upstream Mathlib contribution this project seeds and
+  budgets for indefinite duration is the right one.
+  - **Mitigation (a) — decouple the Galois layer from group existence.**
+    Define `^L G` *combinatorially* now: a dual root datum, built directly on
+    the existing `RootSystem` API (have, §1.4), with the Galois action on it
+    given by an action on the abstract based root datum (needed anyway for
+    step 4 above). This lets everything downstream that only needs `^L G` as
+    a group *with a root datum* (L-parameters, functoriality maps between
+    dual sides) proceed without waiting on Chevalley's theorem — i.e. without
+    waiting on `G` itself existing as a bona fide reductive group object.
+    Only the "transfer of representations of `G(K_v)` itself" side of local
+    Langlands needs `G`, not `^L G`, to exist as a group scheme.
+  - **Mitigation (b) — budget, don't schedule.** Treat full Phase 3 (Chevalley
+    existence + uniqueness for general reductive groups) as an upstream
+    Mathlib contribution with its own review cycle and timeline, not a task
+    this roadmap can complete unilaterally. Phase 7 (Galois cohomology
+    packaging) correctly feeds only the non-split-forms case of Phase 3 and
+    can lag indefinitely without blocking anything else in this roadmap.
 
 ### Phase 4 — Smooth and admissible representations of `p`-adic / adelic groups
 - **Build:** for a locally profinite group `H` (e.g. `G(K_v)` once Phase 3
@@ -444,6 +523,51 @@ general case, is the only path that avoids stalling on (a).
 - **Upstreamable:** yes — smooth/admissible representation theory of
   `p`-adic groups is foundational and wanted independently of Langlands.
 
+### Phase 4.5 — Local L-factors and ε-factors (review addition — vacuity fix for Phase 5)
+- **Why this phase exists:** a bare bijection between `L`-parameters and
+  irreducible admissible representations of `GL_n(K_v)`, with no further
+  structure, is **vacuously true by cardinality** — both sides are countably
+  infinite sets, so *some* bijection trivially exists with no mathematical
+  content. The actual content of local Langlands for `GL_n` (this is
+  Henniart's uniqueness theorem territory) lives in the correspondence being
+  the *unique* bijection compatible with: twisting by characters, duality
+  (contragredient ↔ dual representation), central characters
+  (determinant ↔ central character under class field theory), and
+  **preservation of L-factors and ε-factors of pairs** under the
+  correspondence. Without this phase, Phase 5 cannot distinguish a genuine
+  statement of local Langlands from a cardinality triviality.
+- **Build:** local L-factors `L(s, ρ)` and Deligne–Langlands ε-factors
+  `ε(s, ρ, ψ)` for Weil–Deligne representations `ρ`, and their representation-
+  theoretic counterparts (Rankin–Selberg / Godement–Jacquet local factors)
+  for admissible representations of `GL_n(K_v)` and `GL_n(K_v) × GL_m(K_v)`
+  pairs.
+- **New prerequisites, confirmed missing:** additive characters of `K_v`
+  (have for `K_v = ℚ_p` via `Padics/AddChar.lean`, §1.2, but not for general
+  local fields), a Haar measure normalization convention (Tate's thesis
+  requires a self-dual measure with respect to the chosen additive
+  character — flagged as missing in §1.3), and the local functional equation
+  relating `L(s, ρ)` to `L(1-s, ρ^∨)` via the ε-factor.
+- **Convention hazard, flagged for whoever picks this up:** Tate's original
+  thesis normalization and Deligne's later ε-factor formalism (*Les
+  constantes des équations fonctionnelles des fonctions L*, Antwerp II)
+  diverge in bookkeeping conventions (choice of additive character, measure
+  normalization, and sign/exponent conventions on the local root number) —
+  this is a well-known source of errors in the literature, so the Lean
+  definitions must pin down *which* convention is being formalized and state
+  it explicitly rather than silently inheriting one source's choices.
+- **Depends on:** Phase 1 (Weil–Deligne group, for the Galois side), Phase 4
+  (admissible representations of `GL_n(K_v)`, for the automorphic side),
+  `Padics/AddChar.lean` and `Padics/Measure/*` (have, for `ℚ_p`; need
+  extending to general local fields), `NumberTheory/LSeries/
+  AbstractFuncEq.lean` (have, potential scaffold for the functional
+  equation).
+- **Size:** large — this is a full local-constants theory, comparable in
+  scope to a chapter of Bushnell–Henniart's *The Local Langlands Conjecture
+  for GL(2)* or Tate's Corvallis article.
+- **Upstreamable:** yes — local L- and ε-factors are foundational and wanted
+  independently (Tate's thesis itself is a natural, self-contained Mathlib
+  target).
+
 ### Phase 5 — Statement of local Langlands for `GL_n`
 - **Build:** the conjecture-as-a-`Prop`: a bijection between (continuous,
   Frobenius-semisimple, Weil–Deligne) `n`-dimensional representations of
@@ -451,16 +575,40 @@ general case, is the only path that avoids stalling on (a).
   compatible with L-functions and ε-factors on both sides (the compatibility
   clause can initially be omitted/stubbed to get the bare bijection
   statement first).
+- **Vacuity caveat (review) — acceptance test:** per Phase 4.5 above, a bare
+  bijection is **not an acceptable formalization goal on its own** — both
+  sides are countably infinite, so a bijection exists trivially by
+  cardinality with zero mathematical content. Two ways to avoid shipping a
+  vacuous statement:
+  1. Do the full version: require Phase 4.5's L-factor/ε-factor compatibility
+     clauses (plus twisting, duality, central-character compatibility) as
+     part of the `Prop`, so the bijection is characterized, not just
+     asserted. This is Henniart's uniqueness theorem and is the
+     mathematically honest statement of local Langlands for `GL_n`.
+  2. Or explicitly scope Phase 5 as "the bijection statement up to
+     characterization" — i.e. keep the bare bijection as an intentionally
+     weaker placeholder, but **label it as such in the `Prop`'s
+     documentation** (e.g. a doc-comment noting "this statement, absent the
+     compatibility clauses of Phase 4.5, is a cardinality triviality and
+     should not be cited as a formalization of local Langlands without
+     them"), so nobody downstream mistakes the placeholder for the theorem.
+  Either path is acceptable; shipping the bare bijection *without* one of
+  these two markers is not — that is exactly the failure mode this
+  correction targets.
 - **Depends on:** Phase 1 (Weil–Deligne group), Phase 4's `GL_n`-only track
-  (admissible reps of `GL_n(K_v)`), existing `GeneralLinearGroup` (have).
+  (admissible reps of `GL_n(K_v)`), Phase 4.5 (L-/ε-factors, for the
+  non-vacuous version), existing `GeneralLinearGroup` (have).
   **Does not need Phase 3** — this is exactly why `GL_n` is the right first
   target: its own dual group is itself.
-- **Size:** small, once Phases 1 and 4 (`GL_n` track) exist — this phase is
-  "just" writing the `Prop`, which is the whole point of the task's goal.
+- **Size:** small, once Phases 1 and 4 (`GL_n` track) exist, *for the bare
+  bijection*; the non-vacuous version additionally needs Phase 4.5, which is
+  large. This phase is "just" writing the `Prop` only in the weak sense —
+  writing the `Prop` that is actually worth writing is gated on Phase 4.5.
 - **Upstreamable:** yes, as a formalized *conjecture statement* (a `Prop`/
   axiom-free `def`, not a `sorry`-laden proof) — valuable in its own right
   as a landmark for the Mathlib number theory community, independent of any
-  progress toward proving it.
+  progress toward proving it, **provided** the vacuity caveat above is
+  respected.
 
 ### Phase 6 — Statement of Artin's conjecture
 - **Build:** Artin `L`-function of an `n`-dimensional Galois representation
@@ -511,6 +659,33 @@ general case, is the only path that avoids stalling on (a).
   product version — new content: an automorphic representation is a
   restricted tensor product of local admissible representations, which
   needs its own "almost all factors unramified" bookkeeping).
+- **Acceptance criteria (review) — vacuity test:** "automorphic
+  representations" defined as a bare restricted tensor product of local
+  admissible representations, with no further structure, is a definition
+  with no theorem in it — it says nothing about which restricted tensor
+  products actually arise from genuine automorphic forms. The content that
+  must be present before this phase counts as done:
+  - **Cuspidality:** the subspace of cusp forms (vanishing constant terms
+    along all proper parabolics) must be identified, since the cuspidal
+    spectrum is where the representation theory is discrete and where local
+    Langlands packets are meant to land; without it, "automorphic
+    representation" has no home for the actual correspondence.
+  - **Multiplicity:** the multiplicity of an irreducible representation in
+    the (cuspidal) automorphic spectrum must be at least stated as a
+    quantity (finite for cuspidal, by a Gelfand-pair/discrete-spectrum
+    argument), even if multiplicity-one (known for `GL_n`, false in general)
+    is deferred as a separate theorem.
+  - **L² structure:** the decomposition of `L²(G(K)\G(𝔸_K))` (or its
+    central-character-twisted variant) into a direct sum/integral of
+    irreducibles — discrete spectrum (cuspidal + residual) plus continuous
+    (Eisenstein) spectrum — needs to be at least stated, since "automorphic
+    representation" without reference to this decomposition is just "some
+    representation of `G(𝔸_K))`," not the object Langlands' conjectures are
+    about.
+  Absent these three, Phase 8 produces a restricted tensor product with no
+  theorem attached to it — a definition that type-checks but proves nothing
+  and characterizes nothing. These three items should be treated as the
+  minimum bar for calling Phase 8 "done" rather than "stated."
 - **Size:** huge — the single most mathematically demanding phase, on par
   with or larger than Phase 3. Realistically this is where "prove what we
   can" gives way to "state what we can" for the foreseeable future.
@@ -541,38 +716,60 @@ Phase 0 (idele class group)  ─────────────────
                                                           ▼
 Phase 1 (Weil/Weil–Deligne group)             Phase 2 (local CFT / Artin map)
    depends on: AbsoluteGaloisGroup (have),        depends on: Phase 1, BrauerGroup (have),
-   ProfiniteGrp (have), Frobenius (have)          Hilbert90 (have)
+   ProfiniteGrp (have), Frobenius (have)          Hilbert90 (have) — scope: also norm
+        │                                          functoriality + Frobenius compat (Serre
+        │                                          Local Fields VIII–XIII); check FLT-adjacent
+        │                                          CFT formalization before building
         │                                                │
+        │                                                ▼
+        │                                       Phase 2.5 (Satake isomorphism for
+        │                                       unramified GL_n — new, self-contained,
+        │                                       first PROVABLE unramified LLC)
         ├──────────────┬─────────────────────────────────┘
         ▼              ▼
-Phase 5 (state local    Phase 6 (state Artin conj., n=1 track
-Langlands for GL_n)      reduces to Phase 0+2; n>1 needs Phase 8)
+Phase 4.5 (local L-/ε-factors — new, fixes  Phase 6 (state Artin conj., n=1 track
+Phase 5 vacuity; needs additive characters,   reduces to Phase 0+2; n>1 needs Phase 8)
+Haar normalization, functional equation;
+Tate-vs-Deligne convention hazard flagged)
+        │
+        ▼
+Phase 5 (state local Langlands for GL_n —
+bare bijection is VACUOUS by cardinality;
+needs Phase 4.5's compatibility clauses or
+an explicit "up to characterization" label)
         ▲
         │
 Phase 4 (smooth/admissible reps; GL_n track needs no Phase 3)
         ▲
         │
-Phase 3 (reductive groups + dual group)  ◄── HARDEST, LARGEST, most upstream-contested
-   depends on: RootSystem (have), GeneralLinearGroup (have), AbsoluteGaloisGroup (have)
-        │
-        ▼
-Phase 4 (general-G track)  ──►  Phase 8 (automorphic reps, global Langlands)  ──►  Phase 9 (functoriality)
+Phase 3 (reductive groups + dual group)  ◄── Mathlib-CORE CAMPAIGN, not a project
+   depends on: RootSystem (have), GeneralLinearGroup (have), AbsoluteGaloisGroup (have)   phase: Chevalley existence/uniqueness has
+        │                                                                                  no settled upstream maintainer consensus.
+        ▼                                                                                  Mitigation: define ^L G combinatorially now
+Phase 4 (general-G track)  ──►  Phase 8 (automorphic reps, global Langlands —              via dual root datum (decouples from Chevalley);
+acceptance test: needs cuspidality,           ──►  Phase 9 (functoriality)                 budget rest as upstream PR, not in-repo work.
+multiplicity, L² structure — bare restricted
+tensor product has no theorem in it)
                                         ▲
                                         │
                                  Phase 0 (idele class group)
 
-Phase 7 (Galois cohomology packaging) — parallel, low-risk, feeds Phase 3's non-split-forms case only.
+Phase 7 (Galois cohomology packaging) — parallel, low-risk, feeds Phase 3's non-split-forms case only, can lag indefinitely.
 ```
 
 Everything downstream of Phase 3 for **general `G`** is gated on Phase 3.
 Everything needed to state local/global Langlands **for `GL_n` specifically**
-(Phases 0, 1, 2, 4-GL_n-track, 5, 6-n=1-track) can proceed without ever
-touching Phase 3 — this is the practical route to "formally state the core
-conjectures" fastest, deferring the huge, contested Phase 3 (general
-reductive groups) and Phase 8 (general automorphic representations) until
-later or indefinitely, while still landing a real, citable formal statement
-of local Langlands for `GL_n` and (via Phase 2) a fully *proved* class field
-theory.
+(Phases 0, 1, 2, 2.5, 4-GL_n-track, 4.5, 5, 6-n=1-track) can proceed without
+ever touching Phase 3 — this is the practical route to "formally state the
+core conjectures" fastest, deferring the huge, contested Phase 3 (general
+reductive groups, reframed above as a Mathlib-core campaign rather than a
+project phase) and Phase 8 (general automorphic representations) until later
+or indefinitely, while still landing a real, citable formal statement of
+local Langlands for `GL_n` and (via Phase 2) a fully *proved* class field
+theory. Phase 2.5 (Satake for unramified `GL_n`) is flagged separately as
+the single best value-per-effort item in the graph: self-contained, needs no
+Phase 3, and yields an actually-provable theorem rather than another stated
+conjecture.
 
 ---
 
