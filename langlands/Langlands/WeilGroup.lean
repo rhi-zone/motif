@@ -5,6 +5,7 @@ import Mathlib.RingTheory.Valuation.Extension
 import Mathlib.RingTheory.Valuation.LocalSubring
 import Langlands.HenselianValuation
 import Langlands.ResidueField
+import Langlands.UnramifiedExtension
 import Mathlib.Algebra.CharP.Lemmas
 import Mathlib.FieldTheory.IsAlgClosed.Basic
 import Mathlib.FieldTheory.Finite.Basic
@@ -102,12 +103,19 @@ recorded as `sorry`s rather than proved:
   rank preservation of a valuation under an algebraic extension, and compatible normalization of
   the extended rank-one embedding into `ℝ≥0` (see that file's module docstring for details).
 * `frobenius_mem_residueAction_range` : `residueAction` surjects onto `Gal(𝓀[K̄]/𝓀[K])`, i.e.
-  `frobenius K` lies in `(residueAction K).range`. Genuinely local-field-theoretic (not about
-  finite fields at all): for a Henselian complete field, the residue extension of an algebraic
-  extension is again Galois, with Galois group a quotient of `G_K` -- concretely, every
-  automorphism of `𝓀[K̄]/𝓀[K]` lifts to an automorphism of `K̄/K` fixing `valuationSubringExtension
-  K`, via the theory of unramified extensions (not a consequence of Mathlib's
-  `InfiniteGalois.restrictNormalHom_surjective`, which is surjectivity of a different map).
+  `frobenius K` lies in `(residueAction K).range`. **Now proved outright** from three more
+  precisely-scoped facts (no direct `sorry` on this theorem itself):
+  `ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective`
+  (`Langlands.UnramifiedExtension` -- the genuinely local-field-theoretic, Hensel's-lemma-flavoured
+  unramified lifting theorem: every automorphism of a finite Galois subextension of `𝓀[K̄]/𝓀[K]`
+  lifts to an automorphism of `K̄/K` stabilizing `valuationSubringExtension K`; not a consequence
+  of Mathlib's `InfiniteGalois.restrictNormalHom_surjective`, which is surjectivity of a different
+  map), `compactSpace_absoluteGaloisGroup` (`G_K` is profinite -- true in general via `Gal(K̄/K) ≅
+  Gal(K_sep/K)`, but not yet bridged to Mathlib's `IsGalois`-gated `CompactSpace` instance), and
+  `continuous_residueAction'` (continuity of the residue action for the two Krull topologies
+  involved). The formal glue combining these three (via the Galois correspondence for
+  `Gal(𝓀[K̄]/𝓀[K])`, `InfiniteGalois.restrict_fixedField` / `fixingSubgroup_fixedField`) is real,
+  checked Lean code, not `sorry`-ed.
 * `exists_residueGaloisGroup_equiv_Zhat` : the identification `Gal(𝓀[K̄]/𝓀[K]) ≅ ℤ̂` via Frobenius,
   i.e. the classical computation of the absolute Galois group of a finite field. This is stated as
   an abstract group isomorphism sending Frobenius to `1`; upgrading it to a homeomorphism (matching
@@ -327,6 +335,18 @@ instance : IsLocalHom (algebraMap ↥(𝒪[K]) (valuationSubringExtension K)) :=
     exact ValuationSubring.mem_comap.mpr hinv
   exact (Valuation.mem_integer_iff _ _).mpr ((Valuation.mem_valuationSubring_iff _ _).mp hmem)
 
+omit [TopologicalSpace K] [IsNonarchimedeanLocalField K] in
+/-- The algebra structure on `valuationSubringExtension K` over `↥(𝒪[K])` is compatible with the
+ambient inclusions `↥(𝒪[K]) → K → L`: this is exactly the fact that `integersAlgebraMap` is (the
+restriction to integers of) `algebraMap K L`, and is needed to invoke the generic lemmas of
+`Langlands.UnramifiedExtension` (`decompositionSubgroup_smul_algebraMap_residueField`,
+`exists_restrictNormalHom_decompositionSubgroup_surjective`) with `A := valuationSubringExtension
+K`. Recorded as a plain lemma (rather than an `IsScalarTower` instance) since those two lemmas
+take this compatibility as an explicit hypothesis instead of a typeclass -- see the implementation
+notes in `Langlands.UnramifiedExtension` for why. -/
+theorem integersAlgebraMap_compat (a : ↥(𝒪[K])) :
+    (algebraMap ↥(𝒪[K]) (valuationSubringExtension K) a : L) = algebraMap K L (a : K) := rfl
+
 /-- The residue field of the algebraic-closure integers `valuationSubringExtension K`: this is
 (via `residueField_isAlgClosed` / `residueField_isAlgebraic`, proved in `Langlands.ResidueField`)
 an algebraic closure `𝓀[K]bar` of the (finite) residue field `𝓀[K]`. -/
@@ -528,6 +548,133 @@ theorem exists_frobenius_pow_eq {M : Type*} [Field M] [Algebra 𝓀[K] M] [Finit
     (l := M) g
   exact ⟨i, fun x => by simpa [Nat.card_eq_fintype_card] using hi x⟩
 
+/-! ### Compactness, density, and the range of `residueAction` -/
+
+/-- `residueAction`, repackaged as a homomorphism directly into `Gal(kbar/𝓀[K]) = kbar ≃ₐ[𝓀[K]]
+kbar` rather than merely into `RingAut kbar`. Well-defined because `residueAction K σ` (which
+unfolds to the residue action of `decompositionEquiv K σ`) fixes `𝓀[K]` pointwise, by
+`ValuationSubring.decompositionSubgroup_smul_algebraMap_residueField`
+(`Langlands.UnramifiedExtension`). This is the map whose range we show is everything, via
+compactness of `G_K` and the Galois correspondence for `Gal(kbar/𝓀[K])`. -/
+def residueAction' : Field.absoluteGaloisGroup K →* (kbar ≃ₐ[𝓀[K]] kbar) where
+  toFun σ := AlgEquiv.ofRingEquiv (f := residueAction K σ) (fun x => by
+    show (decompositionEquiv K σ) • algebraMap 𝓀[K] kbar x = algebraMap 𝓀[K] kbar x
+    exact ValuationSubring.decompositionSubgroup_smul_algebraMap_residueField
+      (K := K) (valuationSubringExtension K) (integersAlgebraMap_compat K)
+      (decompositionEquiv K σ) x)
+  map_one' := AlgEquiv.ext fun x => by
+    show residueAction K 1 x = x
+    simp
+  map_mul' a b := AlgEquiv.ext fun x => by
+    show residueAction K (a * b) x = residueAction K a (residueAction K b x)
+    simp
+
+@[simp]
+theorem residueAction'_apply (σ : Field.absoluteGaloisGroup K) (x : kbar) :
+    residueAction' K σ x = residueAction K σ x := by
+  simp [residueAction', AlgEquiv.ofRingEquiv]
+
+/-- **Not yet in Mathlib and not proved here**: `Field.absoluteGaloisGroup K = Gal(K̄/K)` is
+compact for the Krull topology. This is true (it is a standard fact that the absolute Galois group
+of any field is profinite, via `Gal(K̄/K) ≅ Gal(K_sep/K)` -- an isomorphism holding even when `K`
+is imperfect, since a `K`-automorphism of the algebraic closure `K̄` is determined by, and
+corresponds bijectively to, its restriction to the separable closure `K_sep`, purely inseparable
+extensions admitting a *unique* embedding extending any given one), but Mathlib's
+`CompactSpace Gal(L/k)` instance (`FieldTheory.Galois.Profinite`) currently requires `[IsGalois k
+L]`, i.e. `L/k` separable, which can fail for `K̄/K` when `K` has positive characteristic and is
+not perfect (e.g. `𝔽_q((t))`, a genuine non-archimedean local field). Bridging this gap (matching
+`Gal(K̄/K)` against `Gal(K_sep/K)` as topological groups) is not carried out here. -/
+theorem compactSpace_absoluteGaloisGroup : CompactSpace (Field.absoluteGaloisGroup K) := by
+  sorry
+
+/-- **Not yet in Mathlib and not proved here**: `residueAction' K` (equivalently `residueAction
+K`) is continuous, for the Krull topology on `G_K` and the Krull topology on `Gal(kbar/𝓀[K])`.
+Plausible (the residue action of an open subgroup of `G_K` fixing a large enough subfield of `K̄`
+should fix correspondingly many finite subextensions of `kbar/𝓀[K]`), but the precise
+"correspondingly many" comparison between ramification-theoretic and Krull-topology neighborhoods
+is genuinely local-field-theoretic content (related to, but not identical with, the unramified
+lifting theorem `ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective`) that
+is not assembled here. -/
+theorem continuous_residueAction' : Continuous (residueAction' K) := by
+  sorry
+
+/-- `(residueAction' K).range` is a closed subgroup of `Gal(kbar/𝓀[K])`: the continuous
+(`continuous_residueAction'`) image of the compact (`compactSpace_absoluteGaloisGroup`) group
+`G_K`, hence compact, hence closed since `Gal(kbar/𝓀[K])` is Hausdorff (`krullTopology_t2`, using
+`Algebra.IsAlgebraic 𝓀[K] kbar`, i.e. `residueField_isAlgebraic`). -/
+def residueAction'ClosedRange : ClosedSubgroup (kbar ≃ₐ[𝓀[K]] kbar) where
+  toSubgroup := (residueAction' K).range
+  isClosed' := by
+    haveI := compactSpace_absoluteGaloisGroup K
+    haveI : T2Space (kbar ≃ₐ[𝓀[K]] kbar) := krullTopology_t2
+    have hcompact : IsCompact (Set.range (residueAction' K)) :=
+      isCompact_range (continuous_residueAction' K)
+    rw [show (residueAction' K).range.carrier = Set.range (residueAction' K) from
+      MonoidHom.coe_range (residueAction' K)]
+    exact hcompact.isClosed
+
+/-- **The key surjectivity-onto-finite-quotients fact**, transported from
+`ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective`
+(`Langlands.UnramifiedExtension`) along the bijection `decompositionEquiv K` and the definitional
+unfolding of `residueAction'`: for every finite Galois `M ≤ kbar` over `𝓀[K]`, every automorphism
+of `M/𝓀[K]` is the restriction of `residueAction' K σ` for some `σ ∈ G_K`. -/
+theorem surjective_restrictNormalHom_comp_residueAction'
+    (M : IntermediateField 𝓀[K] kbar) [FiniteDimensional 𝓀[K] M] [Normal 𝓀[K] M] :
+    Function.Surjective fun σ : Field.absoluteGaloisGroup K =>
+      AlgEquiv.restrictNormalHom (F := 𝓀[K]) M (residueAction' K σ) := by
+  intro g
+  obtain ⟨τ, hτ⟩ :=
+    ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective
+      (K := K) (valuationSubringExtension K) (integersAlgebraMap_compat K) M g
+  refine ⟨(decompositionEquiv K).symm τ, ?_⟩
+  rw [← hτ]
+  congr 1
+
+/-- `(residueAction' K).range` is everything, i.e. `residueAction' K` is surjective: combining
+`surjective_restrictNormalHom_comp_residueAction'` (surjectivity onto every finite Galois
+quotient) with the Galois correspondence for `Gal(kbar/𝓀[K])`
+(`InfiniteGalois.restrict_fixedField`, `InfiniteGalois.fixingSubgroup_fixedField`) and closedness
+of the range (`residueAction'ClosedRange`) shows the fixed field of the range is `⊥` (i.e. `𝓀[K]`
+itself), hence (the range being closed) the range is the fixing subgroup of `⊥`, i.e. everything.
+-/
+theorem surjective_residueAction' : Function.Surjective (residueAction' K) := by
+  have hfixed : IntermediateField.fixedField (residueAction'ClosedRange K).toSubgroup = ⊥ := by
+    apply le_antisymm _ bot_le
+    intro x hx
+    -- `x` lies in some finite Galois subextension `M` of `kbar/𝓀[K]`.
+    obtain ⟨M, hMfd, hMnormal, hxM⟩ :
+        ∃ M : IntermediateField 𝓀[K] kbar, FiniteDimensional 𝓀[K] M ∧ Normal 𝓀[K] M ∧ x ∈ M := by
+      classical
+      haveI := residueField_isGalois K
+      let L' := FiniteGaloisIntermediateField.adjoin 𝓀[K] ({x} : Set kbar)
+      exact ⟨L'.toIntermediateField, L'.finiteDimensional, L'.isGalois.to_normal,
+        FiniteGaloisIntermediateField.subset_adjoin 𝓀[K] ({x} : Set kbar) rfl⟩
+    haveI := hMfd; haveI := hMnormal
+    haveI : IsGalois 𝓀[K] M := ⟨⟩
+    have hsurj : (residueAction'ClosedRange K).toSubgroup.map (AlgEquiv.restrictNormalHom M) = ⊤ := by
+      rw [eq_top_iff]
+      intro g _
+      obtain ⟨σ, hσ⟩ := surjective_restrictNormalHom_comp_residueAction' K M g
+      exact ⟨residueAction' K σ, ⟨σ, rfl⟩, hσ⟩
+    have hM : IntermediateField.fixedField (residueAction'ClosedRange K).toSubgroup ⊓ M =
+        IntermediateField.lift (IntermediateField.fixedField
+          ((residueAction'ClosedRange K).toSubgroup.map (AlgEquiv.restrictNormalHom M))) :=
+      InfiniteGalois.restrict_fixedField _ M
+    rw [hsurj, InfiniteGalois.fixedField_bot] at hM
+    simp only [IntermediateField.lift_bot] at hM
+    have hxM' : x ∈ IntermediateField.fixedField (residueAction'ClosedRange K).toSubgroup ⊓ M :=
+      ⟨hx, hxM⟩
+    rw [hM] at hxM'
+    exact hxM'
+  have hclosed :
+      (residueAction'ClosedRange K).toSubgroup = ⊤ :=
+    (InfiniteGalois.fixingSubgroup_fixedField (residueAction'ClosedRange K)).symm.trans
+      (by rw [hfixed]; exact IntermediateField.fixingSubgroup_bot)
+  intro g
+  have : g ∈ (⊤ : Subgroup (kbar ≃ₐ[𝓀[K]] kbar)) := Subgroup.mem_top g
+  rw [← hclosed] at this
+  exact this
+
 /-! ### The isomorphism `Gal(kbar/𝓀[K]) ≅ ℤ̂` and the Weil group -/
 
 /-- `residueAction` surjects onto (all of) `Gal(kbar/𝓀[K])`, i.e. `frobenius K` (which really is
@@ -547,7 +694,10 @@ Galois extension) and does not apply: `residueAction` is not a restriction map, 
 the (a priori unrelated) action on the residue field of `valuationSubringExtension K`. Not yet in
 Mathlib, and not proved here. -/
 theorem frobenius_mem_residueAction_range : frobenius K ∈ (residueAction K).range := by
-  sorry
+  obtain ⟨σ, hσ⟩ := surjective_residueAction' K (frobeniusAlgEquiv K)
+  refine ⟨σ, RingEquiv.ext fun x => ?_⟩
+  have := AlgEquiv.ext_iff.mp hσ x
+  simpa [residueAction'_apply] using this
 
 /-- The classical computation of the (profinite) absolute Galois group of a finite field: it is
 topologically generated by Frobenius, and (as an abstract group) isomorphic to `ℤ̂`, via
