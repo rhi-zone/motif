@@ -342,3 +342,114 @@ Two corpus samples are checked in:
 The full 32-file/2399-declaration corpus used for the graph stats above is
 not checked in (3.3 MB, and reproducible in ~1 minute via the two-invocation
 command in "Running it"); only the two smaller, purpose-built samples are.
+
+## Structure-discovery prototypes (2026-07-25)
+
+Three deliberately-throwaway probes were built in parallel against
+`crates/motif-corpus/testdata/group-cross-file-sample.jsonl` (360
+declarations, `Defs.lean` + `Commutator.lean`) to test different notions of
+"structure discovery" over the corpus before committing to one direction.
+All three live in `crates/motif-corpus/examples/` and are kept as-is —
+they're real, working, informative probes, not scratch to delete once a
+headline result lands or doesn't.
+
+### `paradigmatic_clusters.rs` — dependency-set Jaccard clustering
+
+Linguistic-structuralist framing: a declaration's "paradigmatic class" is
+the set of other declarations whose *context* (resolved out-edge set —
+union of `deps`/`tdeps`/`premises[].fullName`) is Jaccard-similar to its
+own, following the distributional-similarity move ("a term is
+characterized by the company it keeps"). Clustering is greedy
+threshold + union-find over all pairs at Jaccard ≥ 0.6, restricted to
+declarations with ≥ 3 resolved dependencies (to avoid vacuous clustering
+of near-empty context sets).
+
+Result: 26 clusters, ~25 of which looked genuinely structural — e.g. the
+`zpow`-family lemmas clustered together, and notably `LeftCancelMonoid`
+and `RightCancelMonoid` lemma families formed two separate, mirror-image
+clusters purely from dependency structure, without ever being told
+left/right are related. That's a real symmetry the data reproduced on its
+own, not an artifact of naming.
+
+One clear artifact: a 42-member catch-all cluster, caused by greedy
+transitive-closure chaining — union-find merges A and C into one cluster
+once both A~B and B~C clear the threshold, even though A~B and B~C
+similarity doesn't imply A~C similarity. A real fix needs either
+connected-components-with-min-density (not plain union-find) or a proper
+clustering algorithm (e.g. threshold graph + community detection) instead
+of naive pairwise-threshold transitive closure.
+
+### `compression_similarity.rs` — NCD over string-encoded declarations (paused)
+
+Encoded each declaration as a string (kind + doc + premises in encounter
+order + tactic state transitions), computed per-declaration DEFLATE
+compression ratio, and computed full pairwise Normalized Compression
+Distance (`NCD(x,y) = (C(xy) - min(C(x),C(y))) / max(C(x),C(y))`) across
+all ~64.6k pairs in the 360-declaration corpus.
+
+Headline result: NCD's closest pairs rediscovered Mathlib's
+`@[to_additive]` mul/add mirror structure — e.g.
+`AddLeftCancelMonoid`/`AddRightCancelMonoid` at NCD ≈ 0.10, near the top of
+the closest-pairs list.
+
+**This result does not survive scrutiny, and that's the important part to
+record here — not softened.** Two independent problems:
+
+1. **Circularity.** `to_additive` is itself a Lean metaprogram that
+   generates the additive declarations from the multiplicative ones via
+   literal mechanical string-level substitution (`Mul`→`Add`, etc.).
+   Finding those generated pairs "close" under string compression isn't
+   discovering hidden structure — it's recovering a known syntactic
+   transformation that already exists as engineering, elsewhere, on
+   purpose. Nearly circular, not evidence of anything.
+2. **Deeper methodological flaw: reducing structured objects to strings
+   is fundamentally wrong, because strings force a total order onto data
+   that doesn't intrinsically have one.** Premises are a set; dependency
+   structure is a graph; a tactic trace is closer to a tree (branching
+   goal states) than a line. "Premises in encounter order" was one
+   specific arbitrary choice, but the problem isn't fixable by picking a
+   different order, or even a canonical/sorted order — *any* string
+   linearization smuggles in an ordering artifact, and that artifact then
+   contaminates any distance/compression metric built on top of the
+   string (DEFLATE's LZ77 window is itself order-sensitive, so the
+   ordering choice isn't neutral to the very metric being computed).
+
+**Decision: pause this direction.** Not deleted, not declared permanently
+wrong in principle — information-theoretic notions of structure
+(compressibility, MDL, mutual information) aren't inherently invalid, only
+*this string-shaped operationalization* of them is. The fix, if revisited,
+is a complexity/similarity measure defined natively on sets/graphs/trees,
+not on a derived string encoding — nobody has designed that yet.
+
+Contrast: `paradigmatic_clusters.rs` and `morphism_candidates.rs` both use
+Jaccard similarity over *sets* (dependency sets, premise sets) —
+order-independent by construction — and do not have this problem. That's
+why those two are being kept as real signal while this one is paused.
+
+### `morphism_candidates.rs` — cross-declaration similarity ranking
+
+Ranks declaration pairs by combined Jaccard similarity across
+dependency-set overlap, premise-vocabulary overlap, and proof-shape/tactic-
+count similarity (where tactic data is available), explicitly excluding
+`to_additive` mirror pairs via name-normalization (stripping the
+Mathlib `add`-prefix convention) — 228 of ~15.6k pairs would otherwise
+dominate trivially, for the same circularity reason as the compression
+probe above.
+
+Result: validated the plumbing, but the test corpus (`Defs.lean` +
+`Commutator.lean`) turned out to be effectively one theory, not two — so
+every top-ranked pair was a same-file left/right or mul/inv dual already
+obvious from Mathlib's own naming convention (`pow_one` ↔ `one_pow`, etc.).
+The best genuinely cross-file pair scored 0.157 similarity, ranked #4653
+of 15354 — essentially noise, not signal.
+
+Self-assessed conclusion: this only tested the plumbing (does the ranking
+pipeline work at all), not the real question, because the corpus wasn't
+diverse enough to contain any actually-unrelated structure to find. The
+real target — stated directly by the user this session — is **structural
+relationships between parts of the corpus that aren't obviously already
+related**, not confirmation of known naming-convention pairs within one
+theory. Testing that requires a corpus spanning genuinely distinct
+theories (e.g. group + ring, or group + lattice), which this single-theory
+test corpus cannot probe by construction. See `TODO.md` for the concrete
+next step.

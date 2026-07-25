@@ -70,6 +70,12 @@ This is the smallest concrete exercise of the full vision, and the gaps it revea
    - Run `ExtractOne.lean` across a small batch of files to check the porting note generalizes (only tested on one declaration so far).
    - Once there's enough extracted corpus data, start looking for structural relationships across it in its native form (step 4 of the near-term plan above) — direction only, no design yet.
 
+**2026-07-25 structure-discovery prototypes**: three throwaway probes built against the 360-declaration `group-cross-file-sample.jsonl` corpus to test different notions of structure discovery — see `langlands/scripts/lean-extraction/README.md` ("Structure-discovery prototypes" section) for full results. Summary: dependency-set Jaccard clustering (`crates/motif-corpus/examples/paradigmatic_clusters.rs`) and cross-declaration similarity ranking (`morphism_candidates.rs`) both produced real signal and are being kept; string-encoded NCD/compression similarity (`compression_similarity.rs`) is paused — its headline `to_additive`-mirror result turned out circular (recovering a known mechanical transformation) and its whole approach has a deeper flaw (linearizing sets/graphs into strings smuggles in an arbitrary order that then contaminates any distance metric on top).
+
+Next steps (direction, not a plan):
+- `paradigmatic_clusters.rs`: fix the greedy transitive-closure artifact (one 42-member catch-all cluster from naive union-find chaining, A~B~C merged despite A≁C) — needs connected-components-with-min-density or real community detection instead of pairwise-threshold transitive closure.
+- `morphism_candidates.rs`: the test corpus (`Defs.lean` + `Commutator.lean`) is effectively one theory, so every top-ranked pair was an already-obvious same-theory naming-convention dual. The user's stated real goal is finding shared structure between *unrelated* parts of the corpus — testing that needs a corpus spanning genuinely distinct theories (e.g. group + ring, or group + lattice), not more files within group theory.
+
 Relevant fields to eventually handle: Langlands program, HoTT/CoC, elliptic curves, harmonic analysis (Kakeya hierarchy), BB(5)-style exhaustive classification, Curry-Howard-Lambek correspondence.
 
 ## Potential next work
