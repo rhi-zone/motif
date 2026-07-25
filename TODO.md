@@ -29,6 +29,38 @@ Near-term: **Lean/Mathlib proof step extraction and annotation**
 
 This is the smallest concrete exercise of the full vision, and the gaps it reveals drive what to build next.
 
+**2026-07-25 extraction scaffolding**: two working extraction paths, both run successfully against Mathlib built inside `~/git/lean-pool`.
+
+1. **Statement-level extraction** — lean-pool's own `scripts/exposition/Extract.lean` (external repo, not vendored here), run via `lake env lean --run` after retargeting its `poolRoot` constant at an arbitrary Mathlib module (e.g. `Mathlib.Algebra.Group.Defs`). Schema at `~/git/lean-pool/python/lean_pool/exposition/SCHEMA.md`; one JSON object per declaration:
+   ```json
+   {"id": "Foo.aux", "n": "Foo.aux", "m": "Mathlib.Algebra.Group.Defs",
+    "k": "theorem", "r": [435, 0, 446, 23], "s": [435, 6],
+    "deps": ["<id>", ...], "ext": 127}
+   ```
+   Extracted 356 declarations from one file in seconds (after `lake update mathlib` cache-built, ~2m48s, cache hit, no source build).
+
+2. **Proof-structure extraction** — `langlands/scripts/lean-extraction/ExtractOne.lean`, ported from LeanDojo v1's `ExtractData.lean` (LeanDojo's Python package is deprecated; this Lean-side logic walks Lean's stable `Elab.InfoTree` API directly, no LeanDojo dependency). Per declaration: full tactic tree with before/after pretty-printed proof-state text at each step (including sub-goal branches, e.g. induction cases), plus a premise trace (which prior lemmas/constants each tactic step invokes, with source positions). Invocation:
+   ```
+   lake env lean --run langlands/scripts/lean-extraction/ExtractOne.lean <mathlib-file> <startLine> <endLine>
+   ```
+   run from inside `~/git/lean-pool` (so `LEAN_PATH` resolves its built Mathlib oleans), under `nix develop langlands --command ...` (langlands' flake provisions elan; lean-pool's `lean-toolchain` pins v4.32.0-rc1, distinct from langlands' own v4.32.1 — elan switches per-project toolchain automatically). Verified on `mul_pow_mul` in `Mathlib.Algebra.Group.Defs` (real multi-step induction proof, `zero`/`succ` case branching, `succ` case shows premises `pow_succ'`/`mul_assoc`); re-verified after moving the script into this repo. Example output shape:
+   ```json
+   {"tactics": [{"stateBefore": "case zero\n...\n⊢ (a * b) ^ 0 * a = a * (b * a) ^ 0",
+                 "stateAfter": "no goals", "pos": 29161, "endPos": 29165}],
+    "premises": [{"fullName": "mul_pow_mul", "modName": "...Defs",
+                  "pos": {"line": 693, "column": 21}, "endPos": {"line": 693, "column": 32}}]}
+   ```
+   Porting note (only break going from LeanDojo's Lean v4.20 pin to v4.32.0-rc1): `String.Pos` became an indexed structure (`structure String.Pos (s : String)`, part of a byte/codepoint safety overhaul); fixed by using `String.Pos.Raw` (the plain `{byteIdx : Nat}` struct `Syntax.getPos?`/`FileMap` APIs already return) and projecting `.byteIdx` in the `ToJson` instance. Everything else (`InfoTree`, `TacticInfo`, `ContextInfo.runMetaM`, `Command.mkState`, `IO.processCommands`) ported unchanged.
+
+   Considered ntp-toolkit (CMU L3 lab) as an alternative — actively maintained, lighter footprint, but flatter output schema (flat `(state, nextTactic)` JSONL rows, no explicit tactic tree/premises) — chose the LeanDojo InfoTree-porting approach for full fidelity instead. LeanDojo-v2 (actively maintained successor to the deprecated v1 package) not evaluated in depth — unexplored.
+
+   Corpus scope (decided): mathlib4 (full, ~300K declarations order of magnitude) + lean-pool's own indexed projects + TauCeti (no extraction tooling of its own yet — needs the same approach pointed at it). Extract structure of both proofs and proven statements, eventually matched against motif's flat equational theory vocabulary — the known typeclass-hierarchy/binder-heavy-statement vs. flat quantifier-free `Signature` gap (see "No binder support" above) is unresolved by this scaffolding, not addressed by it.
+
+   Next steps (unstarted):
+   - Run `ExtractOne.lean` across a small batch of files to check the porting note generalizes (only tested on one declaration so far).
+   - Design a matching/annotation step against motif's `Signature`/`Theory` vocabulary (step 3 of the near-term plan above) — how does a pretty-printed goal-state diff become a candidate axiom/rewrite?
+   - No decision yet on how typeclass hierarchies and binder-heavy statements get flattened (or whether they're translated at all) into motif's quantifier-free representation.
+
 Relevant fields to eventually handle: Langlands program, HoTT/CoC, elliptic curves, harmonic analysis (Kakeya hierarchy), BB(5)-style exhaustive classification, Curry-Howard-Lambek correspondence.
 
 ## Potential next work
