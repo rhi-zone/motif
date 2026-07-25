@@ -50,7 +50,57 @@ a shell glob or a generated argument list covers it (e.g. `$(find
 add a config-file reader if a future experiment needs to select modules
 some other way than shell globbing.
 
-### Verified test run (2026-07-25)
+**Memory grows across the batch — split large batches into multiple
+invocations.** `ExtractBatch.lean` runs all listed files in one Lean
+process, and per-file `Environment`/elaboration state is not released
+between files. On this machine (54 GB RAM), processing all 32 top-level
+`.lean` files in `Mathlib/Algebra/Group/` in a single invocation hit ~29.5
+GB RSS partway through file 23 and got SIGTERM'd by `earlyoom`
+(confirmed via `journalctl -k`, not a script bug — the process produces
+correct output right up to the kill, it's pure unbounded growth). The fix
+used here: split the file list into two (or more) invocations, each
+producing its own JSONL, then concatenate — this is safe because the
+cross-file dependency join (see below) happens afterward in Rust, over
+however many JSONL files/invocations you feed it, so splitting the Lean
+side costs nothing except needing to pick a split point empirically (23
+files was the observed ceiling for this batch on this machine; expect it to
+vary with declaration size/complexity, not just file count). Don't pipe a
+run through `time (...)` or similar without a generous timeout / without
+checking `$?` — a `SIGTERM`-killed run can still print plausible-looking
+"N declarations" progress lines and leave a *truncated last JSONL line* on
+disk that will fail to parse; always verify the run's own "wrote N
+declarations across M files" completion line printed, not just that the
+process exited.
+
+```bash
+cd ~/git/lean-pool
+FILES=$(find .lake/packages/mathlib/Mathlib/Algebra/Group -maxdepth 1 -name '*.lean' | sort)
+# split point (23) is empirically the observed memory ceiling for this
+# directory on a 54 GB machine — re-check for other directories/machines.
+nix develop ~/git/rhizone/motif/langlands --command \
+  lake env lean --run ~/git/rhizone/motif/langlands/scripts/lean-extraction/ExtractBatch.lean \
+    /path/to/part1.jsonl $(echo "$FILES" | head -n 23)
+nix develop ~/git/rhizone/motif/langlands --command \
+  lake env lean --run ~/git/rhizone/motif/langlands/scripts/lean-extraction/ExtractBatch.lean \
+    /path/to/part2.jsonl $(echo "$FILES" | tail -n +24)
+cat /path/to/part1.jsonl /path/to/part2.jsonl > /path/to/combined.jsonl
+```
+
+Then load `part1.jsonl`/`part2.jsonl` (or the concatenated file — either
+works) together via `motif_corpus::Corpus::load` to get cross-file edges
+spanning both invocations; see "Cross-file dependency join" below.
+
+### Verified test run (2026-07-25, 32-file batch)
+
+All 32 top-level `.lean` files in `Mathlib/Algebra/Group/` (subdirectories
+excluded — e.g. `Subgroup/`, `Units/` — to keep this a bounded slice rather
+than the whole tree), split into two invocations (files 1–23, then 24–32,
+per the memory note above) → **2399 declarations**, **3.3 MB** combined
+JSONL, **~45s + ~14s ≈ 59s** wall-clock across both invocations. See
+"Cross-file dependency join" below for the graph stats this batch was run
+to produce.
+
+### Verified test run (2026-07-25, 5-file batch)
 
 5 files (`Defs.lean` + 4 small neighbors in
 `Mathlib/Algebra/Group/`) → **392 declarations**, **412 KB** JSONL, **~8s**
@@ -151,17 +201,32 @@ proper search-path lookup — see Known limitations.
 
 ## Known limitations / next-step flags
 
-- **No cross-file dependency join.** Each input file is elaborated
-  independently (matching `ExtractOne.lean`'s single-file re-elaboration
-  model). A declaration's `deps`/`tdeps` only include edges to OTHER
-  declarations in the SAME file; references to declarations from other
-  files in the same batch are counted only via `ext`, never resolved into
-  an edge — even if that other file was ALSO in the batch and its
-  declarations are sitting right there in the output JSONL. Joining across
-  files (e.g. cumulative import + a shared `exposed : NameSet` across the
-  whole batch, or a post-hoc join in Rust by matching `id` against `deps`
-  from OTHER files' external references) is real future work if an
-  experiment needs the dependency graph to span files.
+- **Cross-file dependency join is Rust-side and name-based, not
+  scope-based.** `Corpus::from_records` (see "Cross-file dependency join"
+  below) resolves edges purely by matching `deps`/`tdeps`/`premises[].fullName`
+  strings against other loaded records' `id` field. This is safe because
+  Lean fully-qualified names are globally unique, but it means the edge set
+  is exactly as complete as the corpus you load — a name that isn't backed
+  by a loaded record (because that file wasn't included in the batch) stays
+  unresolved, same as the file-scoped `ext` counter, just now correctly
+  spanning however many files you actually load together. It does not
+  re-derive anything Lean-side; if two different `ExtractBatch.lean`
+  invocations are joined, correctness depends on `id` truly being globally
+  unique across them (true for real Mathlib declarations, would NOT hold
+  if the same file were accidentally extracted twice into the same corpus
+  — no duplicate-detection is done).
+- **`ExtractBatch.lean`'s per-invocation memory grows with batch size and
+  is not released between files** — see "Memory grows across the batch" in
+  "Running it" above. Large batches need to be split into multiple
+  invocations (safe: the cross-file join happens afterward in Rust, so
+  splitting the Lean-side extraction into N invocations costs nothing
+  edge-wise as long as all N outputs get loaded into the same `Corpus`).
+  No fix was attempted on the Lean side tonight (e.g. forcibly dropping
+  `Environment`s between files, or forking a subprocess per file) — the
+  split-invocation workaround was judged sufficient for corpus sizes in the
+  low thousands of declarations; it will not scale to unattended
+  full-Mathlib extraction without either a real fix or a lot of manual
+  splitting.
 - **Declaration-assignment for overlapping ranges is first-match, not
   innermost-match.** If Lean's `findDeclarationRanges?` produces nested or
   overlapping ranges (e.g. auxiliary declarations from a `where` clause),
@@ -180,21 +245,100 @@ proper search-path lookup — see Known limitations.
   through `FileMap.toPosition`). Left unnormalized rather than guessing
   which encoding a future consumer wants — normalize in the Rust loader or
   in Lean, whichever the first real consumer needs.
-- **Not tested at Mathlib scale.** Verified on 5 small-to-medium files
-  (392 declarations total, ~8s). Full-Mathlib extraction (100k+
-  declarations) was explicitly out of scope tonight; expect memory/runtime
-  characteristics to need re-checking before attempting that scale — this
-  was infra validation, not a production run.
+- **Not tested past ~2.4k declarations / 32 files.** Verified on a 32-file,
+  2399-declaration batch (see "Cross-file dependency join" below).
+  Full-Mathlib extraction (100k+ declarations) remains explicitly out of
+  scope; the memory-growth issue above means it would need either a real
+  per-file memory fix or scripted splitting into many invocations, neither
+  of which has been built.
+
+## Cross-file dependency join
+
+`ExtractBatch.lean` still elaborates each file independently, so a
+declaration's `deps`/`tdeps`/`premises` fields are just names — they don't
+resolve to other declarations even when the referenced declaration is
+another record sitting in the same corpus. `crates/motif-corpus` closes
+this gap on the Rust side: `Corpus::from_records` (or `Corpus::load`,
+which loads one or more JSONL files and joins them in one step) builds a
+`name -> DeclId` index over every loaded record's `id` field, then resolves
+each record's `deps` ∪ `tdeps` ∪ `premises[].fullName` against that index.
+Names that resolve become real `Vec<DeclId>` edges (`Corpus::dependencies`);
+names that don't stay unresolved, same meaning as `ext` but now correctly
+computed at whole-corpus scope instead of per-file. `Corpus::in_degrees`
+and `Corpus::edge_count` are the only other operations — deliberately
+minimal, no clustering/similarity/query layer on top (that's for whichever
+experiment builds on this next).
+
+This works file-name-agnostically because Lean fully-qualified names
+(`DeclRecord.id`, `PremiseTrace.full_name`) are globally unique — verified
+by reading real corpus output before deciding on this approach (rather
+than assuming): every `id`/`fullName` in the checked corpus is already a
+dotted fully-qualified path (`Mathlib.Algebra.Group.Defs`,
+`DivInvMonoid.zpow_neg'`, etc.), so no extra name-resolution logic
+(overload disambiguation, relative-name lookup) was needed on the Lean
+side — the existing fields were sufficient.
+
+### Verified cross-file graph stats (32-file batch, 2026-07-25)
+
+Loading both halves of the 32-file batch (see above) into one `Corpus`:
+
+| metric | value |
+|---|---|
+| declarations | 2399 |
+| resolved cross-declaration edges | 6312 |
+| average out-degree | 2.63 |
+| declarations with ≥1 resolved dependency | 2163 / 2399 (90%) |
+
+Top in-degree ("most depended-upon") declarations — a sanity check that the
+join is finding real structure, not just resolving self-references:
+
+| in-degree | declaration | module |
+|---|---|---|
+| 120 | `Monoid` | `Mathlib.Algebra.Group.Defs` |
+| 105 | `AddChar` | `Mathlib.Algebra.Group.AddChar` |
+| 90 | `AddMonoid` | `Mathlib.Algebra.Group.Defs` |
+| 88 | `DivisionMonoid.toDivInvOneMonoid` | `Mathlib.Algebra.Group.Basic` |
+| 86 | `SubtractionMonoid.toSubNegZeroMonoid` | `Mathlib.Algebra.Group.Basic` |
+| 83 | `Semigroup` | `Mathlib.Algebra.Group.Defs` |
+| 58 | `mul_assoc` | `Mathlib.Algebra.Group.Defs` |
+
+`Monoid`, `Semigroup`, `mul_assoc` sitting at the top of the in-degree list
+is exactly what's expected from the algebraic hierarchy this directory
+defines — a real signal that the join is doing something meaningful, not
+just structurally present with degenerate output.
 
 ## Rust loader
 
 `crates/motif-corpus` (new crate, workspace member via the existing
 `members = ["crates/*"]` glob in the top-level `Cargo.toml`) — `serde`-based
 struct definitions (`DeclRecord`, `TacticTrace`, `PremiseTrace`, `Position`)
-mirroring this schema field-for-field, plus `motif_corpus::load(path) ->
-io::Result<Vec<DeclRecord>>` reading a JSONL file line-by-line. No query
-engine, no indexing — deliberately just enough that a future experiment can
-`cargo run` or write a short script against real loaded data. See
-`crates/motif-corpus/src/lib.rs`; a corpus sample from the verified test
-run is checked in at `crates/motif-corpus/testdata/group-defs-sample.jsonl`
-and exercised by the crate's one test (`loads_sample_corpus`).
+mirroring this schema field-for-field, plus:
+
+- `motif_corpus::load(path) -> io::Result<Vec<DeclRecord>>` — reads one
+  JSONL file line-by-line into `Vec<DeclRecord>`, no joining.
+- `motif_corpus::Corpus` — wraps loaded records plus the resolved
+  cross-declaration dependency graph described above. `Corpus::load(paths)`
+  is the one-call entry point: load N JSONL files (from N
+  `ExtractBatch.lean` invocations, e.g. after splitting a batch for the
+  memory reason above) and get back edges resolved across all of them.
+
+Still no query engine, no indexing beyond the one `name -> DeclId` map used
+internally to build the edge list — deliberately just enough that a future
+experiment can `cargo run` or write a short script against real loaded data
+with real dependency edges. See `crates/motif-corpus/src/lib.rs`.
+
+Two corpus samples are checked in:
+
+- `testdata/group-defs-sample.jsonl` — single-file (`Defs.lean`, 392
+  declarations), exercises `load` and the statement/proof-structure join
+  (`loads_sample_corpus` test).
+- `testdata/group-cross-file-sample.jsonl` — two files (`Defs.lean` +
+  `Commutator.lean`, 360 declarations total), exercises `Corpus::load`
+  resolving a real dependency edge from `Commutator.lean` into a
+  `Defs.lean` declaration (`resolves_cross_file_dependency_edges` test) —
+  i.e. proves the join actually crosses file boundaries, not just
+  resolving each file against itself.
+
+The full 32-file/2399-declaration corpus used for the graph stats above is
+not checked in (3.3 MB, and reproducible in ~1 minute via the two-invocation
+command in "Running it"); only the two smaller, purpose-built samples are.
