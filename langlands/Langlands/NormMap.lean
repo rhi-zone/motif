@@ -35,10 +35,17 @@ This file assembles the infrastructure the idèle norm map `NumberField.IdeleGro
    Assembling the local norms of (2) into a global map on the finite adèles requires knowing the
    local norm map is a *local unit* (valuation `1`) whenever `a_w` is, at all but finitely many
    places -- i.e. that `adicCompletionComap`/`localNormMap` restricts well to
-   `adicCompletionIntegers`. This is the standard fact that the local norm map of an unramified
-   place sends units to units, but it is not proved here; `IdeleGroup.normMap` therefore remains
-   a `sorry`, now expressed in terms of the (fully defined) local pieces above rather than as an
-   opaque black box.
+   `adicCompletionIntegers`. This "almost everywhere" implication is now proved unconditionally,
+   as `eventually_localNormMap_mem_units` below, on top of one isolated per-place `sorry`
+   (`localNormMap_mem_units`: the local norm of a *single* local unit is a local unit -- the
+   standard fact that, for a finite extension of complete discretely-valued fields, the ring of
+   integers of the top field is the integral closure of the ring of integers of the bottom field,
+   which is not yet in Mathlib). Still missing beyond this: the archimedean/infinite-place half
+   of the norm map, and the final assembly of both halves into a ring hom on the full adèle rings
+   (via `RestrictedProduct.mkUnit` for the finite part, analogous to
+   `IdeleGroup.exists_toFractionalIdeal_eq`). `IdeleGroup.normMap` therefore remains a `sorry`,
+   though the specific gap identified in the task ("an almost-everywhere-unit idèle maps to an
+   almost-everywhere-unit idèle") is now closed.
 
 ## Main definitions
 
@@ -49,6 +56,11 @@ This file assembles the infrastructure the idèle norm map `NumberField.IdeleGro
   `(w.adicCompletion L)ˣ →* (v.adicCompletion K)ˣ`.
 * `IsDedekindDomain.HeightOneSpectrum.finite_liesOver` : only finitely many places of `S` lie over
   a given place `v` of `R`.
+* `IsDedekindDomain.HeightOneSpectrum.localNormMap_mem_units` : the local norm of a local unit is
+  a local unit (`sorry`: needs uniqueness of the extension of a complete valuation).
+* `IsDedekindDomain.HeightOneSpectrum.eventually_localNormMap_mem_units` : an idèle that is almost
+  everywhere a local unit has local norms that are almost everywhere a local unit -- the "missing
+  gap" for `IdeleGroup.normMap`, now proved (modulo the single `sorry` above).
 -/
 
 noncomputable section
@@ -104,6 +116,59 @@ theorem finite_liesOver (v : HeightOneSpectrum R) :
   exact Set.Finite.of_finite_image
     (Set.Finite.subset (IsDedekindDomain.primesOver_finite v.asIdeal S) hsub)
     (HeightOneSpectrum.asIdeal_injective.injOn)
+
+/-- **Key local fact.** The local norm map sends local units to local units: if `a` has
+valuation `1` at `w` (i.e. `a ∈ w.adicCompletionIntegers L`, as a unit), its norm
+`N_{L_w/K_v}(a)` has valuation `1` at `v`.
+
+This is the standard fact from local field theory that, for a finite extension of *complete*
+discretely-valued fields (`v.adicCompletion K` is complete, being defined as a
+`UniformSpace.Completion`), the extension of `v` to `L_w` is unique, so
+`w.adicCompletionIntegers L` is exactly the integral closure of `v.adicCompletionIntegers K` in
+`w.adicCompletion L` (see e.g. Serre, *Local Fields*, Ch. II §2). Granting that, the proof
+would combine `isIntegral_norm` (the norm of an integral element is integral,
+`Mathlib.RingTheory.Norm.Transitivity`) with the fact that a `ValuationSubring` is integrally
+closed (`Mathlib.RingTheory.Valuation.LocalSubring`), applied to `v.adicCompletionIntegers K`
+(which is literally a `ValuationSubring` by definition). The "integral closure = ring of
+integers" half of this -- uniqueness of the extension of a *complete* valuation, e.g. via
+Krasner's lemma or Henselianity of `v.adicCompletionIntegers K` -- is not yet in Mathlib; only
+the relationship between the valuations themselves across the extension is
+(`valuation_liesOver` above). This is recorded as a `sorry` isolating exactly that missing
+ingredient, so that the assembly argument below (`eventually_localNormMap_mem_units`) can be
+proved unconditionally on top of it. -/
+theorem localNormMap_mem_units {a : (w.adicCompletion L)ˣ}
+    (ha : a ∈ (w.adicCompletionIntegers L).units) :
+    localNormMap K L v w a ∈ (v.adicCompletionIntegers K).units := by
+  sorry
+
+/-- **Main assembly lemma**, and the key missing piece for `IdeleGroup.normMap`
+(`Langlands/IdeleGroup.lean`): if a family `a : ∀ w, (w.adicCompletion L)ˣ` of local units at
+places of `S` is almost everywhere (in the cofinite filter on `HeightOneSpectrum S`) a genuine
+local unit -- the restricted-product condition defining a finite idèle of `L` -- then, for all
+but finitely many places `v` of `R`, *every* place `w` lying over `v` has `a w` a local unit,
+hence (via `localNormMap_mem_units`) its local norm `N_{L_w/K_v}(a w)` is a local unit at `v`.
+
+The point is that finitely many "bad" places `w` of `S` can only lie over finitely many places
+`v` of `R`: each `w` lies over a *unique* `v` (`w.asIdeal.LiesOver v.asIdeal` determines
+`v = HeightOneSpectrum.under R w`, `Ideal.LiesOver.over`), so the bad `v`'s are exactly the
+(finite) image of the bad `w`'s under `HeightOneSpectrum.under R`; away from that finite set,
+every `w` lying over `v` is good. This is what lets the local norm maps be assembled into a
+genuine finite idèle of `K` (once the local units are packaged via `RestrictedProduct.mkUnit`,
+as in `IdeleGroup.exists_toFractionalIdeal_eq`). -/
+theorem eventually_localNormMap_mem_units
+    {a : ∀ w : HeightOneSpectrum S, (w.adicCompletion L)ˣ}
+    (ha : ∀ᶠ w : HeightOneSpectrum S in Filter.cofinite,
+      a w ∈ (w.adicCompletionIntegers L).units) :
+    ∀ᶠ v : HeightOneSpectrum R in Filter.cofinite,
+      ∀ w : HeightOneSpectrum S, ∀ _ : w.asIdeal.LiesOver v.asIdeal,
+        localNormMap K L v w (a w) ∈ (v.adicCompletionIntegers K).units := by
+  rw [Filter.eventually_cofinite] at ha ⊢
+  refine Set.Finite.subset (ha.image (HeightOneSpectrum.under R)) fun v hv => ?_
+  simp only [Set.mem_setOf_eq, not_forall] at hv
+  obtain ⟨w, hw, hcontra⟩ := hv
+  haveI := hw
+  have hveq : v = HeightOneSpectrum.under R w := HeightOneSpectrum.ext hw.over
+  exact ⟨w, mt (localNormMap_mem_units K L v w) hcontra, hveq.symm⟩
 
 end IsDedekindDomain.HeightOneSpectrum
 
