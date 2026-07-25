@@ -1,45 +1,46 @@
-# Scaffolding Templates
+# motif
 
-Standard files for new Rust monorepos in the rhi ecosystem.
+Structural exploration of mathematics: theories as e-graphs, equivalences discovered by saturation, translations between theories checked for axiom preservation.
 
-## Usage
+## What it does
 
-Copy files to your new repo and replace placeholders:
+motif represents an algebraic theory (a signature of operations plus equational axioms) as an [egglog](https://egglog-lang.org/) e-graph. Saturating the e-graph under the axioms surfaces equivalences between expressions that weren't stated up front — the theory tells you what it implies, not just what you wrote down. On top of that core, motif can:
 
-```bash
-# Copy all scaffolding files
-cp -r scaffolding/. ~/git/new-project/
+- **Classify** theories by detecting structural properties (commutativity, idempotence, etc.) from axiom patterns
+- **Check subtheory / inclusion** relationships and build a **theory lattice** from pairwise inclusion
+- **Discover morphisms** — operation mappings between theories that preserve axioms
+- **Diff** what two theories prove about the same expression
+- **Conjecture** novel equivalences in an extended theory relative to a weaker base
+- **Export to Lean 4** to cross-check discovered equivalences against an independent kernel
 
-# Replace placeholders
-sed -i 's/PROJECT_NAME/your-project/g' ~/git/new-project/flake.nix
-sed -i 's/PROJECT_DESCRIPTION/Your description/g' ~/git/new-project/flake.nix
-sed -i 's/PROJECT_NAME/your-project/g' ~/git/new-project/docs/package.json
+Theories are written in a small `.theory` DSL (see `examples/*.theory` for group, monoid, ring, lattice, field, and other algebraic structures) and driven through the `motif` CLI (`crates/motif-cli`) or used as a library (`crates/motif`).
+
+```
+theory Group {
+  ops: e/0, inv/1, mul/2
+  notation: e = const "e", inv = postfix "⁻¹", mul = infix "·" 6
+  axiom right_identity: (mul a (e)) = a
+  axiom left_inverse: (mul (inv a) a) = (e)
+  axiom associativity: (mul (mul a b) c) = (mul a (mul b c))
+}
 ```
 
-## Files Included
+## Why
 
-| File | Purpose |
-|------|---------|
-| `.cargo/config.toml` | Target bloat reduction, mold linker hint |
-| `.envrc` | direnv + nix-direnv integration |
-| `.gitignore` | Standard ignores for Rust + Nix + Node |
-| `.githooks/pre-commit` | fmt → clippy (fast checks first) |
-| `.github/workflows/ci.yml` | CI: fmt, clippy, build, test |
-| `.github/workflows/deploy-docs.yml` | VitePress docs to GitHub Pages |
-| `flake.nix` | Nix dev shell with Rust + mold + bun |
-| `docs/package.json` | VitePress with mermaid plugin |
+Mathematics is a dense graph of structural relationships, not a tree of fields — the boundaries between algebra, analysis, topology, and so on are filing systems, not properties of the underlying structure. motif treats theories as compilable, cross-checkable objects: the same equational content can be saturated for implied equivalences, translated into another theory, or exported to a different formal kernel (Lean/Mathlib, via the `langlands` subproject) to see what each representation does or doesn't see. Full rationale in `docs/research/vision.md`.
 
-## Placeholders
+## Layout
 
-- `PROJECT_NAME` - lowercase project name (e.g., `interconnect`)
-- `PROJECT_DESCRIPTION` - short description
+- `crates/motif` — core library: theory representation, egglog compilation, classification, inclusion, discovery, diffing, Lean export
+- `crates/motif-cli` — the `motif` command-line binary
+- `examples/*.theory` — sample algebraic theories
+- `langlands/` — a Lean 4 + Mathlib subproject used as an independent cross-check backend
+- `docs/research/` — vision, prior-art survey of proof assistant kernels, and roadmap
 
-## Additional Setup
+## Docs
 
-After copying, you'll also need:
+Full documentation: https://docs.rhi.zone/motif/
 
-1. `Cargo.toml` - workspace manifest
-2. `crates/` - your crate(s)
-3. `docs/.vitepress/config.ts` - VitePress config
-4. `docs/index.md` - docs home page
-5. `CLAUDE.md` - project-specific Claude instructions
+## License
+
+Licensed under MIT OR Apache-2.0.
