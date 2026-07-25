@@ -154,14 +154,15 @@ force-fitting into `Signature` first.
 
 The actual operation isn't pairwise equivalence-checking between two given
 theories — it's structure-discovery across a whole plural corpus of
-heterogeneous native representations: are there symmetries, isomorphisms,
-translations between regions? And, just as importantly, what's the topology of
-the corpus itself — gaps where structure is conspicuously missing, over-dense
-regions where the same content is redundantly re-derived, under-dense regions
-that are surprisingly sparse given their neighbors? This generalizes what
-`discover.rs`/`explore.rs` already do (finding morphisms between hand-authored
-`Theory` objects) from "within motif's own Signature type" to "across
-whatever representations the corpus is actually in."
+heterogeneous native representations: are there, for instance, symmetries,
+isomorphisms, translations between regions? And, just as importantly, what's
+the topology of the corpus itself — such as gaps where structure is
+conspicuously missing, over-dense regions where the same content is
+redundantly re-derived, under-dense regions that are surprisingly sparse given
+their neighbors? This generalizes what `discover.rs`/`explore.rs` already do
+(finding morphisms between hand-authored `Theory` objects) from "within
+motif's own Signature type" to "across whatever representations the corpus is
+actually in."
 
 ## Non-Goals
 
