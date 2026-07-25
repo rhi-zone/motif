@@ -4,6 +4,7 @@ import Mathlib.RingTheory.Valuation.RamificationGroup
 import Mathlib.RingTheory.Valuation.Extension
 import Mathlib.Algebra.CharP.Lemmas
 import Mathlib.FieldTheory.IsAlgClosed.Basic
+import Mathlib.FieldTheory.Finite.Basic
 import Mathlib.Topology.Algebra.Category.ProfiniteGrp.Completion
 
 /-!
@@ -89,9 +90,26 @@ recorded as `sorry`s rather than proved:
   the classical computation of the absolute Galois group of a finite field. This is stated as an
   abstract group isomorphism sending Frobenius to `1`; upgrading it to a homeomorphism (matching
   the Krull topology on the left against the profinite topology on the right) is left for later.
+  Its proof would also need to supply the (currently `sorry`-ed) fact that `frobenius K` itself
+  lies in `(residueAction K).range`, i.e. that `residueAction` really does surject onto
+  `Gal(𝓀[K̄]/𝓀[K])` (part of the same classical package: for a Henselian complete field, the
+  residue extension of an algebraic extension is again Galois, with Galois group a quotient of
+  `G_K`).
 The full set-theoretic splitting `W_K ≃ I_K × ℤ` (as opposed to just the topology, which is built
 directly via `WeilGroup.groupFilterBasis` without needing it) and continuity of `WeilGroup.toArt`
 for that topology are not yet constructed either; both are left for later.
+
+Everything else that depends on these five facts *only* formally -- `residueAction_ker`, the
+`IsLocalHom` instance for `algebraMap 𝒪[K] 𝒪[K̄]`, `inertiaSubgroup_le_weilGroup`, and the
+definitions of `frobenius` / `frobenius_fixes` (via `residueField_isAlgClosed` giving `kbar`
+`PerfectField`, hence `PerfectRing kbar p` for `p` the residue characteristic, hence a genuine
+`iterateFrobeniusEquiv`) -- is proved outright, not `sorry`-ed. `residueAction_ker` in particular
+needs no input beyond `MonoidHom.ker` algebra: `residueAction` is `ValuationSubring.inertiaSubgroup`
+composed with the (bijective, value-preserving) `decompositionEquiv`, so its kernel is literally
+`inertiaSubgroup K` regardless of which valuation subring extension was chosen. Likewise the
+`IsLocalHom` instance is proved directly from `Submonoid.isUnit_iff_and` and
+`valuationSubringExtension_comap`, without needing Chevalley's theorem's *content* (only its
+statement, `valuationSubringExtension_comap`, which is definitional once a choice is fixed).
 
 None of these are needed for the *definitions* of `inertiaSubgroup`, `residueAction`, `Zhat`,
 `frobenius`, or `WeilGroup` themselves to typecheck; they are only needed for the expected
@@ -183,7 +201,18 @@ instance : Algebra ↥(𝒪[K]) (valuationSubringExtension K) := (integersAlgebr
 the inclusion is the restriction of the (injective, field-valued) map `algebraMap K L` compatible
 with the valuations, it reflects units. Not yet proved here. -/
 instance : IsLocalHom (algebraMap ↥(𝒪[K]) (valuationSubringExtension K)) := by
-  sorry
+  refine ⟨fun a ha => ?_⟩
+  set A := valuationSubringExtension K
+  have hcoe : ((algebraMap ↥(𝒪[K]) A a : A) : L) = algebraMap K L (a : K) := rfl
+  rw [Submonoid.isUnit_iff_and, hcoe] at ha
+  obtain ⟨hne0, hinv⟩ := ha
+  rw [Submonoid.isUnit_iff_and]
+  refine ⟨fun h => hne0 (by rw [h]; simp), ?_⟩
+  rw [← map_inv₀] at hinv
+  have hmem : (a : K)⁻¹ ∈ (valuation K).valuationSubring := by
+    rw [← valuationSubringExtension_comap K]
+    exact ValuationSubring.mem_comap.mpr hinv
+  exact (Valuation.mem_integer_iff _ _).mpr ((Valuation.mem_valuationSubring_iff _ _).mp hmem)
 
 /-- The residue field of the algebraic-closure integers `valuationSubringExtension K`: this is
 (a `sorry`-ed fact away from being, via `residueField_isAlgClosed` / `residueField_isAlgebraic`)
@@ -210,7 +239,17 @@ def residueAction : Field.absoluteGaloisGroup K →* RingAut kbar :=
     (decompositionEquiv K).toMonoidHom
 
 theorem residueAction_ker : (residueAction K).ker = inertiaSubgroup K := by
-  sorry
+  ext x
+  simp only [residueAction, inertiaSubgroup, MonoidHom.mem_ker, MonoidHom.coe_comp,
+    Function.comp_apply, MulEquiv.coe_toMonoidHom, Subgroup.mem_map]
+  constructor
+  · intro hx
+    exact ⟨decompositionEquiv K x, hx, rfl⟩
+  · rintro ⟨y, hy, hxy⟩
+    have hyx : decompositionEquiv K x = y := by
+      apply Subtype.ext
+      rw [← hxy]; rfl
+    rwa [hyx]
 
 /-! ### The profinite completion `ℤ̂` and Frobenius -/
 
@@ -258,19 +297,50 @@ quotient of it, using injectivity of `toZhat`. -/
 def integerSubgroupEquiv : Multiplicative ℤ ≃* integerSubgroup :=
   MonoidHom.ofInjective toZhat_injective
 
+instance : Fintype 𝓀[K] := Fintype.ofFinite _
+
+/-- The residue characteristic `p` of `𝓀[K]` (and, transported along `algebraMap 𝓀[K] kbar`, of
+`kbar`). -/
+def residueCharP : ℕ := ringChar 𝓀[K]
+
+instance : CharP 𝓀[K] (residueCharP K) := ringChar.charP _
+
+instance residueCharP_fact : Fact (residueCharP K).Prime :=
+  ⟨CharP.char_is_prime 𝓀[K] _⟩
+
+/-- The degree `n` of `𝓀[K]` over its prime field, i.e. `#𝓀[K] = p ^ n` (`card_residueField_eq`). -/
+def residueDegree : ℕ+ := (FiniteField.card 𝓀[K] (residueCharP K)).choose
+
+theorem card_residueField_eq :
+    Fintype.card 𝓀[K] = (residueCharP K) ^ (residueDegree K : ℕ) :=
+  (FiniteField.card 𝓀[K] (residueCharP K)).choose_spec.2
+
+instance : CharP kbar (residueCharP K) :=
+  charP_of_injective_algebraMap (algebraMap 𝓀[K] kbar).injective _
+
+instance : ExpChar 𝓀[K] (residueCharP K) := .prime (residueCharP_fact K).out
+
+instance : ExpChar kbar (residueCharP K) := .prime (residueCharP_fact K).out
+
 /-- The (arithmetic) Frobenius automorphism `x ↦ x ^ #𝓀[K]` of `kbar`, generating (topologically)
 the Galois group `Gal(kbar/𝓀[K])`. Well-definedness as a ring automorphism (as opposed to merely
 an endomorphism) uses that `kbar` is algebraically closed, hence perfect
 (`residueField_isAlgClosed`), so that the (injective, since `kbar` is a field) Frobenius
 endomorphism is also surjective. -/
-def frobenius : RingAut kbar := by
-  sorry
+def frobenius : RingAut kbar :=
+  haveI : PerfectField kbar := @IsAlgClosed.perfectField kbar _ (residueField_isAlgClosed K)
+  haveI : PerfectRing kbar (residueCharP K) := PerfectField.toPerfectRing (residueCharP K)
+  iterateFrobeniusEquiv kbar (residueCharP K) (residueDegree K : ℕ)
 
 /-- Frobenius fixes `𝓀[K]` pointwise: elements of the residue field of `𝒪[K]` satisfy
 `x ^ #𝓀[K] = x`, by Lagrange / Fermat's little theorem for the finite field `𝓀[K]`. -/
 theorem frobenius_fixes (x : 𝓀[K]) :
     frobenius K (algebraMap 𝓀[K] kbar x) = algebraMap 𝓀[K] kbar x := by
-  sorry
+  haveI : PerfectField kbar := @IsAlgClosed.perfectField kbar _ (residueField_isAlgClosed K)
+  haveI : PerfectRing kbar (residueCharP K) := PerfectField.toPerfectRing (residueCharP K)
+  show iterateFrobeniusEquiv kbar (residueCharP K) (residueDegree K : ℕ)
+      (algebraMap 𝓀[K] kbar x) = algebraMap 𝓀[K] kbar x
+  rw [iterateFrobeniusEquiv_def, ← map_pow, ← card_residueField_eq, FiniteField.pow_card]
 
 /-! ### The isomorphism `Gal(kbar/𝓀[K]) ≅ ℤ̂` and the Weil group -/
 
@@ -304,7 +374,12 @@ def WeilGroup : Subgroup (Field.absoluteGaloisGroup K) :=
 
 /-- The inertia subgroup is contained in the Weil group (it maps to `1 ∈ ℤ ≤ ℤ̂`). -/
 theorem inertiaSubgroup_le_weilGroup : inertiaSubgroup K ≤ WeilGroup K := by
-  sorry
+  rw [← residueAction_ker]
+  intro x hx
+  rw [MonoidHom.mem_ker] at hx
+  simp only [WeilGroup, Subgroup.mem_comap, toZhatHom, MonoidHom.coe_comp, Function.comp_apply]
+  rw [show (residueAction K).rangeRestrict x = 1 from Subtype.ext hx, map_one]
+  exact Subgroup.one_mem _
 
 /-- `inertiaSubgroup K` is normal in `G_K`: it is (via `residueAction_ker`) the kernel of
 `residueAction K`, and kernels of group homomorphisms are always normal. -/
