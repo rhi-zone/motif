@@ -27,14 +27,14 @@ decomposition subgroup of any such extension is all of `Gal(L/K)`.
   (in the sense `A.comap (algebraMap K L) = 𝒪[K]`), there is a `RankOne A.valuation` instance
   whose associated embedding `A.ValueGroup → ℝ≥0`, pulled back along
   `A.valuation.restrict ∘ algebraMap K L`, reproduces `‖·‖` on `K`. This packages the two
-  genuinely deep facts described in the docstring below. As of this file's current state, the
-  existence half (`RankOne A.valuation` is nonempty, i.e. rank ≤ 1 is preserved) is now proved in
-  full -- the former `hLtoK` gap (a reverse-direction minimal-polynomial estimate not derivable
-  from `Valuation.exists_pow_le_of_isAlgebraic` alone) is closed by the new
-  `Valuation.exists_pow_eq_of_isAlgebraic` lemma above it; the compatible-normalization half
-  remains a separately-scoped `sorry` (a Hölder-uniqueness-for-archimedean-groups argument, not
-  yet in Mathlib). See the `sorry`-site comment
-  in the proof for the precise mathematical content each represents.
+  genuinely deep facts described in the docstring below and is now **fully proved, with no
+  `sorry`**: the former `hLtoK` gap (a reverse-direction minimal-polynomial estimate not derivable
+  from `Valuation.exists_pow_le_of_isAlgebraic` alone) is closed by
+  `Valuation.exists_pow_eq_of_isAlgebraic`; the compatible-normalization gap (Step 3g) is closed by
+  `Valuation.exists_rpow_eq_of_isEquiv`, a from-scratch proof of Hölder's uniqueness theorem for
+  archimedean linearly ordered groups, specialized to `ℝ≥0`-valued valuations (see that lemma's
+  docstring for the argument; it is not otherwise in Mathlib, which only has the *existence* half,
+  `Archimedean.exists_orderAddMonoidHom_real_injective`).
 * `LocalField.exists_rankOne_absoluteValue_extends` : given the same hypotheses, there is an
   `AbsoluteValue L ℝ` extending the norm on `K` (from a fixed rank-1 embedding for `K`) whose
   closed unit ball is `A`. This is the purely formal consequence of
@@ -49,7 +49,7 @@ decomposition subgroup of any such extension is all of `Gal(L/K)`.
 
 ## Implementation notes
 
-The single deep `sorry`, `exists_rankOne_compatible`, packages together:
+`exists_rankOne_compatible` packages together two facts, both now fully proved:
 
 1. **Rank preservation under algebraic extension**: if `K` has a rank-≤-1 (i.e. real-valued)
    valuation and `L / K` is algebraic, then any valuation subring `A` of `L` restricting to
@@ -104,13 +104,15 @@ confirms `example : ValuativeRel.IsRankLeOne K` — let alone any norm-compatibi
 derivable from `[NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K]` alone; no
 instance bridges them.)
 
-Fixing this requires strengthening the hypotheses of `exists_rankOne_compatible`, e.g. by adding
-`[ValuativeRel.IsNontrivial K]` and an explicit compatibility hypothesis tying `valuation K` to
-the norm (such as `[Fact (NormedField.valuation (K := K)).Compatible]`, using
-`Valuation.Compatible` from `Mathlib.RingTheory.Valuation.ValuativeRel.Basic`). Given this is a
-change to the theorem's signature (not just its proof), `exists_rankOne_compatible` is left as
-the file's one `sorry`, with the mathematical content of fact #1 (modulo this missing hypothesis)
-captured by the two lemmas above, ready to be assembled once the signature is corrected.
+This was fixed by strengthening the hypotheses of `exists_rankOne_compatible`, adding
+`[(NormedField.valuation (K := K)).Compatible]` (see the `## Fix` section on the theorem itself)
+to tie `valuation K` to the norm via `Valuation.Compatible` from
+`Mathlib.RingTheory.Valuation.ValuativeRel.Basic`. With the signature corrected,
+`exists_rankOne_compatible` is now **fully proved**: fact #1 (rank preservation) uses the two
+lemmas above plus `Valuation.exists_pow_eq_of_isAlgebraic`; fact #2 (compatible normalization)
+uses `Valuation.exists_rpow_eq_of_isEquiv` (Hölder uniqueness for `ℝ≥0`-valued valuations, proved
+from scratch below) to rescale the rank-≤-1 embedding obtained for fact #1 so it matches `‖·‖`
+on `K` exactly.
 -/
 
 noncomputable section
@@ -286,6 +288,118 @@ theorem Valuation.exists_pow_eq_of_isAlgebraic {K L Γ₀ : Type*} [Field K] [Fi
   · obtain ⟨m, c, hm1, hmn, hc0, hceq⟩ := hcore j i hgt hile hcj hci hveq.symm
     exact ⟨m, c, hm1, hmn, hc0, hceq⟩
 
+/-- **Hölder's uniqueness theorem for archimedean groups, specialized to `ℝ≥0`-valued
+valuations.** If `v₁ v₂ : Valuation K ℝ≥0` are equivalent (`v₁.IsEquiv v₂`, i.e. they induce the
+same preorder/valuation subring on `K`) and `v₁` is nontrivial, then `v₂` equals `v₁` raised to a
+fixed positive real power: `∃ t > 0, ∀ x, v₂ x = v₁ x ^ t`. This is the archimedean-linearly-ordered-
+group uniqueness fact (any two strictly monotone embeddings of such a group into `ℝ` agree up to a
+positive real scalar) specialized to the case where both embeddings already land directly in `ℝ≥0`:
+this sidesteps needing `MulArchimedean`/`ValueGroup₀` machinery as a separate hypothesis, since any
+subgroup of `(ℝ, +)` (reached here via `Real.log`) is automatically archimedean, being a subgroup of
+an archimedean group. Not currently in Mathlib in any form (only the *existence* half,
+`Archimedean.exists_orderAddMonoidHom_real_injective` in `Mathlib.Data.Real.Embedding`, is present).
+The proof is the classical density argument: pick an anchor `c₀` with `v₁ c₀ > 1` (so `v₂ c₀ > 1`
+too, via `hequiv`), then show `Real.log (v₁ x) / Real.log (v₁ c₀) = Real.log (v₂ x) / Real.log
+(v₂ c₀)` for every `x` by comparing against every rational `p / n` via the valuation identity
+`v c₀ ^ p < v x ^ n ↔ v (c₀ ^ p / x ^ n) < 1`, which -- being purely an order-comparison against `1`
+-- transfers across `hequiv` unchanged; density of `ℚ` in `ℝ` then forces the two ratios to agree
+exactly, not just up to rational approximation. -/
+theorem Valuation.exists_rpow_eq_of_isEquiv {K : Type*} [Field K] (v₁ v₂ : Valuation K ℝ≥0)
+    [hv₁ : v₁.IsNontrivial] (hequiv : v₁.IsEquiv v₂) :
+    ∃ t : ℝ, 0 < t ∧ ∀ x : K, v₂ x = v₁ x ^ t := by
+  classical
+  -- Step 1: an anchor `c₀` with `v₁ c₀ > 1` (hence `v₂ c₀ > 1` too, via `hequiv`).
+  obtain ⟨c, hc0, hc1⟩ := hv₁.exists_val_nontrivial
+  have hcne0 : c ≠ 0 := (Valuation.ne_zero_iff v₁).mp hc0
+  obtain ⟨c₀, hv1c0⟩ : ∃ c₀ : K, 1 < v₁ c₀ := by
+    rcases lt_or_gt_of_ne hc1 with hlt | hgt
+    · exact ⟨c⁻¹, by
+        rw [map_inv₀]
+        exact (one_lt_inv₀ (zero_lt_iff.mpr hc0)).mpr hlt⟩
+    · exact ⟨c, hgt⟩
+  have hv2c0 : 1 < v₂ c₀ := by
+    have h := hequiv.lt_iff_lt (x := (1 : K)) (y := c₀)
+    rw [map_one, map_one] at h
+    exact h.mp hv1c0
+  set L1c : ℝ := Real.log (v₁ c₀ : ℝ) with hL1c_def
+  set L2c : ℝ := Real.log (v₂ c₀ : ℝ) with hL2c_def
+  have hL1c_pos : 0 < L1c := Real.log_pos (by exact_mod_cast hv1c0)
+  have hL2c_pos : 0 < L2c := Real.log_pos (by exact_mod_cast hv2c0)
+  set t : ℝ := L2c / L1c with ht_def
+  have ht_pos : 0 < t := div_pos hL2c_pos hL1c_pos
+  refine ⟨t, ht_pos, fun x => ?_⟩
+  rcases eq_or_ne x 0 with rfl | hx0
+  · simp [NNReal.zero_rpow ht_pos.ne']
+  -- Step 2: the core valuation-level equivalence, for any integer power `p` of `c₀` and natural
+  -- power `n` of `x` -- purely algebraic, transfers across `hequiv` via the comparison to `1`.
+  have hv1x_ne : v₁ x ≠ 0 := (Valuation.ne_zero_iff v₁).mpr hx0
+  have hv2x_ne : v₂ x ≠ 0 := (Valuation.ne_zero_iff v₂).mpr hx0
+  have hcompare : ∀ (v : Valuation K ℝ≥0), v x ≠ 0 → ∀ (p : ℤ) (n : ℕ),
+      v c₀ ^ p < v x ^ n ↔ v (c₀ ^ p / x ^ n) < 1 := by
+    intro v hvne p n
+    rw [map_div₀, map_zpow₀, map_pow]
+    exact (div_lt_one (zero_lt_iff.mpr (pow_ne_zero n hvne))).symm
+  have hvcore : ∀ (p : ℤ) (n : ℕ), v₁ c₀ ^ p < v₁ x ^ n ↔ v₂ c₀ ^ p < v₂ x ^ n := by
+    intro p n
+    rw [hcompare v₁ hv1x_ne p n, hcompare v₂ hv2x_ne p n]
+    have hiff := hequiv.lt_iff_lt (x := c₀ ^ p / x ^ n) (y := (1 : K))
+    rwa [map_one, map_one] at hiff
+  -- Step 3: transport `hvcore` to a real-log statement, for all `p : ℤ`, `n : ℕ`.
+  have hv1x_pos : (0 : ℝ) < (v₁ x : ℝ) := by exact_mod_cast zero_lt_iff.mpr hv1x_ne
+  have hv2x_pos : (0 : ℝ) < (v₂ x : ℝ) := by exact_mod_cast zero_lt_iff.mpr hv2x_ne
+  have hv1c0_pos : (0 : ℝ) < (v₁ c₀ : ℝ) := by positivity
+  have hv2c0_pos : (0 : ℝ) < (v₂ c₀ : ℝ) := by positivity
+  have hlogcore : ∀ (p : ℤ) (n : ℕ),
+      (p : ℝ) * L1c < (n : ℝ) * Real.log (v₁ x : ℝ) ↔
+        (p : ℝ) * L2c < (n : ℝ) * Real.log (v₂ x : ℝ) := by
+    intro p n
+    have h1 : (p : ℝ) * L1c < (n : ℝ) * Real.log (v₁ x : ℝ) ↔ v₁ c₀ ^ p < v₁ x ^ n := by
+      rw [hL1c_def, ← Real.log_zpow, ← Real.log_pow,
+        Real.log_lt_log_iff (zpow_pos hv1c0_pos p) (pow_pos hv1x_pos n),
+        ← NNReal.coe_zpow, ← NNReal.coe_pow, NNReal.coe_lt_coe]
+    have h2 : (p : ℝ) * L2c < (n : ℝ) * Real.log (v₂ x : ℝ) ↔ v₂ c₀ ^ p < v₂ x ^ n := by
+      rw [hL2c_def, ← Real.log_zpow, ← Real.log_pow,
+        Real.log_lt_log_iff (zpow_pos hv2c0_pos p) (pow_pos hv2x_pos n),
+        ← NNReal.coe_zpow, ← NNReal.coe_pow, NNReal.coe_lt_coe]
+    rw [h1, h2]
+    exact hvcore p n
+  -- Step 4: specialize to `p := q.num`, `n := q.den` for `q : ℚ`, converting `(q:ℝ) * A < B` to
+  -- the integer/natural-power form via `Rat.cast_def`.
+  have hqcast : ∀ (A B : ℝ) (q : ℚ), (q : ℝ) * A < B ↔ (q.num : ℝ) * A < (q.den : ℝ) * B := by
+    intro A B q
+    rw [Rat.cast_def, div_mul_eq_mul_div, div_lt_iff₀ (by exact_mod_cast q.den_pos),
+      mul_comm B (q.den : ℝ)]
+  have hrat : ∀ q : ℚ, (q : ℝ) * L1c < Real.log (v₁ x : ℝ) ↔
+      (q : ℝ) * L2c < Real.log (v₂ x : ℝ) := by
+    intro q
+    rw [hqcast L1c _ q, hqcast L2c _ q]
+    exact hlogcore q.num q.den
+  -- Step 5: density of `ℚ` in `ℝ` forces the two ratios to agree exactly.
+  have hAB : Real.log (v₁ x : ℝ) / L1c = Real.log (v₂ x : ℝ) / L2c := by
+    by_contra hne
+    rcases lt_or_gt_of_ne hne with hlt | hlt
+    · obtain ⟨q, hq1, hq2⟩ := exists_rat_btwn hlt
+      have h1 : ¬ (q : ℝ) * L1c < Real.log (v₁ x : ℝ) := by
+        rw [not_lt, ← div_le_iff₀ hL1c_pos]; exact hq1.le
+      have h2 : (q : ℝ) * L2c < Real.log (v₂ x : ℝ) := by
+        rw [← lt_div_iff₀ hL2c_pos]; exact hq2
+      exact h1 ((hrat q).mpr h2)
+    · obtain ⟨q, hq1, hq2⟩ := exists_rat_btwn hlt
+      have h1 : (q : ℝ) * L1c < Real.log (v₁ x : ℝ) := by
+        rw [← lt_div_iff₀ hL1c_pos]; exact hq2
+      have h2 : ¬ (q : ℝ) * L2c < Real.log (v₂ x : ℝ) := by
+        rw [not_lt, ← div_le_iff₀ hL2c_pos]; exact hq1.le
+      exact h2 ((hrat q).mp h1)
+  have hkey : Real.log (v₁ x : ℝ) * L2c = Real.log (v₂ x : ℝ) * L1c :=
+    (div_eq_div_iff hL1c_pos.ne' hL2c_pos.ne').mp hAB
+  have hlogeq : Real.log (v₂ x : ℝ) = t * Real.log (v₁ x : ℝ) := by
+    rw [ht_def]; field_simp; linarith [hkey]
+  have hv2x_eq : (v₂ x : ℝ) = (v₁ x : ℝ) ^ t := by
+    rw [Real.rpow_def_of_pos hv1x_pos, mul_comm, ← hlogeq, Real.exp_log hv2x_pos]
+  apply NNReal.coe_injective
+  rw [NNReal.coe_rpow]
+  exact hv2x_eq
+
 end ReusableInfrastructure
 
 section NormedFieldValuativeRelBridge
@@ -372,14 +486,17 @@ extension" argument. The proof below carries this out as far as it goes:
   directly (`hMArchA`, via the `MulArchimedean` class's `arch` field) and transfer this to obtain
   `Nonempty (RankOne A.valuation)` (`hR`) via `nonempty_rankOne_iff_mulArchimedean` -- i.e. rank
   ≤ 1 of `A.valuation` is now **fully proved**, with no remaining `sorry`.
-* Step 3g is the **one remaining genuine gap**: `hR` is *some* `RankOne` instance, not
-  necessarily the one matching `‖·‖` on `K`. Fixing the normalization needs Hölder's uniqueness
-  theorem for archimedean linearly ordered groups (any two strictly monotone monoid homs into
-  `ℝ≥0` agree up to a positive real power), which is not in Mathlib; see the `sorry`-site comment
-  for the intended rescaling construction once it is available.
+* Step 3g fixes the normalization: `hR` is *some* `RankOne` instance, not necessarily the one
+  matching `‖·‖` on `K`. This needs Hölder's uniqueness theorem for archimedean linearly ordered
+  groups (any two strictly monotone monoid homs into `ℝ≥0` agree up to a positive real power) --
+  not in Mathlib, so it is proved from scratch here as `Valuation.exists_rpow_eq_of_isEquiv`
+  (specialized to the case where both homs already land in `ℝ≥0`, which sidesteps needing
+  `MulArchimedean`/`ValueGroup₀` as a separate hypothesis). Applying it to the two `ℝ≥0`-valued
+  valuations obtained by pushing `A.valuation.restrict.comap (algebraMap K L)` forward along
+  `hR.hom'` and `(valuation K).restrict` forward along `hRK.hom'` gives an exponent `t`; rescaling
+  `hR.hom'` by `t` (via `NNReal.rpow`) produces the compatible `RankOne` instance `hR'`.
 
-This last gap is a self-contained, precisely-scoped piece of missing infrastructure -- not
-tactic-closable, and not resolvable by further exploration of what is already proved above. -/
+With Step 3g closed, `exists_rankOne_compatible` has **no remaining `sorry`**. -/
 theorem exists_rankOne_compatible [Algebra.IsAlgebraic K L]
     (A : ValuationSubring L) (hA : A.comap (algebraMap K L) = (valuation K).valuationSubring) :
     ∃ hR : RankOne A.valuation, ∀ x : K,
@@ -567,23 +684,51 @@ theorem exists_rankOne_compatible [Algebra.IsAlgebraic K L]
       (MonoidWithZeroHom.ValueGroup₀.embedding (f := MonoidWithZeroHom.ofClass A.valuation)).toMonoidHom
       (MonoidWithZeroHom.ValueGroup₀.embedding_strictMono (f := MonoidWithZeroHom.ofClass A.valuation))
   obtain ⟨hR⟩ := Valuation.nonempty_rankOne_iff_mulArchimedean.mpr hMArchA'
-  -- **Step 3g, the second genuine remaining gap.** `hR` is *some* `RankOne A.valuation`
-  -- instance (Steps 3a-3f above establish its existence unconditionally), but its embedding
-  -- `hR.hom' : ValueGroup₀ (.ofClass A.valuation) → ℝ≥0` need not agree with `‖·‖` on `K` (only
-  -- `Nonempty` was produced, not a specific normalization). Fixing this is routine in substance
-  -- but not yet written down: for a `MulArchimedean` linearly ordered group, any two strictly
-  -- monotone monoid homomorphisms into `ℝ≥0` agree up to raising to a positive real power
-  -- (Hölder's theorem for archimedean ordered groups -- not currently in Mathlib, see the
-  -- `nonempty_rankOne_iff_mulArchimedean` proof in `Mathlib.RingTheory.Valuation.RankOne` for the
-  -- one-sided existence construction this would need to be paired with a uniqueness half of).
-  -- Given that, the fix is: pick any `c₀ : K` with `1 < valuation K c₀` (exists by
-  -- `hvK_nontrivial`), let `r₀ := hR.hom' (A.valuation.restrict (algebraMap K L c₀))` and
-  -- `s₀ := ‖c₀‖` (both `> 1`), and rescale `hR.hom'` by the exponent `Real.log s₀ / Real.log r₀`
-  -- (an `NNReal.rpow`) to build a new embedding matching `‖·‖` at `c₀`; Hölder uniqueness (once
-  -- available) then upgrades this single-point match to agreement on all of `K`. This is a
-  -- self-contained, well-scoped piece of missing order-theory infrastructure, not a
-  -- tactic-closable gap.
-  sorry
+  -- **Step 3g.** `hR` is *some* `RankOne A.valuation` instance (Steps 3a-3f establish its
+  -- existence unconditionally), but its embedding need not agree with `‖·‖` on `K`. Fix this by
+  -- pushing `A.valuation.restrict.comap (algebraMap K L)` and `(valuation K).restrict` forward
+  -- along `hR.hom'`/`hRK.hom'` respectively into two genuinely `ℝ≥0`-valued, equivalent
+  -- valuations on `K`, applying `Valuation.exists_rpow_eq_of_isEquiv` (proved above) to relate
+  -- them by a positive real exponent `t`, then rescaling `hR.hom'` by `t` (via `NNReal.rpow`) to
+  -- get a new `RankOne A.valuation` instance whose embedding matches `‖·‖` on `K` exactly.
+  set v' : Valuation K (MonoidWithZeroHom.ValueGroup₀ (.ofClass A.valuation)) :=
+    A.valuation.restrict.comap (algebraMap K L) with hv'_def
+  set v1 : Valuation K ℝ≥0 := v'.map hR.hom' hR.strictMono'.monotone with hv1_def
+  have hv1_equiv_v' : v1.IsEquiv v' :=
+    Valuation.isEquiv_map_self_of_strictMono hR.hom' hR.strictMono'
+  have hcomap_isEquiv_v' :
+      (A.valuation.comap (algebraMap K L)).IsEquiv v' :=
+    (Valuation.isEquiv_restrict (v := A.valuation)).comap (algebraMap K L)
+  have hv'_nontrivial : v'.IsNontrivial :=
+    Valuation.isNontrivial_of_isEquiv hcomap_isEquiv_v' hcomap_nontrivial
+  have hv1_nontrivial : v1.IsNontrivial :=
+    Valuation.isNontrivial_of_isEquiv hv1_equiv_v'.symm hv'_nontrivial
+  set v2 : Valuation K ℝ≥0 := (valuation K).restrict.map hRK.hom' hRK.strictMono'.monotone
+    with hv2_def
+  have hv2_apply : ∀ x : K, (v2 x : ℝ) = ‖x‖ := hRK_compat
+  have hv2_equiv_restrict : v2.IsEquiv (valuation K).restrict :=
+    Valuation.isEquiv_map_self_of_strictMono hRK.hom' hRK.strictMono'
+  have hv2_isEquiv_valK : v2.IsEquiv (valuation K) :=
+    hv2_equiv_restrict.trans (Valuation.isEquiv_restrict (v := valuation K)).symm
+  have hv1_isEquiv_v2 : v1.IsEquiv v2 :=
+    (hv1_equiv_v'.trans hcomap_isEquiv_v'.symm).trans (hequiv.trans hv2_isEquiv_valK.symm)
+  obtain ⟨t, ht_pos, ht⟩ := Valuation.exists_rpow_eq_of_isEquiv v1 v2 hv1_isEquiv_v2
+  -- Rescale `hR.hom'` by `t` to match `v2` (i.e. `‖·‖`) exactly.
+  let hom2 : MonoidWithZeroHom.ValueGroup₀ (.ofClass A.valuation) →*₀ ℝ≥0 :=
+    { toFun := fun γ => hR.hom' γ ^ t
+      map_zero' := by simp [NNReal.zero_rpow ht_pos.ne']
+      map_one' := by simp
+      map_mul' := fun a b => by simp [NNReal.mul_rpow] }
+  have hom2_strictMono : StrictMono hom2 := by
+    intro a b hab
+    exact NNReal.rpow_lt_rpow (hR.strictMono' hab) ht_pos
+  let hR' : Valuation.RankOne A.valuation :=
+    { hvA_nontrivial with hom' := hom2, strictMono' := hom2_strictMono }
+  refine ⟨hR', fun x => ?_⟩
+  show (hom2 (A.valuation.restrict (algebraMap K L x)) : ℝ) = ‖x‖
+  have : hom2 (A.valuation.restrict (algebraMap K L x)) = v1 x ^ t := rfl
+  rw [this, ← ht x]
+  exact hv2_apply x
 
 /-- Given a rank-1 structure on `A.valuation` compatible with `‖·‖` on `K` (packaged by
 `exists_rankOne_compatible`), the purely formal part of `exists_rankOne_absoluteValue_extends`:
