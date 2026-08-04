@@ -290,15 +290,18 @@ this comap equals `maximalIdeal R`, so (applying `Ideal.map` back and using `Ide
 `M₀ ≤ I`; two maximal ideals with `M₀ ≤ I` forces `M₀ = I` (`Ideal.IsMaximal.eq_of_le`). Hence `M₀`
 is the *unique* maximal ideal, and `IsLocalRing.of_unique_max_ideal` applies.
 
-This file does **not** yet identify `IsLocalRing.ResidueField (AdjoinRoot f)` with `l` itself (item
-3's residue-field claim beyond "some maximal ideal with field quotient `AdjoinRoot (minpoly k β₀)`
-exists") -- doing so requires additionally applying `IntermediateField.adjoinRootEquivAdjoin` and
-the primitive-element hypothesis `k⟮β₀⟯ = ⊤` to identify `AdjoinRoot (minpoly k β₀) ≃ₐ[k] l`, and
-composing with `AdjoinRoot.quotEquivQuotMap` plus `IsLocalRing.eq_maximalIdeal` (to identify `M₀`
-with `maximalIdeal (AdjoinRoot f)` once locality is known) into a single equivalence
-`IsLocalRing.ResidueField (AdjoinRoot f) ≃+* l`. This composition was not carried out here (left as
-a mechanical but nontrivial follow-up: threading the `AdjoinRoot`/`Ideal.Quotient` defeq unfoldings
-used in `isDomain_adjoinRoot_lift_minpoly`'s proof through one more layer of equivalences). -/
+This file also identifies `IsLocalRing.ResidueField (AdjoinRoot f)` with `l` itself, given the
+primitive-element hypothesis `k⟮β₀⟯ = ⊤`
+(`HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly`, below `isLocalRing_adjoinRoot_lift_minpoly`)
+-- see that theorem's docstring for the composition. That equivalence is landed as a plain
+`RingEquiv` (`≃+*`), not an `AlgEquiv` over `k`: upgrading to `≃ₐ[k]` would first need a
+`k`-`Algebra` structure on `IsLocalRing.ResidueField (AdjoinRoot f)` (there is no free one -- `k` is
+the residue field of `R`, not of `AdjoinRoot f`), which itself needs `IsLocalHom (algebraMap R
+(AdjoinRoot f))`, plus a proof that the composed equivalence commutes with `algebraMap k _` on both
+sides. This is a materially larger undertaking (a new nontrivial instance, not otherwise needed
+anywhere else in this file, plus a compatibility proof) than the rest of this section, so it was not
+attempted; the `RingEquiv` suffices for identifying the underlying field and is the natural
+stopping point here. -/
 
 theorem HenselianLocalRing.isDomain_adjoinRoot_lift_minpoly {R : Type*} [CommRing R] [IsDomain R]
     [UniqueFactorizationMonoid R] [HenselianLocalRing R] {l : Type*} [Field l]
@@ -328,6 +331,30 @@ theorem HenselianLocalRing.finrank_adjoinRoot_lift_minpoly {R : Type*} [CommRing
     ← hf.natDegree_map (algebraMap R (IsLocalRing.ResidueField R)), hfmap,
     ← IntermediateField.adjoin.finrank hβ₀, hprim, IntermediateField.finrank_top']
 
+/-- **`M₀ := Ideal.map (AdjoinRoot.of f) (maximalIdeal R)` is maximal** in `AdjoinRoot f`. Extracted
+from `isLocalRing_adjoinRoot_lift_minpoly`'s proof (see that theorem's docstring for the argument)
+so it can be reused directly by `residueField_equiv_adjoinRoot_lift_minpoly`, which needs exactly
+this fact (via `IsLocalRing.eq_maximalIdeal`) to identify `M₀` with `maximalIdeal (AdjoinRoot f)`
+once locality is known, without needing `IsDomain R` (this step alone doesn't use it). -/
+theorem HenselianLocalRing.isMaximal_map_of_lift_minpoly {R : Type*} [CommRing R]
+    [HenselianLocalRing R] {l : Type*} [Field l] [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
+    (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) {f : R[X]} (_hf : f.Monic)
+    (hfmap : f.map (algebraMap R (IsLocalRing.ResidueField R)) =
+      minpoly (IsLocalRing.ResidueField R) β₀) :
+    (Ideal.map (AdjoinRoot.of f) (IsLocalRing.maximalIdeal R)).IsMaximal := by
+  have hM0field :
+      IsField (AdjoinRoot f ⧸ Ideal.map (AdjoinRoot.of f) (IsLocalRing.maximalIdeal R)) := by
+    have e := (AdjoinRoot.quotEquivQuotMap f (IsLocalRing.maximalIdeal R)).toRingEquiv.toMulEquiv
+    refine MulEquiv.isField ?_ e
+    show IsField (Polynomial (IsLocalRing.ResidueField R) ⧸
+      Ideal.span {f.map (algebraMap R (IsLocalRing.ResidueField R))})
+    rw [hfmap]
+    show IsField (AdjoinRoot (minpoly (IsLocalRing.ResidueField R) β₀))
+    haveI : Fact (Irreducible (minpoly (IsLocalRing.ResidueField R) β₀)) :=
+      ⟨minpoly.irreducible hβ₀⟩
+    exact Field.toIsField _
+  exact Ideal.Quotient.maximal_of_isField _ hM0field
+
 /-- **`AdjoinRoot f` is local**, with `M₀ := Ideal.map (AdjoinRoot.of f) (maximalIdeal R)` its
 unique maximal ideal. See the section docstring above for the full argument: `M₀` is maximal
 because `AdjoinRoot f ⧸ M₀ ≅ AdjoinRoot (minpoly k β₀)` (a field, `minpoly k β₀` being irreducible),
@@ -340,19 +367,8 @@ theorem HenselianLocalRing.isLocalRing_adjoinRoot_lift_minpoly {R : Type*} [Comm
     (hfmap : f.map (algebraMap R (IsLocalRing.ResidueField R)) =
       minpoly (IsLocalRing.ResidueField R) β₀) :
     IsLocalRing (AdjoinRoot f) := by
-  have hM0field :
-      IsField (AdjoinRoot f ⧸ Ideal.map (AdjoinRoot.of f) (IsLocalRing.maximalIdeal R)) := by
-    have e := (AdjoinRoot.quotEquivQuotMap f (IsLocalRing.maximalIdeal R)).toRingEquiv.toMulEquiv
-    refine MulEquiv.isField ?_ e
-    show IsField (Polynomial (IsLocalRing.ResidueField R) ⧸
-      Ideal.span {f.map (algebraMap R (IsLocalRing.ResidueField R))})
-    rw [hfmap]
-    show IsField (AdjoinRoot (minpoly (IsLocalRing.ResidueField R) β₀))
-    haveI : Fact (Irreducible (minpoly (IsLocalRing.ResidueField R) β₀)) :=
-      ⟨minpoly.irreducible hβ₀⟩
-    exact Field.toIsField _
   have hM0max : (Ideal.map (AdjoinRoot.of f) (IsLocalRing.maximalIdeal R)).IsMaximal :=
-    Ideal.Quotient.maximal_of_isField _ hM0field
+    HenselianLocalRing.isMaximal_map_of_lift_minpoly hβ₀ hf hfmap
   refine IsLocalRing.of_unique_max_ideal
     ⟨Ideal.map (AdjoinRoot.of f) (IsLocalRing.maximalIdeal R), hM0max, fun I hI => ?_⟩
   haveI : Module.Finite R (AdjoinRoot f) := (AdjoinRoot.powerBasis' hf).finite
@@ -366,3 +382,46 @@ theorem HenselianLocalRing.isLocalRing_adjoinRoot_lift_minpoly {R : Type*} [Comm
     rw [← AdjoinRoot.algebraMap_eq, ← hcomapeq]
     exact Ideal.map_comap_le
   exact (hM0max.eq_of_le hI.ne_top hle).symm
+
+/-! ### The residue field of `AdjoinRoot f` is `l` itself
+
+The remaining gap flagged in the section docstring above: given the primitive-element hypothesis
+`hprim : k⟮β₀⟯ = ⊤` and `IsLocalRing (AdjoinRoot f)` (from `isLocalRing_adjoinRoot_lift_minpoly`),
+`IsLocalRing.ResidueField (AdjoinRoot f)` is isomorphic to `l` itself, not merely to some field
+abstractly identified with `AdjoinRoot (minpoly k β₀)`. The composition:
+
+1. `IsLocalRing.eq_maximalIdeal` applied to `M₀`'s maximality
+   (`isMaximal_map_of_lift_minpoly`) gives `M₀ = IsLocalRing.maximalIdeal (AdjoinRoot f)`;
+   `Ideal.quotEquivOfEq` turns this into `AdjoinRoot f ⧸ M₀ ≃+* AdjoinRoot f ⧸ maximalIdeal
+   (AdjoinRoot f)`, the latter being *definitionally* `IsLocalRing.ResidueField (AdjoinRoot f)`
+   (`IsLocalRing.ResidueField R` unfolds to exactly `R ⧸ maximalIdeal R`).
+2. `AdjoinRoot.quotEquivQuotMap f (maximalIdeal R)` identifies `AdjoinRoot f ⧸ M₀` with
+   `Polynomial k ⧸ span {f.map (algebraMap R k)}`, which (rewriting along `hfmap`) becomes
+   `Polynomial k ⧸ span {minpoly k β₀}`, definitionally `AdjoinRoot (minpoly k β₀)`.
+3. `IntermediateField.adjoinRootEquivAdjoin k hβ₀` identifies `AdjoinRoot (minpoly k β₀)` with
+   `↥k⟮β₀⟯`; `IntermediateField.equivOfEq hprim` (using `hprim : k⟮β₀⟯ = ⊤`) identifies `↥k⟮β₀⟯` with
+   `↥(⊤ : IntermediateField k l)`; `IntermediateField.topEquiv` identifies that with `l`.
+
+Steps 2-3 are all `AlgEquiv`s over `k` (`R` for step 2's raw form, but forgotten to a `RingEquiv`
+here to compose with step 1, which is necessarily over `R` since `M₀` lives in `AdjoinRoot f` as an
+`R`-algebra, not a `k`-algebra) -- see the docstring above (before `isDomain_adjoinRoot_lift_minpoly`)
+for why a single `≃ₐ[k]` is not landed here. -/
+def HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly {R : Type*} [CommRing R]
+    [HenselianLocalRing R] {l : Type*} [Field l] [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
+    (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) {f : R[X]} (hf : f.Monic)
+    (hfmap : f.map (algebraMap R (IsLocalRing.ResidueField R)) =
+      minpoly (IsLocalRing.ResidueField R) β₀)
+    (hprim : IntermediateField.adjoin (IsLocalRing.ResidueField R) {β₀} = ⊤)
+    [IsLocalRing (AdjoinRoot f)] :
+    IsLocalRing.ResidueField (AdjoinRoot f) ≃+* l := by
+  have hM0max : (Ideal.map (AdjoinRoot.of f) (IsLocalRing.maximalIdeal R)).IsMaximal :=
+    HenselianLocalRing.isMaximal_map_of_lift_minpoly hβ₀ hf hfmap
+  have hM0eq : Ideal.map (AdjoinRoot.of f) (IsLocalRing.maximalIdeal R) =
+      IsLocalRing.maximalIdeal (AdjoinRoot f) := IsLocalRing.eq_maximalIdeal hM0max
+  refine (Ideal.quotEquivOfEq hM0eq).symm.trans
+    ((AdjoinRoot.quotEquivQuotMap f (IsLocalRing.maximalIdeal R)).toRingEquiv.trans ?_)
+  show (Polynomial (IsLocalRing.ResidueField R) ⧸
+    Ideal.span {f.map (algebraMap R (IsLocalRing.ResidueField R))}) ≃+* l
+  rw [hfmap]
+  exact (((IntermediateField.adjoinRootEquivAdjoin (IsLocalRing.ResidueField R) hβ₀).trans
+    (IntermediateField.equivOfEq hprim)).trans IntermediateField.topEquiv).toRingEquiv
