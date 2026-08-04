@@ -27,6 +27,17 @@ non-canonically unique up to isomorphism" statement in `Mathlib.FieldTheory.Fini
 * `IsGalois.existsUnique_intermediateField_finrank_eq` : for `E/F` finite Galois with
   `IsCyclic Gal(E/F)`, and `e ∣ Module.finrank F E`, there is a unique `M : IntermediateField F E`
   with `Module.finrank F M = e`.
+* `IntermediateField.finrank_comap_val_of_le` : general field theory, no Galois needed --
+  restricting an intermediate field `M ≤ E'` to the smaller ambient field `E'` (via
+  `IntermediateField.comap E'.val`, i.e. pulling `M` back along the tautological inclusion
+  `E' →ₐ[F] E`) preserves its degree over `F`. This is the tool needed to compare two intermediate
+  fields of a *fixed* finite Galois extension of `E` (rather than of `E` itself) using
+  `existsUnique_intermediateField_finrank_eq`, e.g. to compare degree-`e` subfields `M₁ M₂ ≤ E` that
+  are not assumed finite/Galois over `F` themselves by relating them to their sup `M₁ ⊔ M₂`
+  (finite/Galois whenever `M₁`, `M₂` are). An exhaustive Loogle search initially missed this (only
+  `IntermediateField.extendScalars`, which rebases the *bottom* of a tower, turned up under
+  "restrict"-flavoured queries); it is assembled from `IntermediateField.comap`,
+  `IntermediateField.map_comap_eq_self`, and `IntermediateField.equivMap`, all already in Mathlib.
 
 ## Proof idea
 
@@ -42,6 +53,21 @@ uniqueness (`IsCyclic.existsUnique_subgroup_card_eq`'s `∃!`) into field-level 
 -/
 
 @[expose] public section
+
+/-- **Restricting an intermediate field to a smaller ambient intermediate field preserves its
+degree.** Given `M ≤ E'` (both `IntermediateField F E`), `IntermediateField.comap E'.val M` is `M`
+viewed as an intermediate field of `E'` instead of `E`; its `F`-degree agrees with that of `M`
+since it is `F`-algebra isomorphic to `M` (`IntermediateField.equivMap`, using
+`IntermediateField.map_comap_eq_self` to identify `(comap E'.val M).map E'.val` with `M` again). -/
+theorem IntermediateField.finrank_comap_val_of_le {F E : Type*} [Field F] [Field E] [Algebra F E]
+    {E' M : IntermediateField F E} (h : M ≤ E') :
+    Module.finrank F (IntermediateField.comap E'.val M) = Module.finrank F M := by
+  have hM : M ≤ E'.val.fieldRange := by rw [IntermediateField.fieldRange_val]; exact h
+  have hmap : IntermediateField.map E'.val (IntermediateField.comap E'.val M) = M :=
+    IntermediateField.map_comap_eq_self hM
+  have hequiv := (IntermediateField.comap E'.val M).equivMap E'.val
+  rw [hmap] at hequiv
+  exact LinearEquiv.finrank_eq hequiv.toLinearEquiv
 
 namespace IsGalois
 
