@@ -6,6 +6,8 @@ import Mathlib.NumberTheory.LocalField.Basic
 import Mathlib.RingTheory.Henselian
 import Mathlib.RingTheory.DedekindDomain.Different
 import Mathlib.RingTheory.Conductor
+import Mathlib.Algebra.Polynomial.Eval.Irreducible
+import Mathlib.RingTheory.Polynomial.GaussLemma
 
 /-!
 # Unramified extensions and lifting automorphisms of the residue field
@@ -204,3 +206,38 @@ theorem HenselianLocalRing.exists_monic_lift_minpoly {R : Type*} [CommRing R]
   obtain ⟨f, hf1, hf2, hf3⟩ :=
     Polynomial.lifts_and_natDegree_eq_and_monic hlifts (minpoly.monic hβ₀)
   exact ⟨f, hf3, hf2, hf1⟩
+
+/-! ### The monic lift is irreducible over the fraction field
+
+The second ingredient of the unramified lifting theorem's existence half: a monic lift `f` of
+`β₀`'s (irreducible) minimal polynomial over the residue field `k := IsLocalRing.ResidueField R`
+is itself irreducible, not just over `R` but over the fraction field `K` of `R` -- this is what
+lets `f` cut out a genuine finite field extension of `K` (rather than merely a monic polynomial
+that could factor).
+
+Two Mathlib pieces compose here, both confirmed by loogle against their stated names before use:
+
+* `Polynomial.Monic.irreducible_of_irreducible_map` : a monic polynomial over a domain `R` is
+  irreducible (over `R`) if its image under *any* ring hom `R →+* S` (`S` a domain) is irreducible.
+  Applied to the residue map `R →+* k`, whose image of `f` is (by hypothesis) `β₀`'s minimal
+  polynomial -- irreducible by `minpoly.irreducible`, since `β₀` is integral over `k` (`l` and `k`
+  both fields makes `IsDomain` trivial on both sides).
+* `Polynomial.Monic.irreducible_iff_irreducible_map_fraction_map` : **Gauss's lemma** for
+  integrally closed domains -- a monic polynomial over an integrally closed domain `R` is
+  irreducible over `R` iff its image is irreducible over `Frac(R)`. This is exactly where
+  `IsIntegrallyClosed R` is needed (true of `𝒪[K]` at the intended call site, being a valuation
+  ring), converting "irreducible over `R`" (from the previous bullet) into "irreducible over `K`".
+-/
+
+theorem HenselianLocalRing.irreducible_map_lift_minpoly {R : Type*} [CommRing R] [IsDomain R]
+    [IsIntegrallyClosed R] [HenselianLocalRing R] {K : Type*} [Field K] [Algebra R K]
+    [IsFractionRing R K] {l : Type*} [Field l] [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
+    (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) {f : R[X]} (hf : f.Monic)
+    (hfmap : f.map (algebraMap R (IsLocalRing.ResidueField R)) =
+      minpoly (IsLocalRing.ResidueField R) β₀) :
+    Irreducible (f.map (algebraMap R K)) := by
+  apply (Polynomial.Monic.irreducible_iff_irreducible_map_fraction_map hf).mp
+  apply Polynomial.Monic.irreducible_of_irreducible_map (algebraMap R (IsLocalRing.ResidueField R))
+    f hf
+  rw [hfmap]
+  exact minpoly.irreducible hβ₀
