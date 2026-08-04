@@ -769,6 +769,47 @@ theorem valuationSubring_eq_of_comap_eq [Algebra.IsAlgebraic K L] [CompleteSpace
   rw [← hfA, ← hgB, spectralNorm_unique_field_norm_ext hfK x,
     spectralNorm_unique_field_norm_ext hgK x]
 
+/-- **Reusable specialization for `IsNonarchimedeanLocalField`.** The same uniqueness-of-extension
+fact as `valuationSubring_eq_of_comap_eq`, but taking a nonarchimedean local field `K` directly as
+the hypothesis (via `IsNonarchimedeanLocalField K`) instead of requiring the caller to separately
+supply the abstract `NontriviallyNormedField`/`IsUltrametricDist`/`ValuativeRel`/`Compatible`/
+`CompleteSpace` bundle that theorem takes. This factors out, once, the `NormedField`/`Valued`/
+`RankOne`/`CompleteSpace` instance-chain bridge that `LocalField.decompositionSubgroup_eq_top`
+(`Langlands.WeilGroup`) used to build inline, specifically for its own ambient base field: with the
+bridge extracted here (taking `L` as a free type variable, as `valuationSubring_eq_of_comap_eq`
+already does), it is reusable for *any* field `L` algebraic over the same `K` -- not just
+`L = AlgebraicClosure K` (`decompositionSubgroup_eq_top`'s use) but also a finite subextension
+`K(x) ⊆ L` (needed by
+`ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective` in
+`Langlands.UnramifiedExtension`) -- without duplicating the instance construction at each call
+site. -/
+theorem valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField
+    {K : Type*} [Field K] [ValuativeRel K] [TopologicalSpace K] [IsNonarchimedeanLocalField K]
+    {L : Type*} [Field L] [Algebra K L] [Algebra.IsAlgebraic K L]
+    {A B : ValuationSubring L}
+    (hA : A.comap (algebraMap K L) = (valuation K).valuationSubring)
+    (hB : B.comap (algebraMap K L) = (valuation K).valuationSubring) :
+    A = B := by
+  letI := IsTopologicalAddGroup.rightUniformSpace K
+  haveI := isUniformAddGroup_of_addCommGroup (G := K)
+  letI : (Valued.v (R := K)).RankOne :=
+    { hom' := IsRankLeOne.nonempty.some.emb (R := K).comp MonoidWithZeroHom.ValueGroup₀.embedding
+      strictMono' := IsRankLeOne.nonempty.some.strictMono.comp
+          MonoidWithZeroHom.ValueGroup₀.embedding_strictMono }
+  letI : NontriviallyNormedField K := Valued.toNontriviallyNormedField K (ValueGroupWithZero K)
+  haveI : IsUltrametricDist K := inferInstance
+  haveI : CompleteSpace K := inferInstance
+  -- The `NontriviallyNormedField K` structure above is built *from* `Valued.v = valuation K`, so
+  -- its own `NormedField.valuation` agrees with `Valued.v` on the nose, giving the `Compatible`
+  -- instance `valuationSubring_eq_of_comap_eq` requires -- exactly as in
+  -- `decompositionSubgroup_eq_top`'s proof, now shared rather than duplicated.
+  have hnorm : ∀ x : K, (NormedField.valuation x : NNReal)
+      = RankOne.hom (Valued.v (R := K)) ((Valued.v (R := K)).restrict x) := fun x =>
+    congrFun (Valued.coe_valuation_eq_rankOne_hom_comp_valuation K (ValueGroupWithZero K)) x
+  haveI : (NormedField.valuation (K := K)).Compatible :=
+    NormedField.valuation_compatible_of_eq_rankOne_hom_comp_restrict (Valued.v (R := K)) hnorm
+  exact valuationSubring_eq_of_comap_eq K hA hB
+
 end NormedFieldBridge
 
 end LocalField

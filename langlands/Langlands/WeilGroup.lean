@@ -284,29 +284,10 @@ general-purpose lemmas new to this project and not otherwise in Mathlib. None of
 existed in Mathlib before; it is now complete here. -/
 theorem decompositionSubgroup_eq_top :
     ValuationSubring.decompositionSubgroup K (valuationSubringExtension K) = ⊤ := by
-  letI := IsTopologicalAddGroup.rightUniformSpace K
-  haveI := isUniformAddGroup_of_addCommGroup (G := K)
-  letI : (Valued.v (R := K)).RankOne :=
-    { hom' := IsRankLeOne.nonempty.some.emb (R := K).comp MonoidWithZeroHom.ValueGroup₀.embedding
-      strictMono' := IsRankLeOne.nonempty.some.strictMono.comp
-          MonoidWithZeroHom.ValueGroup₀.embedding_strictMono }
-  letI : NontriviallyNormedField K := Valued.toNontriviallyNormedField K (ValueGroupWithZero K)
-  haveI : IsUltrametricDist K := inferInstance
-  haveI : CompleteSpace K := inferInstance
-  -- The `NontriviallyNormedField K` structure above is built *from* `Valued.v = valuation K`
-  -- (via `Valued.toNontriviallyNormedField`/`Valued.toNormedField`), so its own
-  -- `NormedField.valuation` agrees with `Valued.v` on the nose
-  -- (`Valued.coe_valuation_eq_rankOne_hom_comp_valuation`), giving the `Compatible` instance
-  -- `LocalField.valuationSubring_eq_of_comap_eq` now requires.
-  have hnorm : ∀ x : K, (NormedField.valuation x : NNReal)
-      = RankOne.hom (Valued.v (R := K)) ((Valued.v (R := K)).restrict x) := fun x =>
-    congrFun (Valued.coe_valuation_eq_rankOne_hom_comp_valuation K (ValueGroupWithZero K)) x
-  haveI : (NormedField.valuation (K := K)).Compatible :=
-    NormedField.valuation_compatible_of_eq_rankOne_hom_comp_restrict (Valued.v (R := K)) hnorm
   rw [Subgroup.eq_top_iff']
   intro σ
   rw [MulAction.mem_stabilizer_iff]
-  apply LocalField.valuationSubring_eq_of_comap_eq (K := K)
+  apply LocalField.valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField (K := K)
   · rw [ValuationSubring.comap_smul_eq]
     exact valuationSubringExtension_comap K
   · exact valuationSubringExtension_comap K
