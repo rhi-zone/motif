@@ -2,6 +2,8 @@ import Mathlib.RingTheory.Valuation.RamificationGroup
 import Mathlib.RingTheory.LocalRing.ResidueField.Basic
 import Mathlib.FieldTheory.Galois.Infinite
 import Mathlib.Topology.Algebra.Valued.ValuativeRel
+import Mathlib.NumberTheory.LocalField.Basic
+import Mathlib.RingTheory.Henselian
 
 /-!
 # Unramified extensions and lifting automorphisms of the residue field
@@ -123,3 +125,32 @@ theorem exists_restrictNormalHom_decompositionSubgroup_surjective
   sorry
 
 end ValuationSubring
+
+/-! ### `𝒪[K]` is Henselian, for `K` a nonarchimedean local field
+
+The missing ingredient (flagged as an unstated hypothesis gap in
+`exists_restrictNormalHom_decompositionSubgroup_surjective` above) needed to actually invoke
+Hensel's lemma (`HenselianLocalRing.TFAE`, `IsLocalRing.eq_of_eval_eq_zero_of_not_isUnit_sub`) for
+the unramified lifting theorem: `𝒪[K]` is a Henselian local ring. This is *not* a new fact -- the
+hard work (`IsAdicComplete 𝓂[K] 𝒪[K]`) is already a Mathlib instance
+(`Mathlib.NumberTheory.LocalField.Basic`, via compactness of `𝒪[K]` and Noetherianity of the DVR
+structure), found by checking whether the `IsAdic`/`T2Space` bridge was already done before
+attempting to build it -- it was. `IsAdicComplete.henselianRing` then gives `HenselianRing 𝒪[K]
+𝓂[K]` directly, and `HenselianLocalRing.mk` packages this (with the already-available `IsLocalRing
+𝒪[K]` from `IsDiscreteValuationRing.toIsLocalRing`) into `HenselianLocalRing 𝒪[K]`.
+
+The only wrinkle: `IsAdicComplete 𝓂[K] 𝒪[K]` is stated for `[UniformSpace K] [IsUniformAddGroup K]`
+(a uniformity making the topology compatible with the group structure), which is not automatically
+available from `IsNonarchimedeanLocalField K`'s own `[TopologicalSpace K]` -- it is supplied locally
+via `IsTopologicalAddGroup.rightUniformSpace K` / `isUniformAddGroup_of_addCommGroup`, exactly the
+pattern already used elsewhere in this project (`WeilGroup.decompositionSubgroup_eq_top`). -/
+
+variable (K : Type*) [Field K] [ValuativeRel K] [TopologicalSpace K] [IsNonarchimedeanLocalField K]
+
+/-- **`𝒪[K]` is a Henselian local ring**, for `K` a nonarchimedean local field. -/
+instance henselianLocalRing : HenselianLocalRing ↥(𝒪[K]) := by
+  letI := IsTopologicalAddGroup.rightUniformSpace K
+  haveI := isUniformAddGroup_of_addCommGroup (G := K)
+  haveI : HenselianRing ↥(𝒪[K]) 𝓂[K] := IsAdicComplete.henselianRing _ _
+  refine HenselianLocalRing.mk fun f hf a₀ ha₀ hderiv => ?_
+  exact HenselianRing.is_henselian f hf a₀ ha₀ (hderiv.map (Ideal.Quotient.mk 𝓂[K]))
