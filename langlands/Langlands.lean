@@ -4,6 +4,7 @@ import Langlands.CyclicSubgroups
 import Langlands.FiniteIndexNormalSubgroupMulEquiv
 import Langlands.FiniteIndexSubgroupsZ
 import Langlands.IdeleGroup
+import Langlands.ProfiniteCompletionUlift
 import Langlands.ProfiniteGrpUlift
 import Langlands.ResidueField
 import Langlands.WeilGroup

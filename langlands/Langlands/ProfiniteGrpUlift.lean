@@ -63,6 +63,24 @@ instance uLift.totallyDisconnectedSpace {G : Type*} [TopologicalSpace G]
     [TotallyDisconnectedSpace G] : TotallyDisconnectedSpace (ULift.{v} G) :=
   Homeomorph.ulift.symm.totallyDisconnectedSpace
 
+instance uLift.discreteTopology {G : Type*} [TopologicalSpace G] [DiscreteTopology G] :
+    DiscreteTopology (ULift.{v} G) :=
+  Homeomorph.ulift.symm.discreteTopology
+
+/-- Package a `MulEquiv` between the underlying types of two `ProfiniteGrp`s as an isomorphism,
+given continuity of both directions. General-purpose glue for building `ProfiniteGrp` isomorphisms
+between finite (discretely-topologised) quotients, where continuity is typically automatic via
+`continuous_of_discreteTopology`. -/
+def isoOfMulEquiv {X Y : ProfiniteGrp} (e : X ≃* Y) (hf : Continuous e) (hg : Continuous e.symm) :
+    X ≅ Y where
+  hom := ProfiniteGrp.ofHom
+    { toFun := e, map_one' := map_one e, map_mul' := map_mul e, continuous_toFun := hf }
+  inv := ProfiniteGrp.ofHom
+    { toFun := e.symm, map_one' := map_one e.symm, map_mul' := map_mul e.symm,
+      continuous_toFun := hg }
+  hom_inv_id := by ext x; exact e.symm_apply_apply x
+  inv_hom_id := by ext x; exact e.apply_symm_apply x
+
 /-- The universe lift functor for profinite groups: sends `P : ProfiniteGrp.{u}` to the
 (isomorphic) profinite group `ULift.{v} P : ProfiniteGrp.{max u v}`. -/
 def uliftFunctor : ProfiniteGrp.{u} ⥤ ProfiniteGrp.{max u v} where
@@ -118,5 +136,20 @@ noncomputable instance uliftFunctor_preservesLimit {J : Type} [SmallCategory J]
 /-- The universe lift functor for profinite groups preserves limits of every small shape. -/
 noncomputable instance uliftFunctor_preservesLimitsOfShape {J : Type} [SmallCategory J] :
     PreservesLimitsOfShape J uliftFunctor.{v, u} where
+
+/-- **The concrete limit `ProfiniteGrp.limit` agrees with the abstract categorical limit**
+`CategoryTheory.Limits.limit`. `ProfiniteGrp.limit F` (the "sections of the product" subgroup,
+`ProfiniteGrp.limitConePtAux`) is a genuinely different term from `CategoryTheory.Limits.limit F`
+(built via `Classical.choice` on the `HasLimit` instance), even though both live in the same
+`ProfiniteGrp` and are canonically isomorphic -- this bridges them, via
+`CategoryTheory.Limits.IsLimit.conePointUniqueUpToIso` comparing `ProfiniteGrp.limitCone`'s
+universal property (`ProfiniteGrp.limitConeIsLimit`) against the generic `limit.isLimit`. Needed
+because `ProfiniteGrp.ProfiniteCompletion.completion` is defined via the former (`limit (diagram
+G)` inside `namespace ProfiniteGrp`, which resolves to the bespoke `ProfiniteGrp.limit`), while
+general limit-comparison lemmas (`HasLimit.isoOfEquivalence`, `preservesLimitIso`) are stated for
+the latter. -/
+noncomputable def limitIsoLimit {J : Type v} [SmallCategory J] (F : J ⥤ ProfiniteGrp.{max v u}) :
+    ProfiniteGrp.limit F ≅ CategoryTheory.Limits.limit F :=
+  (ProfiniteGrp.limitConeIsLimit F).conePointUniqueUpToIso (CategoryTheory.Limits.limit.isLimit F)
 
 end ProfiniteGrp
