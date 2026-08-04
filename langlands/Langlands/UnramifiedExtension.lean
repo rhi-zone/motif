@@ -1516,4 +1516,55 @@ theorem ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjecti
   --     maps of `C`/`C'` under the algebra isomorphism `e : K' ≃ₐ[K] K''` used to build `σ`, to
   --     `σ`'s own concrete action on `A`) would let the argument go through without ever computing
   --     `x`'s residue explicitly. Neither (a) nor (b) is built yet.
+  --
+  -- **Route (b) investigated and found insufficient (this pass), route (a) now looks necessary.**
+  -- Two checks were carried out:
+  --
+  -- 1. *Empirical check of the "shared-`f` collapses the two roots" structural worry*: since `f`
+  --    (hence `p := f.map (algebraMap R K)`) is literally the same term in both existence-theorem
+  --    calls above, and the final hypothesis `hdegL` fed to `IsAlgClosed.exists_root` inside
+  --    `exists_ringHom_adjoinRoot_map_of_isAlgClosed` has a stated *type* depending only on `p`
+  --    (not on `β₀`/`g`), Lean's definitional proof irrelevance raised the concern that `x = x'`
+  --    might hold by `rfl`, which would make piece A′ incapable of distinguishing any `g` at all.
+  --    Tested directly in this proof (`have : x = x' := by with_unfolding_all rfl`, with
+  --    `maxHeartbeats` raised well above default): the tactic **fails**, reporting `x` and `x'` not
+  --    definitionally equal, even at full (`all`) transparency -- so whatever data
+  --    `IsAlgClosed.exists_root`'s underlying choice threads through in practice, it is not
+  --    collapsed by proof irrelevance the way the stated type of `hdegL` alone would suggest. This
+  --    is only evidence from one (elaborator-level, admittedly not a from-first-principles kernel
+  --    argument) check, but it is consistent with -- and does not overturn -- this file's existing
+  --    assumption that `x`, `x'` are genuinely independent, unrelated conjugates in general.
+  --
+  -- 2. *Working through the cyclic/abelian reduction (route (b)) by hand*: let `τ, τ' ∈
+  --    Gal(M/𝓀[K])` be defined by "`x`'s actual `A`-residue is `τ(β₀)`" and "`x'`'s actual
+  --    `A`-residue is `τ'(g β₀)`" (both well-defined: every root of `minpoly 𝓀[K] β₀` found inside
+  --    `ResidueField A` lies in `M`, since `M/𝓀[K]` is normal and `Gal(M/𝓀[K])` acts simply
+  --    transitively on those roots). Since `σ x = x'` and `σ`'s residue action agrees with taking
+  --    residues along `σ`, one gets `(Φ σ) ∘ τ = τ' ∘ g` on `M` (`Φ` being the surjectivity target
+  --    map of this theorem), i.e. `Φ σ = τ' ∘ g ∘ τ⁻¹`, which -- *using* commutativity of the cyclic
+  --    `Gal(M/𝓀[K])` -- equals `(τ' ∘ τ⁻¹) ∘ g`. So `Φ σ = g` exactly iff `τ' = τ`: cyclicity turns
+  --    the raw ambiguity into a single unknown "shift" `δ := τ' ∘ τ⁻¹`, commuting with everything,
+  --    but does **not** make `δ = 1` free. Reducing to a single generator (build `σ` only for
+  --    `g₀ := AlgEquiv.restrictNormalHom M (frobeniusAlgEquiv K)`-style generator, then take powers,
+  --    using that `Φ` is a genuine `MonoidHom` -- provable, mirroring `Langlands.WeilGroup`'s
+  --    `residueAction'`, which *is* already bundled as one) still needs `δ = 1` for that *one* `g₀`,
+  --    which is exactly the same "pin the actual residue of a Hensel-lifted root" fact as the
+  --    general case, just instantiated once instead of universally. It buys a reduction in the
+  --    *number* of cases needing the pinning fact (one instead of all of `Gal(M/𝓀[K])`), not a way
+  --    to avoid needing it. (A "bijection instead of pointwise match" reformulation -- show
+  --    `g ↦ Φ (σ_g)` is a bijection of the finite group `Gal(M/𝓀[K])` to itself, which would give
+  --    surjectivity of `Φ` without pinning any specific `g ↦ Φ σ_g` value -- was also considered;
+  --    it would suffice if the unknown shift `δ(g) := τ'(g) ∘ τ⁻¹` were *constant* in `g`, but
+  --    nothing in the construction (`x'`'s conjugate is chosen by a fresh, `A`-oblivious
+  --    `IsAlgClosed.exists_root` call for each `g`) gives a reason to expect that, and no other
+  --    injectivity argument for `g ↦ Φ σ_g` was found.)
+  --
+  -- **Conclusion of this pass**: route (b) does not close the gap -- it relocates the same
+  -- unresolved "which conjugate" fact to a single instance rather than removing the need for it.
+  -- Closing this `sorry` with the current architecture (two independent, `A`-oblivious calls to
+  -- the existence theorem) genuinely appears to need route (a): reformulating the existence
+  -- theorem (or a variant of it) to take the target valuation subring `A` as an explicit input and
+  -- produce a root whose residue *in `A`* is exactly the prescribed element, i.e. an `A`-relative
+  -- Hensel lift. Not attempted in this pass, per the scope of the investigation that produced this
+  -- note.
   sorry
