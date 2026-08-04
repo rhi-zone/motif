@@ -3,5 +3,6 @@ import Langlands.CyclicGaloisSubfields
 import Langlands.CyclicSubgroups
 import Langlands.FiniteIndexSubgroupsZ
 import Langlands.IdeleGroup
+import Langlands.ProfiniteGrpUlift
 import Langlands.ResidueField
 import Langlands.WeilGroup
