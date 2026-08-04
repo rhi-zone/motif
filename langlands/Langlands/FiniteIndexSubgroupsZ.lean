@@ -74,6 +74,19 @@ theorem Subgroup.existsUnique_index_eq_of_ne_zero {n : ℕ} (hn : n ≠ 0) :
       exact hH
     rw [← hEq, OrderIso.apply_symm_apply]
 
+/-- **The subgroup lattice of `ℤ` matches divisibility**: `zmultiples n ≤ zmultiples m` iff
+`m ∣ n`, i.e. the (unique, `AddSubgroup.existsUnique_index_eq_of_ne_zero`) index-`n` subgroup is
+contained in the index-`m` one exactly when `m ∣ n`. Needed to match the inclusion order on finite
+Galois subextensions of a field (by degree) against divisibility, e.g. for assembling the diagram
+`n ↦ ℤ ⧸ nℤ` defining `Zhat` against a diagram indexed by degree. -/
+theorem AddSubgroup.zmultiples_le_zmultiples_iff {m n : ℕ} :
+    AddSubgroup.zmultiples (n : ℤ) ≤ AddSubgroup.zmultiples (m : ℤ) ↔ m ∣ n := by
+  rw [AddSubgroup.zmultiples_le, AddSubgroup.mem_zmultiples_iff, ← Int.natCast_dvd_natCast]
+  simp only [zsmul_eq_mul]
+  constructor
+  · rintro ⟨k, hk⟩; exact ⟨k, hk.symm.trans (mul_comm k (m : ℤ))⟩
+  · rintro ⟨k, hk⟩; exact ⟨k, (mul_comm k (m : ℤ)).trans hk.symm⟩
+
 /-- **Classification of finite-index normal subgroups of `Multiplicative ℤ`**, packaged as
 `FiniteIndexNormalSubgroup` (the indexing category of the diagram defining `Zhat`): for every
 `n ≠ 0`, there is a unique `H : FiniteIndexNormalSubgroup (Multiplicative ℤ)` with
