@@ -740,6 +740,34 @@ Steps 2-3 are all `AlgEquiv`s over `k` (`R` for step 2's raw form, but forgotten
 here to compose with step 1, which is necessarily over `R` since `M₀` lives in `AdjoinRoot f` as an
 `R`-algebra, not a `k`-algebra) -- see the docstring above (before `isDomain_adjoinRoot_lift_minpoly`)
 for why a single `≃ₐ[k]` is not landed here. -/
+
+/-- **The raw-quotient presentation of `AdjoinRoot p` agrees with `AdjoinRoot p` itself, as an
+honestly-transparent `RingEquiv`** (rather than an opaque defeq-cast): `AdjoinRoot p` is *defined* as
+`Polynomial R ⧸ span {p}`, but carries its *own* separately-declared `CommRing` instance (with
+custom `nsmul`/`zsmul` fields, copying the rest from the raw quotient's instance via
+`inferInstanceAs`) rather than literally reusing `Ideal.Quotient.commRing`'s bundled instance. The two
+are still defeq (`rfl` proves `toFun`/`invFun`/`map_mul'`/`map_add'` below directly), but composing a
+`RingEquiv` landing in one presentation with a `RingEquiv` starting from the other via `.trans`
+elaborates the crossing as an opaque `id`-cast that breaks later `rw`/`simp` reasoning through
+`RingEquiv.trans_apply` (confirmed: attempting exactly that in an earlier pass of this file hit a
+"target expression is not type-correct under the `instances` transparency level" failure). This
+bridge is transparent by construction (`toFun`/`invFun := id`) so its own `apply` is `rfl`, letting
+`residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_root` below reason about the crossing
+point-wise without hitting that wall. -/
+def AdjoinRoot.quotSpanRingEquiv {R : Type*} [CommRing R] (p : R[X]) :
+    (Polynomial R ⧸ (Ideal.span {p} : Ideal R[X])) ≃+* AdjoinRoot p where
+  toFun := id
+  invFun := id
+  left_inv _ := rfl
+  right_inv _ := rfl
+  map_mul' _ _ := rfl
+  map_add' _ _ := rfl
+
+@[simp]
+theorem AdjoinRoot.quotSpanRingEquiv_apply {R : Type*} [CommRing R] (p : R[X])
+    (x : Polynomial R ⧸ (Ideal.span {p} : Ideal R[X])) :
+    AdjoinRoot.quotSpanRingEquiv p x = x := rfl
+
 def HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly {R : Type*} [CommRing R]
     [HenselianLocalRing R] {l : Type*} [Field l] [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
     (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) {f : R[X]} (hf : f.Monic)
@@ -752,13 +780,83 @@ def HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly {R : Type*} [C
     HenselianLocalRing.isMaximal_map_of_lift_minpoly hβ₀ hf hfmap
   have hM0eq : Ideal.map (AdjoinRoot.of f) (IsLocalRing.maximalIdeal R) =
       IsLocalRing.maximalIdeal (AdjoinRoot f) := IsLocalRing.eq_maximalIdeal hM0max
-  refine (Ideal.quotEquivOfEq hM0eq).symm.trans
-    ((AdjoinRoot.quotEquivQuotMap f (IsLocalRing.maximalIdeal R)).toRingEquiv.trans ?_)
-  show (Polynomial (IsLocalRing.ResidueField R) ⧸
-    Ideal.span {f.map (algebraMap R (IsLocalRing.ResidueField R))}) ≃+* l
-  rw [hfmap]
-  exact (((IntermediateField.adjoinRootEquivAdjoin (IsLocalRing.ResidueField R) hβ₀).trans
-    (IntermediateField.equivOfEq hprim)).trans IntermediateField.topEquiv).toRingEquiv
+  -- The `f.map (algebraMap R k) = minpoly k β₀` identification is expressed as an equality of
+  -- *ideals* (`hspan`) stated using `Ideal.Quotient.mk (maximalIdeal R)` (rather than `algebraMap R
+  -- k`) so that it is *syntactically* (not merely definitionally) the same presentation
+  -- `AdjoinRoot.quotEquivQuotMap` itself emits -- crossing between the two (defeq, but
+  -- syntactically distinct: `algebraMap R k` unfolds to `Ideal.Quotient.mk (maximalIdeal R)`, but
+  -- isn't literally written that way) presentations via a bare `show`/`exact` type-ascription
+  -- elaborates as an opaque `id`-cast that silently breaks later `rw`/`simp` reasoning through
+  -- `RingEquiv.trans_apply` (confirmed: hit exactly this, twice, in earlier passes over this proof,
+  -- both times manifesting as a "target expression is not type-correct under the `instances`
+  -- transparency level" failure on an *unrelated*-looking later `rw`). Matching the presentation
+  -- syntactically up front avoids the cast (and the matching `AdjoinRoot.quotSpanRingEquiv` bridge
+  -- above handles the analogous `AdjoinRoot p` vs. `Polynomial k ⧸ span {p}` crossing the same way).
+  have hfmap' : f.map (Ideal.Quotient.mk (IsLocalRing.maximalIdeal R)) =
+      minpoly (IsLocalRing.ResidueField R) β₀ := hfmap
+  have hspan : Ideal.span ({f.map (Ideal.Quotient.mk (IsLocalRing.maximalIdeal R))} :
+        Set (Polynomial (IsLocalRing.ResidueField R))) =
+      Ideal.span ({minpoly (IsLocalRing.ResidueField R) β₀} :
+        Set (Polynomial (IsLocalRing.ResidueField R))) :=
+    congrArg (fun p => Ideal.span ({p} : Set (Polynomial (IsLocalRing.ResidueField R)))) hfmap'
+  exact RingEquiv.trans (Ideal.quotEquivOfEq hM0eq).symm
+    (RingEquiv.trans (AdjoinRoot.quotEquivQuotMap f (IsLocalRing.maximalIdeal R)).toRingEquiv
+      (RingEquiv.trans (Ideal.quotEquivOfEq hspan)
+        (RingEquiv.trans
+          (AdjoinRoot.quotSpanRingEquiv (minpoly (IsLocalRing.ResidueField R) β₀))
+          (AlgEquiv.toRingEquiv
+            (AlgEquiv.trans
+              (AlgEquiv.trans
+                (IntermediateField.adjoinRootEquivAdjoin (IsLocalRing.ResidueField R) hβ₀)
+                (IntermediateField.equivOfEq hprim))
+              IntermediateField.topEquiv)))))
+
+/-- **`residueField_equiv_adjoinRoot_lift_minpoly` sends the residue of the canonical generator
+`AdjoinRoot.root f` to `β₀` itself.** This is the compatibility fact needed by
+`exists_isDiscreteValuationRing_integralClosure_residueField_equiv` (and, downstream, by
+`ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective`) to identify the
+*specific* point of `l` that a generator's residue class corresponds to, not merely that
+`IsLocalRing.ResidueField (AdjoinRoot f)` is abstractly isomorphic to `l`. Proof: unwind the
+composition through its defining simp lemmas -- `Ideal.quotEquivOfEq_symm`/`_mk` (steps to the `M₀`
+quotient, then across the `hfmap` identification, both staying at the same representative), the
+`Ideal.Quotient.mk`-unfolding of `AdjoinRoot.root`/`AdjoinRoot.mk`, `Polynomial.map_X` (`X.map _ = X`),
+then `IntermediateField.adjoinRootEquivAdjoin_apply_root` (root ↦ the generator `AdjoinSimple.gen k
+β₀`) composed with the coe-preserving `equivOfEq`/`topEquiv` and
+`IntermediateField.AdjoinSimple.algebraMap_gen` (generator ↦ `β₀`). -/
+theorem HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_root
+    {R : Type*} [CommRing R] [HenselianLocalRing R] {l : Type*} [Field l]
+    [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
+    (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) {f : R[X]} (hf : f.Monic)
+    (hfmap : f.map (algebraMap R (IsLocalRing.ResidueField R)) =
+      minpoly (IsLocalRing.ResidueField R) β₀)
+    (hprim : IntermediateField.adjoin (IsLocalRing.ResidueField R) {β₀} = ⊤)
+    [IsLocalRing (AdjoinRoot f)] :
+    HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly hβ₀ hf hfmap hprim
+      (IsLocalRing.residue (AdjoinRoot f) (AdjoinRoot.root f)) = β₀ := by
+  -- **Not closed.** Every individual crossing in `residueField_equiv_adjoinRoot_lift_minpoly`'s
+  -- construction genuinely holds by `rfl`/`exact`-level defeq (that's how the `def` itself
+  -- typechecks). But *two* of its layers -- `IsLocalRing.ResidueField R`, which `deriving CommRing`
+  -- gives its own separately-generated ring instance (not literally `Ideal.Quotient.commRing`,
+  -- only defeq to it), and `AdjoinRoot p`, which does the same thing explicitly (custom
+  -- `nsmul`/`zsmul` fields, §`isDomain_adjoinRoot_lift_minpoly`'s docstring) -- make every `.trans`
+  -- crossing between a "raw quotient" presentation and its "named" (`ResidueField`/`AdjoinRoot`)
+  -- presentation elaborate as an invisible defeq-cast. `exact`/`show` accept these one at a time
+  -- (full-transparency `isDefEq`), which is exactly why `residueField_equiv_adjoinRoot_lift_minpoly`
+  -- itself compiles. But `rw`/`simp`/`unfold`-based reasoning about the *result*, needed here to
+  -- track a specific point through the whole composite, hits "target expression is not type-correct
+  -- under the `instances` transparency level" as soon as it must typecheck a subterm spanning one of
+  -- these casts -- confirmed repeatedly, at multiple different points along the chain, across several
+  -- restructurings of the proof (using `Ideal.quotEquivOfEq` uniformly, introducing an explicit
+  -- transparent bridge `AdjoinRoot.quotSpanRingEquiv` for the `AdjoinRoot` layer, stating the
+  -- intermediate ideal equality both `ResidueField`- and raw-quotient-flavored). Whichever way the
+  -- `ResidueField R` vs. `R ⧸ maximalIdeal R` crossing is phrased, it recurs at the next layer.
+  -- Closing this needs either (a) a `ResidueField`-level transparent bridge analogous to
+  -- `quotSpanRingEquiv`, threaded consistently through *every* layer (ideal-span level, `AdjoinRoot`
+  -- level, and the final `IntermediateField` level) so no single `.trans` ever crosses a presentation
+  -- boundary, or (b) restructuring the whole computation as a `RingHom.ext`/`AdjoinRoot.ringHom_ext`
+  -- uniqueness argument between `ρ.toRingHom ∘ residue` and an explicitly-constructed
+  -- `AdjoinRoot.lift`-based map (avoiding unfolding `ρ`'s construction at all) -- not completed here.
+  sorry
 
 /-! ### Embedding `AdjoinRoot (f.map (algebraMap R K))` into an algebraically closed extension `L`
 
