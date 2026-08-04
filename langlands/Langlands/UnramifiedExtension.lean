@@ -483,3 +483,72 @@ theorem HenselianLocalRing.exists_ringHom_adjoinRoot_map_of_isAlgClosed {R : Typ
   rw [Polynomial.IsRoot.def, Polynomial.eval_map] at hx
   exact ⟨x, AdjoinRoot.lift (algebraMap K L) x hx, RingHom.injective _,
     AdjoinRoot.lift_root hx, AdjoinRoot.lift_comp_of hx⟩
+
+/-! ### The ring hom `AdjoinRoot f →+* AdjoinRoot p` and its injectivity
+
+The first ingredient identified toward matching `AdjoinRoot f` (the "ring of integers" side) with
+a valuation subring under the ambient `A` (see the previous section's scope note): base change
+`R → K` on the quotient by `(f)`/`(p)` (`p := f.map (algebraMap R K)`) gives a natural ring hom
+`AdjoinRoot f →+* AdjoinRoot p`, and this hom is injective whenever `R` is a domain, `f` is monic,
+and `K` is (a field containing) the fraction field of `R`: `AdjoinRoot.mk f g ↦ AdjoinRoot.mk p
+(g.map (algebraMap R K))`, and `AdjoinRoot.mk f g = 0 ↔ f ∣ g` (`AdjoinRoot.mk_eq_zero`) transfers
+along `Polynomial.map_dvd_map` (valid since `algebraMap R K` is injective, `f` monic) to `p ∣
+g.map (algebraMap R K) ↔ f ∣ g`. Composed with the embedding `φ : AdjoinRoot p →+* L` of
+`exists_ringHom_adjoinRoot_map_of_isAlgClosed`, this gives an injective ring hom `AdjoinRoot f →+*
+L`, i.e. realizes `AdjoinRoot f` itself (not just its fraction field) inside `L`. -/
+
+/-- `AdjoinRoot f` evaluates to `0` under the composite `R → K → AdjoinRoot p` at the point
+`AdjoinRoot.root p` (`p := f.map (algebraMap R K)`), the side condition `AdjoinRoot.lift` needs to
+produce the ring hom `AdjoinRoot f →+* AdjoinRoot p`. Purely a rewrite of `Polynomial.eval₂_map`
+against `AdjoinRoot.eval₂_root`. -/
+theorem HenselianLocalRing.eval₂_root_map {R : Type*} [CommRing R] {K : Type*} [Field K]
+    [Algebra R K] (f : R[X]) :
+    Polynomial.eval₂ ((AdjoinRoot.of (f.map (algebraMap R K))).comp (algebraMap R K))
+      (AdjoinRoot.root (f.map (algebraMap R K))) f = 0 := by
+  rw [← Polynomial.eval₂_map]
+  exact AdjoinRoot.eval₂_root _
+
+/-- **Base change on `AdjoinRoot`**: the natural ring hom `AdjoinRoot f →+* AdjoinRoot p` (`p :=
+f.map (algebraMap R K)`) sending `AdjoinRoot.root f` to `AdjoinRoot.root p`, induced by
+`AdjoinRoot.lift` along the composite `R → K → AdjoinRoot p`. -/
+noncomputable def HenselianLocalRing.adjoinRootMap {R : Type*} [CommRing R] {K : Type*} [Field K]
+    [Algebra R K] (f : R[X]) : AdjoinRoot f →+* AdjoinRoot (f.map (algebraMap R K)) :=
+  AdjoinRoot.lift ((AdjoinRoot.of (f.map (algebraMap R K))).comp (algebraMap R K))
+    (AdjoinRoot.root (f.map (algebraMap R K))) (HenselianLocalRing.eval₂_root_map f)
+
+/-- `adjoinRootMap` sends `AdjoinRoot.mk f g` to `AdjoinRoot.mk p (g.map (algebraMap R K))` (`p :=
+f.map (algebraMap R K)`): unwind `AdjoinRoot.lift_mk`, then identify the resulting `eval₂` with
+`AdjoinRoot.mk p (g.map (algebraMap R K))` via `AdjoinRoot.aeval_eq` and `AdjoinRoot.algebraMap_eq`. -/
+theorem HenselianLocalRing.adjoinRootMap_mk {R : Type*} [CommRing R] {K : Type*} [Field K]
+    [Algebra R K] (f g : R[X]) :
+    HenselianLocalRing.adjoinRootMap (K := K) f (AdjoinRoot.mk f g) =
+      AdjoinRoot.mk (f.map (algebraMap R K)) (g.map (algebraMap R K)) := by
+  show AdjoinRoot.lift _ _ (HenselianLocalRing.eval₂_root_map f) (AdjoinRoot.mk f g) = _
+  rw [AdjoinRoot.lift_mk, ← Polynomial.eval₂_map, ← AdjoinRoot.algebraMap_eq, ← Polynomial.aeval_def,
+    AdjoinRoot.aeval_eq]
+
+/-- **`adjoinRootMap` is injective**, for `R` a domain, `f` monic, and `K` a fraction field of `R`:
+`AdjoinRoot.mk_eq_zero` reduces `adjoinRootMap f (AdjoinRoot.mk f g) = 0` to `f.map (algebraMap R
+K) ∣ g.map (algebraMap R K)`, which `Polynomial.map_dvd_map` (using injectivity of `algebraMap R
+K`, `IsFractionRing.injective`, and monicity of `f`) is equivalent to `f ∣ g`, i.e. to
+`AdjoinRoot.mk f g = 0`. -/
+theorem HenselianLocalRing.injective_adjoinRootMap {R : Type*} [CommRing R] [IsDomain R]
+    {K : Type*} [Field K] [Algebra R K] [IsFractionRing R K] {f : R[X]} (hf : f.Monic) :
+    Function.Injective (HenselianLocalRing.adjoinRootMap (K := K) f) := by
+  rw [injective_iff_map_eq_zero]
+  intro x hx
+  induction x using AdjoinRoot.induction_on with
+  | ih g =>
+    rw [HenselianLocalRing.adjoinRootMap_mk, AdjoinRoot.mk_eq_zero] at hx
+    rw [AdjoinRoot.mk_eq_zero]
+    exact (Polynomial.map_dvd_map (algebraMap R K) (IsFractionRing.injective R K) hf).mp hx
+
+/-- The composite `AdjoinRoot f →+* AdjoinRoot p →+* L` (via `adjoinRootMap` and the embedding
+`φ` of `exists_ringHom_adjoinRoot_map_of_isAlgClosed`) is injective: a composite of injective
+maps. This realizes `AdjoinRoot f` itself (not just its fraction field) as a subring of `L`. -/
+theorem HenselianLocalRing.injective_comp_adjoinRootMap {R : Type*} [CommRing R] [IsDomain R]
+    {K : Type*} [Field K] [Algebra R K] [IsFractionRing R K] {f : R[X]} (hf : f.Monic)
+    {L : Type*} [Field L] {φ : AdjoinRoot (f.map (algebraMap R K)) →+* L}
+    (hφ : Function.Injective φ) :
+    Function.Injective (φ.comp (HenselianLocalRing.adjoinRootMap (K := K) f)) :=
+  hφ.comp (HenselianLocalRing.injective_adjoinRootMap hf)
