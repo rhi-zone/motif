@@ -87,6 +87,13 @@ theorem AddSubgroup.zmultiples_le_zmultiples_iff {m n : ℕ} :
   · rintro ⟨k, hk⟩; exact ⟨k, hk.symm.trans (mul_comm k (m : ℤ))⟩
   · rintro ⟨k, hk⟩; exact ⟨k, (mul_comm k (m : ℤ)).trans hk.symm⟩
 
+/-- The index of any `H : FiniteIndexNormalSubgroup (Multiplicative ℤ)` is nonzero: a global
+instance so `canonicalDegreeSubfield K H.toSubgroup.index`-style expressions elaborate without a
+local `haveI` at every use site. -/
+instance FiniteIndexNormalSubgroup.instNeZeroIndex (H : FiniteIndexNormalSubgroup (Multiplicative ℤ)) :
+    NeZero H.toSubgroup.index :=
+  ⟨Subgroup.FiniteIndex.index_ne_zero⟩
+
 /-- **Classification of finite-index normal subgroups of `Multiplicative ℤ`**, packaged as
 `FiniteIndexNormalSubgroup` (the indexing category of the diagram defining `Zhat`): for every
 `n ≠ 0`, there is a unique `H : FiniteIndexNormalSubgroup (Multiplicative ℤ)` with
@@ -133,3 +140,28 @@ theorem FiniteIndexNormalSubgroup.index_dvd_index_of_le
     rw [hH, hH'] at hsub
     exact (AddSubgroup.toSubgroup.le_iff_le).mp hsub
   exact AddSubgroup.zmultiples_le_zmultiples_iff.mp hle
+
+/-- **The converse of `index_dvd_index_of_le`**: if the index of `H'` divides the index of `H`,
+then `H ≤ H'`. Together with `index_dvd_index_of_le`, this gives a full order/divisibility
+correspondence `H ≤ H' ↔ H'.toSubgroup.index ∣ H.toSubgroup.index`. -/
+theorem FiniteIndexNormalSubgroup.le_of_dvd_index
+    {H H' : FiniteIndexNormalSubgroup (Multiplicative ℤ)}
+    (h : H'.toSubgroup.index ∣ H.toSubgroup.index) : H ≤ H' := by
+  have hH : H.toSubgroup = AddSubgroup.toSubgroup (AddSubgroup.zmultiples (H.toSubgroup.index : ℤ)) :=
+    Subgroup.eq_toSubgroup_zmultiples_index
+  have hH' : H'.toSubgroup =
+      AddSubgroup.toSubgroup (AddSubgroup.zmultiples (H'.toSubgroup.index : ℤ)) :=
+    Subgroup.eq_toSubgroup_zmultiples_index
+  have hle : AddSubgroup.zmultiples (H.toSubgroup.index : ℤ) ≤
+      AddSubgroup.zmultiples (H'.toSubgroup.index : ℤ) :=
+    AddSubgroup.zmultiples_le_zmultiples_iff.mpr h
+  show H.toSubgroup ≤ H'.toSubgroup
+  rw [hH, hH']
+  exact (AddSubgroup.toSubgroup.le_iff_le).mpr hle
+
+/-- **Full correspondence**: `H ≤ H' ↔ H'.toSubgroup.index ∣ H.toSubgroup.index`, for
+`FiniteIndexNormalSubgroup (Multiplicative ℤ)`. -/
+theorem FiniteIndexNormalSubgroup.le_iff_dvd_index
+    {H H' : FiniteIndexNormalSubgroup (Multiplicative ℤ)} :
+    H ≤ H' ↔ H'.toSubgroup.index ∣ H.toSubgroup.index :=
+  ⟨FiniteIndexNormalSubgroup.index_dvd_index_of_le, FiniteIndexNormalSubgroup.le_of_dvd_index⟩

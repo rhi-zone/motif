@@ -1079,34 +1079,40 @@ theorem canonicalDegreeSubfield_le_of_dvd {m n : ℕ} [NeZero m] [NeZero n] (h :
   obtain ⟨y, -, rfl⟩ := N.mem_map.mp hx
   exact y.2
 
+/-- **Every element of `kbar` lies in some `canonicalDegreeSubfield K n`.** Adjoin `x` to `𝓀[K]`
+inside a `FiniteGaloisIntermediateField` (mirroring `surjective_residueAction'`'s proof), then
+identify it with `canonicalDegreeSubfield K d` for `d` its degree over `𝓀[K]`, via
+`eq_canonicalDegreeSubfield`. -/
+theorem exists_mem_canonicalDegreeSubfield (x : kbar) :
+    ∃ n : ℕ, ∃ _ : NeZero n, x ∈ canonicalDegreeSubfield K n := by
+  classical
+  haveI := residueField_isGalois K
+  let L' := FiniteGaloisIntermediateField.adjoin 𝓀[K] ({x} : Set kbar)
+  haveI := L'.finiteDimensional
+  haveI := L'.isGalois.to_normal
+  haveI : NeZero (Module.finrank 𝓀[K] L'.toIntermediateField) := ⟨Module.finrank_pos.ne'⟩
+  have hxL : x ∈ L'.toIntermediateField :=
+    FiniteGaloisIntermediateField.subset_adjoin 𝓀[K] ({x} : Set kbar) rfl
+  have hLeq : L'.toIntermediateField =
+      canonicalDegreeSubfield K (Module.finrank 𝓀[K] L'.toIntermediateField) :=
+    eq_canonicalDegreeSubfield K L'.toIntermediateField rfl
+  exact ⟨_, inferInstance, hLeq ▸ hxL⟩
+
 /-- **Injectivity input**: an automorphism of `kbar/𝓀[K]` restricting to the identity on every
-`canonicalDegreeSubfield K n` is itself the identity. Every `x : kbar` lies in some finite Galois
-`M` (its `FiniteGaloisIntermediateField.adjoin`, mirroring `surjective_residueAction'`'s proof),
-and `M = canonicalDegreeSubfield K d` for `d := [M : 𝓀[K]]` by `eq_canonicalDegreeSubfield`; since
-`g` restricts to the identity there, `g` fixes `x`. -/
+`canonicalDegreeSubfield K n` is itself the identity. Every `x : kbar` lies in some
+`canonicalDegreeSubfield K d` (`exists_mem_canonicalDegreeSubfield`); since `g` restricts to the
+identity there, `g` fixes `x`. -/
 theorem eq_one_of_forall_restrictNormalHom_canonicalDegreeSubfield_eq_one
     (g : kbar ≃ₐ[𝓀[K]] kbar)
     (hg : ∀ (n : ℕ) [NeZero n], AlgEquiv.restrictNormalHom (canonicalDegreeSubfield K n) g = 1) :
     g = 1 := by
   apply AlgEquiv.ext
   intro x
-  obtain ⟨M, hMfd, hMnormal, hxM⟩ : ∃ M : IntermediateField 𝓀[K] kbar,
-      FiniteDimensional 𝓀[K] M ∧ Normal 𝓀[K] M ∧ x ∈ M := by
-    classical
-    haveI := residueField_isGalois K
-    let L' := FiniteGaloisIntermediateField.adjoin 𝓀[K] ({x} : Set kbar)
-    exact ⟨L'.toIntermediateField, L'.finiteDimensional, L'.isGalois.to_normal,
-      FiniteGaloisIntermediateField.subset_adjoin 𝓀[K] ({x} : Set kbar) rfl⟩
-  haveI := hMfd; haveI := hMnormal
-  haveI : NeZero (Module.finrank 𝓀[K] M) := ⟨Module.finrank_pos.ne'⟩
-  have hMeq : M = canonicalDegreeSubfield K (Module.finrank 𝓀[K] M) :=
-    eq_canonicalDegreeSubfield K M rfl
-  have hxM' : x ∈ canonicalDegreeSubfield K (Module.finrank 𝓀[K] M) := hMeq ▸ hxM
-  have hgM : AlgEquiv.restrictNormalHom (canonicalDegreeSubfield K (Module.finrank 𝓀[K] M)) g = 1 :=
-    hg (Module.finrank 𝓀[K] M)
-  have := AlgEquiv.restrictNormalHom_apply (canonicalDegreeSubfield K (Module.finrank 𝓀[K] M)) g
-    ⟨x, hxM'⟩
-  rw [hgM] at this
+  obtain ⟨n, hn, hxn⟩ := exists_mem_canonicalDegreeSubfield K x
+  haveI := hn
+  have hgn : AlgEquiv.restrictNormalHom (canonicalDegreeSubfield K n) g = 1 := hg n
+  have := AlgEquiv.restrictNormalHom_apply (canonicalDegreeSubfield K n) g ⟨x, hxn⟩
+  rw [hgn] at this
   simpa using this.symm
 
 /-- **If two automorphisms of `kbar/𝓀[K]` agree after restricting to `M`, they agree after
@@ -1247,6 +1253,229 @@ theorem toZhatHomOfAlgEquiv_injective : Function.Injective (toZhatHomOfAlgEquiv 
     rw [(levelMulEquiv K H).symm_apply_eq, map_one] at hval
     exact hval
   exact hHn ▸ h2
+
+/-! ### Surjectivity of `toZhatHomOfAlgEquiv` -/
+
+/-- **A global automorphism realizing `z`'s `H`-component at the Galois level**: given `z : Zhat`
+and `H`, `levelMulEquiv K H (z.val H) : Gal(canonicalDegreeSubfield K H.index/𝓀[K])` has *some*
+preimage under `AlgEquiv.restrictNormalHom (canonicalDegreeSubfield K H.index)`
+(`AlgEquiv.restrictNormalHom_surjective`); `liftLevel` fixes a choice of one. -/
+noncomputable def liftLevel (z : Zhat) (H : FiniteIndexNormalSubgroup (Multiplicative ℤ)) :
+    kbar ≃ₐ[𝓀[K]] kbar :=
+  haveI : NeZero H.toSubgroup.index := ⟨Subgroup.FiniteIndex.index_ne_zero⟩
+  (AlgEquiv.restrictNormalHom_surjective (F := 𝓀[K])
+    (K₁ := canonicalDegreeSubfield K H.toSubgroup.index) kbar (levelMulEquiv K H (z.val H))).choose
+
+theorem restrictNormalHom_liftLevel (z : Zhat) (H : FiniteIndexNormalSubgroup (Multiplicative ℤ)) :
+    haveI : NeZero H.toSubgroup.index := ⟨Subgroup.FiniteIndex.index_ne_zero⟩
+    AlgEquiv.restrictNormalHom (canonicalDegreeSubfield K H.toSubgroup.index) (liftLevel K z H) =
+      levelMulEquiv K H (z.val H) :=
+  haveI : NeZero H.toSubgroup.index := ⟨Subgroup.FiniteIndex.index_ne_zero⟩
+  (AlgEquiv.restrictNormalHom_surjective (F := 𝓀[K])
+    (K₁ := canonicalDegreeSubfield K H.toSubgroup.index) kbar
+    (levelMulEquiv K H (z.val H))).choose_spec
+
+/-- **The `liftLevel` choices for `H ≤ H'` agree at level `H'`**: since `z` is compatible across
+`H ⟶ H'` and `levelMulEquiv` is natural, `liftLevel K z H`, restricted down to
+`canonicalDegreeSubfield K H'.index`, already realizes `z`'s `H'`-component -- exactly the
+`H'`-value `liftLevel K z H'` was chosen (independently) to realize. This is the key compatibility
+making the level-by-level choices glue into a single automorphism of `kbar`. -/
+theorem restrictNormalHom_liftLevel_of_le (z : Zhat)
+    {H H' : FiniteIndexNormalSubgroup (Multiplicative ℤ)} (hle : H ≤ H') :
+    haveI : NeZero H'.toSubgroup.index := ⟨Subgroup.FiniteIndex.index_ne_zero⟩
+    AlgEquiv.restrictNormalHom (canonicalDegreeSubfield K H'.toSubgroup.index) (liftLevel K z H) =
+      levelMulEquiv K H' (z.val H') := by
+  haveI : NeZero H.toSubgroup.index := ⟨Subgroup.FiniteIndex.index_ne_zero⟩
+  haveI : NeZero H'.toSubgroup.index := ⟨Subgroup.FiniteIndex.index_ne_zero⟩
+  have hnat := levelMulEquiv_symm_naturality K hle (liftLevel K z H)
+  rw [restrictNormalHom_liftLevel K z H, (levelMulEquiv K H).symm_apply_apply] at hnat
+  have hzcompat : (ProfiniteGrp.ProfiniteCompletion.diagram (GrpCat.of (Multiplicative ℤ))).map
+      (homOfLE hle) (z.val H) = z.val H' := z.property (homOfLE hle)
+  have hzcompat' : QuotientGroup.map H.toSubgroup H'.toSubgroup (MonoidHom.id _) hle (z.val H) =
+      z.val H' := hzcompat
+  rw [hzcompat'] at hnat
+  exact (levelMulEquiv K H').symm_apply_eq.mp hnat.symm
+
+/-- **`liftLevel`'s choices agree wherever both are defined**: for `x` in both
+`canonicalDegreeSubfield K H.index` and `canonicalDegreeSubfield K H'.index`, `liftLevel K z H x =
+liftLevel K z H' x`. Compares both against the common refinement `N := H ⊓ H'` (contained in both,
+via `restrictNormalHom_liftLevel_of_le`), then reads off agreement at `x` from equality of the two
+`restrictNormalHom`-images via `AlgEquiv.restrictNormalHom_apply`. -/
+theorem liftLevel_apply_eq_of_mem (z : Zhat) {H H' : FiniteIndexNormalSubgroup (Multiplicative ℤ)}
+    {x : kbar} :
+    haveI : NeZero H.toSubgroup.index := ⟨Subgroup.FiniteIndex.index_ne_zero⟩
+    haveI : NeZero H'.toSubgroup.index := ⟨Subgroup.FiniteIndex.index_ne_zero⟩
+    x ∈ canonicalDegreeSubfield K H.toSubgroup.index →
+    x ∈ canonicalDegreeSubfield K H'.toSubgroup.index →
+    liftLevel K z H x = liftLevel K z H' x := by
+  haveI : NeZero H.toSubgroup.index := ⟨Subgroup.FiniteIndex.index_ne_zero⟩
+  haveI : NeZero H'.toSubgroup.index := ⟨Subgroup.FiniteIndex.index_ne_zero⟩
+  intro hxH hxH'
+  set N := H ⊓ H' with hN
+  have hNH : N ≤ H := inf_le_left
+  have hNH' : N ≤ H' := inf_le_right
+  have heqH : AlgEquiv.restrictNormalHom (canonicalDegreeSubfield K H.toSubgroup.index)
+      (liftLevel K z H) =
+      AlgEquiv.restrictNormalHom (canonicalDegreeSubfield K H.toSubgroup.index)
+        (liftLevel K z N) := by
+    rw [restrictNormalHom_liftLevel_of_le K z hNH, restrictNormalHom_liftLevel K z H]
+  have heqH' : AlgEquiv.restrictNormalHom (canonicalDegreeSubfield K H'.toSubgroup.index)
+      (liftLevel K z H') =
+      AlgEquiv.restrictNormalHom (canonicalDegreeSubfield K H'.toSubgroup.index)
+        (liftLevel K z N) := by
+    rw [restrictNormalHom_liftLevel_of_le K z hNH', restrictNormalHom_liftLevel K z H']
+  have h1 := AlgEquiv.restrictNormalHom_apply (canonicalDegreeSubfield K H.toSubgroup.index)
+    (liftLevel K z H) ⟨x, hxH⟩
+  have h2 := AlgEquiv.restrictNormalHom_apply (canonicalDegreeSubfield K H.toSubgroup.index)
+    (liftLevel K z N) ⟨x, hxH⟩
+  have h3 := AlgEquiv.restrictNormalHom_apply (canonicalDegreeSubfield K H'.toSubgroup.index)
+    (liftLevel K z H') ⟨x, hxH'⟩
+  have h4 := AlgEquiv.restrictNormalHom_apply (canonicalDegreeSubfield K H'.toSubgroup.index)
+    (liftLevel K z N) ⟨x, hxH'⟩
+  have hHN : liftLevel K z H x = liftLevel K z N x := by
+    rw [← h1, ← h2, heqH]
+  have hH'N : liftLevel K z H' x = liftLevel K z N x := by
+    rw [← h3, ← h4, heqH']
+  rw [hHN, hH'N]
+
+/-- **Every element of `kbar` lies in `canonicalDegreeSubfield K H.index` for some finite-index
+normal subgroup `H` of `Multiplicative ℤ`**, combining `exists_mem_canonicalDegreeSubfield` with
+`existsUnique_finiteIndexNormalSubgroup_index_eq`. -/
+theorem exists_finiteIndexNormalSubgroup_mem (x : kbar) :
+    ∃ H : FiniteIndexNormalSubgroup (Multiplicative ℤ),
+      haveI : NeZero H.toSubgroup.index := ⟨Subgroup.FiniteIndex.index_ne_zero⟩
+      x ∈ canonicalDegreeSubfield K H.toSubgroup.index := by
+  obtain ⟨n, hn, hx⟩ := exists_mem_canonicalDegreeSubfield K x
+  haveI := hn
+  obtain ⟨H, hHn, -⟩ := existsUnique_finiteIndexNormalSubgroup_index_eq (NeZero.ne n)
+  haveI : NeZero H.toSubgroup.index := ⟨Subgroup.FiniteIndex.index_ne_zero⟩
+  exact ⟨H, hHn ▸ hx⟩
+
+/-- **The gluing of `liftLevel`'s choices into a single function `kbar → kbar`**: at each `x`,
+apply `liftLevel K z H` for *some* `H` with `x ∈ canonicalDegreeSubfield K H.index`
+(`exists_finiteIndexNormalSubgroup_mem`); well-defined by `liftLevel_apply_eq_of_mem`. -/
+noncomputable def surjLift (z : Zhat) (x : kbar) : kbar :=
+  liftLevel K z (exists_finiteIndexNormalSubgroup_mem K x).choose x
+
+/-- **`surjLift K z` agrees with any `liftLevel K z H` on `canonicalDegreeSubfield K H.index`.** -/
+theorem surjLift_eq_liftLevel_apply (z : Zhat) (H : FiniteIndexNormalSubgroup (Multiplicative ℤ))
+    (x : kbar) :
+    haveI : NeZero H.toSubgroup.index := ⟨Subgroup.FiniteIndex.index_ne_zero⟩
+    x ∈ canonicalDegreeSubfield K H.toSubgroup.index → surjLift K z x = liftLevel K z H x := by
+  haveI : NeZero H.toSubgroup.index := ⟨Subgroup.FiniteIndex.index_ne_zero⟩
+  intro hx
+  exact liftLevel_apply_eq_of_mem K z (exists_finiteIndexNormalSubgroup_mem K x).choose_spec hx
+
+/-- **A common finite-index normal subgroup `H` with both `x, y ∈ canonicalDegreeSubfield K
+H.index`**: take the meet of the individual witnesses (`exists_finiteIndexNormalSubgroup_mem`),
+using `canonicalDegreeSubfield_le_of_dvd` to see the smaller-degree subfields sit inside the
+bigger one. -/
+theorem exists_finiteIndexNormalSubgroup_mem₂ (x y : kbar) :
+    ∃ H : FiniteIndexNormalSubgroup (Multiplicative ℤ),
+      x ∈ canonicalDegreeSubfield K H.toSubgroup.index ∧
+        y ∈ canonicalDegreeSubfield K H.toSubgroup.index := by
+  obtain ⟨Hx, hx⟩ := exists_finiteIndexNormalSubgroup_mem K x
+  obtain ⟨Hy, hy⟩ := exists_finiteIndexNormalSubgroup_mem K y
+  refine ⟨Hx ⊓ Hy, ?_, ?_⟩
+  · exact canonicalDegreeSubfield_le_of_dvd K
+      (FiniteIndexNormalSubgroup.index_dvd_index_of_le (inf_le_left (a := Hx) (b := Hy))) hx
+  · exact canonicalDegreeSubfield_le_of_dvd K
+      (FiniteIndexNormalSubgroup.index_dvd_index_of_le (inf_le_right (a := Hx) (b := Hy))) hy
+
+/-- **`surjLift K z` is additive.** Both `x`, `y` (hence `x + y`) lie in a common
+`canonicalDegreeSubfield K H.index` (`exists_finiteIndexNormalSubgroup_mem₂`); there, `surjLift K
+z` agrees with `liftLevel K z H`, an honest ring homomorphism. -/
+theorem surjLift_add (z : Zhat) (x y : kbar) :
+    surjLift K z (x + y) = surjLift K z x + surjLift K z y := by
+  obtain ⟨H, hx, hy⟩ := exists_finiteIndexNormalSubgroup_mem₂ K x y
+  have hxy : x + y ∈ canonicalDegreeSubfield K H.toSubgroup.index := add_mem hx hy
+  rw [surjLift_eq_liftLevel_apply K z H x hx, surjLift_eq_liftLevel_apply K z H y hy,
+    surjLift_eq_liftLevel_apply K z H (x + y) hxy, map_add]
+
+/-- **`surjLift K z` is multiplicative.** Same argument as `surjLift_add`. -/
+theorem surjLift_mul (z : Zhat) (x y : kbar) :
+    surjLift K z (x * y) = surjLift K z x * surjLift K z y := by
+  obtain ⟨H, hx, hy⟩ := exists_finiteIndexNormalSubgroup_mem₂ K x y
+  have hxy : x * y ∈ canonicalDegreeSubfield K H.toSubgroup.index := mul_mem hx hy
+  rw [surjLift_eq_liftLevel_apply K z H x hx, surjLift_eq_liftLevel_apply K z H y hy,
+    surjLift_eq_liftLevel_apply K z H (x * y) hxy, map_mul]
+
+/-- **`surjLift K z` commutes with `algebraMap 𝓀[K] kbar`**: `𝓀[K]` sits inside every
+`canonicalDegreeSubfield K n` (`algebraMap_mem`, since it's an `IntermediateField`), where every
+`liftLevel K z H` (an algebra automorphism over `𝓀[K]`) fixes it. -/
+theorem surjLift_algebraMap (z : Zhat) (c : 𝓀[K]) :
+    surjLift K z (algebraMap 𝓀[K] kbar c) = algebraMap 𝓀[K] kbar c := by
+  obtain ⟨H, hx⟩ := exists_finiteIndexNormalSubgroup_mem K (algebraMap 𝓀[K] kbar c)
+  rw [surjLift_eq_liftLevel_apply K z H _ hx]
+  exact (liftLevel K z H).commutes c
+
+/-- **`surjLift K z⁻¹` is a two-sided inverse of `surjLift K z`.** Both `x` and `surjLift K z x`
+(resp. `surjLift K z⁻¹ x`) lie in a common `canonicalDegreeSubfield K H.index`, where `liftLevel K
+z H` and `liftLevel K z⁻¹ H` are honest mutually-inverse field automorphisms, since
+`levelMulEquiv K H (z⁻¹.val H) = (levelMulEquiv K H (z.val H))⁻¹` (via `z⁻¹.val H = (z.val
+H)⁻¹`, a consequence of the `Subgroup` group structure on `Zhat`) and `restrictNormalHom`s and
+`AlgEquiv` inverses interact accordingly. -/
+theorem surjLift_left_inv (z : Zhat) (x : kbar) : surjLift K z⁻¹ (surjLift K z x) = x := by
+  obtain ⟨Hx, hx⟩ := exists_finiteIndexNormalSubgroup_mem K x
+  have hgx : surjLift K z x = liftLevel K z Hx x := surjLift_eq_liftLevel_apply K z Hx x hx
+  have hy := AlgEquiv.restrictNormalHom_apply (canonicalDegreeSubfield K Hx.toSubgroup.index)
+    (liftLevel K z Hx) ⟨x, hx⟩
+  rw [restrictNormalHom_liftLevel K z Hx] at hy
+  have hgxMem : surjLift K z x ∈ canonicalDegreeSubfield K Hx.toSubgroup.index := by
+    rw [hgx, ← hy]
+    exact (levelMulEquiv K Hx (z.val Hx) ⟨x, hx⟩).2
+  have hinv : liftLevel K z⁻¹ Hx (liftLevel K z Hx x) = x := by
+    have hz := AlgEquiv.restrictNormalHom_apply (canonicalDegreeSubfield K Hx.toSubgroup.index)
+      (liftLevel K z⁻¹ Hx) (levelMulEquiv K Hx (z.val Hx) ⟨x, hx⟩)
+    rw [restrictNormalHom_liftLevel K z⁻¹ Hx] at hz
+    have hzinv : z⁻¹.val Hx = (z.val Hx)⁻¹ := rfl
+    rw [hzinv] at hz
+    have hmulone : levelMulEquiv K Hx (z.val Hx) * levelMulEquiv K Hx ((z.val Hx)⁻¹) = 1 := by
+      rw [← map_mul, mul_inv_cancel, map_one]
+    have hinvEq : levelMulEquiv K Hx ((z.val Hx)⁻¹) = (levelMulEquiv K Hx (z.val Hx))⁻¹ :=
+      eq_inv_of_mul_eq_one_right hmulone
+    erw [hinvEq, AlgEquiv.aut_inv, AlgEquiv.symm_apply_apply] at hz
+    rw [← hy]
+    exact hz.symm
+  rw [surjLift_eq_liftLevel_apply K z⁻¹ Hx (surjLift K z x) hgxMem, hgx, hinv]
+
+theorem surjLift_right_inv (z : Zhat) (x : kbar) : surjLift K z (surjLift K z⁻¹ x) = x := by
+  have := surjLift_left_inv K z⁻¹ x
+  rwa [inv_inv] at this
+
+/-- **`surjLift K z`, packaged as a genuine `AlgEquiv`.** -/
+noncomputable def surjLiftAlgEquiv (z : Zhat) : kbar ≃ₐ[𝓀[K]] kbar where
+  toFun := surjLift K z
+  invFun := surjLift K z⁻¹
+  left_inv := surjLift_left_inv K z
+  right_inv := surjLift_right_inv K z
+  map_mul' := surjLift_mul K z
+  map_add' := surjLift_add K z
+  commutes' := surjLift_algebraMap K z
+
+/-- **`toZhatHomOfAlgEquiv K` is surjective**: `surjLiftAlgEquiv K z` maps to `z`, checked
+level-by-level via `surjLift_eq_liftLevel_apply` and `restrictNormalHom_liftLevel`. -/
+theorem toZhatHomOfAlgEquiv_surjective : Function.Surjective (toZhatHomOfAlgEquiv K) := by
+  intro z
+  refine ⟨surjLiftAlgEquiv K z, ?_⟩
+  apply Subtype.ext
+  funext H
+  show (levelMulEquiv K H).symm
+      (AlgEquiv.restrictNormalHom (canonicalDegreeSubfield K H.toSubgroup.index)
+        (surjLiftAlgEquiv K z)) = z.val H
+  have heq : AlgEquiv.restrictNormalHom (canonicalDegreeSubfield K H.toSubgroup.index)
+      (surjLiftAlgEquiv K z) = levelMulEquiv K H (z.val H) := by
+    apply AlgEquiv.ext
+    intro x
+    have hx : (x : kbar) ∈ canonicalDegreeSubfield K H.toSubgroup.index := x.2
+    apply Subtype.ext
+    rw [AlgEquiv.restrictNormalHom_apply]
+    show surjLift K z (x : kbar) = _
+    rw [surjLift_eq_liftLevel_apply K z H (x : kbar) hx,
+      ← AlgEquiv.restrictNormalHom_apply (canonicalDegreeSubfield K H.toSubgroup.index)
+        (liftLevel K z H) x,
+      restrictNormalHom_liftLevel K z H]
+  rw [heq, (levelMulEquiv K H).symm_apply_apply]
 
 /-- The classical computation of the (profinite) absolute Galois group of a finite field: it is
 topologically generated by Frobenius, and (as an abstract group) isomorphic to `ℤ̂`, via
