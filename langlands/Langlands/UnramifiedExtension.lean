@@ -64,6 +64,7 @@ provided at the call site (proved there by `rfl`, exactly as here). -/
 noncomputable section
 
 open ValuativeRel Valuation IsLocalRing Polynomial
+open scoped Pointwise
 
 -- **Instance-diamond fix**: `IsLocalRing.ResidueField.algebraOfIsIntegral` (a generic instance
 -- giving `Algebra (ResidueField R) k` for any `k` integral over `R`) competes with
@@ -208,48 +209,47 @@ verified, not just claimed): both are free at the one call site
 as ambient section variables; only `hAcomap` needed a new argument threaded through at that call
 site, supplied by the already-proved `valuationSubringExtension_comap K`.
 
-**What is still open, precisely (piece B, the functoriality/lifting tail):** given `g : M ≃ₐ[𝓀[K]] M`
-(the automorphism to lift, from `Function.Surjective`'s `intro`) and the residue-field isomorphism
-`eResidue : IsLocalRing.ResidueField C ≃+* M` transporting `g` to an automorphism of
-`IsLocalRing.ResidueField C`, the remaining steps -- lifting that residue automorphism to a
-`K`-automorphism of `K'`; extending that automorphism to `σ : L ≃ₐ[K] L` via
-`IsAlgClosed.surjective_restrictDomain_of_isAlgebraic` and
-`Algebra.IsAlgebraic.algHom_bijective`/`AlgEquiv.ofBijective`; showing `σ • A = A` (i.e.
-`σ ∈ A.decompositionSubgroup K`) via `ValuationSubring.comap_smul_eq` and the same uniqueness lemma
-used in piece A, applied at `K'`; and showing the induced residue action of `σ` on `M` equals `g` --
-are none of them attempted here.
+**Update (the shared-lift obstruction is resolved):** the previous pass here recorded a rejected
+route -- re-running `exists_isDiscreteValuationRing_integralClosure_residueField_equiv` a second
+time for `β₀' := g β₀` -- because that theorem derived its own monic lift `f` internally (via
+`HenselianLocalRing.exists_monic_lift_minpoly`) on each call, with no guarantee that two calls agree.
+The fix actually landed: `exists_isDiscreteValuationRing_integralClosure_residueField_equiv` now
+takes `f`/`hfmonic`/`hfmap` as **explicit** hypotheses (mirroring
+`exists_ringHom_adjoinRoot_map_of_isAlgClosed` above) instead of deriving them internally, and
+additionally exposes `f.map (algebraMap R K) = minpoly K x` in its conclusion. The caller
+(`exists_restrictNormalHom_decompositionSubgroup_surjective` below) now calls
+`HenselianLocalRing.exists_monic_lift_minpoly hβ₀` itself, once, and feeds the resulting `f` to
+*both* invocations of the existence theorem -- once for `β₀` (giving root `x`), once for `g β₀`
+(`hβg`, `hfmap_g` from `minpoly.algEquiv_eq g β₀`, `hprim_g` from mapping `hprim` along `g`; giving
+root `x'`). Both roots are now genuinely roots of the *same* polynomial `f.map (algebraMap R K)`
+over `K`, so `minpoly K x = minpoly K x'`, and `minpoly.algEquiv` (Mathlib) gives a real
+`K`-algebra isomorphism `e : K⟮x⟯ ≃ₐ[K] K⟮x'⟯` sending the generator of one to the generator of the
+other. `e` extends to `σ : L ≃ₐ[K] L` via `IsAlgClosed.surjective_restrictDomain_of_isAlgebraic`
+and `Algebra.IsAlgebraic.algHom_bijective`/`AlgEquiv.ofBijective` (needing the new
+`[Algebra.IsAlgebraic K L]` hypothesis on the theorem below, free at the one call site since
+`L := AlgebraicClosure K` there). `σ x = x'` by construction (`hσx`).
 
-**A candidate route was investigated and rejected (not merely "not attempted"), because it runs
-into the same not-yet-formalized content the whole theorem is built on:** re-run
-`exists_isDiscreteValuationRing_integralClosure_residueField_equiv` a second time with the twisted
-primitive element `β₀' := g β₀` (`hprim' : 𝓀[K]⟮g β₀⟯ = ⊤` follows from `hprim` by applying `g`,
-and `minpoly 𝓀[K] (g β₀) = minpoly 𝓀[K] β₀` is `minpoly.algEquiv_eq g β₀`, confirmed against
-Mathlib), producing a second root `x'`, field `K'' := K⟮x'⟯`, ring `C'`. The idea was then to
-build `K' ≃ₐ[K] K''` from `x` and `x'` both being roots of "the same" minimal polynomial over `K`,
-and lift that to `σ`. **This does not go through**: `exists_isDiscreteValuationRing_integralClosure_residueField_equiv`
-does not expose (in its public statement) the monic lift `f : R[X]` it internally constructs via
-`HenselianLocalRing.exists_monic_lift_minpoly`, nor the fact `f.map (algebraMap R K) = minpoly K x`
-(`hminpoly` in its proof) -- both are existential witnesses local to that theorem's proof, not part
-of its conclusion. Re-invoking the theorem a second time for `β₀'` produces some monic lift `f'`
-(again only guaranteed to reduce to `minpoly 𝓀[K] β₀` mod `𝓂[K]`, same target as `f`'s reduction,
-since the targets are equal) but **`exists_monic_lift_minpoly` does not guarantee `f' = f`** as
-elements of `R[X]` -- it is a bare existence statement (`Polynomial.lifts_and_natDegree_eq_and_monic`
-gives *some* lift, with no uniqueness clause). Without `f = f'` (equivalently, without
-`minpoly K x = minpoly K x'`), there is no available fact making `K⟮x⟯` and `K⟮x'⟯` `K`-isomorphic:
-two degree-`n` irreducible polynomials over `K` with the same reduction mod `𝓂[K]` need not be
-`K`-conjugate, let alone equal, from what is proved here. Making them agree (or otherwise
-established that any two valid choices of lift give isomorphic stem fields) is exactly the
-"unramified extensions of a Henselian field are classified by, and functorial in, their residue
-extension" theorem flagged as missing from the very first draft of this proof sketch -- it is
-Hensel's-lemma/Krasner's-lemma-flavoured content in its own right (Mathlib has
-`Mathlib.Analysis.Normed.Field.Krasner`, a topological/normed-field Krasner's lemma, not obviously
-in a form that transfers to this valuative-relation-based setting without substantial adaptation),
-comparable in scope to everything else already built in this file, not a small well-scoped helper
-lemma that can be bolted on. Attempting to force the construction through without it would mean
-either asserting `f = f'` (or `minpoly K x = minpoly K x'`) as an unjustified additional `sorry`
-disguised as a rewrite, or silently proving something weaker than the stated theorem; neither is
-done here. Closing this sorry for real needs that classification theorem (or a genuinely different
-route not yet identified) proved first, as its own lemma, with its own hypotheses spelled out.
+`σ` lies in the decomposition subgroup **more directly than originally sketched**: rather than
+redoing the `K'`-level comap-uniqueness argument at `K''` and transporting, `σ • A = A` follows
+straight from `ValuationSubring.comap_smul_eq` (comap to `K` is invariant under any
+`K`-automorphism) together with the theorem's own `hAcomap` hypothesis, applying
+`LocalField.valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField` **at `L` itself** (not
+at a finite subextension) -- both `A` and `σ • A` comap to `𝒪[K]`, hence coincide.
+
+**What is still open, precisely:** showing the induced residue action of `σ` on
+`IsLocalRing.ResidueField A`, restricted to `M`, equals `g`. This needs a compatibility fact not
+yet established anywhere in this file: that `eResidue : IsLocalRing.ResidueField C ≃+* M` (and its
+primed counterpart `eResidue'` for `C' := integralClosure ↥(𝒪[K]) K''`) agrees, at the residue of
+`C`'s canonical generator, with the *actual* residue map `A → IsLocalRing.ResidueField A` restricted
+along the (already-established) identification `V = A.comap (algebraMap K' L)` of `C` with a
+valuation subring of `K'`. `exists_isDiscreteValuationRing_integralClosure_residueField_equiv`'s
+current statement only gives an *abstract* ring isomorphism `IsLocalRing.ResidueField C ≃+* M`; it
+does not (and its proof, as currently structured, does not expose enough to derive) that this
+isomorphism sends `IsLocalRing.residue C` of the generator to `β₀` compatibly with `V ⊆ A`'s
+induced residue map. With that compatibility square, `AlgHom.ext`-on-a-generator (`M = 𝓀[K]⟮β₀⟯`,
+via `hprim`) would reduce the goal to checking agreement at `β₀` alone, which `hσx` and the
+analogous fact for `eResidue'`/`g β₀` would then close -- but establishing the square itself is new
+content, comparable in scope to a further nontrivial chunk of this file, not attempted here.
 
 See the `sorry` in `exists_restrictNormalHom_decompositionSubgroup_surjective`'s proof, at the end of
 this file, for the precise goal state left open.
@@ -925,14 +925,17 @@ theorem HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residu
     {L : Type*} [Field L] [Algebra K L] [Algebra R L] [IsScalarTower R K L] [IsAlgClosed L]
     {l : Type*} [Field l] [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
     (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀)
+    {f : R[X]} (hfmonic : f.Monic)
+    (hfmap : f.map (algebraMap R (IsLocalRing.ResidueField R)) =
+      minpoly (IsLocalRing.ResidueField R) β₀)
     (hprim : IntermediateField.adjoin (IsLocalRing.ResidueField R) {β₀} = ⊤) :
     ∃ x : L, ∃ _hxint : IsIntegral R x,
+      f.map (algebraMap R K) = minpoly K x ∧
       Algebra.IsSeparable K ↥(IntermediateField.adjoin K {x}) ∧
       ∃ hCloc : IsLocalRing ↥(integralClosure R (IntermediateField.adjoin K {x})),
         IsDiscreteValuationRing ↥(integralClosure R (IntermediateField.adjoin K {x})) ∧
         Nonempty (@IsLocalRing.ResidueField _ _ hCloc ≃+* l) := by
   classical
-  obtain ⟨f, hfmonic, hfdeg, hfmap⟩ := HenselianLocalRing.exists_monic_lift_minpoly hβ₀
   obtain ⟨x, φ, hφinj, hφroot, hφcomp⟩ :=
     HenselianLocalRing.exists_ringHom_adjoinRoot_map_of_isAlgClosed (R := R) (K := K) (L := L)
       hβ₀ hfmonic hfmap
@@ -1109,7 +1112,7 @@ theorem HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residu
     ((IsDiscreteValuationRing.TFAE C hCnotField).out 0 2).mpr hCdedekind
   have hCisLocalRing' : IsLocalRing ↥(integralClosure R (IntermediateField.adjoin K {x})) :=
     hCisLocalRing
-  refine ⟨x, hxint, hK'sep, ?_⟩
+  refine ⟨x, hxint, hminpoly, hK'sep, ?_⟩
   exact ⟨hCisLocalRing', hCdvr, ⟨(RingEquiv.symm (IsLocalRing.ResidueField.mapEquiv e) : _).trans
     (HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly hβ₀ hfmonic hfmap hprim)⟩⟩
 
@@ -1128,7 +1131,7 @@ variable {L : Type*} [Field L] [Algebra K L] (A : ValuationSubring L) [Algebra �
 theorem ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective
     (hAcomap : A.comap (algebraMap K L) = (ValuativeRel.valuation K).valuationSubring)
     (hcompat : ∀ a : ↥(𝒪[K]), (algebraMap ↥(𝒪[K]) A a : L) = algebraMap K L (a : K))
-    [IsAlgClosed L] [IsGalois 𝓀[K] (IsLocalRing.ResidueField A)]
+    [IsAlgClosed L] [Algebra.IsAlgebraic K L] [IsGalois 𝓀[K] (IsLocalRing.ResidueField A)]
     (M : IntermediateField 𝓀[K] (IsLocalRing.ResidueField A))
     [FiniteDimensional 𝓀[K] M] [Normal 𝓀[K] M] :
     Function.Surjective fun σ : A.decompositionSubgroup K =>
@@ -1149,11 +1152,17 @@ theorem ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjecti
   haveI : Algebra.IsAlgebraic 𝓀[K] M := Algebra.IsAlgebraic.of_finite 𝓀[K] M
   obtain ⟨β₀, hprim⟩ := Field.exists_primitive_element 𝓀[K] M
   have hβ₀ : IsIntegral 𝓀[K] (β₀ : M) := IsIntegral.of_finite 𝓀[K] (β₀ : M)
+  -- The monic lift `f` of `β₀`'s minimal polynomial, computed *once* and shared between the two
+  -- calls to `exists_isDiscreteValuationRing_integralClosure_residueField_equiv` below (for `β₀`
+  -- and for `g β₀`) -- this sharing is what defeats the obstruction recorded above ("A candidate
+  -- route was investigated and rejected"): with a common `f`, the two roots produced are roots of
+  -- the *same* polynomial over `K`, hence genuinely `K`-conjugate.
+  obtain ⟨f, hfmonic, hfdeg, hfmap⟩ := HenselianLocalRing.exists_monic_lift_minpoly hβ₀
   -- **Piece A**: the unramified extension `K' := K⟮x⟯` with `C := integralClosure ↥(𝒪[K]) K'` a
   -- discrete valuation ring whose residue field is `≃+*`-isomorphic to `M`.
-  obtain ⟨x, hxint, hK'sep, hCloc, hCdvr, ⟨eResidue⟩⟩ :=
+  obtain ⟨x, hxint, hminpoly, hK'sep, hCloc, hCdvr, ⟨eResidue⟩⟩ :=
     HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv
-      (R := ↥(𝒪[K])) (K := K) (L := L) (l := M) hβ₀ hprim
+      (R := ↥(𝒪[K])) (K := K) (L := L) (l := M) hβ₀ hfmonic hfmap hprim
   set K' : IntermediateField K L := IntermediateField.adjoin K {x} with hK'def
   set C : Subalgebra ↥(𝒪[K]) K' := integralClosure ↥(𝒪[K]) K' with hCdef
   haveI hCloc' : IsLocalRing C := hCloc
@@ -1192,15 +1201,86 @@ theorem ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjecti
   haveI : Algebra.IsAlgebraic K K' := Algebra.IsAlgebraic.of_finite K K'
   have hVA : V = A.comap (algebraMap K' L) :=
     LocalField.valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField hVcomap hAK'comap
-  -- **Piece B (blocked, not merely unattempted -- see the docstring above, "A candidate route was
-  -- investigated and rejected", for the precise reason)**: lift `g : M ≃ₐ[𝓀[K]] M`, via `eResidue`,
-  -- to an automorphism of `IsLocalRing.ResidueField C`; lift that to `τ : K' ≃ₐ[K] K'` (needs the
-  -- not-yet-formalized "unramified extensions are classified by, and functorial in, their residue
-  -- extension" theorem -- re-running `exists_isDiscreteValuationRing_integralClosure_residueField_equiv`
-  -- with `g β₀` in place of `β₀` does *not* suffice, since it gives no guarantee that the resulting
-  -- monic lift/root has the same minimal polynomial over `K` as `f`/`x`, which is what a
-  -- stem-field isomorphism argument would need); extend `τ` to `σ : L ≃ₐ[K] L` via `IsAlgClosed L`;
-  -- show `σ • A = A` using `hVA`, `ValuationSubring.comap_smul_eq`, and the same uniqueness lemma
-  -- as above, applied at `K'` to the pair `V`/`(σ • A).comap (algebraMap K' L)`; and show the
-  -- induced residue action of `σ` on `M` is `g`.
+  -- **Piece B**: lift `g : M ≃ₐ[𝓀[K]] M` to a `K`-automorphism `σ` of `L` lying in the
+  -- decomposition subgroup of `A`. Since `g` fixes `𝓀[K]` pointwise, `g β₀` has the same minimal
+  -- polynomial as `β₀` (`minpoly.algEquiv_eq`), so the *same* monic lift `f` used for `β₀` above
+  -- also lifts `g β₀`'s minimal polynomial: the existence theorem can be invoked a second time for
+  -- `g β₀` while sharing `f` with the first call, rather than letting it derive a fresh (a priori
+  -- unrelated) lift internally. This is exactly what defeats the obstruction recorded above ("A
+  -- candidate route was investigated and rejected"): the two calls now share `f`, so both roots
+  -- `x`, `x'` are roots of the *same* polynomial `p := f.map (algebraMap ↥(𝒪[K]) K)`, hence have
+  -- the same minimal polynomial over `K`, giving a genuine `K`-algebra isomorphism
+  -- `K⟮x⟯ ≃ₐ[K] K⟮x'⟯` -- unlike the rejected route's second call, which re-derived its own lift
+  -- via `exists_monic_lift_minpoly` with no guarantee of agreeing with `f`.
+  have hβg : IsIntegral 𝓀[K] (g β₀ : M) :=
+    (isIntegral_algHom_iff g.toAlgHom g.injective).mpr hβ₀
+  have hfmap_g : f.map (algebraMap ↥(𝒪[K]) 𝓀[K]) = minpoly 𝓀[K] (g β₀ : M) :=
+    hfmap.trans (minpoly.algEquiv_eq g β₀).symm
+  have hprim_g : IntermediateField.adjoin 𝓀[K] ({(g β₀ : M)} : Set M) = ⊤ := by
+    have himg : (IntermediateField.adjoin 𝓀[K] ({(β₀ : M)} : Set M)).map g.toAlgHom =
+        IntermediateField.adjoin 𝓀[K] ({(g β₀ : M)} : Set M) := by
+      rw [IntermediateField.adjoin_map]; congr 1; simp
+    have htop : (⊤ : IntermediateField 𝓀[K] M).map g.toAlgHom = ⊤ := by
+      apply IntermediateField.ext
+      intro y
+      simp only [IntermediateField.mem_map, IntermediateField.mem_top, true_and, iff_true]
+      exact ⟨g.symm y, g.apply_symm_apply y⟩
+    rw [hprim, htop] at himg
+    exact himg.symm
+  -- **Piece A′**: the same construction as piece A, but for `g β₀` (sharing `f`), producing a
+  -- second root `x'`.
+  obtain ⟨x', hx'int, hminpoly', hK''sep, hCloc', hCdvr', ⟨eResidue'⟩⟩ :=
+    HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv
+      (R := ↥(𝒪[K])) (K := K) (L := L) (l := M) hβg hfmonic hfmap_g hprim_g
+  set K'' : IntermediateField K L := IntermediateField.adjoin K {x'} with hK''def
+  have hx'K : IsIntegral K x' := hx'int.tower_top
+  -- `x` and `x'` are roots of the same polynomial `p` over `K` (both `hminpoly`/`hminpoly'` equal
+  -- `f.map (algebraMap ↥(𝒪[K]) K)`), hence have the same minimal polynomial, giving a genuine
+  -- `K`-algebra isomorphism `K' ≃ₐ[K] K''` (`minpoly.algEquiv`).
+  have hminpolyeq : minpoly K x = minpoly K x' := hminpoly.symm.trans hminpoly'
+  set e : K' ≃ₐ[K] K'' := minpoly.algEquiv hxK.isAlgebraic hminpolyeq with hedef
+  -- Extend `e` to a `K`-automorphism `σ` of all of `L`, via `IsAlgClosed L` and algebraicity of
+  -- `L/K` (the new `[Algebra.IsAlgebraic K L]` hypothesis above, free at the intended call site,
+  -- `L := AlgebraicClosure K`).
+  haveI hK'algL : Algebra.IsAlgebraic K' L := Algebra.IsAlgebraic.tower_top (K := K) K'
+  obtain ⟨φ, hφ⟩ := IsAlgClosed.surjective_restrictDomain_of_isAlgebraic (K := K) (L := K')
+    (M := L) (E := L) (K''.val.comp e.toAlgHom)
+  set σ : L ≃ₐ[K] L :=
+    AlgEquiv.ofBijective φ (Algebra.IsAlgebraic.algHom_bijective (K := K) (L := L) φ) with hσdef
+  have hσx : σ x = x' := by
+    have hgen : φ (algebraMap K' L (IntermediateField.AdjoinSimple.gen K x)) =
+        algebraMap K'' L (e (IntermediateField.AdjoinSimple.gen K x)) :=
+      DFunLike.congr_fun hφ (IntermediateField.AdjoinSimple.gen K x)
+    rw [IntermediateField.AdjoinSimple.algebraMap_gen, hedef,
+      minpoly.algEquiv_apply hxK.isAlgebraic hminpolyeq,
+      IntermediateField.AdjoinSimple.algebraMap_gen] at hgen
+    show φ x = x'
+    exact hgen
+  -- `σ` lies in the decomposition subgroup of `A`: `σ • A` and `A` both comap (along
+  -- `algebraMap K L`) to `𝒪[K]` (for `A`, by hypothesis `hAcomap`; for `σ • A`, since `σ` fixes
+  -- `K` pointwise, `ValuationSubring.comap_smul_eq`), so uniqueness of extension of the valuation
+  -- from the Henselian base `K` (the same lemma used for `hVA` above, now applied directly at `L`
+  -- itself, using the new `[Algebra.IsAlgebraic K L]` hypothesis, rather than at the finite
+  -- subextension `K'`) identifies `σ • A` with `A`.
+  have hσAcomap : (σ • A).comap (algebraMap K L) = (ValuativeRel.valuation K).valuationSubring :=
+    (ValuationSubring.comap_smul_eq σ A).trans hAcomap
+  have hσA : σ • A = A :=
+    LocalField.valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField hσAcomap hAcomap
+  have hσmem : σ ∈ A.decompositionSubgroup K := MulAction.mem_stabilizer_iff.mpr hσA
+  refine ⟨⟨σ, hσmem⟩, ?_⟩
+  -- **What is still open (the residue-action tail)**: it remains to show that the induced residue
+  -- action of `σ` on `IsLocalRing.ResidueField A`, restricted to `M`, equals `g`. `σ` was built
+  -- precisely so that `σ x = x'` (`hσx` above), and `x`/`x'` are tied to `β₀`/`g β₀` respectively
+  -- via `eResidue`/`eResidue'` -- but `eResidue` (from `exists_isDiscreteValuationRing_integralClosure_residueField_equiv`)
+  -- only asserts an *abstract* ring isomorphism `IsLocalRing.ResidueField C ≃+* M`; it does not
+  -- (and the theorem's statement does not expose enough to derive) that this isomorphism agrees,
+  -- at the residue of the generator `x` itself, with the actual residue map `A → IsLocalRing.ResidueField A`
+  -- along the (already-established) identification `V = A.comap (algebraMap K' L)` of `C` with a
+  -- valuation subring of `K'` comapping correctly. Making that compatibility square commute --
+  -- i.e. that `eResidue` sends `IsLocalRing.residue C` applied to the canonical generator of `C`
+  -- to `β₀`'s image in `IsLocalRing.ResidueField A` under `V ⊆ A`'s induced residue map -- is new
+  -- content beyond `exists_isDiscreteValuationRing_integralClosure_residueField_equiv`'s current
+  -- statement, not yet formalized here; with it, `AlgHom.ext`-on-a-generator (`M = 𝓀[K]⟮β₀⟯`, via
+  -- `hprim`) would reduce the goal to checking agreement at `β₀` alone, which `hσx` and the
+  -- analogous fact for `eResidue'`/`g β₀` would then close.
   sorry
