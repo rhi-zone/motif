@@ -4,6 +4,8 @@ import Mathlib.FieldTheory.Galois.Infinite
 import Mathlib.Topology.Algebra.Valued.ValuativeRel
 import Mathlib.NumberTheory.LocalField.Basic
 import Mathlib.RingTheory.Henselian
+import Mathlib.RingTheory.DedekindDomain.Different
+import Mathlib.RingTheory.Conductor
 
 /-!
 # Unramified extensions and lifting automorphisms of the residue field
@@ -57,6 +59,25 @@ provided at the call site (proved there by `rfl`, exactly as here). -/
 noncomputable section
 
 open ValuativeRel Valuation IsLocalRing
+
+-- **Instance-diamond fix**: `IsLocalRing.ResidueField.algebraOfIsIntegral` (a generic instance
+-- giving `Algebra (ResidueField R) k` for any `k` integral over `R`) competes with
+-- `IntermediateField.algebra'` for `Algebra 𝓀[K] ↥M` whenever `M` is an intermediate field of a
+-- residue-field-flavoured ambient field (as `kbar := IsLocalRing.ResidueField
+-- (valuationSubringExtension K)` is in `Langlands.WeilGroup`, since `𝓀[K]` is *itself*
+-- `IsLocalRing.ResidueField ↥(𝒪[K])`, and `ResidueField.algebraOfIsIntegral` becomes newly
+-- applicable once `Mathlib.RingTheory.DedekindDomain.Different` is imported (transitively enabling
+-- the needed `Algebra.IsIntegral 𝒪[K] ↥M` premise). Both give a term of the same type
+-- `Algebra 𝓀[K] ↥M`, but they are not defeq, breaking `rfl`-based proofs that implicitly assume the
+-- specific `IntermediateField.algebra'` unfolding.
+--
+-- `IntermediateField.algebra'` is the canonical, structurally-intended instance here (`M` genuinely
+-- *is* an intermediate field of `kbar` over `𝓀[K]`, by construction, not merely coincidentally
+-- integral over a residue field); `ResidueField.algebraOfIsIntegral` is a more general instance
+-- that does not know about this specific tower. Deprioritizing the latter (rather than raising the
+-- former, which is not under this project's control to re-declare) makes instance search
+-- consistently prefer `IntermediateField.algebra'` whenever both apply.
+attribute [instance low] IsLocalRing.ResidueField.algebraOfIsIntegral
 
 namespace ValuationSubring
 
