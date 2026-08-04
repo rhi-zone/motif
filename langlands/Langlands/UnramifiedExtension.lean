@@ -236,20 +236,30 @@ straight from `ValuationSubring.comap_smul_eq` (comap to `K` is invariant under 
 `LocalField.valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField` **at `L` itself** (not
 at a finite subextension) -- both `A` and `σ • A` comap to `𝒪[K]`, hence coincide.
 
-**What is still open, precisely:** showing the induced residue action of `σ` on
-`IsLocalRing.ResidueField A`, restricted to `M`, equals `g`. This needs a compatibility fact not
-yet established anywhere in this file: that `eResidue : IsLocalRing.ResidueField C ≃+* M` (and its
-primed counterpart `eResidue'` for `C' := integralClosure ↥(𝒪[K]) K''`) agrees, at the residue of
-`C`'s canonical generator, with the *actual* residue map `A → IsLocalRing.ResidueField A` restricted
-along the (already-established) identification `V = A.comap (algebraMap K' L)` of `C` with a
-valuation subring of `K'`. `exists_isDiscreteValuationRing_integralClosure_residueField_equiv`'s
-current statement only gives an *abstract* ring isomorphism `IsLocalRing.ResidueField C ≃+* M`; it
-does not (and its proof, as currently structured, does not expose enough to derive) that this
-isomorphism sends `IsLocalRing.residue C` of the generator to `β₀` compatibly with `V ⊆ A`'s
-induced residue map. With that compatibility square, `AlgHom.ext`-on-a-generator (`M = 𝓀[K]⟮β₀⟯`,
-via `hprim`) would reduce the goal to checking agreement at `β₀` alone, which `hσx` and the
-analogous fact for `eResidue'`/`g β₀` would then close -- but establishing the square itself is new
-content, comparable in scope to a further nontrivial chunk of this file, not attempted here.
+**Update (the abstract half of the compatibility square is now proved):**
+`exists_isDiscreteValuationRing_integralClosure_residueField_equiv`'s conclusion now exposes, beyond
+the abstract ring isomorphism `e : IsLocalRing.ResidueField C ≃+* l`, a proof that `e` sends the
+residue class of *any* `y : C` lying over the constructed root `x` (i.e. with `algebraMap K' L
+(algebraMap C K' y) = x`) to exactly the input `β₀` -- not just *some* abstract isomorphism, but the
+*specific* one tied to `β₀` via the `AdjoinRoot`/`residueField_equiv_adjoinRoot_lift_minpoly`
+bookkeeping. This closes the "which conjugate does the abstract construction pick" ambiguity at the
+`AdjoinRoot` level entirely.
+
+**What is still open, precisely:** a *second*, different compatibility, one level further out, that
+connects this abstract (`AdjoinRoot`-internal) fact to `A`'s own *concrete* residue map. `V = A.comap
+(algebraMap K' L)` (`hVA`) gives a genuine embedding `C ↪ A` (via the comap identification), hence an
+induced residue map `ρ : IsLocalRing.ResidueField C → IsLocalRing.ResidueField A`; the missing fact is
+`algebraMap M (IsLocalRing.ResidueField A) β₀ = IsLocalRing.residue A ⟨x, _⟩`, i.e. that `x`'s
+*actual* residue inside `A` is `β₀` itself, not just some `Gal(M/𝓀[K])`-conjugate of it. This is a
+genuine mathematical gap, not bookkeeping: `x` was produced by
+`exists_ringHom_adjoinRoot_map_of_isAlgClosed` via an *arbitrary* choice of root
+(`IsAlgClosed.exists_root`) among the (possibly several, Galois-conjugate) roots of the shared lift
+polynomial `f` in `L`; nothing in the existence theorem is aware of `A` at all, so nothing pins the
+chosen root's `A`-residue to be `β₀` specifically. Closing it needs either an `A`-relative Hensel
+lift (the existence theorem reformulated to take a target valuation subring as input and produce a
+root with prescribed residue in it), or a symmetric argument exploiting that `Gal(M/𝓀[K])` is cyclic
+(finite residue field) to sidestep pinning the residue exactly -- see the `sorry`'s docstring at the
+end of this file for the full breakdown; neither route is built yet.
 
 See the `sorry` in `exists_restrictNormalHom_decompositionSubgroup_surjective`'s proof, at the end of
 this file, for the precise goal state left open.
@@ -1073,7 +1083,19 @@ avoiding the scoped `⟮⟯` notation) and `C := integralClosure R K'`. Then
    `IsDiscreteValuationRing.TFAE` exactly as `isDedekindDomain` above), a discrete valuation ring.
 6. Its residue field is identified with `l` by transporting `residueField_equiv_adjoinRoot_lift_minpoly`
    along the ring isomorphism `AdjoinRoot f ≃+* C` coming from step 4's monogenicity (both sides being
-   the image of the same universal map out of `AdjoinRoot f`). -/
+   the image of the same universal map out of `AdjoinRoot f`).
+
+**Residue-map compatibility (added for
+`ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective`):** the conclusion's
+residue-field equivalence `e : ResidueField C ≃+* l` is accompanied by the fact that it sends the
+residue class of *any* `y : C` lying over `x` itself (i.e. with `algebraMap K' L (algebraMap C K'
+y) = x`) to `β₀`. This is exactly what identifies the *specific* point of `l` a residue class
+corresponds to, not merely that the two residue fields are abstractly isomorphic -- needed by the
+caller to track a chosen generator's residue through the equivalence. Proved by observing that any
+such `y` is forced to equal the internal witness `xC` (both map to `x` under the injective
+composite `C → K' → L`), then chasing `e (residue C xC)` back through `mapEquiv e` (via
+`ResidueField.map_residue`) to `residue (AdjoinRoot f) (root f)`, which
+`residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_root` sends to `β₀`. -/
 
 theorem HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv
     {R : Type*} [CommRing R] [IsDomain R] [IsIntegrallyClosed R] [IsDedekindDomain R]
@@ -1091,7 +1113,12 @@ theorem HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residu
       Algebra.IsSeparable K ↥(IntermediateField.adjoin K {x}) ∧
       ∃ hCloc : IsLocalRing ↥(integralClosure R (IntermediateField.adjoin K {x})),
         IsDiscreteValuationRing ↥(integralClosure R (IntermediateField.adjoin K {x})) ∧
-        Nonempty (@IsLocalRing.ResidueField _ _ hCloc ≃+* l) := by
+        ∃ e : @IsLocalRing.ResidueField _ _ hCloc ≃+* l,
+          ∀ y : ↥(integralClosure R (IntermediateField.adjoin K {x})),
+            algebraMap ↥(IntermediateField.adjoin K {x}) L
+                (algebraMap ↥(integralClosure R (IntermediateField.adjoin K {x}))
+                  ↥(IntermediateField.adjoin K {x}) y) = x →
+              e (@IsLocalRing.residue _ _ hCloc y) = β₀ := by
   classical
   obtain ⟨x, φ, hφinj, hφroot, hφcomp⟩ :=
     HenselianLocalRing.exists_ringHom_adjoinRoot_map_of_isAlgClosed (R := R) (K := K) (L := L)
@@ -1269,9 +1296,36 @@ theorem HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residu
     ((IsDiscreteValuationRing.TFAE C hCnotField).out 0 2).mpr hCdedekind
   have hCisLocalRing' : IsLocalRing ↥(integralClosure R (IntermediateField.adjoin K {x})) :=
     hCisLocalRing
-  refine ⟨x, hxint, hminpoly, hK'sep, ?_⟩
-  exact ⟨hCisLocalRing', hCdvr, ⟨(RingEquiv.symm (IsLocalRing.ResidueField.mapEquiv e) : _).trans
-    (HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly hβ₀ hfmonic hfmap hprim)⟩⟩
+  refine ⟨x, hxint, hminpoly, hK'sep, hCisLocalRing', hCdvr,
+    (RingEquiv.symm (IsLocalRing.ResidueField.mapEquiv e) : _).trans
+      (HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly hβ₀ hfmonic hfmap hprim),
+    ?_⟩
+  -- `e (root f) = xC`, unwinding `e := RingEquiv.ofBijective ψ _` and `ψ := AdjoinRoot.lift ... xC _`.
+  have heroot : (e : AdjoinRoot f →+* ↥C) (AdjoinRoot.root f) = xC := by
+    show ψ (AdjoinRoot.root f) = xC
+    rw [hψdef, AdjoinRoot.lift_root]
+  intro y hy
+  -- Any `y : C` mapping to `x` under `C → K' → L` is forced to equal the witness `xC`, since that
+  -- composite is injective (it factors as the injective `algebraMap C K'` followed by the
+  -- injective `algebraMap K' L`).
+  have hyxC : y = xC := by
+    apply hCK'_inj
+    apply hK'L_inj
+    rw [hy]
+    show x = algebraMap K' L (x' : K')
+    exact hxL.symm
+  show (RingEquiv.symm (IsLocalRing.ResidueField.mapEquiv e) : _).trans
+    (HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly hβ₀ hfmonic hfmap hprim)
+    (IsLocalRing.residue C y) = β₀
+  rw [hyxC, RingEquiv.trans_apply]
+  have hstep : (IsLocalRing.ResidueField.mapEquiv e).symm (IsLocalRing.residue C xC) =
+      IsLocalRing.residue (AdjoinRoot f) (AdjoinRoot.root f) := by
+    apply (IsLocalRing.ResidueField.mapEquiv e).injective
+    rw [RingEquiv.apply_symm_apply, IsLocalRing.ResidueField.mapEquiv_apply,
+      IsLocalRing.ResidueField.map_residue, heroot]
+  rw [hstep]
+  exact HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_root
+    hβ₀ hfmonic hfmap hprim
 
 /-! ### The unramified lifting theorem itself
 
@@ -1317,7 +1371,7 @@ theorem ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjecti
   obtain ⟨f, hfmonic, hfdeg, hfmap⟩ := HenselianLocalRing.exists_monic_lift_minpoly hβ₀
   -- **Piece A**: the unramified extension `K' := K⟮x⟯` with `C := integralClosure ↥(𝒪[K]) K'` a
   -- discrete valuation ring whose residue field is `≃+*`-isomorphic to `M`.
-  obtain ⟨x, hxint, hminpoly, hK'sep, hCloc, hCdvr, ⟨eResidue⟩⟩ :=
+  obtain ⟨x, hxint, hminpoly, hK'sep, hCloc, hCdvr, eResidue, heRescompat⟩ :=
     HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv
       (R := ↥(𝒪[K])) (K := K) (L := L) (l := M) hβ₀ hfmonic hfmap hprim
   set K' : IntermediateField K L := IntermediateField.adjoin K {x} with hK'def
@@ -1386,7 +1440,7 @@ theorem ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjecti
     exact himg.symm
   -- **Piece A′**: the same construction as piece A, but for `g β₀` (sharing `f`), producing a
   -- second root `x'`.
-  obtain ⟨x', hx'int, hminpoly', hK''sep, hCloc', hCdvr', ⟨eResidue'⟩⟩ :=
+  obtain ⟨x', hx'int, hminpoly', hK''sep, hCloc', hCdvr', eResidue', heRescompat'⟩ :=
     HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv
       (R := ↥(𝒪[K])) (K := K) (L := L) (l := M) hβg hfmonic hfmap_g hprim_g
   set K'' : IntermediateField K L := IntermediateField.adjoin K {x'} with hK''def
@@ -1425,19 +1479,41 @@ theorem ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjecti
     LocalField.valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField hσAcomap hAcomap
   have hσmem : σ ∈ A.decompositionSubgroup K := MulAction.mem_stabilizer_iff.mpr hσA
   refine ⟨⟨σ, hσmem⟩, ?_⟩
-  -- **What is still open (the residue-action tail)**: it remains to show that the induced residue
-  -- action of `σ` on `IsLocalRing.ResidueField A`, restricted to `M`, equals `g`. `σ` was built
-  -- precisely so that `σ x = x'` (`hσx` above), and `x`/`x'` are tied to `β₀`/`g β₀` respectively
-  -- via `eResidue`/`eResidue'` -- but `eResidue` (from `exists_isDiscreteValuationRing_integralClosure_residueField_equiv`)
-  -- only asserts an *abstract* ring isomorphism `IsLocalRing.ResidueField C ≃+* M`; it does not
-  -- (and the theorem's statement does not expose enough to derive) that this isomorphism agrees,
-  -- at the residue of the generator `x` itself, with the actual residue map `A → IsLocalRing.ResidueField A`
-  -- along the (already-established) identification `V = A.comap (algebraMap K' L)` of `C` with a
-  -- valuation subring of `K'` comapping correctly. Making that compatibility square commute --
-  -- i.e. that `eResidue` sends `IsLocalRing.residue C` applied to the canonical generator of `C`
-  -- to `β₀`'s image in `IsLocalRing.ResidueField A` under `V ⊆ A`'s induced residue map -- is new
-  -- content beyond `exists_isDiscreteValuationRing_integralClosure_residueField_equiv`'s current
-  -- statement, not yet formalized here; with it, `AlgHom.ext`-on-a-generator (`M = 𝓀[K]⟮β₀⟯`, via
-  -- `hprim`) would reduce the goal to checking agreement at `β₀` alone, which `hσx` and the
-  -- analogous fact for `eResidue'`/`g β₀` would then close.
+  -- **What is still open (the residue-action tail).** `eResidue`/`heRescompat` (and their primed
+  -- counterparts) now pin down the *abstract* bookkeeping exactly: `heRescompat` proves
+  -- `eResidue (residue C y) = β₀` for `y : C` lying over `x` (in particular at the canonical
+  -- witness tied to `x`'s own generator), so there is no ambiguity left at the
+  -- `AdjoinRoot`/`residueField_equiv_adjoinRoot_lift_minpoly` level -- `eResidue` is *the* map
+  -- sending `x`'s residue-in-`C` to `β₀`, not merely *some* abstract isomorphism `ResidueField C
+  -- ≃+* M`. What remains is a **different** compatibility, one level further out: connecting this
+  -- `C`-internal fact to `A`'s own, concrete residue map. `V = A.comap (algebraMap K' L)` (`hVA`
+  -- above) identifies `C`'s image in `K'` with `A`'s restriction, giving a genuine (injective, by
+  -- the same "comap reflects units" argument as `hcompat`'s `IsLocalHom` hypothesis) ring embedding
+  -- `C ↪ A`; call its induced residue map `ρ : ResidueField C → ResidueField A`. The missing fact is
+  -- `(algebraMap M (ResidueField A)) ∘ eResidue = ρ` (equivalently, evaluated at `x`'s own
+  -- generator: `algebraMap M (ResidueField A) β₀ = IsLocalRing.residue A ⟨x, _⟩`, i.e. that `x`'s
+  -- *actual* residue in `A` is `β₀` itself).
+  --
+  -- **This is not free bookkeeping -- it is a genuine, unproved mathematical claim.** `x` was
+  -- produced by `exists_ringHom_adjoinRoot_map_of_isAlgClosed` via `IsAlgClosed.exists_root`, an
+  -- *arbitrary* choice among the (`deg f`-many, Galois-conjugate) roots of the shared lift
+  -- polynomial `f` in `L`. Reduction mod `A`'s maximal ideal is a ring homomorphism, so `x`'s actual
+  -- `A`-residue is certainly *some* root of `f mod 𝔪 = minpoly 𝓀[K] β₀` inside `M` (all such roots
+  -- lie in `M` since `M/𝓀[K]` is normal, by hypothesis) -- but nothing pins it to be `β₀`
+  -- *specifically*, as opposed to a nontrivial `Gal(M/𝓀[K])`-conjugate of `β₀`; the existence
+  -- theorem never receives `A` as an input, so it has no way to make that choice `A`-aware. Closing
+  -- this needs one of:
+  -- (a) reformulating `exists_isDiscreteValuationRing_integralClosure_residueField_equiv` (or a
+  --     variant) to take a target valuation subring as an explicit input and produce a root whose
+  --     residue *in that subring* is exactly the given `β₀` -- a genuine Hensel's-lemma argument
+  --     relative to `A`, distinct from the `R`-abstract Hensel machinery already in this file
+  --     (`isLocalRing_adjoinRoot_lift_minpoly` etc., which only ever reasons about `AdjoinRoot f`'s
+  --     own intrinsic residue field, never about a specific ambient embedding); or
+  -- (b) avoiding the need to pin `x`'s residue to `β₀` at all, by instead relating `residueAction σ`
+  --     and `g` only via whichever conjugate `x`'s residue *actually* is: since `𝓀[K]` is finite,
+  --     `Gal(M/𝓀[K])` is cyclic (hence abelian), so `g` commutes with the (unknown) conjugating
+  --     automorphism, and a *second*, parallel compatibility square (relating the induced residue
+  --     maps of `C`/`C'` under the algebra isomorphism `e : K' ≃ₐ[K] K''` used to build `σ`, to
+  --     `σ`'s own concrete action on `A`) would let the argument go through without ever computing
+  --     `x`'s residue explicitly. Neither (a) nor (b) is built yet.
   sorry
