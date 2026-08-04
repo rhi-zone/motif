@@ -726,7 +726,8 @@ theorem surjective_restrictNormalHom_comp_residueAction'
   intro g
   obtain ⟨τ, hτ⟩ :=
     ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective
-      (K := K) (valuationSubringExtension K) (integersAlgebraMap_compat K) M g
+      (K := K) (valuationSubringExtension K) (valuationSubringExtension_comap K)
+      (integersAlgebraMap_compat K) M g
   refine ⟨(decompositionEquiv K).symm τ, ?_⟩
   rw [← hτ]
   congr 1

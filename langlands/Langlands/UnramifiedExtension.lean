@@ -10,6 +10,7 @@ import Mathlib.Algebra.Polynomial.Eval.Irreducible
 import Mathlib.RingTheory.Polynomial.GaussLemma
 import Mathlib.RingTheory.Polynomial.Resultant.Basic
 import Langlands.MonogenicMaximalOrder
+import Langlands.HenselianValuation
 
 /-!
 # Unramified extensions and lifting automorphisms of the residue field
@@ -118,7 +119,9 @@ theorem decompositionSubgroup_smul_algebraMap_residueField
   rw [hcompat a]
   exact (σ : Gal(L/K)).commutes (a : K)
 
-/-- **The unramified lifting theorem** (Hensel's-lemma-flavoured; not yet in Mathlib): for every
+/-! ### The unramified lifting theorem (statement discussion; proved at the end of this file)
+
+**The unramified lifting theorem** (Hensel's-lemma-flavoured; not yet in Mathlib): for every
 finite Galois subextension `M` of `IsLocalRing.ResidueField A / 𝓀[K]`, every automorphism of
 `M/𝓀[K]` is realized by (i.e. is the restriction to `M` of) the residue action of *some* element of
 the decomposition subgroup `A.decompositionSubgroup K`.
@@ -180,39 +183,56 @@ base is exactly the integral elements" fact (still not found in Mathlib and stil
 that generality), but by constructing `C` directly as a `ValuationRing`/DVR and only *asserting* its
 compatibility with `A` is still open, per below.
 
-**What is still missing, precisely:** the above gives `C` as an abstractly-constructed DVR inside
-`K'`, not yet identified with `A.comap (algebraMap K' L)` (the valuation subring of `K'` lying under
-the ambient `A`). That identification -- via `C` being realized as an actual `ValuationSubring K'`
-(e.g. `⟨(algebraMap C K').range, ValuationRing.isInteger_or_isInteger C⟩`, using the
-`ValuationRing C` instance available from `IsDiscreteValuationRing C` via `of_isDiscreteValuationRing`)
-that comaps to `(valuation K).valuationSubring`, then invoked against
-`LocalField.valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField`
-(`Langlands.HenselianValuation`, already generalized over an arbitrary algebraic `L` for exactly this
-purpose) to conclude it equals `A.comap (algebraMap K' L)` -- is not done here.
+**Update (piece A landed):** the identification of `C` with `A.comap (algebraMap K' L)` sketched
+below as "still missing" is now proved, inline in the theorem below (no separate lemma): `C` is
+realized as an actual `ValuationSubring K'`, namely
+`V := ⟨(algebraMap C K').range, ValuationRing.isInteger_or_isInteger C⟩` (using the `ValuationRing C`
+instance from `IsDiscreteValuationRing C` via `of_isDiscreteValuationRing`); `V` is shown to comap to
+`(valuation K).valuationSubring` along `algebraMap K K'` via `IsIntegralClosure.isIntegral_iff`
+(`C = integralClosure ↥(𝒪[K]) K'` is literally an integral closure, so membership in `V`'s
+underlying range is equivalent to integrality over `↥(𝒪[K])`, which for elements of `K` itself is
+equivalent to lying in `𝒪[K]` via `IsIntegrallyClosed.isIntegral_iff` -- `↥(𝒪[K])`'s own
+integral-closedness in `K`, a generic instance for `Valuation.integer`); `A`'s own restriction
+`A.comap (algebraMap K' L)` comaps to the same subring along `algebraMap K K'` via
+`ValuationSubring.comap_comap` and the theorem's own `hAcomap` hypothesis (see below -- newly added,
+since it turned out to genuinely be needed and was not implied by `hcompat` alone: `hcompat` only
+pins down that `𝒪[K]`'s image lands inside `A`, not that nothing more of `K` does). Both comap facts
+are then fed to `LocalField.valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField` to
+conclude `V = A.comap (algebraMap K' L)`.
 
-Beyond that identification, the remaining steps of the sketch (functoriality lifting
-`g : M ≃ₐ[𝓀[K]] M` to a `K`-automorphism of `K'` via the residue-field identification above; extending
-that automorphism of `K'` to `σ : L ≃ₐ[K] L` via `IsAlgClosed L`; and showing `σ` stabilizes `A` via
-the same valuation-uniqueness lemma, applied at `K'` once `A.comap (algebraMap K' L)` and its
-`σ`-translate are known to agree with the valuation subring of `K'` constructed above) are also not
-attempted here. Note also that this theorem's own hypotheses do not yet include Henselian-ness of
-`↥(𝒪[K])` (needed to invoke any of the `HenselianLocalRing` lemmas above) or
-`IsNonarchimedeanLocalField K` (needed for the uniqueness-of-valuation-extension step); at the one
-call site (`Langlands.WeilGroup.surjective_restrictNormalHom_comp_residueAction'`) both already hold,
-via the `henselianLocalRing` instance below and the ambient `IsNonarchimedeanLocalField K` there, so
-adding them as explicit hypotheses here (rather than leaving them implicit as before) would cost
-nothing at the call site once the proof is actually assembled. -/
-theorem exists_restrictNormalHom_decompositionSubgroup_surjective
-    (hcompat : ∀ a : ↥(𝒪[K]), (algebraMap ↥(𝒪[K]) A a : L) = algebraMap K L (a : K))
-    [IsAlgClosed L] [IsGalois 𝓀[K] (IsLocalRing.ResidueField A)]
-    (M : IntermediateField 𝓀[K] (IsLocalRing.ResidueField A))
-    [FiniteDimensional 𝓀[K] M] [Normal 𝓀[K] M] :
-    Function.Surjective fun σ : A.decompositionSubgroup K =>
-      AlgEquiv.restrictNormalHom (F := 𝓀[K]) M
-        (AlgEquiv.ofRingEquiv (f := (MulSemiringAction.toRingAut (A.decompositionSubgroup K)
-          (IsLocalRing.ResidueField A)) σ)
-          (decompositionSubgroup_smul_algebraMap_residueField A hcompat σ)) := by
-  sorry
+Also newly added, alongside `hAcomap`: `[TopologicalSpace K] [IsNonarchimedeanLocalField K]`,
+needed for `𝒪[K]`'s Henselian-ness (`henselianLocalRing` below) and for the
+uniqueness-of-valuation-extension lemma just used. As anticipated in the previous pass's note (now
+verified, not just claimed): both are free at the one call site
+(`Langlands.WeilGroup.surjective_restrictNormalHom_comp_residueAction'`), which already carries them
+as ambient section variables; only `hAcomap` needed a new argument threaded through at that call
+site, supplied by the already-proved `valuationSubringExtension_comap K`.
+
+**What is still open, precisely (piece B, the functoriality/lifting tail):** given `g : M ≃ₐ[𝓀[K]] M`
+(the automorphism to lift, from `Function.Surjective`'s `intro`) and the residue-field isomorphism
+`eResidue : IsLocalRing.ResidueField C ≃+* M` transporting `g` to an automorphism of
+`IsLocalRing.ResidueField C`, the remaining steps -- lifting that residue automorphism to a
+`K`-automorphism of `K'` (the "unramified extensions are functorial in their residue extension" fact;
+candidate approach sketched in the theorem's docstring above: re-run
+`exists_isDiscreteValuationRing_integralClosure_residueField_equiv` with a twisted primitive element
+`g β₀` in place of `β₀`, producing a second root `x'`/field `K''`/ring `C'`, then relate `K'` and `K''`
+by a `K`-algebra map using that both are generated by roots of the same minimal polynomial -- or some
+other genuinely-true functoriality statement, not yet identified with certainty); extending that
+automorphism of `K'` to `σ : L ≃ₐ[K] L` via `IsAlgClosed.surjective_restrictDomain_of_isAlgebraic` and
+`Algebra.IsAlgebraic.algHom_bijective`/`AlgEquiv.ofBijective`; showing `σ • A = A` (i.e.
+`σ ∈ A.decompositionSubgroup K`) via `ValuationSubring.comap_smul_eq` and the same uniqueness lemma
+used in piece A, applied at `K'`; and showing the induced residue action of `σ` on `M` equals `g` --
+are none of them attempted here. This is genuinely the hardest, least-specified part of the sketch;
+see the `sorry` in `exists_restrictNormalHom_decompositionSubgroup_surjective`'s proof, at the end of
+this file, for the precise goal state left open.
+
+**Placement note:** the theorem itself is stated at the *end* of this file, not here, because its
+proof needs `HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv`
+(defined further down) -- Lean requires the dependency to precede its use, so the theorem cannot be
+proved (only stated) at this point in the file; `end ValuationSubring` below closes the namespace
+opened above only for the two lemmas that *are* provable here
+(`decompositionSubgroup_smul_algebraMap_residueField`), and the namespace is reopened at the end of
+the file for `exists_restrictNormalHom_decompositionSubgroup_surjective` itself. -/
 
 end ValuationSubring
 
@@ -1064,3 +1084,91 @@ theorem HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residu
   refine ⟨x, hxint, hK'sep, ?_⟩
   exact ⟨hCisLocalRing', hCdvr, ⟨(RingEquiv.symm (IsLocalRing.ResidueField.mapEquiv e) : _).trans
     (HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly hβ₀ hfmonic hfmap hprim)⟩⟩
+
+/-! ### The unramified lifting theorem itself
+
+Statement and (partial) proof of
+`ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective`, whose docstring lives
+with `ValuationSubring.decompositionSubgroup_smul_algebraMap_residueField` near the top of this file
+(see the "Placement note" there for why the theorem is proved here rather than there: its proof
+needs `HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv` just
+above, so it cannot be proved before that lemma is in scope). -/
+
+variable {L : Type*} [Field L] [Algebra K L] (A : ValuationSubring L) [Algebra ↥(𝒪[K]) A]
+  [IsLocalHom (algebraMap ↥(𝒪[K]) A)]
+
+theorem ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective
+    (hAcomap : A.comap (algebraMap K L) = (ValuativeRel.valuation K).valuationSubring)
+    (hcompat : ∀ a : ↥(𝒪[K]), (algebraMap ↥(𝒪[K]) A a : L) = algebraMap K L (a : K))
+    [IsAlgClosed L] [IsGalois 𝓀[K] (IsLocalRing.ResidueField A)]
+    (M : IntermediateField 𝓀[K] (IsLocalRing.ResidueField A))
+    [FiniteDimensional 𝓀[K] M] [Normal 𝓀[K] M] :
+    Function.Surjective fun σ : A.decompositionSubgroup K =>
+      AlgEquiv.restrictNormalHom (F := 𝓀[K]) M
+        (AlgEquiv.ofRingEquiv (f := (MulSemiringAction.toRingAut (A.decompositionSubgroup K)
+          (IsLocalRing.ResidueField A)) σ)
+          (ValuationSubring.decompositionSubgroup_smul_algebraMap_residueField A hcompat σ)) := by
+  intro g
+  -- The ambient algebra structure `↥(𝒪[K]) → K → L`, needed to invoke the existence-of-unramified-
+  -- extension machinery at this theorem's own `L` (not built as an ambient instance of the
+  -- section, to avoid the same instance-resolution fragility `hcompat`'s docstring note above
+  -- describes -- constructed locally here instead, exactly once).
+  letI hRLalg : Algebra ↥(𝒪[K]) L := ((algebraMap K L).comp (algebraMap ↥(𝒪[K]) K)).toAlgebra
+  haveI hRKLtower : IsScalarTower ↥(𝒪[K]) K L := IsScalarTower.of_algebraMap_eq fun _ => rfl
+  -- `M / 𝓀[K]` is separable (`𝓀[K]` is finite, hence perfect) and finite, hence has a primitive
+  -- element `β₀`.
+  haveI : PerfectField 𝓀[K] := PerfectField.ofFinite
+  haveI : Algebra.IsAlgebraic 𝓀[K] M := Algebra.IsAlgebraic.of_finite 𝓀[K] M
+  obtain ⟨β₀, hprim⟩ := Field.exists_primitive_element 𝓀[K] M
+  have hβ₀ : IsIntegral 𝓀[K] (β₀ : M) := IsIntegral.of_finite 𝓀[K] (β₀ : M)
+  -- **Piece A**: the unramified extension `K' := K⟮x⟯` with `C := integralClosure ↥(𝒪[K]) K'` a
+  -- discrete valuation ring whose residue field is `≃+*`-isomorphic to `M`.
+  obtain ⟨x, hxint, hK'sep, hCloc, hCdvr, ⟨eResidue⟩⟩ :=
+    HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv
+      (R := ↥(𝒪[K])) (K := K) (L := L) (l := M) hβ₀ hprim
+  set K' : IntermediateField K L := IntermediateField.adjoin K {x} with hK'def
+  set C : Subalgebra ↥(𝒪[K]) K' := integralClosure ↥(𝒪[K]) K' with hCdef
+  haveI hCloc' : IsLocalRing C := hCloc
+  haveI hCdvr' : IsDiscreteValuationRing C := hCdvr
+  haveI hCvaluationRing : ValuationRing C := of_isDiscreteValuationRing C
+  have hxK : IsIntegral K x := hxint.tower_top
+  haveI hK'fd : FiniteDimensional K K' := IntermediateField.adjoin.finiteDimensional hxK
+  haveI hCfracring : IsFractionRing C K' :=
+    integralClosure.isFractionRing_of_finite_extension K K'
+  haveI hCICR : IsIntegralClosure C ↥(𝒪[K]) K' := integralClosure.isIntegralClosure ↥(𝒪[K]) K'
+  -- `V`, the valuation subring of `K'` realizing `C`.
+  set V : ValuationSubring K' := ⟨(algebraMap C K').range, ValuationRing.isInteger_or_isInteger C⟩
+    with hVdef
+  -- `V` comaps to `𝒪[K]` along `algebraMap K K'`: membership in `V`'s underlying range is
+  -- integrality over `↥(𝒪[K])` (`IsIntegralClosure.isIntegral_iff`, `C` being literally an
+  -- integral closure), which for elements already in `K` is equivalent to lying in `𝒪[K]` itself
+  -- (`IsIntegrallyClosed.isIntegral_iff`, `↥(𝒪[K])` being integrally closed in `K`).
+  have hVcomap : V.comap (algebraMap K K') = (ValuativeRel.valuation K).valuationSubring := by
+    apply ValuationSubring.ext
+    intro a
+    rw [ValuationSubring.mem_comap, Valuation.mem_valuationSubring_iff, ← Valuation.mem_integer_iff]
+    show algebraMap K K' a ∈ (algebraMap C K').range ↔ a ∈ 𝒪[K]
+    rw [RingHom.mem_range, ← IsIntegralClosure.isIntegral_iff (A := C) (R := ↥(𝒪[K])),
+      isIntegral_algebraMap_iff (FaithfulSMul.algebraMap_injective K K'),
+      IsIntegrallyClosed.isIntegral_iff]
+    constructor
+    · rintro ⟨y, rfl⟩; exact y.2
+    · intro ha; exact ⟨⟨a, ha⟩, rfl⟩
+  -- `A`'s own restriction to `K'` comaps to the same subring, via `hAcomap` and the scalar tower
+  -- `K → K' → L`.
+  have hAK'comap : (A.comap (algebraMap K' L)).comap (algebraMap K K') =
+      (ValuativeRel.valuation K).valuationSubring := by
+    rw [ValuationSubring.comap_comap, ← IsScalarTower.algebraMap_eq K K' L, hAcomap]
+  -- Uniqueness of extension of the valuation from the Henselian base `K` identifies `V` with `A`'s
+  -- restriction to `K'`.
+  haveI : Algebra.IsAlgebraic K K' := Algebra.IsAlgebraic.of_finite K K'
+  have hVA : V = A.comap (algebraMap K' L) :=
+    LocalField.valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField hVcomap hAK'comap
+  -- **Piece B (not attempted)**: lift `g : M ≃ₐ[𝓀[K]] M`, via `eResidue`, to an automorphism of
+  -- `IsLocalRing.ResidueField C`; lift that (functoriality of unramified extensions in their
+  -- residue extension -- see the docstring above for the candidate approach and why it is not
+  -- executed here) to `τ : K' ≃ₐ[K] K'`; extend `τ` to `σ : L ≃ₐ[K] L` via `IsAlgClosed L`; show
+  -- `σ • A = A` using `hVA`, `ValuationSubring.comap_smul_eq`, and the same uniqueness lemma as
+  -- above, applied at `K'` to the pair `V`/`(σ • A).comap (algebraMap K' L)`; and show the induced
+  -- residue action of `σ` on `M` is `g`.
+  sorry
