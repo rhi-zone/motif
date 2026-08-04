@@ -425,3 +425,53 @@ def HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly {R : Type*} [C
   rw [hfmap]
   exact (((IntermediateField.adjoinRootEquivAdjoin (IsLocalRing.ResidueField R) hβ₀).trans
     (IntermediateField.equivOfEq hprim)).trans IntermediateField.topEquiv).toRingEquiv
+
+/-! ### Embedding `AdjoinRoot (f.map (algebraMap R K))` into an algebraically closed extension `L`
+
+The remaining ingredient toward
+`ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective` (see that theorem's
+docstring above): the abstract field `Frac(AdjoinRoot f)` needs to be realized as an actual subfield
+of the ambient field `L` the theorem works in. At the intended call site (`Langlands.WeilGroup`),
+`L = AlgebraicClosure K` is algebraically closed, so `p := f.map (algebraMap R K)` -- irreducible
+over `K = Frac(R)` by `irreducible_map_lift_minpoly`, of positive degree since it agrees with
+`f.natDegree = (minpoly k β₀).natDegree > 0` -- has a root `x : L` (`IsAlgClosed.exists_root`).
+`AdjoinRoot.lift` then gives a ring hom `AdjoinRoot p →+* L` sending the abstract root to `x`,
+automatically injective since its domain `AdjoinRoot p` is a field (`Fact (Irreducible p)` gives
+`AdjoinRoot.instField`, and any ring hom out of a division ring into a nontrivial ring is injective,
+`RingHom.injective`). This lands the **field-level** embedding of `Frac(AdjoinRoot f) ≅ AdjoinRoot p`
+into `L`, with image `K(x)`.
+
+**Scope note**: this is the field-level embedding only. Matching the *ring-of-integers* level
+statement -- identifying `AdjoinRoot f` itself (not just its fraction field) with the valuation
+subring of `K(x)` sitting under the ambient `A : ValuationSubring L`, and hence transporting the
+`finrank`/residue-field facts proved above for `AdjoinRoot f` to that valuation subring directly --
+is a further step (needing uniqueness of extension of the valuation from a Henselian base, as
+flagged in `exists_restrictNormalHom_decompositionSubgroup_surjective`'s proof sketch) not attempted
+here. -/
+
+theorem HenselianLocalRing.exists_ringHom_adjoinRoot_map_of_isAlgClosed {R : Type*} [CommRing R]
+    [IsDomain R] [IsIntegrallyClosed R] [HenselianLocalRing R] {K : Type*} [Field K] [Algebra R K]
+    [IsFractionRing R K] {l : Type*} [Field l] [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
+    (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) {f : R[X]} (hf : f.Monic)
+    (hfmap : f.map (algebraMap R (IsLocalRing.ResidueField R)) =
+      minpoly (IsLocalRing.ResidueField R) β₀)
+    {L : Type*} [Field L] [Algebra K L] [IsAlgClosed L] :
+    ∃ x : L, ∃ φ : AdjoinRoot (f.map (algebraMap R K)) →+* L,
+      Function.Injective φ ∧ φ (AdjoinRoot.root _) = x ∧
+      φ.comp (AdjoinRoot.of (f.map (algebraMap R K))) = algebraMap K L := by
+  set p := f.map (algebraMap R K) with hp
+  haveI : Fact (Irreducible p) :=
+    ⟨HenselianLocalRing.irreducible_map_lift_minpoly hβ₀ hf hfmap⟩
+  have hpmonic : p.Monic := hf.map _
+  have hdeg1 : p.natDegree = f.natDegree := hf.natDegree_map _
+  have hfdeg : f.natDegree = (minpoly (IsLocalRing.ResidueField R) β₀).natDegree := by
+    rw [← hf.natDegree_map (algebraMap R (IsLocalRing.ResidueField R)), hfmap]
+  have hpos : 0 < (minpoly (IsLocalRing.ResidueField R) β₀).natDegree := minpoly.natDegree_pos hβ₀
+  have hdeg2 : (p.map (algebraMap K L)).natDegree = p.natDegree := hpmonic.natDegree_map _
+  have hposL : 0 < (p.map (algebraMap K L)).natDegree := by rw [hdeg2, hdeg1, hfdeg]; exact hpos
+  have hdegL : (p.map (algebraMap K L)).degree ≠ 0 :=
+    (Polynomial.natDegree_pos_iff_degree_pos.mp hposL).ne'
+  obtain ⟨x, hx⟩ := IsAlgClosed.exists_root (p.map (algebraMap K L)) hdegL
+  rw [Polynomial.IsRoot.def, Polynomial.eval_map] at hx
+  exact ⟨x, AdjoinRoot.lift (algebraMap K L) x hx, RingHom.injective _,
+    AdjoinRoot.lift_root hx, AdjoinRoot.lift_comp_of hx⟩
