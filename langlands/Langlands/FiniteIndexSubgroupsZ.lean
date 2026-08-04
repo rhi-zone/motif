@@ -100,3 +100,36 @@ theorem existsUnique_finiteIndexNormalSubgroup_index_eq {n : ℕ} (hn : n ≠ 0)
   haveI : A.FiniteIndex := Subgroup.finiteIndex_iff.mpr (hA ▸ hn)
   refine ⟨FiniteIndexNormalSubgroup.ofSubgroup A, hA, fun H hH => ?_⟩
   exact FiniteIndexNormalSubgroup.toSubgroup_injective (hAuniq H.toSubgroup hH)
+
+/-- Every finite-index subgroup of `Multiplicative ℤ` is the canonical one for its own index: the
+multiplicative image of `AddSubgroup.zmultiples (H.index : ℤ)`. -/
+theorem Subgroup.eq_toSubgroup_zmultiples_index {H : Subgroup (Multiplicative ℤ)} [H.FiniteIndex] :
+    H = AddSubgroup.toSubgroup (AddSubgroup.zmultiples (H.index : ℤ)) := by
+  have hn : H.index ≠ 0 := Subgroup.FiniteIndex.index_ne_zero (H := H)
+  have hHA : (AddSubgroup.toSubgroup.symm H).index = H.index := by
+    have := AddSubgroup.index_toSubgroup (AddSubgroup.toSubgroup.symm H)
+    rwa [OrderIso.apply_symm_apply] at this
+  have hZ : (AddSubgroup.zmultiples (H.index : ℤ)).index = H.index := by
+    rw [Int.index_zmultiples]; simp
+  have hEq : AddSubgroup.toSubgroup.symm H = AddSubgroup.zmultiples (H.index : ℤ) :=
+    (AddSubgroup.existsUnique_index_eq_of_ne_zero hn).unique hHA hZ
+  rw [← hEq, OrderIso.apply_symm_apply]
+
+/-- **Divisibility from containment**: for finite-index normal subgroups `H ≤ H'` of
+`Multiplicative ℤ`, the index of `H'` divides the index of `H` (the bigger subgroup has the
+dividing index). Transports `H`, `H'` to their `AddSubgroup.zmultiples`-presentations via
+`Subgroup.eq_toSubgroup_zmultiples_index` and applies `AddSubgroup.zmultiples_le_zmultiples_iff`. -/
+theorem FiniteIndexNormalSubgroup.index_dvd_index_of_le
+    {H H' : FiniteIndexNormalSubgroup (Multiplicative ℤ)} (h : H ≤ H') :
+    H'.toSubgroup.index ∣ H.toSubgroup.index := by
+  have hH : H.toSubgroup = AddSubgroup.toSubgroup (AddSubgroup.zmultiples (H.toSubgroup.index : ℤ)) :=
+    Subgroup.eq_toSubgroup_zmultiples_index
+  have hH' : H'.toSubgroup =
+      AddSubgroup.toSubgroup (AddSubgroup.zmultiples (H'.toSubgroup.index : ℤ)) :=
+    Subgroup.eq_toSubgroup_zmultiples_index
+  have hsub : H.toSubgroup ≤ H'.toSubgroup := h
+  have hle : AddSubgroup.zmultiples (H.toSubgroup.index : ℤ) ≤
+      AddSubgroup.zmultiples (H'.toSubgroup.index : ℤ) := by
+    rw [hH, hH'] at hsub
+    exact (AddSubgroup.toSubgroup.le_iff_le).mp hsub
+  exact AddSubgroup.zmultiples_le_zmultiples_iff.mp hle
