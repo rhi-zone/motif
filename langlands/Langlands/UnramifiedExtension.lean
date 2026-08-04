@@ -396,15 +396,21 @@ The argument:
 5. `Polynomial.isUnit_resultant_iff_isCoprime hf` converts this back to `IsCoprime f (derivative
    f)`, i.e. (`Polynomial.separable_def`) `f.Separable`. -/
 
-/-- **The monic lift `f` is separable**, given that the residue field `k := IsLocalRing.ResidueField
-R` is finite. See the section docstring above for the full resultant-based argument. -/
-theorem HenselianLocalRing.separable_lift_minpoly {R : Type*} [CommRing R] [IsLocalRing R]
+/-- **Extracted from the proof below**: the monic lift `f` has `IsUnit` resultant with its own
+derivative, already **in `R` itself** (`hxunit` in the docstring above), not merely after reducing
+to the residue field `k`. This is exactly the "discriminant is a unit" fact needed to discharge
+the `hunit` hypothesis of `Algebra.adjoin_eq_top_of_isUnit_aeval_derivative_minpoly`
+(`Langlands.MonogenicMaximalOrder`) once wired through a root of `f` in any `R`-algebra -- see
+`Polynomial.isUnit_aeval_derivative_of_isUnit_resultant` below for that further step. Extracted as
+its own lemma (rather than left inline inside `separable_lift_minpoly`) so both consumers can share
+it without duplicating the resultant/size-padding argument. -/
+theorem HenselianLocalRing.isUnit_resultant_lift_minpoly {R : Type*} [CommRing R] [IsLocalRing R]
     [Finite (IsLocalRing.ResidueField R)] {l : Type*} [Field l]
     [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
     (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) {f : R[X]} (hf : f.Monic)
     (hfmap : f.map (algebraMap R (IsLocalRing.ResidueField R)) =
       minpoly (IsLocalRing.ResidueField R) β₀) :
-    f.Separable := by
+    IsUnit (Polynomial.resultant f (Polynomial.derivative f)) := by
   have hφeq : algebraMap R (IsLocalRing.ResidueField R) = IsLocalRing.residue R :=
     IsLocalRing.ResidueField.algebraMap_eq R
   rw [hφeq] at hfmap
@@ -445,12 +451,23 @@ theorem HenselianLocalRing.separable_lift_minpoly {R : Type*} [CommRing R] [IsLo
     isUnit_iff_ne_zero.mp hIsUnitBar''
   have hx_notmem : Polynomial.resultant f (Polynomial.derivative f) ∉ IsLocalRing.maximalIdeal R :=
     fun hmem => hx_ne (IsLocalRing.residue_eq_zero_iff _ |>.mpr hmem)
-  have hxunit : IsUnit (Polynomial.resultant f (Polynomial.derivative f)) := by
-    by_contra hnu
-    exact hx_notmem (IsLocalRing.mem_maximalIdeal _ |>.mpr (mem_nonunits_iff.mpr hnu))
-  have hcopR : IsCoprime f (Polynomial.derivative f) :=
-    (Polynomial.isUnit_resultant_iff_isCoprime hf).mp hxunit
-  exact (Polynomial.separable_def f).mpr hcopR
+  by_contra hnu
+  exact hx_notmem (IsLocalRing.mem_maximalIdeal _ |>.mpr (mem_nonunits_iff.mpr hnu))
+
+/-- **The monic lift `f` is separable**, given that the residue field `k := IsLocalRing.ResidueField
+R` is finite. Now just a thin wrapper around `HenselianLocalRing.isUnit_resultant_lift_minpoly`
+(the resultant-based argument, see the section docstring above) composed with
+`Polynomial.isUnit_resultant_iff_isCoprime` / `Polynomial.separable_def`. -/
+theorem HenselianLocalRing.separable_lift_minpoly {R : Type*} [CommRing R] [IsLocalRing R]
+    [Finite (IsLocalRing.ResidueField R)] {l : Type*} [Field l]
+    [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
+    (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) {f : R[X]} (hf : f.Monic)
+    (hfmap : f.map (algebraMap R (IsLocalRing.ResidueField R)) =
+      minpoly (IsLocalRing.ResidueField R) β₀) :
+    f.Separable :=
+  (Polynomial.separable_def f).mpr <|
+    (Polynomial.isUnit_resultant_iff_isCoprime hf).mp
+      (HenselianLocalRing.isUnit_resultant_lift_minpoly hβ₀ hf hfmap)
 
 /-- **`p := f.map (algebraMap R K)` is separable**, given `f.Separable` (from
 `separable_lift_minpoly` above): `Polynomial.Separable.map` transports separability along *any*
@@ -468,6 +485,68 @@ theorem HenselianLocalRing.separable_map_lift_minpoly {R : Type*} [CommRing R] [
       minpoly (IsLocalRing.ResidueField R) β₀) :
     (f.map (algebraMap R K)).Separable :=
   (HenselianLocalRing.separable_lift_minpoly hβ₀ hf hfmap).map
+
+/-! ### Transferring "discriminant is a unit" from `R` to a root in any `R`-algebra domain
+
+The remaining ingredient (beyond `isUnit_resultant_lift_minpoly` above) needed to discharge the
+`hunit` hypothesis of `Algebra.adjoin_eq_top_of_isUnit_aeval_derivative_minpoly`
+(`Langlands.MonogenicMaximalOrder`) at a root `x` of `f` living in some `R`-algebra `C` (not
+merely in `R` itself, where `isUnit_resultant_lift_minpoly` already lands the fact): given
+`f(x) = 0` in `C`, factor `f.map (algebraMap R C) = (X - C x) * q` (factor theorem,
+`Polynomial.dvd_iff_isRoot`), then use multiplicativity of the resultant in its first argument
+(`Polynomial.resultant_mul_left`) together with `Res(X - x, g) = g(x)`
+(`Polynomial.resultant_X_sub_C_left`) to write
+
+`(algebraMap R C) (Res(f, f')) = Res(f.map .., (f'.map ..)) = f'(x) * Res(q, f'.map ..)`
+
+(`Polynomial.resultant_map_map`, which holds for arbitrary size parameters `m n`, not just
+`natDegree`-defaults, so no size-padding subtlety is needed here -- unlike the residue-field
+version in `isUnit_resultant_lift_minpoly`, `algebraMap R C` need not be injective for this
+identity, though injectivity is not assumed or needed below either). Since the left side is a unit
+(the image of `hunit` under `algebraMap R C`) and the ring is commutative, both factors on the
+right are units (`isUnit_of_mul_isUnit_left`); in particular `f'(x)` is. -/
+
+/-- **"Discriminant is a unit" transfers to any root.** If `f : R[X]` is monic with
+`IsUnit (f.resultant (derivative f))` (e.g. via `HenselianLocalRing.isUnit_resultant_lift_minpoly`),
+and `x : C` (`C` a domain `R`-algebra) is a root of `f`, then `aeval x (derivative f)` is a unit in
+`C`. See the section docstring above for the factorization argument. -/
+theorem Polynomial.isUnit_aeval_derivative_of_isUnit_resultant {R C : Type*} [CommRing R]
+    [CommRing C] [IsDomain C] [Algebra R C] {f : R[X]} (hf : f.Monic)
+    (hunit : IsUnit (Polynomial.resultant f (Polynomial.derivative f))) {x : C}
+    (hx : Polynomial.aeval x f = 0) :
+    IsUnit (Polynomial.aeval x (Polynomial.derivative f)) := by
+  set φ := algebraMap R C with hφ
+  set fC := f.map φ with hfC_def
+  set g := (Polynomial.derivative f).map φ with hg_def
+  have hfCmonic : fC.Monic := hf.map φ
+  have hxroot : fC.IsRoot x := by
+    rw [Polynomial.IsRoot.def, hfC_def, Polynomial.eval_map, ← Polynomial.aeval_def]
+    exact hx
+  obtain ⟨q, hq⟩ := Polynomial.dvd_iff_isRoot.mpr hxroot
+  have hXmonic : (Polynomial.X - Polynomial.C x).Monic := Polynomial.monic_X_sub_C x
+  have hqmonic : q.Monic := hXmonic.of_mul_monic_left (hq ▸ hfCmonic)
+  have hdegsum : fC.natDegree = 1 + q.natDegree := by
+    rw [hq, hXmonic.natDegree_mul hqmonic, Polynomial.natDegree_X_sub_C]
+  have hfCdeg : fC.natDegree = f.natDegree := hf.natDegree_map φ
+  have hsize : f.natDegree = 1 + q.natDegree := by rw [← hfCdeg]; exact hdegsum
+  have hgdeg : g.natDegree ≤ (Polynomial.derivative f).natDegree := Polynomial.natDegree_map_le
+  have hmul := Polynomial.resultant_mul_left (Polynomial.X - Polynomial.C x) q g
+    (Polynomial.derivative f).natDegree hgdeg
+  rw [Polynomial.natDegree_X_sub_C, ← hq, ← hsize] at hmul
+  have heval : (Polynomial.X - Polynomial.C x).resultant g 1 (Polynomial.derivative f).natDegree
+      = Polynomial.eval x g := Polynomial.resultant_X_sub_C_left g _ x hgdeg
+  have heval' : Polynomial.eval x g = Polynomial.aeval x (Polynomial.derivative f) := by
+    rw [hg_def, Polynomial.eval_map, ← Polynomial.aeval_def]
+  have hmain : fC.resultant g f.natDegree (Polynomial.derivative f).natDegree
+      = φ (Polynomial.resultant f (Polynomial.derivative f)) := by
+    rw [hfC_def, hg_def]
+    exact Polynomial.resultant_map_map f (Polynomial.derivative f) f.natDegree
+      (Polynomial.derivative f).natDegree φ
+  rw [hmain, heval, heval'] at hmul
+  have hunitφ : IsUnit (φ (Polynomial.resultant f (Polynomial.derivative f))) :=
+    hunit.map (algebraMap R C)
+  rw [hmul] at hunitφ
+  exact isUnit_of_mul_isUnit_left hunitφ
 
 /-! ### `AdjoinRoot f`: a finite free, local, domain extension with residue field `l`
 
