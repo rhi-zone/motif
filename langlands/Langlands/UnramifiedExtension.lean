@@ -58,7 +58,7 @@ provided at the call site (proved there by `rfl`, exactly as here). -/
 
 noncomputable section
 
-open ValuativeRel Valuation IsLocalRing
+open ValuativeRel Valuation IsLocalRing Polynomial
 
 -- **Instance-diamond fix**: `IsLocalRing.ResidueField.algebraOfIsIntegral` (a generic instance
 -- giving `Algebra (ResidueField R) k` for any `k` integral over `R`) competes with
@@ -175,3 +175,32 @@ instance henselianLocalRing : HenselianLocalRing ↥(𝒪[K]) := by
   haveI : HenselianRing ↥(𝒪[K]) 𝓂[K] := IsAdicComplete.henselianRing _ _
   refine HenselianLocalRing.mk fun f hf a₀ ha₀ hderiv => ?_
   exact HenselianRing.is_henselian f hf a₀ ha₀ (hderiv.map (Ideal.Quotient.mk 𝓂[K]))
+
+/-! ### A monic lift of a minimal polynomial over a Henselian local ring
+
+The first ingredient of the unramified lifting theorem's existence half (see
+`ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective`): given a Henselian
+local ring `R` with residue field `k := IsLocalRing.ResidueField R`, and an element `β₀` of a field
+`l` algebraic over `k`, the (monic) minimal polynomial of `β₀` over `k` lifts to a monic polynomial
+over `R` of the same degree, reducing to it mod the maximal ideal.
+
+This is a purely coefficient-wise construction and does *not* yet use Hensel's lemma itself (that
+enters at the next step: finding a root of this lift in `R`, via `HenselianLocalRing.TFAE`) --
+`Polynomial.mem_lifts_of_surjective` gives *some* lift along the (surjective) residue map, and
+`Polynomial.lifts_and_natDegree_eq_and_monic` upgrades this to a monic lift of the same degree,
+since the minimal polynomial being lifted is itself monic. Stated for a general
+`HenselianLocalRing R` since that is the hypothesis available at the intended call site, though the
+construction itself only needs `IsLocalRing R` and surjectivity of the residue map. -/
+
+theorem HenselianLocalRing.exists_monic_lift_minpoly {R : Type*} [CommRing R]
+    [HenselianLocalRing R] {l : Type*} [Field l] [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
+    (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) :
+    ∃ f : R[X], f.Monic ∧ f.natDegree = (minpoly (IsLocalRing.ResidueField R) β₀).natDegree ∧
+      f.map (algebraMap R (IsLocalRing.ResidueField R)) =
+        minpoly (IsLocalRing.ResidueField R) β₀ := by
+  have hlifts :=
+    Polynomial.mem_lifts_of_surjective (f := algebraMap R (IsLocalRing.ResidueField R))
+      IsLocalRing.residue_surjective (minpoly (IsLocalRing.ResidueField R) β₀)
+  obtain ⟨f, hf1, hf2, hf3⟩ :=
+    Polynomial.lifts_and_natDegree_eq_and_monic hlifts (minpoly.monic hβ₀)
+  exact ⟨f, hf3, hf2, hf1⟩
