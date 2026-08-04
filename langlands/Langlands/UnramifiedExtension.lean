@@ -178,6 +178,17 @@ pattern already used elsewhere in this project (`WeilGroup.decompositionSubgroup
 
 variable (K : Type*) [Field K] [ValuativeRel K] [TopologicalSpace K] [IsNonarchimedeanLocalField K]
 
+/-- **`𝒪[K]` is a Dedekind domain**, for `K` a nonarchimedean local field. `𝒪[K]` is already known
+to be a discrete valuation ring (`IsDiscreteValuationRing 𝒪[K]`, in
+`Mathlib.NumberTheory.LocalField.Basic`); `IsDiscreteValuationRing.TFAE` packages the equivalence
+of DVR with several other characterizations, including `IsDedekindDomain`, for a Noetherian local
+domain that is not a field. `IsNoetherianRing` comes for free from `IsPrincipalIdealRing` (which
+`IsDiscreteValuationRing` extends); `IsLocalRing` likewise; not being a field is
+`IsDiscreteValuationRing.not_isField`. -/
+instance isDedekindDomain : IsDedekindDomain ↥(𝒪[K]) :=
+  ((IsDiscreteValuationRing.TFAE ↥(𝒪[K]) (IsDiscreteValuationRing.not_isField ↥(𝒪[K]))).out 0 2).mp
+    (inferInstance : IsDiscreteValuationRing ↥(𝒪[K]))
+
 /-- **`𝒪[K]` is a Henselian local ring**, for `K` a nonarchimedean local field. -/
 instance henselianLocalRing : HenselianLocalRing ↥(𝒪[K]) := by
   letI := IsTopologicalAddGroup.rightUniformSpace K
