@@ -207,7 +207,7 @@ theorem HenselianLocalRing.exists_monic_lift_minpoly {R : Type*} [CommRing R]
     Polynomial.lifts_and_natDegree_eq_and_monic hlifts (minpoly.monic hβ₀)
   exact ⟨f, hf3, hf2, hf1⟩
 
-/-! ### The monic lift is irreducible over the fraction field
+/-! ### The monic lift is irreducible, first over `R` itself, then over the fraction field
 
 The second ingredient of the unramified lifting theorem's existence half: a monic lift `f` of
 `β₀`'s (irreducible) minimal polynomial over the residue field `k := IsLocalRing.ResidueField R`
@@ -221,7 +221,11 @@ Two Mathlib pieces compose here, both confirmed by loogle against their stated n
   irreducible (over `R`) if its image under *any* ring hom `R →+* S` (`S` a domain) is irreducible.
   Applied to the residue map `R →+* k`, whose image of `f` is (by hypothesis) `β₀`'s minimal
   polynomial -- irreducible by `minpoly.irreducible`, since `β₀` is integral over `k` (`l` and `k`
-  both fields makes `IsDomain` trivial on both sides).
+  both fields makes `IsDomain` trivial on both sides). This step alone only needs `IsDomain R`, not
+  `IsIntegrallyClosed R`, and is recorded as its own lemma (`irreducible_lift_minpoly`, giving
+  `Irreducible f` in `R[X]` itself) because the next construction step (`AdjoinRoot f` is a domain,
+  via `AdjoinRoot.isDomain_of_prime`) needs exactly this `R[X]`-level fact, not merely its image
+  over `Frac(R)`.
 * `Polynomial.Monic.irreducible_iff_irreducible_map_fraction_map` : **Gauss's lemma** for
   integrally closed domains -- a monic polynomial over an integrally closed domain `R` is
   irreducible over `R` iff its image is irreducible over `Frac(R)`. This is exactly where
@@ -229,15 +233,136 @@ Two Mathlib pieces compose here, both confirmed by loogle against their stated n
   ring), converting "irreducible over `R`" (from the previous bullet) into "irreducible over `K`".
 -/
 
+/-- The monic lift `f` (of `β₀`'s minimal polynomial over `k := IsLocalRing.ResidueField R`) is
+irreducible already in `R[X]`, before any Gauss's-lemma transfer to a fraction field. Only needs
+`IsDomain R` (not `IsIntegrallyClosed R`): `Polynomial.Monic.irreducible_of_irreducible_map` shows a
+monic polynomial over a domain is irreducible as soon as *some* image of it under a ring hom into a
+domain is irreducible, and here that image (under the residue map) is `minpoly k β₀`, irreducible
+since `β₀` is integral over the field `k`. Extracted as its own lemma because the domain-ness of
+`AdjoinRoot f` (`AdjoinRoot.isDomain_of_prime`, via `Irreducible f → Prime f` in the UFD `R[X]`)
+needs precisely this `R[X]`-level statement, not merely its image over `Frac(R)`. -/
+theorem HenselianLocalRing.irreducible_lift_minpoly {R : Type*} [CommRing R] [IsDomain R]
+    [HenselianLocalRing R] {l : Type*} [Field l] [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
+    (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) {f : R[X]} (hf : f.Monic)
+    (hfmap : f.map (algebraMap R (IsLocalRing.ResidueField R)) =
+      minpoly (IsLocalRing.ResidueField R) β₀) :
+    Irreducible f := by
+  apply Polynomial.Monic.irreducible_of_irreducible_map (algebraMap R (IsLocalRing.ResidueField R))
+    f hf
+  rw [hfmap]
+  exact minpoly.irreducible hβ₀
+
 theorem HenselianLocalRing.irreducible_map_lift_minpoly {R : Type*} [CommRing R] [IsDomain R]
     [IsIntegrallyClosed R] [HenselianLocalRing R] {K : Type*} [Field K] [Algebra R K]
     [IsFractionRing R K] {l : Type*} [Field l] [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
     (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) {f : R[X]} (hf : f.Monic)
     (hfmap : f.map (algebraMap R (IsLocalRing.ResidueField R)) =
       minpoly (IsLocalRing.ResidueField R) β₀) :
-    Irreducible (f.map (algebraMap R K)) := by
-  apply (Polynomial.Monic.irreducible_iff_irreducible_map_fraction_map hf).mp
-  apply Polynomial.Monic.irreducible_of_irreducible_map (algebraMap R (IsLocalRing.ResidueField R))
-    f hf
-  rw [hfmap]
-  exact minpoly.irreducible hβ₀
+    Irreducible (f.map (algebraMap R K)) :=
+  (Polynomial.Monic.irreducible_iff_irreducible_map_fraction_map hf).mp
+    (HenselianLocalRing.irreducible_lift_minpoly hβ₀ hf hfmap)
+
+/-! ### `AdjoinRoot f`: a finite free, local, domain extension with residue field `l`
+
+The third ingredient (see `ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective`
+above): given the monic lift `f` of `β₀`'s minimal polynomial (from `exists_monic_lift_minpoly`,
+irreducible in `R[X]` by `irreducible_lift_minpoly`), `R' := AdjoinRoot f` is
+
+1. a finite free `R`-module of rank `n = f.natDegree`, which (given the extra hypothesis that `β₀`
+   is a **primitive element**, i.e. `k⟮β₀⟯ = ⊤`, phrased as `IntermediateField.adjoin k {β₀} = ⊤` to
+   avoid depending on the scoped `⟮⟯` notation) equals `[l : k]`
+   (`finrank_adjoinRoot_lift_minpoly`);
+2. a domain (`isDomain_adjoinRoot_lift_minpoly`), via `Irreducible f → Prime f` in the UFD `R[X]`
+   (`R[X]` is a UFD whenever `R` is, e.g. `R` a PID at the intended call site `𝒪[K]`); and
+3. local, with the ideal `M₀ := Ideal.map (AdjoinRoot.of f) (maximalIdeal R)` as its unique maximal
+   ideal (`isLocalRing_adjoinRoot_lift_minpoly`).
+
+**On (3), the "IsLocalRing R'" step**: the route sketched in the task brief (Cohen-Seidenberg
+lying-over, via `Ideal.isMaximal_comap_of_isIntegral_of_isMaximal` in
+`Mathlib.RingTheory.Ideal.GoingUp`) works directly and is what's used below; no more direct packaged
+Mathlib lemma ("finite algebra over a local ring with field quotient ⟹ local") was found. The
+argument: `M₀` itself is maximal, since `AdjoinRoot f ⧸ M₀ ≅ Polynomial k ⧸ span {f.map (residue R)}
+= Polynomial k ⧸ span {minpoly k β₀}` (via `AdjoinRoot.quotEquivQuotMap` and `hfmap`) is a field
+(`AdjoinRoot.instField`, since `minpoly k β₀` is irreducible). For *uniqueness*: `R'` is
+module-finite over `R` (from the `PowerBasis`), hence integral, so for *any* maximal ideal `I` of
+`R'`, `I.comap (algebraMap R R')` is maximal in `R` (Cohen-Seidenberg going-up); since `R` is local
+this comap equals `maximalIdeal R`, so (applying `Ideal.map` back and using `Ideal.map_comap_le`)
+`M₀ ≤ I`; two maximal ideals with `M₀ ≤ I` forces `M₀ = I` (`Ideal.IsMaximal.eq_of_le`). Hence `M₀`
+is the *unique* maximal ideal, and `IsLocalRing.of_unique_max_ideal` applies.
+
+This file does **not** yet identify `IsLocalRing.ResidueField (AdjoinRoot f)` with `l` itself (item
+3's residue-field claim beyond "some maximal ideal with field quotient `AdjoinRoot (minpoly k β₀)`
+exists") -- doing so requires additionally applying `IntermediateField.adjoinRootEquivAdjoin` and
+the primitive-element hypothesis `k⟮β₀⟯ = ⊤` to identify `AdjoinRoot (minpoly k β₀) ≃ₐ[k] l`, and
+composing with `AdjoinRoot.quotEquivQuotMap` plus `IsLocalRing.eq_maximalIdeal` (to identify `M₀`
+with `maximalIdeal (AdjoinRoot f)` once locality is known) into a single equivalence
+`IsLocalRing.ResidueField (AdjoinRoot f) ≃+* l`. This composition was not carried out here (left as
+a mechanical but nontrivial follow-up: threading the `AdjoinRoot`/`Ideal.Quotient` defeq unfoldings
+used in `isDomain_adjoinRoot_lift_minpoly`'s proof through one more layer of equivalences). -/
+
+theorem HenselianLocalRing.isDomain_adjoinRoot_lift_minpoly {R : Type*} [CommRing R] [IsDomain R]
+    [UniqueFactorizationMonoid R] [HenselianLocalRing R] {l : Type*} [Field l]
+    [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
+    (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) {f : R[X]} (hf : f.Monic)
+    (hfmap : f.map (algebraMap R (IsLocalRing.ResidueField R)) =
+      minpoly (IsLocalRing.ResidueField R) β₀) :
+    IsDomain (AdjoinRoot f) :=
+  AdjoinRoot.isDomain_of_prime <| UniqueFactorizationMonoid.irreducible_iff_prime.mp
+    (HenselianLocalRing.irreducible_lift_minpoly hβ₀ hf hfmap)
+
+/-- `AdjoinRoot f` is a finite free `R`-module (via the `PowerBasis` `AdjoinRoot.powerBasis'`, using
+only that `f` is monic -- no irreducibility needed for this part) of rank `f.natDegree`, which,
+given that `β₀` is a *primitive element* of `l/k` (`hprim : k⟮β₀⟯ = ⊤`, i.e. `k(β₀) = l`), equals
+`[l : k]`: `f.natDegree = (f.map (residue R)).natDegree` (mapping a monic polynomial along a ring
+hom into a nontrivial ring preserves `natDegree`) `= (minpoly k β₀).natDegree` (by `hfmap`)
+`= finrank k k⟮β₀⟯` (`IntermediateField.adjoin.finrank`) `= finrank k l` (transporting along
+`hprim`, `IntermediateField.finrank_top'`). -/
+theorem HenselianLocalRing.finrank_adjoinRoot_lift_minpoly {R : Type*} [CommRing R]
+    [HenselianLocalRing R] {l : Type*} [Field l] [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
+    (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) {f : R[X]} (hf : f.Monic)
+    (hfmap : f.map (algebraMap R (IsLocalRing.ResidueField R)) =
+      minpoly (IsLocalRing.ResidueField R) β₀)
+    (hprim : IntermediateField.adjoin (IsLocalRing.ResidueField R) {β₀} = ⊤) :
+    Module.finrank R (AdjoinRoot f) = Module.finrank (IsLocalRing.ResidueField R) l := by
+  rw [(AdjoinRoot.powerBasis' hf).finrank, AdjoinRoot.powerBasis'_dim,
+    ← hf.natDegree_map (algebraMap R (IsLocalRing.ResidueField R)), hfmap,
+    ← IntermediateField.adjoin.finrank hβ₀, hprim, IntermediateField.finrank_top']
+
+/-- **`AdjoinRoot f` is local**, with `M₀ := Ideal.map (AdjoinRoot.of f) (maximalIdeal R)` its
+unique maximal ideal. See the section docstring above for the full argument: `M₀` is maximal
+because `AdjoinRoot f ⧸ M₀ ≅ AdjoinRoot (minpoly k β₀)` (a field, `minpoly k β₀` being irreducible),
+and it is the *only* maximal ideal because every maximal ideal of the module-finite (hence integral)
+extension `R'/R` contracts to the unique maximal ideal of the local ring `R`, forcing every maximal
+ideal to contain (hence, by maximality of both, equal) `M₀`. -/
+theorem HenselianLocalRing.isLocalRing_adjoinRoot_lift_minpoly {R : Type*} [CommRing R] [IsDomain R]
+    [HenselianLocalRing R] {l : Type*} [Field l] [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
+    (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) {f : R[X]} (hf : f.Monic)
+    (hfmap : f.map (algebraMap R (IsLocalRing.ResidueField R)) =
+      minpoly (IsLocalRing.ResidueField R) β₀) :
+    IsLocalRing (AdjoinRoot f) := by
+  have hM0field :
+      IsField (AdjoinRoot f ⧸ Ideal.map (AdjoinRoot.of f) (IsLocalRing.maximalIdeal R)) := by
+    have e := (AdjoinRoot.quotEquivQuotMap f (IsLocalRing.maximalIdeal R)).toRingEquiv.toMulEquiv
+    refine MulEquiv.isField ?_ e
+    show IsField (Polynomial (IsLocalRing.ResidueField R) ⧸
+      Ideal.span {f.map (algebraMap R (IsLocalRing.ResidueField R))})
+    rw [hfmap]
+    show IsField (AdjoinRoot (minpoly (IsLocalRing.ResidueField R) β₀))
+    haveI : Fact (Irreducible (minpoly (IsLocalRing.ResidueField R) β₀)) :=
+      ⟨minpoly.irreducible hβ₀⟩
+    exact Field.toIsField _
+  have hM0max : (Ideal.map (AdjoinRoot.of f) (IsLocalRing.maximalIdeal R)).IsMaximal :=
+    Ideal.Quotient.maximal_of_isField _ hM0field
+  refine IsLocalRing.of_unique_max_ideal
+    ⟨Ideal.map (AdjoinRoot.of f) (IsLocalRing.maximalIdeal R), hM0max, fun I hI => ?_⟩
+  haveI : Module.Finite R (AdjoinRoot f) := (AdjoinRoot.powerBasis' hf).finite
+  haveI : Algebra.IsIntegral R (AdjoinRoot f) := Algebra.IsIntegral.of_finite R (AdjoinRoot f)
+  haveI := hI
+  have hcomapmax : (I.comap (algebraMap R (AdjoinRoot f))).IsMaximal :=
+    Ideal.isMaximal_comap_of_isIntegral_of_isMaximal I
+  have hcomapeq : I.comap (algebraMap R (AdjoinRoot f)) = IsLocalRing.maximalIdeal R :=
+    IsLocalRing.eq_maximalIdeal hcomapmax
+  have hle : Ideal.map (AdjoinRoot.of f) (IsLocalRing.maximalIdeal R) ≤ I := by
+    rw [← AdjoinRoot.algebraMap_eq, ← hcomapeq]
+    exact Ideal.map_comap_le
+  exact (hM0max.eq_of_le hI.ne_top hle).symm
