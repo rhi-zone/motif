@@ -1,4 +1,5 @@
 import Mathlib.RingTheory.Valuation.RamificationGroup
+import Mathlib.RingTheory.Valuation.LocalSubring
 import Mathlib.RingTheory.LocalRing.ResidueField.Basic
 import Mathlib.FieldTheory.Galois.Infinite
 import Mathlib.Topology.Algebra.Valued.ValuativeRel
@@ -1326,6 +1327,115 @@ theorem HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residu
   rw [hstep]
   exact HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_root
     hβ₀ hfmonic hfmap hprim
+
+/-! ### An `A`-relative root with prescribed residue (route (a))
+
+The gap left open by `exists_isDiscreteValuationRing_integralClosure_residueField_equiv` (see its
+docstring, and the extended discussion at the `sorry` of
+`exists_restrictNormalHom_decompositionSubgroup_surjective` below): the root `x : L` it produces is
+an *arbitrary* choice among the roots of the shared lift polynomial `f`, with no control over which
+`A`-residue it lands on.
+
+`ValuationSubring.exists_aeval_root_residue_eq` closes exactly this gap, and does so by a
+genuinely different (and simpler) argument than the Hensel's-lemma machinery used everywhere else
+in this file: it needs **no** `HenselianLocalRing`/separability hypothesis on `R` at all. The proof:
+
+1. `p := f.map (algebraMap R A) : A[X]` is monic, hence (since `L` is algebraically closed) its
+   image `p.map (algebraMap A L)` has exactly `p.natDegree`-many roots in `L`, counted with
+   multiplicity (`IsAlgClosed.card_roots_map_eq_natDegree_of_injective`, using that
+   `algebraMap A L` is injective, `IsFractionRing.injective`).
+2. Every one of those roots is already *in the range of* `algebraMap A L`: a root `y : L` of
+   `p.map (algebraMap A L)` is a root of a monic polynomial with `A`-coefficients, hence integral
+   over `A` (`⟨p, hpmonic, _⟩`), hence (since `A`, a `ValuationSubring`, is integrally closed in its
+   own fraction field `L` -- `ValuationSubring`'s `IsIntegrallyClosed` instance,
+   `Mathlib.RingTheory.Valuation.LocalSubring`, combined with `IsFractionRing A L`) lies in the
+   image of `A` (`IsIntegrallyClosed.isIntegral_iff`).
+3. Combining 1 and 2 (via `Polynomial.filter_roots_map_range_eq_map_roots`, which identifies the
+   sub-multiset of `L`-roots lying in the range of `A → L` with the image of `A`'s own `roots`
+   multiset): `p.roots.card = p.natDegree` too, i.e. `p` **already splits into linear factors over
+   `A` itself** (`Polynomial.splits_iff_card_roots`, `Polynomial.Splits.eq_prod_roots_of_monic`) --
+   not merely after passing to `L`.
+4. Reducing this `A`-factorization along the residue map `IsLocalRing.residue A : A →+*
+   IsLocalRing.ResidueField A` turns it into a factorization of `f`'s reduction mod `A`'s maximal
+   ideal into linear factors indexed by the residues of `p`'s `A`-roots. Since the prescribed `a₀`
+   is *a* root of this reduction and `IsLocalRing.ResidueField A` is a field (no zero divisors), one
+   of those linear factors must vanish at `a₀` (`Multiset.prod_eq_zero_iff`) -- i.e. `a₀` is
+   *exactly* the residue of one of `p`'s `A`-roots. That root is the desired `x`.
+
+No Hensel's-lemma input, no separability hypothesis, no assumption that `R` is local: this is a
+direct consequence of `L` being algebraically closed and `A` being integrally closed in it. -/
+
+/-- **`A`-relative Hensel lift with prescribed residue.** Given `A : ValuationSubring L` with `L`
+algebraically closed, a monic `f : R[X]` (`R` any commutative ring with an algebra map to `A`), and
+a prescribed root `a₀ : IsLocalRing.ResidueField A` of `f`'s reduction mod `A`'s maximal ideal
+(expressed via `IsRoot` of the composite ring hom `(IsLocalRing.residue A).comp (algebraMap R A)`,
+to avoid requiring a bundled `Algebra R (IsLocalRing.ResidueField A)` instance), there exists
+`x : A` that is both a genuine root of `f` (`Polynomial.aeval x f = 0`) *and* whose residue in `A`
+is exactly the prescribed `a₀`. See the module note above for the (Hensel-free) argument. -/
+theorem ValuationSubring.exists_aeval_root_residue_eq
+    {L : Type*} [Field L] [IsAlgClosed L] (A : ValuationSubring L)
+    {R : Type*} [CommRing R] [Algebra R A]
+    {f : R[X]} (hf : f.Monic) {a₀ : IsLocalRing.ResidueField A}
+    (ha₀ : (f.map ((IsLocalRing.residue A).comp (algebraMap R A))).IsRoot a₀) :
+    ∃ x : A, Polynomial.aeval x f = 0 ∧ IsLocalRing.residue A x = a₀ := by
+  classical
+  set p : A[X] := f.map (algebraMap R A) with hpdef
+  have hpmonic : p.Monic := hf.map _
+  have hpne : p ≠ 0 := hpmonic.ne_zero
+  have hinj : Function.Injective (algebraMap A L) := IsFractionRing.injective A L
+  -- Every `L`-root of `p` (mapped along `A → L`) already lies in the range of `A → L`.
+  have hrange : ∀ y ∈ (Polynomial.map (algebraMap A L) p).roots, y ∈ (algebraMap A L).range := by
+    intro y hy
+    rw [Polynomial.mem_roots_map_of_injective hinj hpne] at hy
+    have hyint : IsIntegral A y := ⟨p, hpmonic, hy⟩
+    exact (IsIntegrallyClosed.isIntegral_iff (K := L)).mp hyint
+  -- Hence `p` itself already splits into linear factors over `A`.
+  have hcard : p.roots.card = p.natDegree := by
+    have h1 : (Polynomial.map (algebraMap A L) p).roots.card = p.natDegree :=
+      IsAlgClosed.card_roots_map_eq_natDegree_of_injective p hinj
+    have hfilter : Multiset.filter (· ∈ (algebraMap A L).range)
+        (Polynomial.map (algebraMap A L) p).roots = Multiset.map (algebraMap A L) p.roots :=
+      Polynomial.filter_roots_map_range_eq_map_roots hinj p
+    rw [Multiset.filter_eq_self.mpr hrange] at hfilter
+    rw [hfilter, Multiset.card_map] at h1
+    exact h1
+  have hsplits : p.Splits := Polynomial.splits_iff_card_roots.mpr hcard
+  have hprod : p = (Multiset.map (fun r => Polynomial.X - Polynomial.C r) p.roots).prod :=
+    hsplits.eq_prod_roots_of_monic hpmonic
+  -- Reduce the `A`-factorization mod `A`'s maximal ideal.
+  have hfactored : f.map ((IsLocalRing.residue A).comp (algebraMap R A)) =
+      (Multiset.map (fun r => Polynomial.X - Polynomial.C (IsLocalRing.residue A r)) p.roots).prod := by
+    have step1 : f.map ((IsLocalRing.residue A).comp (algebraMap R A)) =
+        p.map (IsLocalRing.residue A) := by rw [hpdef, Polynomial.map_map]
+    have step2 : p.map (IsLocalRing.residue A) =
+        (Multiset.map (fun r => Polynomial.X - Polynomial.C r) p.roots).prod.map
+          (IsLocalRing.residue A) := congrArg (Polynomial.map (IsLocalRing.residue A)) hprod
+    have step3 : (Multiset.map (fun r => Polynomial.X - Polynomial.C r) p.roots).prod.map
+          (IsLocalRing.residue A) =
+        (Multiset.map (Polynomial.map (IsLocalRing.residue A))
+          (Multiset.map (fun r => Polynomial.X - Polynomial.C r) p.roots)).prod :=
+      Polynomial.map_multiset_prod _ _
+    have step4 : (Multiset.map (Polynomial.map (IsLocalRing.residue A))
+          (Multiset.map (fun r => Polynomial.X - Polynomial.C r) p.roots)) =
+        Multiset.map (fun r => Polynomial.X - Polynomial.C (IsLocalRing.residue A r)) p.roots := by
+      rw [Multiset.map_map]
+      apply Multiset.map_congr rfl
+      intro r _
+      simp [Function.comp]
+    rw [step1, step2, step3, step4]
+  -- Evaluate the factorization at `a₀`: one linear factor must vanish.
+  have heval : (Multiset.map (fun r => a₀ - IsLocalRing.residue A r) p.roots).prod = 0 := by
+    have h : Polynomial.eval a₀
+        (Multiset.map (fun r => Polynomial.X - Polynomial.C (IsLocalRing.residue A r)) p.roots).prod
+        = 0 := by rw [← hfactored]; exact ha₀
+    rwa [Polynomial.eval_multiset_prod, Multiset.map_map, show
+        (Polynomial.eval a₀ ∘ fun r => Polynomial.X - Polynomial.C (IsLocalRing.residue A r)) =
+        (fun r => a₀ - IsLocalRing.residue A r) from by funext r; simp [Function.comp]] at h
+  obtain ⟨d, hdmem, hd0⟩ := Multiset.mem_map.mp (Multiset.prod_eq_zero_iff.mp heval)
+  refine ⟨d, ?_, (sub_eq_zero.mp hd0).symm⟩
+  have hdroot : d ∈ p.roots := hdmem
+  rw [Polynomial.mem_roots hpne, Polynomial.IsRoot.def] at hdroot
+  rwa [hpdef, Polynomial.eval_map_algebraMap] at hdroot
 
 /-! ### The unramified lifting theorem itself
 
