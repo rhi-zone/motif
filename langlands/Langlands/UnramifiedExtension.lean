@@ -134,10 +134,18 @@ algebraic) via `IsAlgClosed`/normality gives an element of `Gal(L/K)`, which (si
 the valuation subring of `K'` lying under `A`, hence -- using uniqueness of extension of the
 valuation, i.e. the same Henselian/decomposition-subgroup-is-everything argument as
 `LocalField.decompositionSubgroup_eq_top` -- stabilizes `A` itself) lies in the decomposition
-subgroup and induces `g` on `M` by construction. -/
+subgroup and induces `g` on `M` by construction.
+
+`[IsAlgClosed L]` is stated as an explicit hypothesis (rather than left implicit, as the proof
+sketch's informal appeal to "IsAlgClosed/normality" originally left it) precisely to make this
+"extend the automorphism of `K'` to all of `L`" step available: extending along a merely normal
+(not algebraically closed) `L/K'` would need `Normal K L` instead, which is not assumed here. The
+one call site (`LocalField.surjective_restrictNormalHom_comp_residueAction'` in
+`Langlands.WeilGroup`) instantiates `L := AlgebraicClosure K`, which already has an `IsAlgClosed`
+instance in Mathlib, so this costs nothing there. -/
 theorem exists_restrictNormalHom_decompositionSubgroup_surjective
     (hcompat : ∀ a : ↥(𝒪[K]), (algebraMap ↥(𝒪[K]) A a : L) = algebraMap K L (a : K))
-    [IsGalois 𝓀[K] (IsLocalRing.ResidueField A)]
+    [IsAlgClosed L] [IsGalois 𝓀[K] (IsLocalRing.ResidueField A)]
     (M : IntermediateField 𝓀[K] (IsLocalRing.ResidueField A))
     [FiniteDimensional 𝓀[K] M] [Normal 𝓀[K] M] :
     Function.Surjective fun σ : A.decompositionSubgroup K =>
