@@ -1,6 +1,7 @@
 import Langlands.Basic
 import Langlands.CyclicGaloisSubfields
 import Langlands.CyclicSubgroups
+import Langlands.FiniteIndexNormalSubgroupMulEquiv
 import Langlands.FiniteIndexSubgroupsZ
 import Langlands.IdeleGroup
 import Langlands.ProfiniteGrpUlift
