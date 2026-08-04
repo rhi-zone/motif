@@ -8,6 +8,7 @@ import Mathlib.RingTheory.DedekindDomain.Different
 import Mathlib.RingTheory.Conductor
 import Mathlib.Algebra.Polynomial.Eval.Irreducible
 import Mathlib.RingTheory.Polynomial.GaussLemma
+import Mathlib.RingTheory.Polynomial.Resultant.Basic
 
 /-!
 # Unramified extensions and lifting automorphisms of the residue field
@@ -280,6 +281,135 @@ theorem HenselianLocalRing.irreducible_map_lift_minpoly {R : Type*} [CommRing R]
     Irreducible (f.map (algebraMap R K)) :=
   (Polynomial.Monic.irreducible_iff_irreducible_map_fraction_map hf).mp
     (HenselianLocalRing.irreducible_lift_minpoly hβ₀ hf hfmap)
+
+/-! ### The monic lift `f` is separable, hence so is `p := f.map (algebraMap R K)`
+
+The remaining ingredient needed to discharge `[Algebra.IsSeparable K L]` at the call site of
+`Algebra.adjoin_eq_top_of_isUnit_aeval_derivative_minpoly` (`Langlands.MonogenicMaximalOrder`,
+kept in its own file for import-diamond reasons -- see that file's docstring): `f` itself is
+separable in `R[X]`, hence (`Polynomial.Separable.map`, valid for *any* ring hom out of a
+`CommSemiring`, no domain hypotheses needed) `p := f.map (algebraMap R K)` is separable in `K[X]`.
+
+The originally-sketched route via `Algebra.discr` (basis discriminant) does not exist in a
+`Polynomial`-level, `map`-compatible form in Mathlib; the actual bridge found by loogle is the
+**resultant** of a polynomial and its derivative (`Polynomial.resultant`,
+`Mathlib.RingTheory.Polynomial.Resultant.Basic`):
+`Polynomial.isUnit_resultant_iff_isCoprime` identifies `IsUnit (f.resultant g)` (for `f` monic)
+with `IsCoprime f g`, and `Polynomial.separable_def` identifies `f.Separable` with
+`IsCoprime f (derivative f)` -- so separability of a monic polynomial is exactly unit-ness of the
+resultant of it and its derivative. This *is* the discriminant, up to a sign/leading-term twist
+(see `Polynomial.discr`'s docstring), but the resultant form is what actually has the needed
+`map`-compatibility lemma, `Polynomial.resultant_map_map`.
+
+The argument:
+
+1. `k := IsLocalRing.ResidueField R` is finite (hypothesis `[Finite k]`, true at the intended call
+   site `R = 𝒪[K]` via the already-existing instance
+   `IsNonarchimedeanLocalField.instFiniteResidueField...`), hence perfect (`PerfectField.ofFinite`),
+   so `minpoly k β₀` -- irreducible since `β₀` is integral -- is separable
+   (`PerfectField.separable_of_irreducible`). Via `hfmap`, this is `(f.map (residue R)).Separable`.
+2. Unwinding `Separable`/`isUnit_resultant_iff_isCoprime` at `f.map (residue R)` (monic, since `f`
+   is) gives `IsUnit ((f.map (residue R)).resultant (derivative (f.map (residue R))))`, at the
+   *default* size parameters (`(f.map (residue R)).natDegree`, `(derivative (f.map (residue R))
+   ).natDegree`).
+3. **The size-parameter subtlety**: `Polynomial.resultant`'s size arguments `m n` are explicit
+   (with `natDegree`-valued `optParam` defaults), and `Polynomial.resultant_map_map` (transporting
+   a resultant along a ring hom) holds for *arbitrary* `m n`, not just the natDegree-valued
+   defaults of whichever side of the hom they're read off from -- since reducing mod a maximal
+   ideal *can* drop the degree of a derivative (e.g. `char k = p ∣ f.natDegree` can kill the
+   leading coefficient of `derivative f` upon reduction, even though `R` has characteristic `0` so
+   `derivative f` itself doesn't degenerate over `R`), the default-`n` resultant read off from
+   `f.map (residue R)`'s own `natDegree`s need not equal the default-`n` resultant read off from
+   `f`'s. The fix: since `f` (hence `f.map (residue R)`) is *monic*,
+   `Polynomial.resultant_add_right_deg` shows padding the second polynomial's size argument past
+   its actual degree multiplies the resultant by (a power of) the *first* polynomial's coefficient
+   at the fixed size `m`, which is `1` for a monic polynomial at `m = natDegree` -- so the resultant
+   at the (possibly larger) `R`-side padding `(derivative f).natDegree` agrees with the resultant at
+   `f.map (residue R)`'s own smaller default size. This lets step 2's fact be re-expressed at the
+   padded size compatible with `resultant_map_map`, transporting it back across `R → k` to conclude
+   `IsUnit (f.resultant (derivative f))` **in `k`**, i.e. that `(residue R) (f.resultant
+   (derivative f))` is nonzero.
+4. `(residue R) x ≠ 0 ↔ x ∉ maximalIdeal R` (`IsLocalRing.residue_eq_zero_iff`) `↔ IsUnit x`
+   (`IsLocalRing.mem_maximalIdeal`, `mem_nonunits_iff`, `R` local) gives `IsUnit (f.resultant
+   (derivative f))` **in `R` itself** (not just its image in `k`) -- this is the fact that would
+   let `MonogenicMaximalOrder.lean`'s `hunit` hypothesis (`IsUnit (aeval x (minpoly A x).derivative)`)
+   eventually be discharged too, though wiring that up is a separate, further step not attempted
+   here.
+5. `Polynomial.isUnit_resultant_iff_isCoprime hf` converts this back to `IsCoprime f (derivative
+   f)`, i.e. (`Polynomial.separable_def`) `f.Separable`. -/
+
+/-- **The monic lift `f` is separable**, given that the residue field `k := IsLocalRing.ResidueField
+R` is finite. See the section docstring above for the full resultant-based argument. -/
+theorem HenselianLocalRing.separable_lift_minpoly {R : Type*} [CommRing R] [IsLocalRing R]
+    [Finite (IsLocalRing.ResidueField R)] {l : Type*} [Field l]
+    [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
+    (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) {f : R[X]} (hf : f.Monic)
+    (hfmap : f.map (algebraMap R (IsLocalRing.ResidueField R)) =
+      minpoly (IsLocalRing.ResidueField R) β₀) :
+    f.Separable := by
+  have hφeq : algebraMap R (IsLocalRing.ResidueField R) = IsLocalRing.residue R :=
+    IsLocalRing.ResidueField.algebraMap_eq R
+  rw [hφeq] at hfmap
+  set φ := IsLocalRing.residue R with hφ
+  haveI : PerfectField (IsLocalRing.ResidueField R) := PerfectField.ofFinite
+  have hsepbar : (minpoly (IsLocalRing.ResidueField R) β₀).Separable :=
+    PerfectField.separable_of_irreducible (minpoly.irreducible hβ₀)
+  rw [← hfmap] at hsepbar
+  have hcop_bar : IsCoprime (f.map φ) (Polynomial.derivative (f.map φ)) :=
+    (Polynomial.separable_def _).mp hsepbar
+  have hmonicbar : (f.map φ).Monic := hf.map φ
+  have hmbar : (f.map φ).natDegree = f.natDegree := hf.natDegree_map φ
+  have hIsUnitBar : IsUnit (Polynomial.resultant (f.map φ) (Polynomial.derivative (f.map φ))) :=
+    (Polynomial.isUnit_resultant_iff_isCoprime hmonicbar).mpr hcop_bar
+  have hn0len : (Polynomial.derivative (f.map φ)).natDegree ≤ (Polynomial.derivative f).natDegree :=
+    by rw [Polynomial.derivative_map]; exact Polynomial.natDegree_map_le
+  obtain ⟨pad, hpadeq⟩ := Nat.le.dest hn0len
+  have hpad : Polynomial.resultant (f.map φ) (Polynomial.derivative (f.map φ))
+      ((f.map φ).natDegree) ((Polynomial.derivative f).natDegree) =
+      Polynomial.resultant (f.map φ) (Polynomial.derivative (f.map φ)) := by
+    rw [← hpadeq, Polynomial.resultant_add_right_deg _ _ _ _ _ le_rfl, hmonicbar.coeff_natDegree,
+      one_pow, one_mul]
+  have hIsUnitBar' : IsUnit (Polynomial.resultant (f.map φ) (Polynomial.derivative (f.map φ))
+      ((f.map φ).natDegree) ((Polynomial.derivative f).natDegree)) := by
+    rw [hpad]; exact hIsUnitBar
+  have hderiv_map : Polynomial.derivative (f.map φ) = (Polynomial.derivative f).map φ :=
+    Polynomial.derivative_map f φ
+  have hresR : Polynomial.resultant (f.map φ) ((Polynomial.derivative f).map φ)
+      ((f.map φ).natDegree) ((Polynomial.derivative f).natDegree) =
+      φ (Polynomial.resultant f (Polynomial.derivative f) ((f.map φ).natDegree)
+        ((Polynomial.derivative f).natDegree)) :=
+    Polynomial.resultant_map_map f (Polynomial.derivative f) _ _ φ
+  have hIsUnitBar'' : IsUnit (φ (Polynomial.resultant f (Polynomial.derivative f)
+      ((f.map φ).natDegree) ((Polynomial.derivative f).natDegree))) := by
+    rw [← hresR, ← hderiv_map]; exact hIsUnitBar'
+  rw [hmbar] at hIsUnitBar''
+  have hx_ne : φ (Polynomial.resultant f (Polynomial.derivative f)) ≠ 0 :=
+    isUnit_iff_ne_zero.mp hIsUnitBar''
+  have hx_notmem : Polynomial.resultant f (Polynomial.derivative f) ∉ IsLocalRing.maximalIdeal R :=
+    fun hmem => hx_ne (IsLocalRing.residue_eq_zero_iff _ |>.mpr hmem)
+  have hxunit : IsUnit (Polynomial.resultant f (Polynomial.derivative f)) := by
+    by_contra hnu
+    exact hx_notmem (IsLocalRing.mem_maximalIdeal _ |>.mpr (mem_nonunits_iff.mpr hnu))
+  have hcopR : IsCoprime f (Polynomial.derivative f) :=
+    (Polynomial.isUnit_resultant_iff_isCoprime hf).mp hxunit
+  exact (Polynomial.separable_def f).mpr hcopR
+
+/-- **`p := f.map (algebraMap R K)` is separable**, given `f.Separable` (from
+`separable_lift_minpoly` above): `Polynomial.Separable.map` transports separability along *any*
+ring hom, no domain/field hypotheses on the target needed. This is the fact that, once wired
+through `AdjoinRoot p ≃ₐ[K] K⟮x⟯` (`x` the root produced by
+`exists_ringHom_adjoinRoot_map_of_isAlgClosed`), discharges the `[Algebra.IsSeparable K L]`
+hypothesis of `Algebra.adjoin_eq_top_of_isUnit_aeval_derivative_minpoly`
+(`Langlands.MonogenicMaximalOrder`) at its intended call site -- that wiring itself is a further
+step not attempted here. -/
+theorem HenselianLocalRing.separable_map_lift_minpoly {R : Type*} [CommRing R] [IsLocalRing R]
+    [Finite (IsLocalRing.ResidueField R)] {K : Type*} [Field K] [Algebra R K] {l : Type*} [Field l]
+    [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
+    (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) {f : R[X]} (hf : f.Monic)
+    (hfmap : f.map (algebraMap R (IsLocalRing.ResidueField R)) =
+      minpoly (IsLocalRing.ResidueField R) β₀) :
+    (f.map (algebraMap R K)).Separable :=
+  (HenselianLocalRing.separable_lift_minpoly hβ₀ hf hfmap).map
 
 /-! ### `AdjoinRoot f`: a finite free, local, domain extension with residue field `l`
 
