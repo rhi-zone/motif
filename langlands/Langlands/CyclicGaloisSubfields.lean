@@ -69,9 +69,44 @@ theorem IntermediateField.finrank_comap_val_of_le {F E : Type*} [Field F] [Field
   rw [hmap] at hequiv
   exact LinearEquiv.finrank_eq hequiv.toLinearEquiv
 
+/-- **Every subgroup of an abelian Galois group is normal.** Trivial, but stated here since it is
+the ingredient that makes every intermediate field of a finite Galois extension with abelian
+Galois group normal over the base (`normal_fixedField_of_isMulCommutative`,
+`IsGalois.normal_of_isMulCommutative`). -/
+instance Subgroup.normal_of_isMulCommutative_aut {F E : Type*} [Field F] [Field E] [Algebra F E]
+    [IsMulCommutative Gal(E/F)] (H : Subgroup Gal(E/F)) : H.Normal :=
+  Subgroup.normal_of_isMulCommutative H
+
+/-- **The fixed field of *any* subgroup of an abelian Galois group is normal over the base.** Since
+`Gal(E/F)` is abelian, every `σ : Gal(E/F)` commutes with every `h ∈ H`, so `σ` maps `fixedField H`
+into itself (`h (σ x) = σ (h x) = σ x` for `x` fixed by `H`), giving `Normal F (fixedField H)` via
+`IntermediateField.normal_iff_forall_map_le'`. -/
+theorem normal_fixedField_of_isMulCommutative {F E : Type*} [Field F] [Field E] [Algebra F E]
+    [Normal F E] [IsMulCommutative Gal(E/F)] (H : Subgroup Gal(E/F)) :
+    Normal F (IntermediateField.fixedField H) := by
+  rw [IntermediateField.normal_iff_forall_map_le']
+  intro σ x hx
+  rw [IntermediateField.mem_map] at hx
+  obtain ⟨y, hy, rfl⟩ := hx
+  rw [IntermediateField.mem_fixedField_iff] at hy ⊢
+  intro h hh
+  have hcomm : h * σ = σ * h := IsMulCommutative.is_comm.comm h σ
+  show h (σ y) = σ y
+  have : (h * σ) y = (σ * h) y := by rw [hcomm]
+  simpa [hy h hh] using this
+
 namespace IsGalois
 
 variable {F E : Type*} [Field F] [Field E] [Algebra F E] [FiniteDimensional F E] [IsGalois F E]
+
+/-- **Every intermediate field of a finite Galois extension with abelian Galois group is normal
+over the base.** Any `M` equals the fixed field of its own fixing subgroup
+(`IsGalois.fixedField_fixingSubgroup`), which is normal by
+`normal_fixedField_of_isMulCommutative`. -/
+theorem normal_of_isMulCommutative [IsMulCommutative Gal(E/F)] (M : IntermediateField F E) :
+    Normal F M := by
+  rw [← IsGalois.fixedField_fixingSubgroup M]
+  exact normal_fixedField_of_isMulCommutative M.fixingSubgroup
 
 /-- **Unique subfield of each degree dividing `[E:F]`**, for `E/F` finite Galois with cyclic Galois
 group: for every `e ∣ Module.finrank F E`, there is a unique intermediate field `M` with
