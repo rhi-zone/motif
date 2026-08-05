@@ -2327,6 +2327,116 @@ Langlands.HenselianValuation`). No `sorry` anywhere in the file.
   unrelated `IsDiscreteValuationRing` half the seventeenth/eighteenth passes flagged as needing real
   new proof work (not a composition or lemma-lookup question).
 
+#### Status 2026-08-06 (twenty-first pass) — the permanent completeness-transport theorem landed
+(zero `sorry`); the tower composition (step 3) got substantially further than any prior pass —
+three of the bundle's five open pieces close cleanly, one closes with a scoped, undischarged proof
+sketch, and only the acknowledged `IsDiscreteValuationRing` half remains a genuinely new
+mathematical gap. Nothing forced; the one scratch file used to verify all of this
+(`Langlands/ZZScratch.lean`) was deleted after verification, not committed.
+
+- **Landed `LocalField.exists_completeSpace_of_finiteDimensional`** (`HenselianValuation.lean`,
+  commit `a5df40e`), assembling the twentieth pass's `UniformSpaceTransport` lemmas into the
+  permanent theorem the twentieth pass's "next step" asked for:
+  ```
+  theorem exists_completeSpace_of_finiteDimensional [CompleteSpace K] [Algebra.IsAlgebraic K L]
+      [FiniteDimensional K L] (A : ValuationSubring L)
+      (hA : A.comap (algebraMap K L) = (valuation K).valuationSubring) :
+      @CompleteSpace L (Valued.mk' A.valuation).toUniformSpace
+  ```
+  in the `NormedFieldBridge` section (variable block: `[NontriviallyNormedField K]
+  [IsUltrametricDist K] [ValuativeRel K] [(NormedField.valuation (K := K)).Compatible]`). Design
+  choice (documented in the theorem's docstring): the conclusion names the `UniformSpace` term
+  explicitly (`(Valued.mk' A.valuation).toUniformSpace`) rather than taking it as an ambient
+  instance argument, since `Valued.mk' A.valuation` needs no `RankOne` instance to fix `L`'s uniform
+  structure — `RankOne` is only needed inside the proof, to build the *normed*-field structure
+  compared against `spectralNorm`. A caller who has already done `letI := Valued.mk' A.valuation`
+  (the pattern `exists_rankOne_absoluteValue_extends`'s own downstream callers already use) gets
+  `CompleteSpace L` with one line, no `letI` chain to repeat. The proof inlines the same `hR` from
+  a single call to `exists_rankOne_compatible` for both the `Valued`-route `NontriviallyNormedField`
+  and the `f := NormedField.toAbsoluteValue L` used in `spectralNorm_unique_field_norm_ext` (rather
+  than calling `exists_rankOne_absoluteValue_extends` as a black box a second time), so the two are
+  provably built from the same witness rather than merely propositionally-equal witnesses of two
+  separate existentials. One real friction point building it: with two `NontriviallyNormedField L`
+  instances (`hnfValued`, `hnfSpectral`) simultaneously in local context, bare `‖·‖`/`dist` notation
+  is ambiguous (resolves to whichever instance typeclass search prefers, not necessarily the
+  intended one) — every `L`-typed norm/dist in the proof is pinned explicitly (`@norm L
+  hnfValued.toNorm`, `Dist.ext (funext ...)` instead of the `ext` tactic) rather than written via
+  bare notation, after two build failures from exactly this ambiguity (not a repeated-identical
+  error in the stop-on-repeat sense — each attempt's error message differed slightly since the
+  elaborator's ambient-instance guess differed by position in the proof — but the same root cause).
+  `lake build Langlands` clean (8676 jobs); `grep -rn sorry langlands/Langlands/` empty.
+- **New finding closing half of the "existence of `A`" question the eighteenth/nineteenth passes
+  never posed:** `Langlands/WeilGroup.lean` already contains
+  `LocalField.exists_valuationSubring_extends`/`valuationSubringExtension` — Chevalley's extension
+  theorem (`IsLocalRing.exists_factor_valuationRing` composed with a locality argument), proved
+  there for `L := AlgebraicClosure K` via a `local notation`, but the proof itself uses nothing
+  specific to `AlgebraicClosure` (only `[Field K] [Field L] [Algebra K L]` and `𝒪[K]`'s own
+  `mem_or_inv_mem`). For `M := IntermediateField K (AlgebraicClosure K)` (the unramified
+  subextension `UnramifiedExtension.lean:715` builds, always literally a subfield of
+  `AlgebraicClosure K`), **`A_M := (valuationSubringExtension K).comap (algebraMap M
+  (AlgebraicClosure K))` satisfies `A_M.comap (algebraMap K M) = 𝒪[K]` exactly**, by
+  `ValuationSubring.comap_comap` plus `IsScalarTower.algebraMap_eq K M (AlgebraicClosure K)` plus
+  `valuationSubringExtension_comap` — three existing lemmas, no new proof content. This means the
+  tower composition does **not** need a fresh "does a valuation extension exist on `M`" argument at
+  all; it can reuse the existing `AlgebraicClosure K`-level extension by restriction. (Verified
+  end-to-end in the deleted scratch file, not merely asserted.)
+- **Verified, by direct construction in the scratch file, that with this `A_M` the following close
+  with *zero* new proof content** (each is a literal copy of the K-side construction already used
+  by `valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField`, `WeilGroup.lean`'s own pattern
+  for `K`, substituting `A_M`/`M` for `Valued.v`/`K`):
+  1. `hA_M_comap : A_M.comap (algebraMap K M) = 𝒪[K]` (as above).
+  2. `hCompleteM : CompleteSpace M` (relative to `Valued.mk' A_M.valuation`'s uniform space) — one
+     call to the twenty-first pass's own new `exists_completeSpace_of_finiteDimensional K A_M
+     hA_M_comap`, needing only `[CompleteSpace K] [Algebra.IsAlgebraic K M] [FiniteDimensional K M]`,
+     all already in hand.
+  3. The `Valued M A_M.ValueGroup`/`NontriviallyNormedField M`/`IsUltrametricDist M` bundle, via
+     `hRM := (exists_rankOne_compatible K A_M hA_M_comap).choose`, then `Valued.mk'`/
+     `Valued.toNontriviallyNormedField`, exactly as `exists_rankOne_absoluteValue_extends` builds it.
+  4. `hMCompat : (NormedField.valuation (K := M)).Compatible` — with `ValuativeRel M :=
+     ValuativeRel.ofValuation (NormedField.valuation (K := M))`, the identical `hnorm`/
+     `NormedField.valuation_compatible_of_eq_rankOne_hom_comp_restrict` argument
+     `valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField` uses for `K` closes for `M`
+     verbatim (`Valued.coe_valuation_eq_rankOne_hom_comp_valuation` supplies `hnormM`).
+  With 1–4 in hand, `@LocalField.adjoin_eq_integralClosure_of_isUniformizer M _ _ _ hMCompat _ N _ _
+  hMalgN _ _` (for `N` an arbitrary further finite separable extension of `M`, standing in for a
+  totally ramified extension) **type-checks completely** as soon as two more facts are supplied —
+  confirmed by elaborating the full application with those two facts abstracted as universally
+  quantified hypotheses (i.e. the composed statement's *shape* is sound; only content is missing):
+  - `hvalM : (ValuativeRel.valuation M).valuationSubring = A_M` — **not closed, but precisely
+    scoped**: unlike 1–4, this needs one step beyond direct reuse of the `K`-side pattern, because
+    `ValuativeRel.valuation M` (the canonical valuation the `ValuativeRel` typeclass derives from
+    `ofValuation`'s `vle` relation) is not launched from `A_M.valuation` itself but from
+    `NormedField.valuation (K := M)`. The scoped route: `ValuationSubring.ext` reduces this to `∀ x,
+    NormedField.valuation x ≤ 1 ↔ x ∈ A_M`, which `Valued.toNormedField.norm_le_one_iff` (already
+    used for exactly this purpose in `exists_rankOne_absoluteValue_extends`) plus
+    `A_M.valuation_le_one_iff` should discharge directly, *without* needing `ValuativeRel.isEquiv`
+    or any new lemma — not attempted to completion this pass, but no obstruction was hit in scoping
+    it, only budget.
+  - `hDVR : IsDiscreteValuationRing ↥(ValuativeRel.valuation M).valuationSubring` (`= ↥A_M` given
+    `hvalM`) — **the one piece confirmed to need genuinely new mathematical content**, exactly as
+    the eighteenth/nineteenth passes flagged, now precisely pinned to a *specific, concretely
+    constructed* `A_M` rather than an abstract unnamed valuation subring. Re-confirmed via loogle
+    this pass (`IsCyclic, ValuationSubring.ValueGroup, FiniteDimensional` and `IsCyclic,
+    MonoidWithZeroHom.ValueGroup₀, FiniteDimensional` both 0 hits) that Mathlib has no
+    "finite extension of a discretely-valued field has cyclic value group" theorem feeding
+    `Valuation.valuationSubring_isDiscreteValuationRing`'s `[IsCyclic ↥ValueGroup₀] [Nontrivial
+    ↥ValueGroup₀]` hypotheses. **Correction to the eighteenth/nineteenth passes' framing**: closing
+    this does *not* require reconciling `A_M` with `integralClosure R M` from
+    `UnramifiedExtension.lean:715` (the DVR that file already builds) — `TotallyRamifiedEisenstein`'s
+    theorem only ever needs `IsDiscreteValuationRing ↥(valuation M).valuationSubring` for whichever
+    `ValuativeRel M` is in scope, and with `A_M` fixed as that valuation subring directly, the
+    question is self-contained: is `A_M`'s value group cyclic and nontrivial? No reconciliation with
+    a *different* ring is needed at all. This narrows, rather than duplicates, prior passes' framing
+    of the gap.
+- **Next step for whoever picks this up:** close `hvalM` via the sketched
+  `Valued.toNormedField.norm_le_one_iff`/`A_M.valuation_le_one_iff` route (small, no new idea
+  needed), then attack `hDVR` directly as "is `A_M.ValueGroup` cyclic and nontrivial, given `M/K`
+  finite and `𝒪[K]`'s value group cyclic/nontrivial" — likely via a bounded-index argument using
+  `Valuation.exists_pow_eq_of_isAlgebraic` (already in `HenselianValuation.lean`: every element of
+  `L` is dominated exactly by a `K`-power up to degree `[M:K]`), which bounds how far `A_M`'s value
+  group can diverge from a cyclic group of the same rank — this is the actual remaining
+  mathematical content, not a lookup.
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
