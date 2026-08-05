@@ -1181,6 +1181,87 @@ that avoids stalling on (a).
      built on top of `localNormMap_units_surjective_mod_principalUnits` (sixth pass) and this
      session's `exists_norm_one_add_uniformizer_pow_smul_eq_trace_add`.
 
+#### Status 2026-08-05 (eighth pass) — Step A gaps closed; step 3's one-step correction and continuity ingredients built; full assembly (induction, Cauchy-ness, limit) not attempted
+
+- **Three new files, zero `sorry`, full `lake build` green (8670 jobs; `grep -rn sorry
+  langlands/Langlands/` empty).** None yet in `Langlands.lean`'s import list, consistent with the
+  rest of Phase 2a's files.
+- **`NormTraceLinearization.lean`'s two flagged gaps, closed** (commit `796ea51`), scoped to what
+  the successive-approximation assembly actually needs:
+  - `isUnit_one_add_uniformizer_pow_smul` (`:236`): `1 + π^{n+1} • x` is a unit of `L₀`. Needs no
+    `IsUnramified` hypothesis, only the always-true forward containment `𝔪_K·L₀ ≤ 𝔪_L`
+    (`map_maximalIdeal_le`): `π^{n+1} ∈ 𝔪_K` puts `π^{n+1} • x ∈ 𝔪_K·L₀ ≤ 𝔪_L`, so `1 + π^{n+1}•x`
+    reduces to `1 ≠ 0` in `𝓀[L]`, hence is a unit by `IsLocalRing.residue_ne_zero_iff_isUnit`.
+  - `isUnit_algebraMap_one_add_uniformizer_pow_smul` (`:257`) and
+    `localNormMap_coe_one_add_uniformizer_pow_smul` (`:266`): the field-level counterpart (push
+    the local unit forward along `algebraMap L₀ L`) and the bridge from the ring-level identity to
+    `localNormMap`, via `algebraMap_norm_eq_norm_algebraMap` (`NormMapResidueCompatibility.lean`,
+    fifth pass) — exactly the "should transfer without new difficulty" prediction from the seventh
+    pass's writeup, confirmed: no new idea was needed, only re-deriving the fifth pass's
+    `localNormMap_reduce`-proof pattern for this specific element.
+- **New file `PrincipalUnitsCauchySequence.lean`** (commit `a0359bd`): the single Hensel-lift
+  correction step, `exists_one_add_uniformizer_pow_smul_norm_sub_mem` — under `IsUnramified` and
+  `[Finite 𝓀[L]]`, for `π` a uniformizer of `K₀`, `n : ℕ`, `t : K₀`, there is `z : L₀` with
+  `Algebra.norm K₀ (1 + π^{n+1}•z) ≡ 1 + π^{n+1}·t (mod π^{n+2})`. This is the step-3 sketch's
+  "step 2's counterpart at each filtration level," made concrete and iterable: given `N(x) ≡ y
+  (mod π^{n+1})`, writing the error as `y·N(x)⁻¹ = 1 + π^{n+1}·t`, this `z` gives `x' :=
+  x·(1+π^{n+1}•z)` with `N(x') ≡ y (mod π^{n+2})` — one filtration level closer. Proved by
+  composing `Algebra.trace_surjective` on the residue-field extension `𝓀[L]/𝓀[K]` (Mathlib,
+  `Mathlib.RingTheory.Trace.Basic`, confirmed by loogle — needs `FiniteDimensional`/
+  `Algebra.IsSeparable`, both derived from `[Finite 𝓀[L]]`: `𝓀[K]` is finite too, by injectivity of
+  `algebraMap 𝓀[K] 𝓀[L]` [`Finite.of_injective`], giving `PerfectField 𝓀[K]`
+  [`PerfectField.ofFinite`] and hence `Algebra.IsSeparable 𝓀[K] 𝓀[L]` via Mathlib's general
+  `Algebra.IsAlgebraic.isSeparable_of_perfectField` instance, and `Module.Finite`/
+  `Algebra.IsAlgebraic` via the general `Module.Finite.of_finite` instance for any module that is
+  itself a finite type) with `IsLocalRing.residue_surjective` (lift the trace-preimage to `L₀`)
+  and this session's `exists_norm_one_add_uniformizer_pow_smul_eq_trace_add` (seventh pass).
+- **New file `NormMapContinuity.lean`** (commit `72871b5`): `continuous_norm_adicCompletion` —
+  `Algebra.norm (v.adicCompletion K) : w.adicCompletion L → v.adicCompletion K` (the norm
+  underlying `localNormMap`) is continuous. **This directly answers the task brief's flagged
+  concern that continuity of the norm on a finite extension of complete valued fields might be "a
+  genuine wall in Mathlib infrastructure" — it is not.** The proof composes three pre-existing
+  general Mathlib facts — `LinearMap.continuous_of_finiteDimensional` (any linear map out of a
+  finite-dimensional space over a complete nontrivially normed field is continuous),
+  `Continuous.matrix_det` (`Mathlib.Topology.Instances.Matrix`), and `Algebra.norm_eq_matrix_det`
+  — against typeclass instances that were *already sitting in `NormMap.lean`* for the unrelated
+  purpose of building `localNormMap` itself: `instNontriviallyNormedFieldAdicCompletion` (giving
+  both completions `NontriviallyNormedField` structure), the `ContinuousSMul`/`Module.Finite`
+  instances for `w.adicCompletion L` over `v.adicCompletion K`, and `CompleteSpace (v.adicCompletion
+  K)` (Mathlib, `Mathlib.RingTheory.DedekindDomain.AdicValuation:731`, generic in the Dedekind
+  domain/fraction field/place triple, so it specializes to `v.adicCompletion K` for free — no new
+  instance needed for that side either). No new instance and no new general lemma was required;
+  this took one file, roughly 70 lines, and closed in the first attempt once the right three
+  Mathlib names were located.
+- **What remains for the full unramified norm-group theorem, precisely.** The sixth pass's step 3
+  sketch has three parts: (1) construct the sequence `x₁, x₂, …` by iterating the one-step
+  correction; (2) show it is Cauchy in the `𝔪_L`-adic topology; (3) take the limit (using
+  `CompleteSpace (adicCompletion L w)` — confirmed to exist as a Mathlib instance, generic in the
+  same way as the `K`-side one cited above, so no gap there either) and show the limit is a unit of
+  `L₀` with norm exactly `y`, using `continuous_norm_adicCompletion` above. **None of (1)-(3) is
+  built.** This is not a landscape gap the way prior passes' missing primitives were — every
+  ingredient this session went looking for (`Algebra.trace_surjective`, finiteness transfer for
+  residue fields, continuity of the norm, completeness of both adic completions) turned out to
+  already exist or compose in one file's worth of work. What remains is the construction itself:
+  packaging `exists_one_add_uniformizer_pow_smul_norm_sub_mem` into an actual recursively-defined
+  sequence `x : ℕ → L₀ˣ` (needs `Nat.rec`/strong recursion with choice, since each step's witness
+  `z` is only known to exist, not computed), proving the resulting sequence is Cauchy via
+  `Valued.hasBasis_uniformity` + `Filter.HasBasis.cauchySeq_iff` (both confirmed present in
+  Mathlib, per the task brief; not independently re-verified this session since no code reached
+  that point), and the final limit/continuity argument connecting the sequence's limit back to
+  `localNormMap` (not just the ring-level `Algebra.norm`) via this session's
+  `localNormMap_coe_one_add_uniformizer_pow_smul` and the fifth pass's
+  `algebraMap_norm_eq_norm_algebraMap`. This is genuine Lean engineering — bookkeeping-heavy
+  (tracking `π`-adic valuations of the error term through a multiplicative recursion) rather than
+  requiring new mathematical facts — comparable in size to what `UnitGroupModPrincipalUnitsSurjective.lean`
+  (sixth pass) or `NormTraceLinearization.lean` (seventh pass) took, not a short lemma, but with no
+  outstanding "is this even true in Mathlib" question left open going in.
+- **Next concrete step for whoever picks this up:** build the sequence via well-founded/strong
+  recursion producing, for each `n`, `x n : L₀ˣ` and a proof `Algebra.norm K₀ (x n : L₀) - y ∈
+  Ideal.span {π^(n+1)}` (start from `localNormMap_units_surjective_mod_principalUnits`'s witness
+  for `n = 0`, using `exists_one_add_uniformizer_pow_smul_norm_sub_mem` for the step from `n` to
+  `n+1`), then prove `CauchySeq (fun n => (x n : w.adicCompletion L))` from the same valuation
+  bound, then close with `cauchySeq_tendsto_of_complete` and `continuous_norm_adicCompletion`.
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
