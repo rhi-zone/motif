@@ -91,6 +91,8 @@ continuity of multiplication, inversion and conjugation is inherited from `G_K`.
 * `LocalField.exists_residueGaloisGroup_equiv_Zhat` : the range of `residueAction K` is isomorphic
   to `ℤ̂` by an isomorphism sending Frobenius to the image of `1`.
 * `LocalField.isOpen_inertiaSubgroupOf` : `I_K` is open in `W_K`.
+* `LocalField.continuous_toArt` : the Artin map `toArt` is continuous, for the discrete topology
+  on `Multiplicative ℤ`.
 
 ## Implementation notes
 
@@ -111,8 +113,8 @@ Results not available in Mathlib are supplied by the companion files `Langlands.
 
 * Upgrade `exists_residueGaloisGroup_equiv_Zhat` from an isomorphism of abstract groups to a
   homeomorphism, matching the Krull topology against the profinite topology on `ℤ̂`.
-* Show that `toArt` is continuous, and construct the splitting `W_K ≃ I_K × ℤ` exhibiting
-  `W_K ≅ I_K ⋊ ℤ` as topological groups.
+* Construct the topological splitting `W_K ≃ I_K × ℤ` exhibiting `W_K ≅ I_K ⋊ ℤ` as topological
+  groups (`toArt` itself is now known continuous, `continuous_toArt`).
 
 ## References
 * J-P. Serre, *Local Fields*, chapter XII (definition of the Weil group).
@@ -1598,5 +1600,20 @@ theorem isOpen_inertiaSubgroupOf :
 theorem discreteTopology_quotient_inertiaSubgroupOf :
     DiscreteTopology (WeilGroup K ⧸ (inertiaSubgroup K).subgroupOf (WeilGroup K)) :=
   QuotientGroup.discreteTopology (isOpen_inertiaSubgroupOf K)
+
+/-- The Artin map `toArt` is continuous, for the discrete topology on `Multiplicative ℤ`
+(inherited from the discrete topology on `ℤ`). A monoid homomorphism out of a topological group is
+continuous once it is continuous at `1` (`continuous_of_continuousAt_one`), and continuity at `1`
+into a discrete target amounts to the kernel being a neighbourhood of `1` — which holds since
+`ker (toArt K) = I_K` (`toArt_ker`) is open (`isOpen_inertiaSubgroupOf`). -/
+theorem continuous_toArt : Continuous (toArt K) := by
+  apply continuous_of_continuousAt_one
+  have hpre : {x | (toArt K) x = 1} =
+      ((inertiaSubgroup K).subgroupOf (WeilGroup K) : Set (WeilGroup K)) := by
+    ext x
+    simp [← MonoidHom.mem_ker, toArt_ker]
+  rw [ContinuousAt, (toArt K).map_one, nhds_discrete (Multiplicative ℤ), Filter.tendsto_pure,
+    Filter.eventually_iff, hpre]
+  exact (isOpen_inertiaSubgroupOf K).mem_nhds (Subgroup.one_mem _)
 
 end LocalField
