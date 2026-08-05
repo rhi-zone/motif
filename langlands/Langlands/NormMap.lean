@@ -1,6 +1,7 @@
 import Langlands.HenselianValuation
 import Langlands.IdeleGroup
 import Mathlib.NumberTheory.NumberField.Completion.FinitePlace
+import Mathlib.NumberTheory.NumberField.Completion.LiesOverInstances
 import Mathlib.NumberTheory.RamificationInertia.Valuation
 import Mathlib.RingTheory.DedekindDomain.Ideal.Lemmas
 import Mathlib.RingTheory.Norm.Defs
@@ -40,17 +41,22 @@ This file assembles the infrastructure the idèle norm map `NumberField.IdeleGro
    Assembling the local norms of (2) into a global map on the finite adèles requires knowing the
    local norm map is a *local unit* (valuation `1`) whenever `a_w` is, at all but finitely many
    places -- i.e. that `adicCompletionComap`/`localNormMap` restricts well to
-   `adicCompletionIntegers`. This "almost everywhere" implication is now proved unconditionally,
-   as `eventually_localNormMap_mem_units` below, on top of one isolated per-place `sorry`
-   (`localNormMap_mem_units`: the local norm of a *single* local unit is a local unit -- the
-   standard fact that, for a finite extension of complete discretely-valued fields, the ring of
-   integers of the top field is the integral closure of the ring of integers of the bottom field,
-   which is not yet in Mathlib). Still missing beyond this: the archimedean/infinite-place half
-   of the norm map, and the final assembly of both halves into a ring hom on the full adèle rings
-   (via `RestrictedProduct.mkUnit` for the finite part, analogous to
-   `IdeleGroup.exists_toFractionalIdeal_eq`). `IdeleGroup.normMap` therefore remains a `sorry`,
-   though the specific gap identified in the task ("an almost-everywhere-unit idèle maps to an
-   almost-everywhere-unit idèle") is now closed.
+   `adicCompletionIntegers`. This "almost everywhere" implication is proved unconditionally as
+   `eventually_localNormMap_mem_units` below, on top of `localNormMap_mem_units` (the local norm
+   of a *single* local unit is a local unit -- the standard fact that, for a finite extension of
+   complete discretely-valued fields, the ring of integers of the top field is the integral
+   closure of the ring of integers of the bottom field). **`localNormMap_mem_units` is now fully
+   proved, no `sorry`**, via Galois conjugates in a normal closure (see its docstring and
+   `isIntegral_of_mem_of_comap_eq` above it). Still missing beyond this -- and this is a
+   *separate*, still-open gap, not something `localNormMap_mem_units` reduces to: the
+   archimedean/infinite-place half of the norm map (no local norm map between completions of
+   different fields at *infinite* places exists anywhere in Mathlib or this repo;
+   `NumberField.InfiniteAdeleRing.instNorm`/`norm_def` is the idèle *content* map, unrelated), and
+   the final assembly of both halves into a ring hom on the full adèle rings (no
+   `baseChange`/`extensionMap` for `AdeleRing`/`InfiniteAdeleRing` exists in Mathlib; the finite
+   half alone would need `RestrictedProduct.mkUnit`, analogous to
+   `IdeleGroup.exists_toFractionalIdeal_eq`). `IdeleGroup.normMap` therefore remains a `sorry` for
+   this reason, not for lack of the local-unit fact.
 
 ## Main definitions
 
@@ -62,10 +68,12 @@ This file assembles the infrastructure the idèle norm map `NumberField.IdeleGro
 * `IsDedekindDomain.HeightOneSpectrum.finite_liesOver` : only finitely many places of `S` lie over
   a given place `v` of `R`.
 * `IsDedekindDomain.HeightOneSpectrum.localNormMap_mem_units` : the local norm of a local unit is
-  a local unit (`sorry`: needs uniqueness of the extension of a complete valuation).
+  a local unit, via uniqueness of the extension of a complete valuation (no `sorry`).
 * `IsDedekindDomain.HeightOneSpectrum.eventually_localNormMap_mem_units` : an idèle that is almost
-  everywhere a local unit has local norms that are almost everywhere a local unit -- the "missing
-  gap" for `IdeleGroup.normMap`, now proved (modulo the single `sorry` above).
+  everywhere a local unit has local norms that are almost everywhere a local unit (no `sorry`).
+  This closes the specific gap identified in the original survey for `IdeleGroup.normMap`
+  ("an almost-everywhere-unit idèle maps to an almost-everywhere-unit idèle"), but
+  `IdeleGroup.normMap` needs strictly more than this (see point 3 above) and remains a `sorry`.
 -/
 
 noncomputable section
@@ -577,5 +585,45 @@ theorem eventually_localNormMap_mem_units
   exact ⟨w, mt (localNormMap_mem_units K L v w) hcontra, hveq.symm⟩
 
 end IsDedekindDomain.HeightOneSpectrum
+
+section InfinitePlaceNorm
+
+/-! ### The archimedean local norm map
+
+This section builds `NumberField.InfinitePlace.localNormMap`, the archimedean analogue of
+`IsDedekindDomain.HeightOneSpectrum.localNormMap` above. Unlike the finite-place case, this needs
+**no** companion "sends units to units" fact: `IsDedekindDomain.HeightOneSpectrum.localNormMap_mem_units`
+exists because `FiniteAdeleRing` is a *restricted* product (only elements landing in
+`adicCompletionIntegers` at almost every place are genuine finite adèles), so the local norm map
+needs to be shown compatible with that support condition. `InfiniteAdeleRing K := (v :
+InfinitePlace K) → v.Completion` (`Mathlib.NumberTheory.NumberField.InfiniteAdeleRing`) is a *plain*
+(unrestricted) finite product -- there is no archimedean analogue of `adicCompletionIntegers`, no
+support condition, and `InfinitePlace K` is a `Fintype` whenever `[NumberField K]`
+(`Set.fintypeRange` in `Mathlib.NumberTheory.NumberField.InfinitePlace.Basic`), so the "finitely
+many places lie over a given place" fact the assembly (gap 3, see `IdeleGroup.lean`'s survey) needs
+is immediate (`Set.toFinite (NumberField.InfinitePlace.placesOver L v)`, already a Mathlib
+definition in `Mathlib.NumberTheory.NumberField.InfinitePlace.Ramification`) rather than requiring
+its own `IsDedekindDomain.primesOver_finite`-style argument. -/
+
+namespace NumberField.InfinitePlace
+
+open scoped NumberField.LiesOver
+
+variable {K L : Type*} [Field K] [Field L] [Algebra K L]
+variable (v : InfinitePlace K) (w : InfinitePlace L) [w.1.LiesOver v.1]
+
+/-- The local norm map `N_{L_w/K_v} : (w.Completion)ˣ →* (v.Completion)ˣ` at an infinite place `w`
+of `L` lying over an infinite place `v` of `K`: the norm of the (degree-one-or-two, by
+`Completion.finrank_eq_one_of_isUnramified` / `Completion.finrank_eq_two_of_isRamified`, though
+this finiteness is not needed for the definition itself) extension `w.Completion` of `v.Completion`,
+transported to units via `Units.map`. Built via the `Algebra v.Completion w.Completion` instance
+that `NumberField.LiesOver.completionMap` (`Mathlib.NumberTheory.NumberField.Completion.LiesOverInstances`)
+gives, exactly mirroring `IsDedekindDomain.HeightOneSpectrum.localNormMap` above. -/
+noncomputable def localNormMap : (w.Completion)ˣ →* (v.Completion)ˣ :=
+  Units.map (Algebra.norm (v.Completion) : w.Completion →* v.Completion)
+
+end NumberField.InfinitePlace
+
+end InfinitePlaceNorm
 
 end
