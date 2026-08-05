@@ -6,44 +6,34 @@ import Mathlib.Algebra.Polynomial.Lifts
 import Mathlib.RingTheory.LocalRing.ResidueField.Basic
 
 /-!
-# The residue field of a valuation subring of an algebraically closed field
+# Residue fields of valuation subrings
 
-This file supplies the two pieces of Mathlib-level infrastructure needed to show that, for `K` a
-field, `L` an algebraic closure of `K`, and `A` a `ValuationSubring L` extending `𝒪[K]`, the
-residue field of `A` is an algebraic closure of the residue field of `𝒪[K]`:
+Two facts about a valuation subring `A` of a field `L`:
 
-* `ValuationSubring.residueField_isAlgClosed` : the residue field of *any* valuation subring `A`
-  of an algebraically closed field `L` is itself algebraically closed. This is a general fact
-  about valuation subrings, independent of any base field `K` or the extension being algebraic:
-  given a monic irreducible polynomial `f` over the residue field `k := ResidueField A`, lift it
-  to a monic polynomial `g` over `A` (possible since `A → k` is surjective), find a root `r ∈ L`
-  of `g` (since `L` is algebraically closed), observe `r` is integral over `A` (witnessed by `g`
-  itself) hence `r ∈ A` (since valuation subrings are integrally closed in their fraction field),
-  and reduce `r` mod the maximal ideal to get a root of `f` in `k`.
+* if `L` is algebraically closed, so is the residue field of `A`. Given a monic irreducible
+  polynomial `f` over `k := ResidueField A`, lift it to a monic `g` over `A` along the surjection
+  `A → k`, take a root `r ∈ L` of `g`, and note that `r` is integral over `A`, witnessed by `g`,
+  hence lies in `A`, valuation subrings being integrally closed in their fraction field; the
+  residue of `r` is then a root of `f`.
 
-* `ValuationSubring.isIntegral_of_decompositionSubgroup_eq_top` : if `L / K` is normal and
-  `A : ValuationSubring L` has decomposition subgroup (over `K`) equal to all of `Gal(L/K)` --
-  i.e. every `K`-automorphism of `L` stabilizes `A` setwise -- then every element of `A` is
-  integral over `A.comap (algebraMap K L)`. The proof uses that the minimal polynomial of
-  `a ∈ A` over `K` has *all* of its roots (in `L`, with multiplicity) lying in `A` again: each
-  root is `σ a` for some `σ ∈ Gal(L/K)` (`minpoly.exists_algEquiv_of_root'`, using normality of
-  `L/K`), and `σ` stabilizes `A` by hypothesis. Since the roots all lie in `A`, so do the
-  (symmetric-function) coefficients of the minimal polynomial, i.e. it lifts along
-  `A.comap (algebraMap K L) → A` (`Polynomial.Splits.mem_lift_of_roots_mem_range`), which is
-  exactly the integrality of `a` over `A.comap (algebraMap K L)`.
+* if `L / K` is normal and the decomposition subgroup of `A` over `K` is all of `Gal(L/K)`, that
+  is, every `K`-automorphism of `L` stabilizes `A` setwise, then every element `a ∈ A` is integral
+  over `A.comap (algebraMap K L)`. All roots of `minpoly K a` in `L` again lie in `A`, each being
+  `σ a` for some `σ ∈ Gal(L/K)` (`minpoly.exists_algEquiv_of_root'`, by normality), so the minimal
+  polynomial lifts along `A.comap (algebraMap K L) → A`
+  (`Polynomial.Splits.mem_lift_of_roots_mem_range`), which is the asserted integrality.
 
-Combining these two (with `A.comap (algebraMap K L) = 𝒪[K]`) gives the two facts needed for
-`Langlands.WeilGroup.residueField_isAlgClosed` / `residueField_isAlgebraic`: every element of the
-residue field of `A` is (the residue of an element of `A`, which is) integral over `𝒪[K]`, hence
-algebraic over `𝓀[K]`; and the residue field of `A` is algebraically closed.
+Together with `IsIntegral.isAlgebraic_residue`, reduction of an integrality witness modulo the
+maximal ideal, these are the ingredients for the statement that, for `L` an algebraic closure of
+`K` and `A` a valuation subring of `L` whose decomposition subgroup over `K` is everything, the
+residue field of `A` is an algebraic closure of the residue field of `A.comap (algebraMap K L)`.
 
 ## Main results
 
 * `ValuationSubring.residueField_isAlgClosed`
-* `ValuationSubring.isIntegral_of_decompositionSubgroup_eq_top`
-* `ValuationSubring.residueField_isAlgebraic_of_decompositionSubgroup_eq_top` : the residue field
-  algebraicity statement, packaging the integrality result above with the standard fact that
-  integral elements have algebraic residues.
+* `ValuationSubring.root_mem_of_decompositionSubgroup_eq_top`
+* `ValuationSubring.isIntegralElem_of_decompositionSubgroup_eq_top`
+* `IsIntegral.isAlgebraic_residue`
 -/
 
 noncomputable section
@@ -54,15 +44,14 @@ open scoped Pointwise
 
 namespace ValuationSubring
 
-/-! ### The residue field of a valuation subring of an algebraically closed field is algebraically
-closed -/
+/-! ### Valuation subrings of an algebraically closed field -/
 
 section AlgClosed
 
 variable {L : Type*} [Field L] [IsAlgClosed L]
 
 /-- The residue field of a valuation subring `A` of an algebraically closed field `L` is itself
-algebraically closed. A general fact about valuation rings, not needing any base field `K`. -/
+algebraically closed. -/
 theorem residueField_isAlgClosed (A : ValuationSubring L) :
     IsAlgClosed (ResidueField A) := by
   apply IsAlgClosed.of_exists_root
@@ -102,17 +91,16 @@ theorem residueField_isAlgClosed (A : ValuationSubring L) :
 
 end AlgClosed
 
-/-! ### Integrality of elements of a Galois-stable valuation subring over the base -/
+/-! ### Integrality over the base of a Galois-stable valuation subring -/
 
 section Integral
 
 variable {K L : Type*} [Field K] [Field L] [Algebra K L] [Normal K L]
 
-/-- If `A : ValuationSubring L` has decomposition subgroup (over `K`) equal to all of `Gal(L/K)`,
-every root (in `L`, with multiplicity) of the minimal polynomial over `K` of an element `a ∈ A`
-again lies in `A`: it is `σ a` for some `σ : L ≃ₐ[K] L` (`minpoly.exists_algEquiv_of_root'`, using
-that `L / K` is normal), and `σ` stabilizes `A` setwise since the decomposition subgroup is
-everything. -/
+/-- If the decomposition subgroup over `K` of `A : ValuationSubring L` is all of `Gal(L/K)`, then
+every root in `L` of the minimal polynomial over `K` of an element `a ∈ A` again lies in `A`. Such
+a root is `σ a` for some `σ : L ≃ₐ[K] L` by `minpoly.exists_algEquiv_of_root'`, `L / K` being
+normal, and `σ` stabilizes `A` setwise by hypothesis. -/
 theorem root_mem_of_decompositionSubgroup_eq_top (A : ValuationSubring L)
     (htop : A.decompositionSubgroup K = ⊤) {a : L} (ha : a ∈ A)
     {r : L} (hr : r ∈ ((minpoly K a).map (algebraMap K L)).roots) : r ∈ A := by
@@ -128,12 +116,13 @@ theorem root_mem_of_decompositionSubgroup_eq_top (A : ValuationSubring L)
   have : σ⁻¹ • r ∈ A := hσa ▸ ha
   rwa [← ValuationSubring.mem_pointwise_smul_iff_inv_smul_mem, hstab] at this
 
-/-- If `A : ValuationSubring L` has decomposition subgroup (over `K`) equal to all of `Gal(L/K)`,
-i.e. every `K`-automorphism of `L` stabilizes `A` setwise, then every element of `A` is integral
-over `A.comap (algebraMap K L)` -- concretely, this is stated via `RingHom.IsIntegralElem` for the
-canonical ring homomorphism `A.comap (algebraMap K L) → K → L` (composing the inclusion of the
-comapped valuation subring into `K` with `algebraMap K L`), to avoid needing to fix a particular
-`Algebra` instance between `A.comap (algebraMap K L)` and `L`. -/
+/-- If the decomposition subgroup over `K` of `A : ValuationSubring L` is all of `Gal(L/K)`, that
+is, every `K`-automorphism of `L` stabilizes `A` setwise, then every element of `A` is integral
+over `A.comap (algebraMap K L)`.
+
+Integrality is stated as `RingHom.IsIntegralElem` for the composite ring homomorphism
+`A.comap (algebraMap K L) → K → L`, avoiding a choice of `Algebra` instance between
+`A.comap (algebraMap K L)` and `L`. -/
 theorem isIntegralElem_of_decompositionSubgroup_eq_top (A : ValuationSubring L)
     (htop : A.decompositionSubgroup K = ⊤) {a : L} (ha : a ∈ A) :
     RingHom.IsIntegralElem
@@ -143,14 +132,14 @@ theorem isIntegralElem_of_decompositionSubgroup_eq_top (A : ValuationSubring L)
   set p : K[X] := minpoly K a with hpdef
   have hpmonic : p.Monic := minpoly.monic haK.isIntegral
   have hpsplits : (p.map (algebraMap K L)).Splits := Normal.splits inferInstance a
-  -- `Set.range (algebraMap A L)` is literally the underlying set of `A`.
+  -- `Set.range (algebraMap A L)` is the underlying set of `A`.
   have hrangeA : ∀ x : L, x ∈ Set.range (algebraMap A L) ↔ x ∈ A :=
     fun x => ⟨fun ⟨b, hb⟩ => hb ▸ b.2, fun hx => ⟨⟨x, hx⟩, rfl⟩⟩
   -- Every root of `p` in `L` lies in `A`.
   have hrootsA : ∀ r ∈ (p.map (algebraMap K L)).roots, r ∈ Set.range (algebraMap A L) :=
     fun r hr => (hrangeA r).mpr (root_mem_of_decompositionSubgroup_eq_top A htop ha hr)
-  -- So `p`, mapped to `L`, lifts along `A → L`; hence its coefficients (already known to lie in
-  -- `K`) lie in `A ∩ K = O` (as subsets of `L`, via `A.comap (algebraMap K L) = O`).
+  -- So `p`, mapped to `L`, lifts along `A → L`, and its coefficients, which lie in `K`, lie in
+  -- `A ∩ K = O`.
   have hliftsA : p.map (algebraMap K L) ∈ Polynomial.lifts (algebraMap A L) :=
     hpsplits.mem_lift_of_roots_mem_range (hpmonic.map _) (algebraMap A L) hrootsA
   have hcoeffO : ∀ n, p.coeff n ∈ O := by
@@ -176,10 +165,9 @@ end ValuationSubring
 
 /-! ### The residue of an integral element is algebraic -/
 
-/-- If `x : S` is integral over a local subring `R` (with the inclusion `R → S` a local
-homomorphism), then the residue of `x` is algebraic over the residue field of `R`. Standard
-"reduction mod the maximal ideal" fact: a monic polynomial over `R` witnessing integrality of `x`
-reduces, mod the maximal ideal, to a monic (in particular nonzero) polynomial over
+/-- If `x : S` is integral over a local ring `R` and `algebraMap R S` is a local homomorphism, the
+residue of `x` is algebraic over the residue field of `R`. A monic polynomial over `R` witnessing
+integrality of `x` reduces modulo the maximal ideal to a monic, hence nonzero, polynomial over
 `ResidueField R` witnessing algebraicity of the residue of `x`. -/
 theorem IsIntegral.isAlgebraic_residue {R S : Type*} [CommRing R] [IsLocalRing R] [CommRing S]
     [IsLocalRing S] [Algebra R S] [IsLocalHom (algebraMap R S)] {x : S} (hx : IsIntegral R x) :

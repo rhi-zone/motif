@@ -1,10 +1,10 @@
 import Mathlib
 
 /-!
-# Basic
+# Smoke test
 
-Sanity-check file confirming the Mathlib dependency resolves and compiles.
-Replace with real development once the project's scope is defined.
+Elaboration checks confirming that the Mathlib dependency resolves and elaborates. No
+mathematical content.
 -/
 
 #check (2 : ℤ) + 2 = 4
