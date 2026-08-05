@@ -8,6 +8,7 @@ import Langlands.MonogenicMaximalOrder
 import Langlands.ProfiniteCompletionUlift
 import Langlands.ProfiniteGrpUlift
 import Langlands.RamificationFiltration
+import Langlands.RamificationFiltrationAdicCompletion
 import Langlands.ResidueField
 import Langlands.WeilDeligneRepresentation
 import Langlands.WeilGroup
