@@ -79,12 +79,19 @@ Langlands-relevant structure (no smooth/admissible representations of
   (needed to give the units of a restricted product, i.e. ideles, their
   correct topology).
 
-**Missing, confirmed by grep:** no `IdeleGroup`/`IdeleClassGroup` definition
-anywhere in the tree (only the raw `RestrictedProduct.Units` machinery that
-would let one be built); no compactness of `𝔸ₖ/K` or of the norm-one idele
-class group; no strong approximation theorem (`grep` for "strong
-approximation" is empty); no self-dual Haar measure / Tate's thesis setup
-beyond the raw `AddChar` and Haar-measure primitives.
+**Update — built in this project (Phase 0, now complete):** `IdeleGroup` and
+`IdeleClassGroup` are defined in `Langlands/IdeleGroup.lean` (this repo, not
+upstreamed to Mathlib), with `toClassGroup` and its kernel computed,
+sorry-free. This closes the gap noted originally against Mathlib itself
+(Mathlib upstream still has no such definition). Also landed this project:
+the local norm map at finite places (`Langlands/NormMap.lean`, via
+`HeightOneSpectrum`) and at archimedean places (`NumberField.InfinitePlace`),
+plus the full idele-group norm map.
+
+**Still missing:** no compactness of `𝔸ₖ/K` or of the norm-one idele class
+group; no strong approximation theorem (`grep` for "strong approximation" is
+empty); no self-dual Haar measure / Tate's thesis setup beyond the raw
+`AddChar` and Haar-measure primitives.
 
 ### 1.4 Algebraic groups (linear, reductive, split, ...)
 
@@ -223,10 +230,18 @@ prerequisite:
 **Missing:** the actual definition
 `GaloisRepresentation := ContinuousRepresentation (Gal(K̄/K)) F V` (or
 similar), unramifiedness, local Galois representations at each place,
-compatible systems of ℓ-adic representations, the Weil group / Weil-Deligne
-group (`grep` for "weil group"/"WeilGroup" found nothing at all — this is a
-hard blocker for both local Langlands and for Artin/Weil L-functions at
-ramified places).
+compatible systems of ℓ-adic representations.
+
+**Update — plain Weil group now built in this project (Phase 1, partially
+complete):** `grep` for "weil group"/"WeilGroup" still finds nothing in
+Mathlib itself, but this project's own `Langlands/WeilGroup.lean` fully
+constructs `W_K` as the preimage of ℤ in ℤ̂ under `toZhatHom`, with the
+decomposition subgroup (everything), the inertia subgroup, the arithmetic
+Frobenius, and `Gal(k̄/𝓀[K]) ≅ ℤ̂` sending Frobenius to 1 — all sorry-free.
+What remains is the **Weil-Deligne group** (`W_K × SL_2`, or the `(ρ, N)`
+pair formalism with the nilpotent-intertwining condition), which is still
+not built and remains the hard blocker for local Langlands and for
+Artin/Weil L-functions at ramified places.
 
 ### 1.9 Class field theory
 
@@ -294,7 +309,7 @@ To state "there is a bijection between (a) `L`-parameters
 (b) packets of irreducible admissible representations of `G(K_v)`" you need,
 at minimum:
 1. A local field `K_v` (§1.2 — partial: have completions, not a clean local-field abstraction).
-2. The absolute Galois group / Weil group of `K_v`, continuous (§1.8 — Galois group yes, Weil group **missing entirely**).
+2. The absolute Galois group / Weil group of `K_v`, continuous (§1.8 — Galois group yes; plain Weil group now built in this project's `Langlands/WeilGroup.lean`, Phase 1; the Weil-Deligne group refinement is still missing).
 3. A reductive group `G` over `K_v` and its Langlands dual `^L G` (§1.4 — **missing entirely**, hardest gap).
 4. Admissible (or at least smooth) representations of `G(K_v)` (§1.5 — **missing**; have continuous reps, not smoothness/admissibility over a locally profinite group).
 5. `L`-parameters as continuous, Frobenius-semisimple homomorphisms
@@ -327,7 +342,9 @@ reductive groups and a homomorphism of their duals.
 
 Needs: Artin L-function of a Galois representation (needs §1.8 Galois reps +
 §1.7's L-function framework, specifically factoring in local factors at
-ramified primes via the **Weil group**, currently missing entirely); and the
+ramified primes via the **Weil-Deligne group** — the plain Weil group is now
+built in this project, §1.8, but the Weil-Deligne `(ρ, N)` formalism needed
+to handle ramification is still missing); and the
 `n = 1` global Langlands correspondence for `GL_n` (§2.2) to state "is
 automorphic." This is *more* tractable to fully state than 2.2/2.3 in one
 respect — it only needs `GL_n` — but the Artin L-function side needs the
@@ -335,39 +352,59 @@ Weil group, which nothing in Mathlib currently touches.
 
 **Cross-cutting observation:** all four conjectures bottleneck on the same
 three missing primitives: **(a)** reductive groups + Langlands dual group,
-**(b)** the Weil group / Weil–Deligne group, **(c)** smooth/admissible
-representations of `p`-adic and adelic groups. Sequencing the roadmap around
-building these three first, in the cheapest special case (`GL_n`) before the
-general case, is the only path that avoids stalling on (a).
+**(b)** the Weil–Deligne group (the plain Weil group is now built in this
+project, `Langlands/WeilGroup.lean`; the `W_K × SL_2` / `(ρ, N)` refinement
+is not), **(c)** smooth/admissible representations of `p`-adic and adelic
+groups. Sequencing the roadmap around building these three first, in the
+cheapest special case (`GL_n`) before the general case, is the only path
+that avoids stalling on (a).
 
 ---
 
 ## 3. Dependency-ordered roadmap
 
-### Phase 0 — Idele class group (extends existing adele infrastructure)
-- **Build:** `IdeleGroup K := (AdeleRing (𝓞 K) K)ˣ` with its correct
-  (restricted-product-of-units) topology, then `IdeleClassGroup K := IdeleGroup K ⧸ K^×`.
-- **Depends on:** `NumberField.AdeleRing` (have),
+### Phase 0 — Idele class group (extends existing adele infrastructure) — **COMPLETE**
+- **Status:** done, sorry-free. `IdeleGroup K := (AdeleRing (𝓞 K) K)ˣ` and
+  `IdeleClassGroup K := IdeleGroup K ⧸ K^×` are built in
+  `Langlands/IdeleGroup.lean`, with `toClassGroup` and its kernel computed.
+  Also landed alongside it: the local norm map at finite places
+  (`Langlands/NormMap.lean`, via `HeightOneSpectrum`) and at archimedean
+  places (`NumberField.InfinitePlace`), the full idele-group norm map, the
+  Kedlaya–Sutherland unramified-extension correspondence
+  (`Langlands/UnramifiedExtension.lean`), and rank-one valuation
+  compatibility (`Langlands/HenselianValuation.lean`).
+- **Depended on:** `NumberField.AdeleRing` (have),
   `Topology/Algebra/RestrictedProduct/Units.lean` (have),
   `IsOpenUnits.lean` (have).
-- **Size:** small–medium. Mostly assembling existing pieces + topology instances.
+- **Not yet done:** not upstreamed to Mathlib; compactness of the norm-one
+  idele class group and strong approximation remain open (§1.3).
 - **Upstreamable:** yes, cleanly — natural next file in
   `Mathlib/NumberTheory/NumberField/`, same authors' territory
   (de Frutos-Fernández, Mercuri have prior art here).
 
-### Phase 1 — Weil group and Weil–Deligne group
-- **Build:** `WeilGroup K_v` for a local field (extension of
-  `Gal(K̄_v/K_v)` by ℤ via the valuation/Frobenius), then the Weil–Deligne
-  group `W_{K_v} × SL_2` (or the Weil–Deligne representation formalism
-  directly: pairs `(ρ, N)` with `ρ` a rep of `W_{K_v}` and `N` nilpotent
-  satisfying the intertwining relation).
-- **Depends on:** absolute Galois group (have, `AbsoluteGaloisGroup.lean`),
-  profinite group category (have, `ProfiniteGrp`), local field valuation
-  (have, `Padics`/completions), Frobenius elements (have, `RingTheory/
-  Frobenius.lean`).
-- **Size:** medium. No Mathlib precedent to build on beyond the pieces
-  above; this is new mathematical content, but bounded (one group
-  construction + one representation-compatibility condition).
+### Phase 1 — Weil group and Weil–Deligne group — **plain Weil group done, Weil–Deligne group remaining**
+- **Status:** the plain Weil group is built, sorry-free, in
+  `Langlands/WeilGroup.lean`: `W_K` as the preimage of ℤ in ℤ̂ under
+  `toZhatHom`, the decomposition subgroup (everything), the inertia
+  subgroup, the arithmetic Frobenius, and
+  `Gal(k̄/𝓀[K]) ≅ ℤ̂` sending Frobenius to 1. This matches the phase's
+  original description closely (extension of `Gal(K̄_v/K_v)` by ℤ via
+  valuation/Frobenius).
+- **Remaining:** the Weil–Deligne group itself — `W_{K_v} × SL_2`, or the
+  Weil–Deligne representation formalism directly: pairs `(ρ, N)` with `ρ` a
+  rep of `W_{K_v}` and `N` nilpotent satisfying the intertwining relation.
+  Not started.
+- **Depended on / now also available:** absolute Galois group (have,
+  `AbsoluteGaloisGroup.lean`), profinite group category (have,
+  `ProfiniteGrp`, plus a new universe-bridging instance landed this
+  session), local field valuation (have, `Padics`/completions, plus new
+  rank-one valuation compatibility in `Langlands/HenselianValuation.lean`),
+  Frobenius elements (have, `RingTheory/Frobenius.lean`). Also newly
+  available as general-purpose infrastructure: cyclic-subgroup-by-divisor
+  classification, ℤ-subgroup-by-index classification.
+- **Size:** small–medium for the remaining Weil–Deligne piece alone (the
+  group-extension construction is done); the representation-compatibility
+  condition on top of it is the remaining bounded chunk of new content.
 - **Upstreamable:** yes — this is a standalone, well-defined object useful
   far beyond Langlands (local class field theory, Artin L-functions,
   local epsilon factors).
@@ -393,6 +430,14 @@ general case, is the only path that avoids stalling on (a).
   Artin map *with these characterizing properties* is the bulk of Serre's
   *Local Fields*, chapters VIII–XIII — this is comparable in size to
   everything else in Phase 2 combined, not a footnote to it.
+- **New prerequisites now available (this project):** the local norm map at
+  finite places (`Langlands/NormMap.lean`) and archimedean places, the full
+  idele-group norm map, and the Kedlaya–Sutherland unramified-extension
+  correspondence (`Langlands/UnramifiedExtension.lean`) — these are direct
+  down payments on the "norm functoriality" and "Frobenius compatibility on
+  unramified extensions" characterizing properties described above, though
+  the reciprocity map itself and the existence theorem are still not
+  started.
 - **Upstreamable:** yes, high-value — local CFT is a named, citable theorem
   many other projects would want.
 - **Note:** not strictly required to *state* the four core conjectures (they
@@ -711,14 +756,17 @@ general case, is the only path that avoids stalling on (a).
 ## 4. Roadmap dependency graph (summary)
 
 ```
-Phase 0 (idele class group)  ──────────────────────────┐
-   depends on: AdeleRing (have)                         │
-                                                          ▼
-Phase 1 (Weil/Weil–Deligne group)             Phase 2 (local CFT / Artin map)
-   depends on: AbsoluteGaloisGroup (have),        depends on: Phase 1, BrauerGroup (have),
-   ProfiniteGrp (have), Frobenius (have)          Hilbert90 (have) — scope: also norm
-        │                                          functoriality + Frobenius compat (Serre
-        │                                          Local Fields VIII–XIII); check FLT-adjacent
+Phase 0 (idele class group) — COMPLETE ────────────────┐
+   built: IdeleGroup/IdeleClassGroup, norm maps          │
+   (finite + archimedean places), unramified-ext.        │
+   correspondence, Henselian valuation compat.           ▼
+Phase 1 (Weil/Weil–Deligne group) — PLAIN WEIL GROUP  Phase 2 (local CFT / Artin map)
+   DONE, Weil–Deligne group remaining                    depends on: Phase 1, BrauerGroup (have),
+   depends on: AbsoluteGaloisGroup (have),        Hilbert90 (have) — scope: also norm
+   ProfiniteGrp (have), Frobenius (have)          functoriality + Frobenius compat (Serre
+        │                                          Local Fields VIII–XIII); norm maps +
+        │                                          unramified-ext. correspondence now available
+        │                                          (Phase 0) as down payment; check FLT-adjacent
         │                                          CFT formalization before building
         │                                                │
         │                                                ▼
@@ -775,38 +823,37 @@ conjecture.
 
 ## 5. The first move
 
-**Define the idele class group of a number field (Phase 0).**
+**Status update: the original first move (Phase 0, idele class group) is
+done** — `IdeleGroup`/`IdeleClassGroup` are built in
+`Langlands/IdeleGroup.lean`, sorry-free, along with local norm maps at
+finite and archimedean places, the idele-group norm map, the
+Kedlaya–Sutherland unramified-extension correspondence, and rank-one
+valuation compatibility (see Phase 0 and Phase 1 status above). The plain
+Weil group (Phase 1's core object) is also done, in `Langlands/WeilGroup.lean`.
 
-Concretely: in `Mathlib/NumberTheory/NumberField/` (or a new file
-`IdeleRing.lean` alongside the existing `AdeleRing.lean`), define
-`NumberField.IdeleGroup K := (NumberField.AdeleRing (𝓞 K) K)ˣ`, give it the
-subspace/units topology already supported by
-`Topology/Algebra/RestrictedProduct/Units.lean` and
-`Topology/Algebra/IsOpenUnits.lean`, then define
-`NumberField.IdeleClassGroup K := IdeleGroup K ⧸ (algebraMap K _).range`
-(mirroring the existing `AdeleRing.principalSubgroup`, but for units instead
-of the additive group).
+**Next move: complete the Weil–Deligne group (the remainder of Phase 1),
+then begin Phase 2 (local Artin map).**
 
-This is the correct first move because:
-- It is **small and concrete** — every ingredient it needs
-  (`AdeleRing`, `RestrictedProduct.Units`, `IsOpenUnits`) already exists and
-  is directly importable; no new mathematics needs to be invented, only
-  assembled.
+Concretely: build `W_{K_v} × SL_2` (or the `(ρ, N)` pair formalism directly)
+on top of the now-complete plain `WeilGroup`. This is the last piece needed
+to close out Phase 1 entirely, and unblocks Phase 4.5 (local L-/ε-factors)
+and Phase 6 (Artin's conjecture) downstream. In parallel, Phase 2 (local
+class field theory) can now draw on this session's norm-map and
+unramified-extension infrastructure (`Langlands/NormMap.lean`,
+`Langlands/UnramifiedExtension.lean`) as a down payment on the norm-
+functoriality and Frobenius-compatibility characterizing properties it
+needs (see Phase 2's scope correction above).
+
+This is the correct next move because:
+- It is **small relative to what's already landed** — the hard part of
+  Phase 1 (the group-extension construction, decomposition/inertia
+  subgroups, Frobenius, the `Gal(k̄/𝓀[K]) ≅ ℤ̂` identification) is done;
+  only the `SL_2`-factor/representation-compatibility layer remains.
 - It is **on the critical path for the fastest route to a stated
-  conjecture** — Phase 0 is a direct prerequisite for Phase 2 (local/global
-  CFT, needed for the `n=1` case of Artin's conjecture and for grounding the
-  Weil group's abelianization) and for Phase 8 (adelic automorphic
-  representations), without which nothing past "define adeles" moves.
-- It is **independently upstreamable** — the existing `AdeleRing.lean` was
-  clearly building toward exactly this (it already defines
-  `principalSubgroup`, the additive analogue of what the idele class group
-  needs); a PR adding the multiplicative/units version is a natural,
-  reviewable next commit in the same file family, by the same reasoning the
-  existing authors (de Frutos-Fernández, Mercuri) used.
-- It **surfaces the next real blocker early**: getting compactness of the
-  norm-one idele class group (needed for finiteness-of-class-number /
-  Dirichlet-unit-theorem-style global results, and eventually for
-  automorphic form growth conditions) will immediately require checking
-  whether Mathlib's restricted-product topology machinery is strong enough,
-  which is useful information to have before committing to Phase 8's much
-  larger investment.
+  conjecture** — Phase 1's completion is a direct prerequisite for Phase
+  4.5 (L-/ε-factors) and Phase 6 (Artin's conjecture at ramified primes),
+  and Phase 2 (local CFT) can proceed in parallel using the norm-map
+  infrastructure already in place.
+- It **keeps momentum on independently upstreamable objects** — a
+  standalone Weil–Deligne group construction is citable on its own, the
+  same way the plain Weil group and idele class group are.
