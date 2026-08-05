@@ -17,77 +17,63 @@ import Langlands.HenselianValuation
 # Unramified extensions and lifting automorphisms of the residue field
 
 Let `K` be a field with a `ValuativeRel`, `L / K` a field extension, and `A : ValuationSubring L`
-a valuation subring of `L` extending `𝒪[K]` (i.e. `A.comap (algebraMap K L) = 𝒪[K]`) whose
-decomposition subgroup `A.decompositionSubgroup K ≤ Gal(L/K)` acts on the residue field
-`IsLocalRing.ResidueField A` through the algebra structure coming from `𝒪[K] → A`.
+a valuation subring lying over `𝒪[K]`, equipped with an `Algebra ↥(𝒪[K]) A` structure compatible
+with the inclusion `𝒪[K] → K → L`. The decomposition subgroup `A.decompositionSubgroup K ≤
+Gal(L/K)` then acts on the residue field `IsLocalRing.ResidueField A`.
 
-This file records two facts about this setup:
+## Main results
 
-* `ValuationSubring.decompositionSubgroup_smul_algebraMap_residueField` : elements of the
-  decomposition subgroup fix the base residue field `𝓀[K]` pointwise (as embedded in
-  `IsLocalRing.ResidueField A` via `algebraMap 𝓀[K] (IsLocalRing.ResidueField A)`). This is a
-  purely formal consequence of the fact that the decomposition subgroup consists of `K`-algebra
-  automorphisms of `L`, unwound through the residue map (`IsLocalRing.ResidueField.residue_smul`,
-  `IsLocalRing.ResidueField.algebraMap_residue`). Proved outright, no `sorry`.
+* `ValuationSubring.decompositionSubgroup_smul_algebraMap_residueField`: the decomposition subgroup
+  fixes the image of the base residue field `𝓀[K]` in `IsLocalRing.ResidueField A` pointwise.
 
-* `ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective` : the
-  **unramified lifting theorem** -- for every finite Galois subextension `M` of
-  `IsLocalRing.ResidueField A` over `𝓀[K]`, every automorphism of `M/𝓀[K]` is the restriction (to
-  `M`) of *some* element of the decomposition subgroup's induced action on the residue field. This
-  is the genuinely deep, Hensel's-lemma-flavoured content: given a finite separable extension `M`
-  of the residue field `𝓀[K]`, the theory of unramified extensions produces a finite unramified
-  extension of `K` (inside `L`, with valuation ring inside `A`) whose residue field is `M`, and
-  every automorphism of `M/𝓀[K]` lifts (uniquely, since unramified extensions of a Henselian field
-  are classified by, and functorial in, their residue extension) to a `K`-automorphism of that
-  unramified extension, hence (extending along `L`'s algebraic closedness / normality) to an
-  element of `Gal(L/K)` stabilizing `A`, i.e. of the decomposition subgroup. This is **not** a
-  consequence of Mathlib's `InfiniteGalois.restrictNormalHom_surjective` (surjectivity of
-  restriction between two normal subextensions of one *fixed* Galois extension `L/K`): here the
-  map being shown surjective goes from the decomposition subgroup of `A` (acting on the *residue*
-  field of `A`, an a priori unrelated extension) to `Gal(M/𝓀[K])`, not a restriction map between
-  intermediate fields of a single extension. Proved outright, no `sorry` -- the key ingredient,
-  `ValuationSubring.exists_aeval_root_residue_eq`, produces roots of a lift polynomial with
-  prescribed `A`-residue directly (an elementary consequence of `L` being algebraically closed and
-  `A` being integrally closed in it, needing no Hensel's-lemma machinery), which sidesteps the
-  "which Galois conjugate" ambiguity a naive Hensel-lift approach leaves open. Not yet in Mathlib.
+* `ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective`: the unramified
+  lifting theorem. For `K` a nonarchimedean local field and `L / K` algebraic and algebraically
+  closed, every automorphism of a finite normal subextension `M` of
+  `IsLocalRing.ResidueField A / 𝓀[K]` is the restriction to `M` of the residue action of some
+  element of the decomposition subgroup.
+
+* `ValuationSubring.exists_aeval_root_residue_eq`: for `L` algebraically closed and `f` monic over
+  a ring mapping to `A`, every root of the reduction of `f` modulo the maximal ideal of `A` is the
+  residue of a root of `f` in `A` itself. This is what supplies the lifting theorem with roots
+  whose residues are prescribed.
+
+* `HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv`: for `R` a
+  Henselian discrete valuation ring with finite residue field `k`, and `β₀` a primitive element of
+  a finite extension `l / k`, the integral closure of `R` in `K⟮x⟯` — where `x` is a root, in an
+  algebraically closed `L / K`, of a monic lift of `minpoly k β₀` — is a discrete valuation ring
+  with residue field `l`. This is the classical construction of the unramified extension of `K`
+  attached to `l / k`; it is a standalone result, not used in the proof of the lifting theorem
+  above.
+
+The remaining declarations are the polynomial- and `AdjoinRoot`-level ingredients of that
+construction: the monic lift of a minimal polynomial over the residue field
+(`HenselianLocalRing.exists_monic_lift_minpoly`), its irreducibility and separability
+(`irreducible_lift_minpoly`, `irreducible_map_lift_minpoly`, `isUnit_resultant_lift_minpoly`,
+`separable_lift_minpoly`, `separable_map_lift_minpoly`), and the structure of `AdjoinRoot f`
+(`isDomain_`, `finrank_`, `isLocalRing_`, and
+`residueField_equiv_adjoinRoot_lift_minpoly` with its generator-compatibility lemma).
 
 ## Implementation notes
 
-The hypotheses on `A` needed to state `decompositionSubgroup_smul_algebraMap_residueField` are
-exactly the ones already established by `Langlands.WeilGroup` for its
-`valuationSubringExtension K`: an `Algebra ↥(𝒪[K]) A` instance (`integersAlgebraMap`) compatible
-with the ambient inclusion `𝒪[K] → K → L`. Compatibility is recorded as an explicit hypothesis
-`hcompat` (rather than an `IsScalarTower ↥(𝒪[K]) A L` instance) to avoid a typeclass-resolution
-failure encountered when this file's generic `L` is instantiated with a concrete
-`AlgebraicClosure K` at the call site in `WeilGroup.lean`: the automatically-derived
-`IsScalarTower` instance there fails Lean's instance-search unification even though it is
-definitionally exactly `hcompat`, apparently because of how the discrimination tree indexes the
-mangled instance name against the (already-assigned) metavariable for `L`. Passing the same fact
-as an ordinary hypothesis sidesteps the issue entirely, since it is then just an ordinary term
-provided at the call site (proved there by `rfl`, exactly as here). -/
+Compatibility of the algebra structure `↥(𝒪[K]) → A` with the inclusion `𝒪[K] → K → L` is carried
+as an explicit hypothesis `hcompat` rather than as an `IsScalarTower ↥(𝒪[K]) A L` instance.
+Instance search fails to apply the derived scalar-tower instance at the one call site
+(`Langlands.WeilGroup`, where `L` is instantiated with `AlgebraicClosure K`) even though the two
+statements are definitionally equal; as an ordinary hypothesis it is discharged there by `rfl`. -/
 
 noncomputable section
 
 open ValuativeRel Valuation IsLocalRing Polynomial
 open scoped Pointwise
 
--- **Instance-diamond fix**: `IsLocalRing.ResidueField.algebraOfIsIntegral` (a generic instance
--- giving `Algebra (ResidueField R) k` for any `k` integral over `R`) competes with
--- `IntermediateField.algebra'` for `Algebra 𝓀[K] ↥M` whenever `M` is an intermediate field of a
--- residue-field-flavoured ambient field (as `kbar := IsLocalRing.ResidueField
--- (valuationSubringExtension K)` is in `Langlands.WeilGroup`, since `𝓀[K]` is *itself*
--- `IsLocalRing.ResidueField ↥(𝒪[K])`, and `ResidueField.algebraOfIsIntegral` becomes newly
--- applicable once `Mathlib.RingTheory.DedekindDomain.Different` is imported (transitively enabling
--- the needed `Algebra.IsIntegral 𝒪[K] ↥M` premise). Both give a term of the same type
--- `Algebra 𝓀[K] ↥M`, but they are not defeq, breaking `rfl`-based proofs that implicitly assume the
--- specific `IntermediateField.algebra'` unfolding.
---
--- `IntermediateField.algebra'` is the canonical, structurally-intended instance here (`M` genuinely
--- *is* an intermediate field of `kbar` over `𝓀[K]`, by construction, not merely coincidentally
--- integral over a residue field); `ResidueField.algebraOfIsIntegral` is a more general instance
--- that does not know about this specific tower. Deprioritizing the latter (rather than raising the
--- former, which is not under this project's control to re-declare) makes instance search
--- consistently prefer `IntermediateField.algebra'` whenever both apply.
+-- Instance-diamond fix. `IsLocalRing.ResidueField.algebraOfIsIntegral` and
+-- `IntermediateField.algebra'` both supply `Algebra 𝓀[K] ↥M` whenever `M` is an intermediate field
+-- of a residue field over `𝓀[K]` — as at the call site in `Langlands.WeilGroup`, where `𝓀[K]` is
+-- itself `IsLocalRing.ResidueField ↥(𝒪[K])` and the `Algebra.IsIntegral ↥(𝒪[K]) ↥M` premise becomes
+-- available through `Mathlib.RingTheory.DedekindDomain.Different`. The two instances are not defeq,
+-- which breaks `rfl`-based proofs assuming the `IntermediateField.algebra'` unfolding. Since `M` is
+-- genuinely an intermediate field there, deprioritizing the more general residue-field instance
+-- makes instance search prefer `IntermediateField.algebra'` whenever both apply.
 attribute [instance low] IsLocalRing.ResidueField.algebraOfIsIntegral
 
 namespace ValuationSubring
@@ -96,14 +82,10 @@ variable {K L : Type*} [Field K] [Field L] [Algebra K L] [ValuativeRel K]
   (A : ValuationSubring L) [Algebra ↥(𝒪[K]) A]
   [IsLocalHom (algebraMap ↥(𝒪[K]) A)]
 
-/-- Elements of the decomposition subgroup of `A` (i.e. `K`-algebra automorphisms of `L`
-stabilizing `A`) fix the base residue field `𝓀[K]`, embedded in `IsLocalRing.ResidueField A` via
-`algebraMap 𝓀[K] (IsLocalRing.ResidueField A)`, pointwise. Concretely: the induced action of
-`A.decompositionSubgroup K` on `IsLocalRing.ResidueField A` restricts to the identity on the image
-of `𝓀[K]`. A purely formal fact (no Henselian/unramified-extension input needed): every
-`σ ∈ Gal(L/K)` fixes `K` pointwise by definition, hence fixes the image of `𝒪[K]` in `A` pointwise
-(via `hcompat`, which records that the algebra structure `↥(𝒪[K]) → A` agrees with `↥(𝒪[K]) → K →
-L`), hence (taking residues) fixes the image of `𝓀[K]` in `IsLocalRing.ResidueField A` pointwise. -/
+/-- Elements of the decomposition subgroup of `A`, i.e. `K`-algebra automorphisms of `L` stabilizing
+`A`, fix the image of `𝓀[K]` in `IsLocalRing.ResidueField A` pointwise. Every `σ ∈ Gal(L/K)` fixes
+`K` pointwise, hence fixes the image of `𝒪[K]` in `A` pointwise by `hcompat`, hence fixes the image
+of `𝓀[K]` in the residue field. -/
 theorem decompositionSubgroup_smul_algebraMap_residueField
     (hcompat : ∀ a : ↥(𝒪[K]), (algebraMap ↥(𝒪[K]) A a : L) = algebraMap K L (a : K))
     (σ : A.decompositionSubgroup K) (x : 𝓀[K]) :
@@ -125,186 +107,23 @@ theorem decompositionSubgroup_smul_algebraMap_residueField
   rw [hcompat a]
   exact (σ : Gal(L/K)).commutes (a : K)
 
-/-! ### The unramified lifting theorem (statement discussion; proved at the end of this file)
-
-**The unramified lifting theorem** (Hensel's-lemma-flavoured; not yet in Mathlib): for every
-finite Galois subextension `M` of `IsLocalRing.ResidueField A / 𝓀[K]`, every automorphism of
-`M/𝓀[K]` is realized by (i.e. is the restriction to `M` of) the residue action of *some* element of
-the decomposition subgroup `A.decompositionSubgroup K`.
-
-Sketch of the (missing) proof: given `M`, choose a finite separable extension `K' / K` inside `L`
-whose residue field (for the valuation subring `A ⊓ K' = A.comap (algebraMap K' L)`, or rather the
-unique valuation subring of `K'` lying under `A`) is `M` -- this is the existence half of the
-theory of unramified extensions of a Henselian field, itself built on Hensel's lemma (lift a
-primitive element of `M/𝓀[K]` to a monic polynomial over `𝒪[K]` via `Polynomial.lifts`, then use
-Henselian-ness to find a root generating the corresponding unramified extension). Given an
-automorphism `g` of `M/𝓀[K]`, functoriality of this correspondence (unramified extensions of `K`
-are classified by, and equivalent as a category to, finite separable extensions of `𝓀[K]`) lifts
-`g` to a `K`-automorphism of `K'`; extending this automorphism of `K'` to all of `L` (`L/K'` being
-algebraic) via `IsAlgClosed`/normality gives an element of `Gal(L/K)`, which (since it stabilizes
-the valuation subring of `K'` lying under `A`, hence -- using uniqueness of extension of the
-valuation, i.e. the same Henselian/decomposition-subgroup-is-everything argument as
-`LocalField.decompositionSubgroup_eq_top` -- stabilizes `A` itself) lies in the decomposition
-subgroup and induces `g` on `M` by construction.
-
-`[IsAlgClosed L]` is stated as an explicit hypothesis (rather than left implicit, as the proof
-sketch's informal appeal to "IsAlgClosed/normality" originally left it) precisely to make this
-"extend the automorphism of `K'` to all of `L`" step available: extending along a merely normal
-(not algebraically closed) `L/K'` would need `Normal K L` instead, which is not assumed here. The
-one call site (`LocalField.surjective_restrictNormalHom_comp_residueAction'` in
-`Langlands.WeilGroup`) instantiates `L := AlgebraicClosure K`, which already has an `IsAlgClosed`
-instance in Mathlib, so this costs nothing there.
-
-**Status (current pass):** the import-diamond previously flagged in
-`Langlands.MonogenicMaximalOrder`'s docstring as blocking a direct merge into this file was
-re-checked directly (not assumed): this file now imports `Langlands.MonogenicMaximalOrder`
-(pulling in `Mathlib.RingTheory.DedekindDomain.Different` / `Mathlib.RingTheory.Conductor`
-transitively) and `Langlands.WeilGroup` still builds cleanly against it. So
-`Algebra.adjoin_eq_top_of_isUnit_aeval_derivative_minpoly` is now directly usable from here; the
-diamond is no longer a reason to keep the two files separate (kept separate anyway, for now, since
-splitting the discriminant-unit fact out is still a reasonable modularity boundary on its own
-merits).
-
-Everything on the "existence of `K'`" side of the sketch above through the polynomial/`AdjoinRoot`
-level is now available (all in this file): `HenselianLocalRing.exists_monic_lift_minpoly`,
-`irreducible_lift_minpoly`/`irreducible_map_lift_minpoly`, `separable_lift_minpoly`/
-`separable_map_lift_minpoly`, `exists_ringHom_adjoinRoot_map_of_isAlgClosed` (giving a root
-`x : L` of the lifted minimal polynomial and an embedding `AdjoinRoot p ↪ L`, `p` the lift mapped to
-`K`), `isDomain_adjoinRoot_lift_minpoly`, `isLocalRing_adjoinRoot_lift_minpoly`,
-`finrank_adjoinRoot_lift_minpoly`, `residueField_equiv_adjoinRoot_lift_minpoly` (identifying
-`IsLocalRing.ResidueField (AdjoinRoot f) ≃+* M`, `f` the monic lift), and `adjoinRootMap`/
-`injective_adjoinRootMap`/`injective_comp_adjoinRootMap` (realizing `AdjoinRoot f` itself, not just
-its fraction field, as a subring of `L`).
-
-**Update (later pass):** `HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv`
-(further down in this file) now closes most of the "existence of `K'`" bridge described below: given
-`β₀`/`hβ₀`/`hprim` (a primitive element of `M/𝓀[K]`), it produces the root `x`, sets
-`K' := K⟮x⟯` and `C := integralClosure R K'`, and shows `C` is a discrete valuation ring whose residue
-field is `≃+*`-isomorphic to `M` -- by identifying `C` with `AdjoinRoot f`'s image via
-`Algebra.adjoin_eq_top_of_isUnit_aeval_derivative_minpoly` (the discriminant-unit fact, now actually
-invoked, not merely available) and transporting `IsLocalRing`/DVR-ness across that identification.
-This is the "genuine valuation theory" sketch below, executed concretely for `C` rather than for an
-arbitrary valuation subring: **not** via the general "valuation subring restricting to a Henselian
-base is exactly the integral elements" fact (still not found in Mathlib and still not proved here in
-that generality), but by constructing `C` directly as a `ValuationRing`/DVR and only *asserting* its
-compatibility with `A` is still open, per below.
-
-**Update (piece A landed):** the identification of `C` with `A.comap (algebraMap K' L)` sketched
-below as "still missing" is now proved, inline in the theorem below (no separate lemma): `C` is
-realized as an actual `ValuationSubring K'`, namely
-`V := ⟨(algebraMap C K').range, ValuationRing.isInteger_or_isInteger C⟩` (using the `ValuationRing C`
-instance from `IsDiscreteValuationRing C` via `of_isDiscreteValuationRing`); `V` is shown to comap to
-`(valuation K).valuationSubring` along `algebraMap K K'` via `IsIntegralClosure.isIntegral_iff`
-(`C = integralClosure ↥(𝒪[K]) K'` is literally an integral closure, so membership in `V`'s
-underlying range is equivalent to integrality over `↥(𝒪[K])`, which for elements of `K` itself is
-equivalent to lying in `𝒪[K]` via `IsIntegrallyClosed.isIntegral_iff` -- `↥(𝒪[K])`'s own
-integral-closedness in `K`, a generic instance for `Valuation.integer`); `A`'s own restriction
-`A.comap (algebraMap K' L)` comaps to the same subring along `algebraMap K K'` via
-`ValuationSubring.comap_comap` and the theorem's own `hAcomap` hypothesis (see below -- newly added,
-since it turned out to genuinely be needed and was not implied by `hcompat` alone: `hcompat` only
-pins down that `𝒪[K]`'s image lands inside `A`, not that nothing more of `K` does). Both comap facts
-are then fed to `LocalField.valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField` to
-conclude `V = A.comap (algebraMap K' L)`.
-
-Also newly added, alongside `hAcomap`: `[TopologicalSpace K] [IsNonarchimedeanLocalField K]`,
-needed for `𝒪[K]`'s Henselian-ness (`henselianLocalRing` below) and for the
-uniqueness-of-valuation-extension lemma just used. As anticipated in the previous pass's note (now
-verified, not just claimed): both are free at the one call site
-(`Langlands.WeilGroup.surjective_restrictNormalHom_comp_residueAction'`), which already carries them
-as ambient section variables; only `hAcomap` needed a new argument threaded through at that call
-site, supplied by the already-proved `valuationSubringExtension_comap K`.
-
-**Update (the shared-lift obstruction is resolved):** the previous pass here recorded a rejected
-route -- re-running `exists_isDiscreteValuationRing_integralClosure_residueField_equiv` a second
-time for `β₀' := g β₀` -- because that theorem derived its own monic lift `f` internally (via
-`HenselianLocalRing.exists_monic_lift_minpoly`) on each call, with no guarantee that two calls agree.
-The fix actually landed: `exists_isDiscreteValuationRing_integralClosure_residueField_equiv` now
-takes `f`/`hfmonic`/`hfmap` as **explicit** hypotheses (mirroring
-`exists_ringHom_adjoinRoot_map_of_isAlgClosed` above) instead of deriving them internally, and
-additionally exposes `f.map (algebraMap R K) = minpoly K x` in its conclusion. The caller
-(`exists_restrictNormalHom_decompositionSubgroup_surjective` below) now calls
-`HenselianLocalRing.exists_monic_lift_minpoly hβ₀` itself, once, and feeds the resulting `f` to
-*both* invocations of the existence theorem -- once for `β₀` (giving root `x`), once for `g β₀`
-(`hβg`, `hfmap_g` from `minpoly.algEquiv_eq g β₀`, `hprim_g` from mapping `hprim` along `g`; giving
-root `x'`). Both roots are now genuinely roots of the *same* polynomial `f.map (algebraMap R K)`
-over `K`, so `minpoly K x = minpoly K x'`, and `minpoly.algEquiv` (Mathlib) gives a real
-`K`-algebra isomorphism `e : K⟮x⟯ ≃ₐ[K] K⟮x'⟯` sending the generator of one to the generator of the
-other. `e` extends to `σ : L ≃ₐ[K] L` via `IsAlgClosed.surjective_restrictDomain_of_isAlgebraic`
-and `Algebra.IsAlgebraic.algHom_bijective`/`AlgEquiv.ofBijective` (needing the new
-`[Algebra.IsAlgebraic K L]` hypothesis on the theorem below, free at the one call site since
-`L := AlgebraicClosure K` there). `σ x = x'` by construction (`hσx`).
-
-`σ` lies in the decomposition subgroup **more directly than originally sketched**: rather than
-redoing the `K'`-level comap-uniqueness argument at `K''` and transporting, `σ • A = A` follows
-straight from `ValuationSubring.comap_smul_eq` (comap to `K` is invariant under any
-`K`-automorphism) together with the theorem's own `hAcomap` hypothesis, applying
-`LocalField.valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField` **at `L` itself** (not
-at a finite subextension) -- both `A` and `σ • A` comap to `𝒪[K]`, hence coincide.
-
-**Update (closed -- the theorem below no longer uses this route at all):** the paragraphs above
-describe an earlier architecture (`exists_isDiscreteValuationRing_integralClosure_residueField_equiv`
-plus its Hensel/`AdjoinRoot`-internal residue bookkeeping) that was ultimately **not** what closed the
-final theorem. That architecture's roots `x`, `x'` come from `IsAlgClosed.exists_root`, an arbitrary
-choice among Galois conjugates, with no way to pin either root's *actual* `A`-residue to a prescribed
-value -- closing that gap would have needed an `A`-relative Hensel lift not built at the time.
-
-The actual fix, `ValuationSubring.exists_aeval_root_residue_eq` (further down this file), sidesteps
-the entire `AdjoinRoot`/DVR/monogenic apparatus: it produces, directly, an element `y : A` that is
-simultaneously a root of the shared lift polynomial `f` *and* has `IsLocalRing.residue A y` exactly
-equal to a prescribed value -- using only that `L` is algebraically closed and that `A` (a
-`ValuationSubring`) is integrally closed in it, no Hensel's-lemma machinery required. Applying this
-directly to `β₀` and to `g β₀` (sharing `f`) gives roots `y`, `y' : A` with the correct residues by
-construction, and building `σ` from `y`, `y'` (exactly as the `x`, `x'` construction above, via
-`minpoly.eq_of_irreducible` and `minpoly.algEquiv`) makes the final residue-compatibility argument
-immediate via `IsLocalRing.ResidueField.residue_smul`'s equivariance, with no separate "connect the
-abstract `AdjoinRoot` isomorphism to `A`'s concrete residue map" step needed.
-
-See `exists_restrictNormalHom_decompositionSubgroup_surjective`'s proof, at the end of this file,
-for the final argument (no `sorry`).
-
-**Placement note:** the theorem itself is stated at the *end* of this file, not here, because its
-proof needs `HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv`
-(defined further down) -- Lean requires the dependency to precede its use, so the theorem cannot be
-proved (only stated) at this point in the file; `end ValuationSubring` below closes the namespace
-opened above only for the two lemmas that *are* provable here
-(`decompositionSubgroup_smul_algebraMap_residueField`), and the namespace is reopened at the end of
-the file for `exists_restrictNormalHom_decompositionSubgroup_surjective` itself. -/
-
 end ValuationSubring
 
-/-! ### `𝒪[K]` is Henselian, for `K` a nonarchimedean local field
-
-The missing ingredient (flagged as an unstated hypothesis gap in
-`exists_restrictNormalHom_decompositionSubgroup_surjective` above) needed to actually invoke
-Hensel's lemma (`HenselianLocalRing.TFAE`, `IsLocalRing.eq_of_eval_eq_zero_of_not_isUnit_sub`) for
-the unramified lifting theorem: `𝒪[K]` is a Henselian local ring. This is *not* a new fact -- the
-hard work (`IsAdicComplete 𝓂[K] 𝒪[K]`) is already a Mathlib instance
-(`Mathlib.NumberTheory.LocalField.Basic`, via compactness of `𝒪[K]` and Noetherianity of the DVR
-structure), found by checking whether the `IsAdic`/`T2Space` bridge was already done before
-attempting to build it -- it was. `IsAdicComplete.henselianRing` then gives `HenselianRing 𝒪[K]
-𝓂[K]` directly, and `HenselianLocalRing.mk` packages this (with the already-available `IsLocalRing
-𝒪[K]` from `IsDiscreteValuationRing.toIsLocalRing`) into `HenselianLocalRing 𝒪[K]`.
-
-The only wrinkle: `IsAdicComplete 𝓂[K] 𝒪[K]` is stated for `[UniformSpace K] [IsUniformAddGroup K]`
-(a uniformity making the topology compatible with the group structure), which is not automatically
-available from `IsNonarchimedeanLocalField K`'s own `[TopologicalSpace K]` -- it is supplied locally
-via `IsTopologicalAddGroup.rightUniformSpace K` / `isUniformAddGroup_of_addCommGroup`, exactly the
-pattern already used elsewhere in this project (`WeilGroup.decompositionSubgroup_eq_top`). -/
+/-! ### The ring of integers of a nonarchimedean local field -/
 
 variable (K : Type*) [Field K] [ValuativeRel K] [TopologicalSpace K] [IsNonarchimedeanLocalField K]
 
-/-- **`𝒪[K]` is a Dedekind domain**, for `K` a nonarchimedean local field. `𝒪[K]` is already known
-to be a discrete valuation ring (`IsDiscreteValuationRing 𝒪[K]`, in
-`Mathlib.NumberTheory.LocalField.Basic`); `IsDiscreteValuationRing.TFAE` packages the equivalence
-of DVR with several other characterizations, including `IsDedekindDomain`, for a Noetherian local
-domain that is not a field. `IsNoetherianRing` comes for free from `IsPrincipalIdealRing` (which
-`IsDiscreteValuationRing` extends); `IsLocalRing` likewise; not being a field is
-`IsDiscreteValuationRing.not_isField`. -/
+/-- The ring of integers of a nonarchimedean local field is a Dedekind domain. `𝒪[K]` is a discrete
+valuation ring (`Mathlib.NumberTheory.LocalField.Basic`), and `IsDiscreteValuationRing.TFAE`
+identifies that with `IsDedekindDomain` for a local domain that is not a field. -/
 instance isDedekindDomain : IsDedekindDomain ↥(𝒪[K]) :=
   ((IsDiscreteValuationRing.TFAE ↥(𝒪[K]) (IsDiscreteValuationRing.not_isField ↥(𝒪[K]))).out 0 2).mp
     (inferInstance : IsDiscreteValuationRing ↥(𝒪[K]))
 
-/-- **`𝒪[K]` is a Henselian local ring**, for `K` a nonarchimedean local field. -/
+/-- The ring of integers of a nonarchimedean local field is a Henselian local ring. `𝒪[K]` is
+`𝓂[K]`-adically complete (`IsAdicComplete`, `Mathlib.NumberTheory.LocalField.Basic`), whence
+`HenselianRing 𝒪[K] 𝓂[K]` by `IsAdicComplete.henselianRing`. The uniform structure that
+`IsAdicComplete` is stated against is supplied locally from the topology on `K`. -/
 instance henselianLocalRing : HenselianLocalRing ↥(𝒪[K]) := by
   letI := IsTopologicalAddGroup.rightUniformSpace K
   haveI := isUniformAddGroup_of_addCommGroup (G := K)
@@ -312,22 +131,13 @@ instance henselianLocalRing : HenselianLocalRing ↥(𝒪[K]) := by
   refine HenselianLocalRing.mk fun f hf a₀ ha₀ hderiv => ?_
   exact HenselianRing.is_henselian f hf a₀ ha₀ (hderiv.map (Ideal.Quotient.mk 𝓂[K]))
 
-/-! ### A monic lift of a minimal polynomial over a Henselian local ring
+/-! ### A monic lift of a minimal polynomial over a Henselian local ring -/
 
-The first ingredient of the unramified lifting theorem's existence half (see
-`ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective`): given a Henselian
-local ring `R` with residue field `k := IsLocalRing.ResidueField R`, and an element `β₀` of a field
-`l` algebraic over `k`, the (monic) minimal polynomial of `β₀` over `k` lifts to a monic polynomial
-over `R` of the same degree, reducing to it mod the maximal ideal.
-
-This is a purely coefficient-wise construction and does *not* yet use Hensel's lemma itself (that
-enters at the next step: finding a root of this lift in `R`, via `HenselianLocalRing.TFAE`) --
-`Polynomial.mem_lifts_of_surjective` gives *some* lift along the (surjective) residue map, and
-`Polynomial.lifts_and_natDegree_eq_and_monic` upgrades this to a monic lift of the same degree,
-since the minimal polynomial being lifted is itself monic. Stated for a general
-`HenselianLocalRing R` since that is the hypothesis available at the intended call site, though the
-construction itself only needs `IsLocalRing R` and surjectivity of the residue map. -/
-
+/-- Let `R` be a Henselian local ring with residue field `k := IsLocalRing.ResidueField R`, and let
+`β₀` be an element of a `k`-algebra field `l`, integral over `k`. Then `minpoly k β₀` lifts to a
+monic polynomial over `R` of the same degree. Only surjectivity of the residue map is used
+(`Polynomial.mem_lifts_of_surjective`, `Polynomial.lifts_and_natDegree_eq_and_monic`); the Henselian
+hypothesis is carried because it is the one available at the intended call site. -/
 theorem HenselianLocalRing.exists_monic_lift_minpoly {R : Type*} [CommRing R]
     [HenselianLocalRing R] {l : Type*} [Field l] [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
     (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) :
@@ -341,40 +151,14 @@ theorem HenselianLocalRing.exists_monic_lift_minpoly {R : Type*} [CommRing R]
     Polynomial.lifts_and_natDegree_eq_and_monic hlifts (minpoly.monic hβ₀)
   exact ⟨f, hf3, hf2, hf1⟩
 
-/-! ### The monic lift is irreducible, first over `R` itself, then over the fraction field
+/-! ### Irreducibility of the monic lift -/
 
-The second ingredient of the unramified lifting theorem's existence half: a monic lift `f` of
-`β₀`'s (irreducible) minimal polynomial over the residue field `k := IsLocalRing.ResidueField R`
-is itself irreducible, not just over `R` but over the fraction field `K` of `R` -- this is what
-lets `f` cut out a genuine finite field extension of `K` (rather than merely a monic polynomial
-that could factor).
-
-Two Mathlib pieces compose here, both confirmed by loogle against their stated names before use:
-
-* `Polynomial.Monic.irreducible_of_irreducible_map` : a monic polynomial over a domain `R` is
-  irreducible (over `R`) if its image under *any* ring hom `R →+* S` (`S` a domain) is irreducible.
-  Applied to the residue map `R →+* k`, whose image of `f` is (by hypothesis) `β₀`'s minimal
-  polynomial -- irreducible by `minpoly.irreducible`, since `β₀` is integral over `k` (`l` and `k`
-  both fields makes `IsDomain` trivial on both sides). This step alone only needs `IsDomain R`, not
-  `IsIntegrallyClosed R`, and is recorded as its own lemma (`irreducible_lift_minpoly`, giving
-  `Irreducible f` in `R[X]` itself) because the next construction step (`AdjoinRoot f` is a domain,
-  via `AdjoinRoot.isDomain_of_prime`) needs exactly this `R[X]`-level fact, not merely its image
-  over `Frac(R)`.
-* `Polynomial.Monic.irreducible_iff_irreducible_map_fraction_map` : **Gauss's lemma** for
-  integrally closed domains -- a monic polynomial over an integrally closed domain `R` is
-  irreducible over `R` iff its image is irreducible over `Frac(R)`. This is exactly where
-  `IsIntegrallyClosed R` is needed (true of `𝒪[K]` at the intended call site, being a valuation
-  ring), converting "irreducible over `R`" (from the previous bullet) into "irreducible over `K`".
--/
-
-/-- The monic lift `f` (of `β₀`'s minimal polynomial over `k := IsLocalRing.ResidueField R`) is
-irreducible already in `R[X]`, before any Gauss's-lemma transfer to a fraction field. Only needs
-`IsDomain R` (not `IsIntegrallyClosed R`): `Polynomial.Monic.irreducible_of_irreducible_map` shows a
-monic polynomial over a domain is irreducible as soon as *some* image of it under a ring hom into a
-domain is irreducible, and here that image (under the residue map) is `minpoly k β₀`, irreducible
-since `β₀` is integral over the field `k`. Extracted as its own lemma because the domain-ness of
-`AdjoinRoot f` (`AdjoinRoot.isDomain_of_prime`, via `Irreducible f → Prime f` in the UFD `R[X]`)
-needs precisely this `R[X]`-level statement, not merely its image over `Frac(R)`. -/
+/-- A monic lift `f` of `minpoly k β₀`, `k := IsLocalRing.ResidueField R`, is irreducible in `R[X]`:
+its image under the residue map is `minpoly k β₀`, irreducible since `β₀` is integral over the field
+`k`, and a monic polynomial over a domain is irreducible as soon as some image of it in a domain is
+(`Polynomial.Monic.irreducible_of_irreducible_map`). Only `IsDomain R` is needed. This `R[X]`-level
+statement, rather than its image over `Frac R`, is what `isDomain_adjoinRoot_lift_minpoly` consumes,
+via `Irreducible f → Prime f` in the unique factorization monoid `R[X]`. -/
 theorem HenselianLocalRing.irreducible_lift_minpoly {R : Type*} [CommRing R] [IsDomain R]
     [HenselianLocalRing R] {l : Type*} [Field l] [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
     (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) {f : R[X]} (hf : f.Monic)
@@ -386,6 +170,10 @@ theorem HenselianLocalRing.irreducible_lift_minpoly {R : Type*} [CommRing R] [Is
   rw [hfmap]
   exact minpoly.irreducible hβ₀
 
+/-- The image of a monic lift `f` of `minpoly k β₀` in `K[X]`, `K` a fraction field of `R`, is
+irreducible. Gauss's lemma for integrally closed domains
+(`Polynomial.Monic.irreducible_iff_irreducible_map_fraction_map`) applied to
+`irreducible_lift_minpoly`; this is what makes `f` cut out a finite field extension of `K`. -/
 theorem HenselianLocalRing.irreducible_map_lift_minpoly {R : Type*} [CommRing R] [IsDomain R]
     [IsIntegrallyClosed R] [HenselianLocalRing R] {K : Type*} [Field K] [Algebra R K]
     [IsFractionRing R K] {l : Type*} [Field l] [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
@@ -396,70 +184,31 @@ theorem HenselianLocalRing.irreducible_map_lift_minpoly {R : Type*} [CommRing R]
   (Polynomial.Monic.irreducible_iff_irreducible_map_fraction_map hf).mp
     (HenselianLocalRing.irreducible_lift_minpoly hβ₀ hf hfmap)
 
-/-! ### The monic lift `f` is separable, hence so is `p := f.map (algebraMap R K)`
+/-! ### Separability of the monic lift
 
-The remaining ingredient needed to discharge `[Algebra.IsSeparable K L]` at the call site of
-`Algebra.adjoin_eq_top_of_isUnit_aeval_derivative_minpoly` (`Langlands.MonogenicMaximalOrder`,
-kept in its own file for import-diamond reasons -- see that file's docstring): `f` itself is
-separable in `R[X]`, hence (`Polynomial.Separable.map`, valid for *any* ring hom out of a
-`CommSemiring`, no domain hypotheses needed) `p := f.map (algebraMap R K)` is separable in `K[X]`.
+For a monic polynomial, separability is unit-ness of the resultant of the polynomial and its
+derivative: `Polynomial.separable_def` identifies `f.Separable` with `IsCoprime f (derivative f)`,
+and `Polynomial.isUnit_resultant_iff_isCoprime` identifies the latter with
+`IsUnit (f.resultant (derivative f))`. Up to a sign and a leading-coefficient factor this resultant
+is the discriminant, but only the resultant carries the `map`-compatibility lemma
+`Polynomial.resultant_map_map` used to move the statement between `R` and its residue field. -/
 
-The originally-sketched route via `Algebra.discr` (basis discriminant) does not exist in a
-`Polynomial`-level, `map`-compatible form in Mathlib; the actual bridge found by loogle is the
-**resultant** of a polynomial and its derivative (`Polynomial.resultant`,
-`Mathlib.RingTheory.Polynomial.Resultant.Basic`):
-`Polynomial.isUnit_resultant_iff_isCoprime` identifies `IsUnit (f.resultant g)` (for `f` monic)
-with `IsCoprime f g`, and `Polynomial.separable_def` identifies `f.Separable` with
-`IsCoprime f (derivative f)` -- so separability of a monic polynomial is exactly unit-ness of the
-resultant of it and its derivative. This *is* the discriminant, up to a sign/leading-term twist
-(see `Polynomial.discr`'s docstring), but the resultant form is what actually has the needed
-`map`-compatibility lemma, `Polynomial.resultant_map_map`.
+/-- The monic lift `f` of `minpoly k β₀` has unit resultant with its own derivative, in `R` itself
+rather than only after reduction to the residue field `k := IsLocalRing.ResidueField R`.
 
-The argument:
+`k` is finite, hence perfect, so the irreducible `minpoly k β₀` is separable; by `hfmap` this makes
+the resultant of `f.map (residue R)` and its derivative a unit in `k`. Transporting that back along
+`residue R` needs care with `Polynomial.resultant`'s explicit size parameters, since reduction mod
+the maximal ideal can lower the degree of `derivative f`: as `f` is monic,
+`Polynomial.resultant_add_right_deg` shows the resultant is unchanged by padding the second size
+parameter, so it may be read at the size coming from `R`, where `Polynomial.resultant_map_map`
+applies. In a local ring, being a unit modulo the maximal ideal is being a unit.
 
-1. `k := IsLocalRing.ResidueField R` is finite (hypothesis `[Finite k]`, true at the intended call
-   site `R = 𝒪[K]` via the already-existing instance
-   `IsNonarchimedeanLocalField.instFiniteResidueField...`), hence perfect (`PerfectField.ofFinite`),
-   so `minpoly k β₀` -- irreducible since `β₀` is integral -- is separable
-   (`PerfectField.separable_of_irreducible`). Via `hfmap`, this is `(f.map (residue R)).Separable`.
-2. Unwinding `Separable`/`isUnit_resultant_iff_isCoprime` at `f.map (residue R)` (monic, since `f`
-   is) gives `IsUnit ((f.map (residue R)).resultant (derivative (f.map (residue R))))`, at the
-   *default* size parameters (`(f.map (residue R)).natDegree`, `(derivative (f.map (residue R))
-   ).natDegree`).
-3. **The size-parameter subtlety**: `Polynomial.resultant`'s size arguments `m n` are explicit
-   (with `natDegree`-valued `optParam` defaults), and `Polynomial.resultant_map_map` (transporting
-   a resultant along a ring hom) holds for *arbitrary* `m n`, not just the natDegree-valued
-   defaults of whichever side of the hom they're read off from -- since reducing mod a maximal
-   ideal *can* drop the degree of a derivative (e.g. `char k = p ∣ f.natDegree` can kill the
-   leading coefficient of `derivative f` upon reduction, even though `R` has characteristic `0` so
-   `derivative f` itself doesn't degenerate over `R`), the default-`n` resultant read off from
-   `f.map (residue R)`'s own `natDegree`s need not equal the default-`n` resultant read off from
-   `f`'s. The fix: since `f` (hence `f.map (residue R)`) is *monic*,
-   `Polynomial.resultant_add_right_deg` shows padding the second polynomial's size argument past
-   its actual degree multiplies the resultant by (a power of) the *first* polynomial's coefficient
-   at the fixed size `m`, which is `1` for a monic polynomial at `m = natDegree` -- so the resultant
-   at the (possibly larger) `R`-side padding `(derivative f).natDegree` agrees with the resultant at
-   `f.map (residue R)`'s own smaller default size. This lets step 2's fact be re-expressed at the
-   padded size compatible with `resultant_map_map`, transporting it back across `R → k` to conclude
-   `IsUnit (f.resultant (derivative f))` **in `k`**, i.e. that `(residue R) (f.resultant
-   (derivative f))` is nonzero.
-4. `(residue R) x ≠ 0 ↔ x ∉ maximalIdeal R` (`IsLocalRing.residue_eq_zero_iff`) `↔ IsUnit x`
-   (`IsLocalRing.mem_maximalIdeal`, `mem_nonunits_iff`, `R` local) gives `IsUnit (f.resultant
-   (derivative f))` **in `R` itself** (not just its image in `k`) -- this is the fact that would
-   let `MonogenicMaximalOrder.lean`'s `hunit` hypothesis (`IsUnit (aeval x (minpoly A x).derivative)`)
-   eventually be discharged too, though wiring that up is a separate, further step not attempted
-   here.
-5. `Polynomial.isUnit_resultant_iff_isCoprime hf` converts this back to `IsCoprime f (derivative
-   f)`, i.e. (`Polynomial.separable_def`) `f.Separable`. -/
-
-/-- **Extracted from the proof below**: the monic lift `f` has `IsUnit` resultant with its own
-derivative, already **in `R` itself** (`hxunit` in the docstring above), not merely after reducing
-to the residue field `k`. This is exactly the "discriminant is a unit" fact needed to discharge
-the `hunit` hypothesis of `Algebra.adjoin_eq_top_of_isUnit_aeval_derivative_minpoly`
-(`Langlands.MonogenicMaximalOrder`) once wired through a root of `f` in any `R`-algebra -- see
-`Polynomial.isUnit_aeval_derivative_of_isUnit_resultant` below for that further step. Extracted as
-its own lemma (rather than left inline inside `separable_lift_minpoly`) so both consumers can share
-it without duplicating the resultant/size-padding argument. -/
+This is the "discriminant is a unit" hypothesis `hunit` of
+`Algebra.adjoin_eq_top_of_isUnit_aeval_derivative_minpoly`
+(`Langlands.MonogenicMaximalOrder`), which
+`Polynomial.isUnit_aeval_derivative_of_isUnit_resultant` transfers to a root of `f`. It is stated
+separately from `separable_lift_minpoly` because both consumers need it. -/
 theorem HenselianLocalRing.isUnit_resultant_lift_minpoly {R : Type*} [CommRing R] [IsLocalRing R]
     [Finite (IsLocalRing.ResidueField R)] {l : Type*} [Field l]
     [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
@@ -510,10 +259,9 @@ theorem HenselianLocalRing.isUnit_resultant_lift_minpoly {R : Type*} [CommRing R
   by_contra hnu
   exact hx_notmem (IsLocalRing.mem_maximalIdeal _ |>.mpr (mem_nonunits_iff.mpr hnu))
 
-/-- **The monic lift `f` is separable**, given that the residue field `k := IsLocalRing.ResidueField
-R` is finite. Now just a thin wrapper around `HenselianLocalRing.isUnit_resultant_lift_minpoly`
-(the resultant-based argument, see the section docstring above) composed with
-`Polynomial.isUnit_resultant_iff_isCoprime` / `Polynomial.separable_def`. -/
+/-- The monic lift `f` of `minpoly k β₀` is separable, when the residue field
+`k := IsLocalRing.ResidueField R` is finite: `isUnit_resultant_lift_minpoly` composed with
+`Polynomial.isUnit_resultant_iff_isCoprime` and `Polynomial.separable_def`. -/
 theorem HenselianLocalRing.separable_lift_minpoly {R : Type*} [CommRing R] [IsLocalRing R]
     [Finite (IsLocalRing.ResidueField R)] {l : Type*} [Field l]
     [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
@@ -525,14 +273,10 @@ theorem HenselianLocalRing.separable_lift_minpoly {R : Type*} [CommRing R] [IsLo
     (Polynomial.isUnit_resultant_iff_isCoprime hf).mp
       (HenselianLocalRing.isUnit_resultant_lift_minpoly hβ₀ hf hfmap)
 
-/-- **`p := f.map (algebraMap R K)` is separable**, given `f.Separable` (from
-`separable_lift_minpoly` above): `Polynomial.Separable.map` transports separability along *any*
-ring hom, no domain/field hypotheses on the target needed. This is the fact that, once wired
-through `AdjoinRoot p ≃ₐ[K] K⟮x⟯` (`x` the root produced by
-`exists_ringHom_adjoinRoot_map_of_isAlgClosed`), discharges the `[Algebra.IsSeparable K L]`
-hypothesis of `Algebra.adjoin_eq_top_of_isUnit_aeval_derivative_minpoly`
-(`Langlands.MonogenicMaximalOrder`) at its intended call site -- that wiring itself is a further
-step not attempted here. -/
+/-- The image `f.map (algebraMap R K)` of the monic lift is separable in `K[X]`, for any
+`R`-algebra field `K`: `Polynomial.Separable.map` transports separability along any ring hom. At a
+root `x` of this image, it gives `IsSeparable K x`, hence separability of `K⟮x⟯ / K`, one of the
+hypotheses of `Algebra.adjoin_eq_top_of_isUnit_aeval_derivative_minpoly`. -/
 theorem HenselianLocalRing.separable_map_lift_minpoly {R : Type*} [CommRing R] [IsLocalRing R]
     [Finite (IsLocalRing.ResidueField R)] {K : Type*} [Field K] [Algebra R K] {l : Type*} [Field l]
     [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
@@ -542,30 +286,20 @@ theorem HenselianLocalRing.separable_map_lift_minpoly {R : Type*} [CommRing R] [
     (f.map (algebraMap R K)).Separable :=
   (HenselianLocalRing.separable_lift_minpoly hβ₀ hf hfmap).map
 
-/-! ### Transferring "discriminant is a unit" from `R` to a root in any `R`-algebra domain
+/-! ### Transferring "the discriminant is a unit" to a root
 
-The remaining ingredient (beyond `isUnit_resultant_lift_minpoly` above) needed to discharge the
-`hunit` hypothesis of `Algebra.adjoin_eq_top_of_isUnit_aeval_derivative_minpoly`
-(`Langlands.MonogenicMaximalOrder`) at a root `x` of `f` living in some `R`-algebra `C` (not
-merely in `R` itself, where `isUnit_resultant_lift_minpoly` already lands the fact): given
-`f(x) = 0` in `C`, factor `f.map (algebraMap R C) = (X - C x) * q` (factor theorem,
-`Polynomial.dvd_iff_isRoot`), then use multiplicativity of the resultant in its first argument
-(`Polynomial.resultant_mul_left`) together with `Res(X - x, g) = g(x)`
-(`Polynomial.resultant_X_sub_C_left`) to write
+Factoring `f.map (algebraMap R C) = (X - C x) * q` at a root `x` (`Polynomial.dvd_iff_isRoot`) and
+using multiplicativity of the resultant in its first argument (`Polynomial.resultant_mul_left`)
+together with `Res(X - x, g) = g(x)` (`Polynomial.resultant_X_sub_C_left`) gives
 
-`(algebraMap R C) (Res(f, f')) = Res(f.map .., (f'.map ..)) = f'(x) * Res(q, f'.map ..)`
+`(algebraMap R C) (Res(f, f')) = Res(f.map .., f'.map ..) = f'(x) * Res(q, f'.map ..)`,
 
-(`Polynomial.resultant_map_map`, which holds for arbitrary size parameters `m n`, not just
-`natDegree`-defaults, so no size-padding subtlety is needed here -- unlike the residue-field
-version in `isUnit_resultant_lift_minpoly`, `algebraMap R C` need not be injective for this
-identity, though injectivity is not assumed or needed below either). Since the left side is a unit
-(the image of `hunit` under `algebraMap R C`) and the ring is commutative, both factors on the
-right are units (`isUnit_of_mul_isUnit_left`); in particular `f'(x)` is. -/
+so a unit on the left forces `f'(x)` to be a unit. `Polynomial.resultant_map_map` is used here at
+the size parameters coming from `R`, so no padding argument is needed. -/
 
-/-- **"Discriminant is a unit" transfers to any root.** If `f : R[X]` is monic with
-`IsUnit (f.resultant (derivative f))` (e.g. via `HenselianLocalRing.isUnit_resultant_lift_minpoly`),
-and `x : C` (`C` a domain `R`-algebra) is a root of `f`, then `aeval x (derivative f)` is a unit in
-`C`. See the section docstring above for the factorization argument. -/
+/-- If `f : R[X]` is monic with `IsUnit (f.resultant (derivative f))` — e.g. by
+`HenselianLocalRing.isUnit_resultant_lift_minpoly` — and `x : C` is a root of `f` in a domain
+`R`-algebra `C`, then `aeval x (derivative f)` is a unit in `C`. -/
 theorem Polynomial.isUnit_aeval_derivative_of_isUnit_resultant {R C : Type*} [CommRing R]
     [CommRing C] [IsDomain C] [Algebra R C] {f : R[X]} (hf : f.Monic)
     (hunit : IsUnit (Polynomial.resultant f (Polynomial.derivative f))) {x : C}
@@ -604,47 +338,18 @@ theorem Polynomial.isUnit_aeval_derivative_of_isUnit_resultant {R C : Type*} [Co
   rw [hmul] at hunitφ
   exact isUnit_of_mul_isUnit_left hunitφ
 
-/-! ### `AdjoinRoot f`: a finite free, local, domain extension with residue field `l`
+/-! ### The structure of `AdjoinRoot f`
 
-The third ingredient (see `ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective`
-above): given the monic lift `f` of `β₀`'s minimal polynomial (from `exists_monic_lift_minpoly`,
-irreducible in `R[X]` by `irreducible_lift_minpoly`), `R' := AdjoinRoot f` is
+For `f` a monic lift of `minpoly k β₀`, `k := IsLocalRing.ResidueField R`, the ring
+`AdjoinRoot f` is a domain, free of rank `f.natDegree` over `R` — equal to `[l : k]` when `β₀` is a
+primitive element of `l / k` — and local, with maximal ideal
+`Ideal.map (AdjoinRoot.of f) (maximalIdeal R)`.
 
-1. a finite free `R`-module of rank `n = f.natDegree`, which (given the extra hypothesis that `β₀`
-   is a **primitive element**, i.e. `k⟮β₀⟯ = ⊤`, phrased as `IntermediateField.adjoin k {β₀} = ⊤` to
-   avoid depending on the scoped `⟮⟯` notation) equals `[l : k]`
-   (`finrank_adjoinRoot_lift_minpoly`);
-2. a domain (`isDomain_adjoinRoot_lift_minpoly`), via `Irreducible f → Prime f` in the UFD `R[X]`
-   (`R[X]` is a UFD whenever `R` is, e.g. `R` a PID at the intended call site `𝒪[K]`); and
-3. local, with the ideal `M₀ := Ideal.map (AdjoinRoot.of f) (maximalIdeal R)` as its unique maximal
-   ideal (`isLocalRing_adjoinRoot_lift_minpoly`).
+The primitive-element hypothesis is phrased as `IntermediateField.adjoin k {β₀} = ⊤`, avoiding the
+scoped `⟮⟯` notation. -/
 
-**On (3), the "IsLocalRing R'" step**: the route sketched in the task brief (Cohen-Seidenberg
-lying-over, via `Ideal.isMaximal_comap_of_isIntegral_of_isMaximal` in
-`Mathlib.RingTheory.Ideal.GoingUp`) works directly and is what's used below; no more direct packaged
-Mathlib lemma ("finite algebra over a local ring with field quotient ⟹ local") was found. The
-argument: `M₀` itself is maximal, since `AdjoinRoot f ⧸ M₀ ≅ Polynomial k ⧸ span {f.map (residue R)}
-= Polynomial k ⧸ span {minpoly k β₀}` (via `AdjoinRoot.quotEquivQuotMap` and `hfmap`) is a field
-(`AdjoinRoot.instField`, since `minpoly k β₀` is irreducible). For *uniqueness*: `R'` is
-module-finite over `R` (from the `PowerBasis`), hence integral, so for *any* maximal ideal `I` of
-`R'`, `I.comap (algebraMap R R')` is maximal in `R` (Cohen-Seidenberg going-up); since `R` is local
-this comap equals `maximalIdeal R`, so (applying `Ideal.map` back and using `Ideal.map_comap_le`)
-`M₀ ≤ I`; two maximal ideals with `M₀ ≤ I` forces `M₀ = I` (`Ideal.IsMaximal.eq_of_le`). Hence `M₀`
-is the *unique* maximal ideal, and `IsLocalRing.of_unique_max_ideal` applies.
-
-This file also identifies `IsLocalRing.ResidueField (AdjoinRoot f)` with `l` itself, given the
-primitive-element hypothesis `k⟮β₀⟯ = ⊤`
-(`HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly`, below `isLocalRing_adjoinRoot_lift_minpoly`)
--- see that theorem's docstring for the composition. That equivalence is landed as a plain
-`RingEquiv` (`≃+*`), not an `AlgEquiv` over `k`: upgrading to `≃ₐ[k]` would first need a
-`k`-`Algebra` structure on `IsLocalRing.ResidueField (AdjoinRoot f)` (there is no free one -- `k` is
-the residue field of `R`, not of `AdjoinRoot f`), which itself needs `IsLocalHom (algebraMap R
-(AdjoinRoot f))`, plus a proof that the composed equivalence commutes with `algebraMap k _` on both
-sides. This is a materially larger undertaking (a new nontrivial instance, not otherwise needed
-anywhere else in this file, plus a compatibility proof) than the rest of this section, so it was not
-attempted; the `RingEquiv` suffices for identifying the underlying field and is the natural
-stopping point here. -/
-
+/-- `AdjoinRoot f` is a domain: `f` is irreducible in `R[X]` by `irreducible_lift_minpoly`, hence
+prime, `R[X]` being a unique factorization monoid. -/
 theorem HenselianLocalRing.isDomain_adjoinRoot_lift_minpoly {R : Type*} [CommRing R] [IsDomain R]
     [UniqueFactorizationMonoid R] [HenselianLocalRing R] {l : Type*} [Field l]
     [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
@@ -655,13 +360,9 @@ theorem HenselianLocalRing.isDomain_adjoinRoot_lift_minpoly {R : Type*} [CommRin
   AdjoinRoot.isDomain_of_prime <| UniqueFactorizationMonoid.irreducible_iff_prime.mp
     (HenselianLocalRing.irreducible_lift_minpoly hβ₀ hf hfmap)
 
-/-- `AdjoinRoot f` is a finite free `R`-module (via the `PowerBasis` `AdjoinRoot.powerBasis'`, using
-only that `f` is monic -- no irreducibility needed for this part) of rank `f.natDegree`, which,
-given that `β₀` is a *primitive element* of `l/k` (`hprim : k⟮β₀⟯ = ⊤`, i.e. `k(β₀) = l`), equals
-`[l : k]`: `f.natDegree = (f.map (residue R)).natDegree` (mapping a monic polynomial along a ring
-hom into a nontrivial ring preserves `natDegree`) `= (minpoly k β₀).natDegree` (by `hfmap`)
-`= finrank k k⟮β₀⟯` (`IntermediateField.adjoin.finrank`) `= finrank k l` (transporting along
-`hprim`, `IntermediateField.finrank_top'`). -/
+/-- `AdjoinRoot f` is free of rank `f.natDegree` over `R` (`AdjoinRoot.powerBasis'`, needing only
+that `f` is monic), and that rank is `[l : k]` when `β₀` is a primitive element of `l / k`:
+`f.natDegree = (minpoly k β₀).natDegree = finrank k k⟮β₀⟯ = finrank k l`. -/
 theorem HenselianLocalRing.finrank_adjoinRoot_lift_minpoly {R : Type*} [CommRing R]
     [HenselianLocalRing R] {l : Type*} [Field l] [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
     (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) {f : R[X]} (hf : f.Monic)
@@ -673,11 +374,12 @@ theorem HenselianLocalRing.finrank_adjoinRoot_lift_minpoly {R : Type*} [CommRing
     ← hf.natDegree_map (algebraMap R (IsLocalRing.ResidueField R)), hfmap,
     ← IntermediateField.adjoin.finrank hβ₀, hprim, IntermediateField.finrank_top']
 
-/-- **`M₀ := Ideal.map (AdjoinRoot.of f) (maximalIdeal R)` is maximal** in `AdjoinRoot f`. Extracted
-from `isLocalRing_adjoinRoot_lift_minpoly`'s proof (see that theorem's docstring for the argument)
-so it can be reused directly by `residueField_equiv_adjoinRoot_lift_minpoly`, which needs exactly
-this fact (via `IsLocalRing.eq_maximalIdeal`) to identify `M₀` with `maximalIdeal (AdjoinRoot f)`
-once locality is known, without needing `IsDomain R` (this step alone doesn't use it). -/
+/-- The ideal `M₀ := Ideal.map (AdjoinRoot.of f) (maximalIdeal R)` is maximal in `AdjoinRoot f`:
+the quotient by it is `AdjoinRoot (minpoly k β₀)` (`AdjoinRoot.quotEquivQuotMap` and `hfmap`), a
+field since `minpoly k β₀` is irreducible. Stated separately from
+`isLocalRing_adjoinRoot_lift_minpoly` so that `residueField_equiv_adjoinRoot_lift_minpoly` can use
+it to identify `M₀` with `maximalIdeal (AdjoinRoot f)`; this step alone does not need
+`IsDomain R`. -/
 theorem HenselianLocalRing.isMaximal_map_of_lift_minpoly {R : Type*} [CommRing R]
     [HenselianLocalRing R] {l : Type*} [Field l] [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
     (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) {f : R[X]} (_hf : f.Monic)
@@ -697,12 +399,11 @@ theorem HenselianLocalRing.isMaximal_map_of_lift_minpoly {R : Type*} [CommRing R
     exact Field.toIsField _
   exact Ideal.Quotient.maximal_of_isField _ hM0field
 
-/-- **`AdjoinRoot f` is local**, with `M₀ := Ideal.map (AdjoinRoot.of f) (maximalIdeal R)` its
-unique maximal ideal. See the section docstring above for the full argument: `M₀` is maximal
-because `AdjoinRoot f ⧸ M₀ ≅ AdjoinRoot (minpoly k β₀)` (a field, `minpoly k β₀` being irreducible),
-and it is the *only* maximal ideal because every maximal ideal of the module-finite (hence integral)
-extension `R'/R` contracts to the unique maximal ideal of the local ring `R`, forcing every maximal
-ideal to contain (hence, by maximality of both, equal) `M₀`. -/
+/-- `AdjoinRoot f` is local, with `M₀ := Ideal.map (AdjoinRoot.of f) (maximalIdeal R)` its unique
+maximal ideal. `M₀` is maximal by `isMaximal_map_of_lift_minpoly`, and every maximal ideal of the
+module-finite, hence integral, extension `AdjoinRoot f / R` contracts to the maximal ideal of the
+local ring `R` (`Ideal.isMaximal_comap_of_isIntegral_of_isMaximal`), hence contains `M₀` and, both
+being maximal, equals it. -/
 theorem HenselianLocalRing.isLocalRing_adjoinRoot_lift_minpoly {R : Type*} [CommRing R] [IsDomain R]
     [HenselianLocalRing R] {l : Type*} [Field l] [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
     (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) {f : R[X]} (hf : f.Monic)
@@ -725,43 +426,33 @@ theorem HenselianLocalRing.isLocalRing_adjoinRoot_lift_minpoly {R : Type*} [Comm
     exact Ideal.map_comap_le
   exact (hM0max.eq_of_le hI.ne_top hle).symm
 
-/-! ### The residue field of `AdjoinRoot f` is `l` itself
+/-! ### The residue field of `AdjoinRoot f`
 
-The remaining gap flagged in the section docstring above: given the primitive-element hypothesis
-`hprim : k⟮β₀⟯ = ⊤` and `IsLocalRing (AdjoinRoot f)` (from `isLocalRing_adjoinRoot_lift_minpoly`),
-`IsLocalRing.ResidueField (AdjoinRoot f)` is isomorphic to `l` itself, not merely to some field
-abstractly identified with `AdjoinRoot (minpoly k β₀)`. The composition:
+Given the primitive-element hypothesis `hprim : k⟮β₀⟯ = ⊤` and locality of `AdjoinRoot f`, the
+residue field of `AdjoinRoot f` is `l` itself. The composition is
 
-1. `IsLocalRing.eq_maximalIdeal` applied to `M₀`'s maximality
-   (`isMaximal_map_of_lift_minpoly`) gives `M₀ = IsLocalRing.maximalIdeal (AdjoinRoot f)`;
-   `Ideal.quotEquivOfEq` turns this into `AdjoinRoot f ⧸ M₀ ≃+* AdjoinRoot f ⧸ maximalIdeal
-   (AdjoinRoot f)`, the latter being *definitionally* `IsLocalRing.ResidueField (AdjoinRoot f)`
-   (`IsLocalRing.ResidueField R` unfolds to exactly `R ⧸ maximalIdeal R`).
-2. `AdjoinRoot.quotEquivQuotMap f (maximalIdeal R)` identifies `AdjoinRoot f ⧸ M₀` with
-   `Polynomial k ⧸ span {f.map (algebraMap R k)}`, which (rewriting along `hfmap`) becomes
-   `Polynomial k ⧸ span {minpoly k β₀}`, definitionally `AdjoinRoot (minpoly k β₀)`.
-3. `IntermediateField.adjoinRootEquivAdjoin k hβ₀` identifies `AdjoinRoot (minpoly k β₀)` with
-   `↥k⟮β₀⟯`; `IntermediateField.equivOfEq hprim` (using `hprim : k⟮β₀⟯ = ⊤`) identifies `↥k⟮β₀⟯` with
-   `↥(⊤ : IntermediateField k l)`; `IntermediateField.topEquiv` identifies that with `l`.
+`ResidueField (AdjoinRoot f) = AdjoinRoot f ⧸ M₀ ≃+* AdjoinRoot (minpoly k β₀) ≃ₐ[k] k⟮β₀⟯ = l`,
 
-Steps 2-3 are all `AlgEquiv`s over `k` (`R` for step 2's raw form, but forgotten to a `RingEquiv`
-here to compose with step 1, which is necessarily over `R` since `M₀` lives in `AdjoinRoot f` as an
-`R`-algebra, not a `k`-algebra) -- see the docstring above (before `isDomain_adjoinRoot_lift_minpoly`)
-for why a single `≃ₐ[k]` is not landed here. -/
+using `isMaximal_map_of_lift_minpoly` and `IsLocalRing.eq_maximalIdeal` for the first identification,
+`AdjoinRoot.quotEquivQuotMap` with `hfmap` for the second, and
+`IntermediateField.adjoinRootEquivAdjoin`, `IntermediateField.equivOfEq hprim`,
+`IntermediateField.topEquiv` for the third.
 
-/-- **The raw-quotient presentation of `AdjoinRoot p` agrees with `AdjoinRoot p` itself, as an
-honestly-transparent `RingEquiv`** (rather than an opaque defeq-cast): `AdjoinRoot p` is *defined* as
-`Polynomial R ⧸ span {p}`, but carries its *own* separately-declared `CommRing` instance (with
-custom `nsmul`/`zsmul` fields, copying the rest from the raw quotient's instance via
-`inferInstanceAs`) rather than literally reusing `Ideal.Quotient.commRing`'s bundled instance. The two
-are still defeq (`rfl` proves `toFun`/`invFun`/`map_mul'`/`map_add'` below directly), but composing a
-`RingEquiv` landing in one presentation with a `RingEquiv` starting from the other via `.trans`
-elaborates the crossing as an opaque `id`-cast that breaks later `rw`/`simp` reasoning through
-`RingEquiv.trans_apply` (confirmed: attempting exactly that in an earlier pass of this file hit a
-"target expression is not type-correct under the `instances` transparency level" failure). This
-bridge is transparent by construction (`toFun`/`invFun := id`) so its own `apply` is `rfl`, letting
-`residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_root` below reason about the crossing
-point-wise without hitting that wall. -/
+`IsLocalRing.ResidueField R` and `AdjoinRoot p` are definitionally quotient rings, but carry their
+own `CommRing` instances rather than the bundled `Ideal.Quotient.commRing`. Composing `RingEquiv`s
+across that boundary elaborates the crossing as an opaque cast, after which `rw`/`simp` through
+`RingEquiv.trans_apply` fails with "target expression is not type-correct under the `instances`
+transparency level". The three `id`-based bridges below make each such crossing transparent, so the
+composite can be evaluated point-wise by `simp`.
+
+The identification is landed as a `RingEquiv` rather than a `k`-algebra equivalence: the latter
+would first need a `k`-algebra structure on `IsLocalRing.ResidueField (AdjoinRoot f)`, which is not
+needed elsewhere in this file. -/
+
+/-- `Polynomial R ⧸ span {p}` and `AdjoinRoot p` are the same ring, as a transparent `RingEquiv`
+(`toFun`, `invFun := id`). `AdjoinRoot p` is defined as that quotient but carries its own `CommRing`
+instance, so composing equivalences through the raw quotient otherwise produces an opaque cast; see
+the section note above. -/
 def AdjoinRoot.quotSpanRingEquiv {R : Type*} [CommRing R] (p : R[X]) :
     (Polynomial R ⧸ (Ideal.span {p} : Ideal R[X])) ≃+* AdjoinRoot p where
   toFun := id
@@ -776,10 +467,9 @@ theorem AdjoinRoot.quotSpanRingEquiv_apply {R : Type*} [CommRing R] (p : R[X])
     (x : Polynomial R ⧸ (Ideal.span {p} : Ideal R[X])) :
     AdjoinRoot.quotSpanRingEquiv p x = x := rfl
 
-/-- **`IsLocalRing.ResidueField R` agrees with `R ⧸ maximalIdeal R`, as an honestly-transparent
-`RingEquiv`** -- the same kind of bridge as `AdjoinRoot.quotSpanRingEquiv`, but for the
-`ResidueField` layer itself (needed wherever a construction crosses from a *generic* `R ⧸ I`
-statement, such as `Ideal.quotEquivOfEq`'s, into the *named* `ResidueField R` type). -/
+/-- `IsLocalRing.ResidueField R` and `R ⧸ maximalIdeal R` are the same ring, as a transparent
+`RingEquiv`: the same kind of bridge as `AdjoinRoot.quotSpanRingEquiv`, for crossings from a generic
+`R ⧸ I` statement such as `Ideal.quotEquivOfEq`'s into the named `ResidueField R`. -/
 def IsLocalRing.ResidueField.quotEquivRaw {R : Type*} [CommRing R] [IsLocalRing R] :
     IsLocalRing.ResidueField R ≃+* R ⧸ IsLocalRing.maximalIdeal R where
   toFun := id
@@ -793,19 +483,11 @@ def IsLocalRing.ResidueField.quotEquivRaw {R : Type*} [CommRing R] [IsLocalRing 
 theorem IsLocalRing.ResidueField.quotEquivRaw_apply {R : Type*} [CommRing R] [IsLocalRing R]
     (x : IsLocalRing.ResidueField R) : IsLocalRing.ResidueField.quotEquivRaw x = x := rfl
 
-/-- **`Polynomial (IsLocalRing.ResidueField R)` agrees with `Polynomial (R ⧸ maximalIdeal R)`, as an
-honestly-transparent `RingEquiv`**: `IsLocalRing.ResidueField R` is *defined* as `R ⧸ maximalIdeal R`,
-but (like `AdjoinRoot p` above, see `AdjoinRoot.quotSpanRingEquiv`'s docstring) carries its *own*
-separately-derived `CommRing` instance (via `deriving CommRing`) rather than literally reusing
-`Ideal.Quotient.commRing`'s bundled instance -- confirmed empirically: the two `CommRing` instances
-are `rfl`-equal (both unfold to the same term), but the `Semiring (Polynomial ·)` instances built on
-top of them diverge enough that stating an ideal equality mixing `Ideal.span {p} : Ideal
-(Polynomial (IsLocalRing.ResidueField R))` against `Ideal.span {q} : Ideal (Polynomial (R ⧸
-maximalIdeal R))` and rewriting through it hits "target expression is not type-correct under the
-`instances` transparency level" (the same failure `quotSpanRingEquiv` was built to route around, one
-layer up: at `R` itself rather than at `AdjoinRoot f`). This bridge is transparent by construction
-(`toFun`/`invFun := id`) so its own `apply` is `rfl`, letting proofs cross this boundary via `simp`
-instead of `rw`ing through a raw `Eq` of ideals over mismatched-but-defeq coefficient rings. -/
+/-- `Polynomial (R ⧸ maximalIdeal R)` and `Polynomial (IsLocalRing.ResidueField R)` are the same
+ring, as a transparent `RingEquiv`. The two `CommRing` instances on the residue field are
+`rfl`-equal, but the polynomial semirings built on them differ enough that stating an equality of
+ideals across them and rewriting through it fails; this bridge lets proofs cross the boundary by
+`simp` instead. -/
 def IsLocalRing.ResidueField.polyQuotEquivRaw {R : Type*} [CommRing R] [IsLocalRing R] :
     Polynomial (R ⧸ IsLocalRing.maximalIdeal R) ≃+* Polynomial (IsLocalRing.ResidueField R) where
   toFun := id
@@ -820,6 +502,8 @@ theorem IsLocalRing.ResidueField.polyQuotEquivRaw_apply {R : Type*} [CommRing R]
     (x : Polynomial (R ⧸ IsLocalRing.maximalIdeal R)) :
     IsLocalRing.ResidueField.polyQuotEquivRaw x = x := rfl
 
+/-- The residue field of `AdjoinRoot f` is `l`, for `f` a monic lift of `minpoly k β₀` and `β₀` a
+primitive element of `l / k`. See the section note above for the composition. -/
 def HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly {R : Type*} [CommRing R]
     [HenselianLocalRing R] {l : Type*} [Field l] [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
     (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) {f : R[X]} (hf : f.Monic)
@@ -832,17 +516,11 @@ def HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly {R : Type*} [C
     HenselianLocalRing.isMaximal_map_of_lift_minpoly hβ₀ hf hfmap
   have hM0eq : Ideal.map (AdjoinRoot.of f) (IsLocalRing.maximalIdeal R) =
       IsLocalRing.maximalIdeal (AdjoinRoot f) := IsLocalRing.eq_maximalIdeal hM0max
-  -- The `f.map (algebraMap R k) = minpoly k β₀` identification (`hfmap`) is stated over `k :=
-  -- IsLocalRing.ResidueField R`, but `AdjoinRoot.quotEquivQuotMap` itself emits its target ideal
-  -- over the *raw* quotient ring `R ⧸ maximalIdeal R` -- a different (defeq, but differently
-  -- `deriving`-instanced, see `IsLocalRing.ResidueField.polyQuotEquivRaw`'s docstring) presentation
-  -- of the same underlying ring. Crossing between the two via a bare ideal equality (as an earlier
-  -- version of this proof did, naming it `hspan`) elaborates fine as a term but then breaks later
-  -- `rw`/`simp` reasoning through `RingEquiv.trans_apply`, hitting "target expression is not
-  -- type-correct under the `instances` transparency level" (confirmed empirically). Routing the
-  -- crossing through the transparent `polyQuotEquivRaw` bridge and `Ideal.quotientEquiv` (which
-  -- carries its own `_mk`-style application lemma, unlike a raw `Ideal.quotEquivOfEq` cast between
-  -- mismatched-instance presentations) avoids the wall entirely.
+  -- `hfmap` is stated over `k := IsLocalRing.ResidueField R`, whereas `AdjoinRoot.quotEquivQuotMap`
+  -- emits its target ideal over the raw quotient `R ⧸ maximalIdeal R`. Crossing between the two by
+  -- a bare ideal equality elaborates as a term but breaks later `rw`/`simp` reasoning through
+  -- `RingEquiv.trans_apply`; route it through `polyQuotEquivRaw` and `Ideal.quotientEquiv`, which
+  -- carries its own `_mk` application lemma.
   have helem : minpoly (IsLocalRing.ResidueField R) β₀ =
       IsLocalRing.ResidueField.polyQuotEquivRaw
         (f.map (Ideal.Quotient.mk (IsLocalRing.maximalIdeal R))) := by
@@ -871,34 +549,11 @@ def HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly {R : Type*} [C
                 (IntermediateField.equivOfEq hprim))
               IntermediateField.topEquiv)))))
 
-/-- **`residueField_equiv_adjoinRoot_lift_minpoly` sends the residue of the canonical generator
-`AdjoinRoot.root f` to `β₀` itself.** This is the compatibility fact needed by
-`exists_isDiscreteValuationRing_integralClosure_residueField_equiv` (and, downstream, by
-`ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective`) to identify the
-*specific* point of `l` that a generator's residue class corresponds to, not merely that
-`IsLocalRing.ResidueField (AdjoinRoot f)` is abstractly isomorphic to `l`.
-
-**History**: an earlier pass recorded this as blocked, tracing the obstruction to two layers
-(`IsLocalRing.ResidueField R` and `AdjoinRoot p`) each carrying their own `deriving`-generated
-`CommRing` instance rather than literally reusing `Ideal.Quotient.commRing`'s -- defeq, but not
-equal enough for `rw`/`simp` motives to type-check across the boundary ("target expression is not
-type-correct under the `instances` transparency level"). Route (a) from that docstring (a
-`ResidueField`-level transparent bridge, mirroring the `AdjoinRoot`-level `quotSpanRingEquiv` already
-in this file) is what closed it: `IsLocalRing.ResidueField.quotEquivRaw` (for the `ResidueField
-(AdjoinRoot f)` crossing in `residueField_equiv_adjoinRoot_lift_minpoly`'s own construction) and
-`IsLocalRing.ResidueField.polyQuotEquivRaw` (for the `Polynomial (IsLocalRing.ResidueField R)` vs.
-`Polynomial (R ⧸ maximalIdeal R)` crossing, replacing a raw `Ideal.quotEquivOfEq` cast there with
-`Ideal.quotientEquiv` composed against the new bridge) -- both `id`-based, transparent by
-construction, `simp`-friendly. With those two bridges threaded through
-`residueField_equiv_adjoinRoot_lift_minpoly`'s construction, the whole composite unwinds via `simp`
-with the bridges' own `_apply` lemmas plus each layer's defining application lemma
-(`Ideal.quotEquivOfEq_mk`, `AlgEquiv.coe_ringEquiv`, `AdjoinRoot.quotEquivQuotMap_apply_mk`,
-`Polynomial.map_X`, `Ideal.quotientEquiv_mk`, `AdjoinRoot.quotSpanRingEquiv_apply`), with one
-remaining `show` needed to cross the (still-present, but now harmless since it's a plain `rfl`-level
-`AdjoinRoot.mk_X`/`quotSpanRingEquiv`-transparent identification, not an instance mismatch) gap
-between the raw quotient representative and `AdjoinRoot.root`, then a second `simp` pass through the
-`IntermediateField` layer (`adjoinRootEquivAdjoin_apply_root`, `equivOfEq_apply`, `topEquiv_apply`,
-`AdjoinSimple.coe_gen`) to reach `β₀`. -/
+/-- `residueField_equiv_adjoinRoot_lift_minpoly` sends the residue of the canonical generator
+`AdjoinRoot.root f` to `β₀`, identifying which point of `l` that residue class corresponds to rather
+than only that the two residue fields are abstractly isomorphic. Used by
+`exists_isDiscreteValuationRing_integralClosure_residueField_equiv` to track a chosen generator's
+residue through the equivalence. -/
 theorem HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_root
     {R : Type*} [CommRing R] [HenselianLocalRing R] {l : Type*} [Field l]
     [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
@@ -925,29 +580,14 @@ theorem HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly_apply_resi
     IntermediateField.equivOfEq_apply, IntermediateField.topEquiv_apply,
     IntermediateField.AdjoinSimple.coe_gen]
 
-/-! ### Embedding `AdjoinRoot (f.map (algebraMap R K))` into an algebraically closed extension `L`
+/-! ### Embedding `AdjoinRoot (f.map (algebraMap R K))` into an algebraically closed extension -/
 
-The remaining ingredient toward
-`ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective` (see that theorem's
-docstring above): the abstract field `Frac(AdjoinRoot f)` needs to be realized as an actual subfield
-of the ambient field `L` the theorem works in. At the intended call site (`Langlands.WeilGroup`),
-`L = AlgebraicClosure K` is algebraically closed, so `p := f.map (algebraMap R K)` -- irreducible
-over `K = Frac(R)` by `irreducible_map_lift_minpoly`, of positive degree since it agrees with
-`f.natDegree = (minpoly k β₀).natDegree > 0` -- has a root `x : L` (`IsAlgClosed.exists_root`).
-`AdjoinRoot.lift` then gives a ring hom `AdjoinRoot p →+* L` sending the abstract root to `x`,
-automatically injective since its domain `AdjoinRoot p` is a field (`Fact (Irreducible p)` gives
-`AdjoinRoot.instField`, and any ring hom out of a division ring into a nontrivial ring is injective,
-`RingHom.injective`). This lands the **field-level** embedding of `Frac(AdjoinRoot f) ≅ AdjoinRoot p`
-into `L`, with image `K(x)`.
-
-**Scope note**: this is the field-level embedding only. Matching the *ring-of-integers* level
-statement -- identifying `AdjoinRoot f` itself (not just its fraction field) with the valuation
-subring of `K(x)` sitting under the ambient `A : ValuationSubring L`, and hence transporting the
-`finrank`/residue-field facts proved above for `AdjoinRoot f` to that valuation subring directly --
-is a further step (needing uniqueness of extension of the valuation from a Henselian base, as
-flagged in `exists_restrictNormalHom_decompositionSubgroup_surjective`'s proof sketch) not attempted
-here. -/
-
+/-- For `L / K` algebraically closed, the polynomial `p := f.map (algebraMap R K)` — irreducible by
+`irreducible_map_lift_minpoly`, of positive degree since `f.natDegree = (minpoly k β₀).natDegree` —
+has a root `x : L`, and `AdjoinRoot.lift` embeds `AdjoinRoot p` into `L` over `K`, carrying the
+canonical root to `x`. The embedding is injective because `AdjoinRoot p` is a field. This realizes
+the fraction field of `AdjoinRoot f` as the subfield `K⟮x⟯` of `L`; the corresponding statement for
+`AdjoinRoot f` itself is `injective_comp_adjoinRootMap` below. -/
 theorem HenselianLocalRing.exists_ringHom_adjoinRoot_map_of_isAlgClosed {R : Type*} [CommRing R]
     [IsDomain R] [IsIntegrallyClosed R] [HenselianLocalRing R] {K : Type*} [Field K] [Algebra R K]
     [IsFractionRing R K] {l : Type*} [Field l] [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
@@ -975,23 +615,15 @@ theorem HenselianLocalRing.exists_ringHom_adjoinRoot_map_of_isAlgClosed {R : Typ
   exact ⟨x, AdjoinRoot.lift (algebraMap K L) x hx, RingHom.injective _,
     AdjoinRoot.lift_root hx, AdjoinRoot.lift_comp_of hx⟩
 
-/-! ### The ring hom `AdjoinRoot f →+* AdjoinRoot p` and its injectivity
+/-! ### Base change `AdjoinRoot f →+* AdjoinRoot (f.map (algebraMap R K))`
 
-The first ingredient identified toward matching `AdjoinRoot f` (the "ring of integers" side) with
-a valuation subring under the ambient `A` (see the previous section's scope note): base change
-`R → K` on the quotient by `(f)`/`(p)` (`p := f.map (algebraMap R K)`) gives a natural ring hom
-`AdjoinRoot f →+* AdjoinRoot p`, and this hom is injective whenever `R` is a domain, `f` is monic,
-and `K` is (a field containing) the fraction field of `R`: `AdjoinRoot.mk f g ↦ AdjoinRoot.mk p
-(g.map (algebraMap R K))`, and `AdjoinRoot.mk f g = 0 ↔ f ∣ g` (`AdjoinRoot.mk_eq_zero`) transfers
-along `Polynomial.map_dvd_map` (valid since `algebraMap R K` is injective, `f` monic) to `p ∣
-g.map (algebraMap R K) ↔ f ∣ g`. Composed with the embedding `φ : AdjoinRoot p →+* L` of
-`exists_ringHom_adjoinRoot_map_of_isAlgClosed`, this gives an injective ring hom `AdjoinRoot f →+*
-L`, i.e. realizes `AdjoinRoot f` itself (not just its fraction field) inside `L`. -/
+Base change along `R → K` gives a natural, injective ring hom between the two quotients. Composed
+with the embedding of the previous section it realizes `AdjoinRoot f` itself, and not merely its
+fraction field, as a subring of `L`. -/
 
-/-- `AdjoinRoot f` evaluates to `0` under the composite `R → K → AdjoinRoot p` at the point
-`AdjoinRoot.root p` (`p := f.map (algebraMap R K)`), the side condition `AdjoinRoot.lift` needs to
-produce the ring hom `AdjoinRoot f →+* AdjoinRoot p`. Purely a rewrite of `Polynomial.eval₂_map`
-against `AdjoinRoot.eval₂_root`. -/
+/-- `f` evaluates to `0` under the composite `R → K → AdjoinRoot p` at `AdjoinRoot.root p`, where
+`p := f.map (algebraMap R K)`. This is the side condition `AdjoinRoot.lift` needs in order to
+produce `adjoinRootMap`. -/
 theorem HenselianLocalRing.eval₂_root_map {R : Type*} [CommRing R] {K : Type*} [Field K]
     [Algebra R K] (f : R[X]) :
     Polynomial.eval₂ ((AdjoinRoot.of (f.map (algebraMap R K))).comp (algebraMap R K))
@@ -999,17 +631,16 @@ theorem HenselianLocalRing.eval₂_root_map {R : Type*} [CommRing R] {K : Type*}
   rw [← Polynomial.eval₂_map]
   exact AdjoinRoot.eval₂_root _
 
-/-- **Base change on `AdjoinRoot`**: the natural ring hom `AdjoinRoot f →+* AdjoinRoot p` (`p :=
-f.map (algebraMap R K)`) sending `AdjoinRoot.root f` to `AdjoinRoot.root p`, induced by
-`AdjoinRoot.lift` along the composite `R → K → AdjoinRoot p`. -/
+/-- The natural ring hom `AdjoinRoot f →+* AdjoinRoot p`, `p := f.map (algebraMap R K)`, sending
+`AdjoinRoot.root f` to `AdjoinRoot.root p`, induced by `AdjoinRoot.lift` along the composite
+`R → K → AdjoinRoot p`. -/
 noncomputable def HenselianLocalRing.adjoinRootMap {R : Type*} [CommRing R] {K : Type*} [Field K]
     [Algebra R K] (f : R[X]) : AdjoinRoot f →+* AdjoinRoot (f.map (algebraMap R K)) :=
   AdjoinRoot.lift ((AdjoinRoot.of (f.map (algebraMap R K))).comp (algebraMap R K))
     (AdjoinRoot.root (f.map (algebraMap R K))) (HenselianLocalRing.eval₂_root_map f)
 
-/-- `adjoinRootMap` sends `AdjoinRoot.mk f g` to `AdjoinRoot.mk p (g.map (algebraMap R K))` (`p :=
-f.map (algebraMap R K)`): unwind `AdjoinRoot.lift_mk`, then identify the resulting `eval₂` with
-`AdjoinRoot.mk p (g.map (algebraMap R K))` via `AdjoinRoot.aeval_eq` and `AdjoinRoot.algebraMap_eq`. -/
+/-- `adjoinRootMap` sends `AdjoinRoot.mk f g` to `AdjoinRoot.mk p (g.map (algebraMap R K))`, where
+`p := f.map (algebraMap R K)`. -/
 theorem HenselianLocalRing.adjoinRootMap_mk {R : Type*} [CommRing R] {K : Type*} [Field K]
     [Algebra R K] (f g : R[X]) :
     HenselianLocalRing.adjoinRootMap (K := K) f (AdjoinRoot.mk f g) =
@@ -1018,11 +649,9 @@ theorem HenselianLocalRing.adjoinRootMap_mk {R : Type*} [CommRing R] {K : Type*}
   rw [AdjoinRoot.lift_mk, ← Polynomial.eval₂_map, ← AdjoinRoot.algebraMap_eq, ← Polynomial.aeval_def,
     AdjoinRoot.aeval_eq]
 
-/-- **`adjoinRootMap` is injective**, for `R` a domain, `f` monic, and `K` a fraction field of `R`:
-`AdjoinRoot.mk_eq_zero` reduces `adjoinRootMap f (AdjoinRoot.mk f g) = 0` to `f.map (algebraMap R
-K) ∣ g.map (algebraMap R K)`, which `Polynomial.map_dvd_map` (using injectivity of `algebraMap R
-K`, `IsFractionRing.injective`, and monicity of `f`) is equivalent to `f ∣ g`, i.e. to
-`AdjoinRoot.mk f g = 0`. -/
+/-- `adjoinRootMap` is injective, for `R` a domain, `f` monic and `K` a fraction field of `R`:
+`AdjoinRoot.mk_eq_zero` reduces vanishing to divisibility, and `Polynomial.map_dvd_map` gives
+`f.map (algebraMap R K) ∣ g.map (algebraMap R K) ↔ f ∣ g`. -/
 theorem HenselianLocalRing.injective_adjoinRootMap {R : Type*} [CommRing R] [IsDomain R]
     {K : Type*} [Field K] [Algebra R K] [IsFractionRing R K] {f : R[X]} (hf : f.Monic) :
     Function.Injective (HenselianLocalRing.adjoinRootMap (K := K) f) := by
@@ -1034,9 +663,9 @@ theorem HenselianLocalRing.injective_adjoinRootMap {R : Type*} [CommRing R] [IsD
     rw [AdjoinRoot.mk_eq_zero]
     exact (Polynomial.map_dvd_map (algebraMap R K) (IsFractionRing.injective R K) hf).mp hx
 
-/-- The composite `AdjoinRoot f →+* AdjoinRoot p →+* L` (via `adjoinRootMap` and the embedding
-`φ` of `exists_ringHom_adjoinRoot_map_of_isAlgClosed`) is injective: a composite of injective
-maps. This realizes `AdjoinRoot f` itself (not just its fraction field) as a subring of `L`. -/
+/-- The composite `AdjoinRoot f →+* AdjoinRoot p →+* L` of `adjoinRootMap` with the embedding `φ` of
+`exists_ringHom_adjoinRoot_map_of_isAlgClosed` is injective, realizing `AdjoinRoot f` itself, and
+not merely its fraction field, as a subring of `L`. -/
 theorem HenselianLocalRing.injective_comp_adjoinRootMap {R : Type*} [CommRing R] [IsDomain R]
     {K : Type*} [Field K] [Algebra R K] [IsFractionRing R K] {f : R[X]} (hf : f.Monic)
     {L : Type*} [Field L] {φ : AdjoinRoot (f.map (algebraMap R K)) →+* L}
@@ -1044,57 +673,45 @@ theorem HenselianLocalRing.injective_comp_adjoinRootMap {R : Type*} [CommRing R]
     Function.Injective (φ.comp (HenselianLocalRing.adjoinRootMap (K := K) f)) :=
   hφ.comp (HenselianLocalRing.injective_adjoinRootMap hf)
 
-/-! ### Closing the bridge: `integralClosure R K'` is a DVR with residue field `l`
+/-! ### The unramified extension of `K` with prescribed residue extension
 
-The remaining ingredient identified in the module docstring: given the root `x : L` produced by
-`exists_ringHom_adjoinRoot_map_of_isAlgClosed`, set `K' := K⟮x⟯` (`IntermediateField.adjoin K {x}`,
-avoiding the scoped `⟮⟯` notation) and `C := integralClosure R K'`. Then
+Let `x : L` be the root of `f` produced by `exists_ringHom_adjoinRoot_map_of_isAlgClosed`, and set
+`K' := K⟮x⟯` and `C := integralClosure R K'`. Then `x` is a root of the monic `f` itself, hence
+integral over `R`, giving `x' : C`, and:
 
-1. `x` is integral over `R` (it is a root of the monic `f`, not just of its image `p` over `K`),
-   hence gives a genuine element `x' : C`.
-2. `Algebra.adjoin K {x'} = ⊤` (as a `Subalgebra K K'`, `x'` viewed in `K'` via `algebraMap C K'`):
-   this is `IntermediateField.adjoin_simple_toSubalgebra_of_isAlgebraic` transported from the
-   ambient `L` down to `K'` along the (injective) inclusion `K' →ₐ[K] L`, using that `K'.toSubalgebra`
-   is exactly the image of `⊤ : Subalgebra K K'` under that inclusion (`IntermediateField.range_val`)
-   and exactly the image of `Algebra.adjoin K {x'}` (`AlgHom.map_adjoin`), so `Subalgebra.map_injective`
-   (injectivity of the inclusion) identifies the two preimages.
-3. `p := f.map (algebraMap R K)` is `minpoly K x` (`minpoly.eq_of_irreducible`, using that `p` is
-   monic so its `leadingCoeff` is a unit with inverse `1`), hence separable
-   (`separable_map_lift_minpoly`) gives `IsSeparable K x`, hence (via
-   `IntermediateField.isSeparable_adjoin_simple_iff_isSeparable`) `Algebra.IsSeparable K K'`.
-4. This is exactly what's needed to invoke
-   `Algebra.adjoin_eq_top_of_isUnit_aeval_derivative_minpoly` (`Langlands.MonogenicMaximalOrder`)
-   with `A := R`, `K := K`, `L := K'`, `B := C`, discharging `hunit` via
-   `Polynomial.isUnit_aeval_derivative_of_isUnit_resultant` applied to `x' : C` (a root of `f`,
-   since `x` is a root of `f` in `L` and `C ≤ K' ≤ L`) together with
-   `HenselianLocalRing.isUnit_resultant_lift_minpoly`. The conclusion `Algebra.adjoin R {x'} = ⊤`
-   (a `Subalgebra R C`) says every element of `C` is an `R`-polynomial in `x'`, i.e. `C` is
-   *monogenic*, generated by the single root `x'` -- this is the fact that lets `C`'s residue field
-   be computed via the `AdjoinRoot`-level machinery above (`residueField_equiv_adjoinRoot_lift_minpoly`)
-   rather than needing any further structure theory of `C`.
-5. `C` is a Dedekind domain (`integralClosure.isDedekindDomain`, needing `K'/K` finite separable from
-   step 3) and, via the same going-up/monogenic argument as `isLocalRing_adjoinRoot_lift_minpoly`
-   above (`C` is module-finite over `R` by `IsIntegralClosure.finite`, hence integral, and `Algebra.adjoin
-   R {x'} = ⊤` from step 4 identifies `C` with (the image of) `AdjoinRoot f`), local -- hence, being a
-   local Dedekind domain that is not a field (it properly contains `R`, or rather: it has finite rank
-   `> 1` over `R` whenever `[l : k] > 1`, though the DVR conclusion below only needs "not a field", via
-   `IsDiscreteValuationRing.TFAE` exactly as `isDedekindDomain` above), a discrete valuation ring.
-6. Its residue field is identified with `l` by transporting `residueField_equiv_adjoinRoot_lift_minpoly`
-   along the ring isomorphism `AdjoinRoot f ≃+* C` coming from step 4's monogenicity (both sides being
-   the image of the same universal map out of `AdjoinRoot f`).
+* `Algebra.adjoin K {x'} = ⊤` as a `Subalgebra K K'`, by transporting
+  `IntermediateField.adjoin_simple_toSubalgebra_of_isAlgebraic` from `L` down along the injective
+  inclusion `K' →ₐ[K] L`.
+* `f.map (algebraMap R K) = minpoly K x` (`minpoly.eq_of_irreducible`, both being monic), so
+  `separable_map_lift_minpoly` gives `IsSeparable K x` and hence `Algebra.IsSeparable K K'`.
+* `Algebra.adjoin R {x'} = ⊤` as a `Subalgebra R C`, i.e. `C` is monogenic, by
+  `Algebra.adjoin_eq_top_of_isUnit_aeval_derivative_minpoly`
+  (`Langlands.MonogenicMaximalOrder`), whose `hunit` hypothesis comes from
+  `isUnit_resultant_lift_minpoly` and `Polynomial.isUnit_aeval_derivative_of_isUnit_resultant`.
+  Monogenicity makes `AdjoinRoot f →+* C` bijective, transporting the locality and residue-field
+  computations of the previous sections to `C`.
+* `C` is a Dedekind domain (`integralClosure.isDedekindDomain`, using separability), local, and not
+  a field, hence a discrete valuation ring by `IsDiscreteValuationRing.TFAE`.
 
-**Residue-map compatibility (added for
-`ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective`):** the conclusion's
-residue-field equivalence `e : ResidueField C ≃+* l` is accompanied by the fact that it sends the
-residue class of *any* `y : C` lying over `x` itself (i.e. with `algebraMap K' L (algebraMap C K'
-y) = x`) to `β₀`. This is exactly what identifies the *specific* point of `l` a residue class
-corresponds to, not merely that the two residue fields are abstractly isomorphic -- needed by the
-caller to track a chosen generator's residue through the equivalence. Proved by observing that any
-such `y` is forced to equal the internal witness `xC` (both map to `x` under the injective
-composite `C → K' → L`), then chasing `e (residue C xC)` back through `mapEquiv e` (via
-`ResidueField.map_residue`) to `residue (AdjoinRoot f) (root f)`, which
-`residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_root` sends to `β₀`. -/
+The residue-field equivalence `e : ResidueField C ≃+* l` in the conclusion is accompanied by the
+fact that it carries the residue class of any `y : C` lying over `x` to `β₀`: such a `y` is forced
+to equal `x'`, and `e (residue C x')` unwinds to
+`residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_root`. -/
 
+/-- **Existence of an unramified extension with prescribed residue extension.** Let `R` be a
+Henselian discrete valuation ring with fraction field `K` and finite residue field `k`, let `L / K`
+be algebraically closed, let `β₀` be an element of a `k`-algebra field `l`, integral over `k` and
+generating `l` over `k`, and let `f : R[X]` be a monic lift of `minpoly k β₀`. Then `f` has a root
+`x : L`, integral over `R`, with `f.map (algebraMap R K) = minpoly K x`, such that `K⟮x⟯ / K` is
+separable and the integral closure `C` of `R` in `K⟮x⟯` is a discrete valuation ring whose residue
+field is isomorphic to `l`, by an isomorphism carrying the residue class of any element of `C` lying
+over `x` to `β₀`.
+
+A standalone result: it is not used in the proof of
+`ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective`, which obtains roots
+with prescribed residues from `ValuationSubring.exists_aeval_root_residue_eq` instead. The root `x`
+here is an arbitrary choice among the conjugates of the lift, so it does not on its own pin down a
+residue in a prescribed valuation subring of `L`. -/
 theorem HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv
     {R : Type*} [CommRing R] [IsDomain R] [IsIntegrallyClosed R] [IsDedekindDomain R]
     [IsDiscreteValuationRing R] [HenselianLocalRing R] [Finite (IsLocalRing.ResidueField R)]
@@ -1273,11 +890,10 @@ theorem HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residu
   haveI hClocal : IsLocalRing (AdjoinRoot f) :=
     HenselianLocalRing.isLocalRing_adjoinRoot_lift_minpoly hβ₀ hfmonic hfmap
   haveI hCisLocalRing : IsLocalRing C := e.isLocalRing
-  -- `C`, being a local Dedekind domain that is not a field (its residue field, computed below,
-  -- has the same finite cardinality profile as `l`, which is a nontrivial extension whenever
-  -- `f.natDegree > 1`; more simply, a field would make every nonzero element a unit, but the
-  -- image of the maximal ideal of `R` under `algebraMap R C` is a nonzero, non-unit ideal since
-  -- `R → C` is injective and `R` is not a field), is a discrete valuation ring.
+  -- `C` is not a field: `algebraMap R C` is injective and `C` is integral over `R`, so the maximal
+  -- ideal of `C` contracts to that of `R`, and `maximalIdeal C = ⊥` would force
+  -- `maximalIdeal R = ⊥`, contradicting that `R` is a discrete valuation ring. Being a local
+  -- Dedekind domain that is not a field, `C` is then a discrete valuation ring.
   have hCnotField : ¬ IsField C := by
     intro hfield
     have hCmax0 : IsLocalRing.maximalIdeal C = ⊥ :=
@@ -1325,50 +941,31 @@ theorem HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residu
   exact HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_root
     hβ₀ hfmonic hfmap hprim
 
-/-! ### An `A`-relative root with prescribed residue (route (a))
+/-! ### Roots in a valuation subring with prescribed residue
 
-The gap left open by `exists_isDiscreteValuationRing_integralClosure_residueField_equiv` (see its
-docstring): the root `x : L` it produces is an *arbitrary* choice among the roots of the shared lift
-polynomial `f`, with no control over which `A`-residue it lands on. This lemma sidesteps that
-architecture entirely, and is what `exists_restrictNormalHom_decompositionSubgroup_surjective` below
-actually uses to close its proof (no `sorry`).
+The argument uses neither Hensel's lemma nor any locality or separability hypothesis on the
+coefficient ring:
 
-`ValuationSubring.exists_aeval_root_residue_eq` closes exactly this gap, and does so by a
-genuinely different (and simpler) argument than the Hensel's-lemma machinery used everywhere else
-in this file: it needs **no** `HenselianLocalRing`/separability hypothesis on `R` at all. The proof:
+1. `p := f.map (algebraMap R A) : A[X]` is monic, so its image in `L[X]` has exactly `p.natDegree`
+   roots in the algebraically closed `L`, counted with multiplicity
+   (`IsAlgClosed.card_roots_map_eq_natDegree_of_injective`).
+2. Each such root is a root of a monic polynomial with `A`-coefficients, hence integral over `A`,
+   hence in the image of `A`, a valuation subring being integrally closed in its fraction field
+   `L` (`IsIntegrallyClosed.isIntegral_iff`).
+3. Hence `p.roots.card = p.natDegree` (`Polynomial.filter_roots_map_range_eq_map_roots`), i.e. `p`
+   already splits into linear factors over `A` itself, not merely over `L`
+   (`Polynomial.splits_iff_card_roots`, `Polynomial.Splits.eq_prod_roots_of_monic`).
+4. Reducing that factorization along `IsLocalRing.residue A` expresses the reduction of `f` as a
+   product of linear factors indexed by the residues of the `A`-roots of `p`. The residue field
+   being a field, a prescribed root `a₀` of the reduction annihilates one of those factors
+   (`Multiset.prod_eq_zero_iff`), so `a₀` is the residue of an `A`-root of `p`. -/
 
-1. `p := f.map (algebraMap R A) : A[X]` is monic, hence (since `L` is algebraically closed) its
-   image `p.map (algebraMap A L)` has exactly `p.natDegree`-many roots in `L`, counted with
-   multiplicity (`IsAlgClosed.card_roots_map_eq_natDegree_of_injective`, using that
-   `algebraMap A L` is injective, `IsFractionRing.injective`).
-2. Every one of those roots is already *in the range of* `algebraMap A L`: a root `y : L` of
-   `p.map (algebraMap A L)` is a root of a monic polynomial with `A`-coefficients, hence integral
-   over `A` (`⟨p, hpmonic, _⟩`), hence (since `A`, a `ValuationSubring`, is integrally closed in its
-   own fraction field `L` -- `ValuationSubring`'s `IsIntegrallyClosed` instance,
-   `Mathlib.RingTheory.Valuation.LocalSubring`, combined with `IsFractionRing A L`) lies in the
-   image of `A` (`IsIntegrallyClosed.isIntegral_iff`).
-3. Combining 1 and 2 (via `Polynomial.filter_roots_map_range_eq_map_roots`, which identifies the
-   sub-multiset of `L`-roots lying in the range of `A → L` with the image of `A`'s own `roots`
-   multiset): `p.roots.card = p.natDegree` too, i.e. `p` **already splits into linear factors over
-   `A` itself** (`Polynomial.splits_iff_card_roots`, `Polynomial.Splits.eq_prod_roots_of_monic`) --
-   not merely after passing to `L`.
-4. Reducing this `A`-factorization along the residue map `IsLocalRing.residue A : A →+*
-   IsLocalRing.ResidueField A` turns it into a factorization of `f`'s reduction mod `A`'s maximal
-   ideal into linear factors indexed by the residues of `p`'s `A`-roots. Since the prescribed `a₀`
-   is *a* root of this reduction and `IsLocalRing.ResidueField A` is a field (no zero divisors), one
-   of those linear factors must vanish at `a₀` (`Multiset.prod_eq_zero_iff`) -- i.e. `a₀` is
-   *exactly* the residue of one of `p`'s `A`-roots. That root is the desired `x`.
-
-No Hensel's-lemma input, no separability hypothesis, no assumption that `R` is local: this is a
-direct consequence of `L` being algebraically closed and `A` being integrally closed in it. -/
-
-/-- **`A`-relative Hensel lift with prescribed residue.** Given `A : ValuationSubring L` with `L`
-algebraically closed, a monic `f : R[X]` (`R` any commutative ring with an algebra map to `A`), and
-a prescribed root `a₀ : IsLocalRing.ResidueField A` of `f`'s reduction mod `A`'s maximal ideal
-(expressed via `IsRoot` of the composite ring hom `(IsLocalRing.residue A).comp (algebraMap R A)`,
-to avoid requiring a bundled `Algebra R (IsLocalRing.ResidueField A)` instance), there exists
-`x : A` that is both a genuine root of `f` (`Polynomial.aeval x f = 0`) *and* whose residue in `A`
-is exactly the prescribed `a₀`. See the module note above for the (Hensel-free) argument. -/
+/-- **A root with prescribed residue.** Let `L` be algebraically closed, `A : ValuationSubring L`,
+`R` a commutative ring with an algebra map to `A`, and `f : R[X]` monic. Every root
+`a₀ : IsLocalRing.ResidueField A` of the reduction of `f` modulo the maximal ideal of `A` is the
+residue of a root of `f` in `A` itself. The hypothesis is phrased as `IsRoot` for the image of `f`
+under the composite `(IsLocalRing.residue A).comp (algebraMap R A)`, avoiding a bundled
+`Algebra R (IsLocalRing.ResidueField A)` instance. -/
 theorem ValuationSubring.exists_aeval_root_residue_eq
     {L : Type*} [Field L] [IsAlgClosed L] (A : ValuationSubring L)
     {R : Type*} [CommRing R] [Algebra R A]
@@ -1434,18 +1031,32 @@ theorem ValuationSubring.exists_aeval_root_residue_eq
   rw [Polynomial.mem_roots hpne, Polynomial.IsRoot.def] at hdroot
   rwa [hpdef, Polynomial.eval_map_algebraMap] at hdroot
 
-/-! ### The unramified lifting theorem itself
-
-Statement and (partial) proof of
-`ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective`, whose docstring lives
-with `ValuationSubring.decompositionSubgroup_smul_algebraMap_residueField` near the top of this file
-(see the "Placement note" there for why the theorem is proved here rather than there: its proof
-needs `HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv` just
-above, so it cannot be proved before that lemma is in scope). -/
+/-! ### The unramified lifting theorem -/
 
 variable {L : Type*} [Field L] [Algebra K L] (A : ValuationSubring L) [Algebra ↥(𝒪[K]) A]
   [IsLocalHom (algebraMap ↥(𝒪[K]) A)]
 
+/-- **The unramified lifting theorem.** Let `K` be a nonarchimedean local field, `L / K` an
+algebraic, algebraically closed extension, and `A : ValuationSubring L` lying over `𝒪[K]`
+(`hAcomap`, `hcompat`), with `IsLocalRing.ResidueField A / 𝓀[K]` Galois. For every finite normal
+subextension `M` of `IsLocalRing.ResidueField A / 𝓀[K]`, every element of `Gal(M/𝓀[K])` is the
+restriction to `M` of the action of some element of the decomposition subgroup
+`A.decompositionSubgroup K` on `IsLocalRing.ResidueField A`.
+
+This is not an instance of `InfiniteGalois.restrictNormalHom_surjective`, which concerns restriction
+between normal subextensions of a single Galois extension: the map shown surjective here goes from
+the decomposition subgroup of `A` to `Gal(M/𝓀[K])`, `M` being an extension of the residue field
+rather than an intermediate field of `L / K`.
+
+Proof outline. Take a primitive element `β₀` of `M / 𝓀[K]` (`𝓀[K]` is finite, hence perfect) and a
+monic lift `f : 𝒪[K][X]` of `minpoly 𝓀[K] β₀`. Since `g` fixes `𝓀[K]`, the same `f` lifts the
+minimal polynomial of `g β₀`, so `ValuationSubring.exists_aeval_root_residue_eq` applied twice
+yields roots `y, y' : A` of `f` with residues `β₀` and `g β₀`. Both are roots of the irreducible
+`f.map (algebraMap ↥(𝒪[K]) K)`, hence share a minimal polynomial over `K`, and the resulting
+isomorphism `K⟮y⟯ ≃ₐ[K] K⟮y'⟯` extends to `σ : L ≃ₐ[K] L` by algebraicity and algebraic closedness
+of `L`. Both `A` and `σ • A` contract to `𝒪[K]`, so uniqueness of the extension of the valuation
+puts `σ` in the decomposition subgroup, and equivariance of the residue map gives `σ • β₀ = g β₀`,
+which determines the restriction of `σ` to `M` since `β₀` generates `M`. -/
 theorem ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective
     (hAcomap : A.comap (algebraMap K L) = (ValuativeRel.valuation K).valuationSubring)
     (hcompat : ∀ a : ↥(𝒪[K]), (algebraMap ↥(𝒪[K]) A a : L) = algebraMap K L (a : K))
@@ -1458,10 +1069,9 @@ theorem ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjecti
           (IsLocalRing.ResidueField A)) σ)
           (ValuationSubring.decompositionSubgroup_smul_algebraMap_residueField A hcompat σ)) := by
   intro g
-  -- The ambient algebra structure `↥(𝒪[K]) → K → L`, needed to invoke the existence-of-unramified-
-  -- extension machinery at this theorem's own `L` (not built as an ambient instance of the
-  -- section, to avoid the same instance-resolution fragility `hcompat`'s docstring note above
-  -- describes -- constructed locally here instead, exactly once).
+  -- The ambient algebra structure `↥(𝒪[K]) → K → L`. Constructed locally rather than as a section
+  -- instance, for the same instance-resolution reason `hcompat` is a hypothesis (see the module
+  -- docstring).
   letI hRLalg : Algebra ↥(𝒪[K]) L := ((algebraMap K L).comp (algebraMap ↥(𝒪[K]) K)).toAlgebra
   haveI hRKLtower : IsScalarTower ↥(𝒪[K]) K L := IsScalarTower.of_algebraMap_eq fun _ => rfl
   -- `M / 𝓀[K]` is separable (`𝓀[K]` is finite, hence perfect) and finite, hence has a primitive
@@ -1470,26 +1080,19 @@ theorem ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjecti
   haveI : Algebra.IsAlgebraic 𝓀[K] M := Algebra.IsAlgebraic.of_finite 𝓀[K] M
   obtain ⟨β₀, hprim⟩ := Field.exists_primitive_element 𝓀[K] M
   have hβ₀ : IsIntegral 𝓀[K] (β₀ : M) := IsIntegral.of_finite 𝓀[K] (β₀ : M)
-  -- The monic lift `f` of `β₀`'s minimal polynomial, computed *once* and shared between the two
-  -- calls to `exists_isDiscreteValuationRing_integralClosure_residueField_equiv` below (for `β₀`
-  -- and for `g β₀`) -- this sharing is what defeats the obstruction recorded above ("A candidate
-  -- route was investigated and rejected"): with a common `f`, the two roots produced are roots of
-  -- the *same* polynomial over `K`, hence genuinely `K`-conjugate.
+  -- The monic lift `f` of `β₀`'s minimal polynomial, computed once and shared between the two root
+  -- extractions below (for `β₀` and for `g β₀`), so that the two roots produced are roots of the
+  -- same polynomial over `K` and hence `K`-conjugate.
   obtain ⟨f, hfmonic, hfdeg, hfmap⟩ := HenselianLocalRing.exists_monic_lift_minpoly hβ₀
-  -- `f` is irreducible over `K`, hence over `L` too has `minpoly K` equal to (a unit multiple of)
-  -- `f.map (algebraMap ↥(𝒪[K]) K)` for any of its roots.
+  -- `f.map (algebraMap ↥(𝒪[K]) K)` is irreducible over `K`, hence is the minimal polynomial of any
+  -- of its roots in `L`, up to the scaling forced by monicity.
   have hpirr : Irreducible (f.map (algebraMap ↥(𝒪[K]) K)) :=
     HenselianLocalRing.irreducible_map_lift_minpoly (K := K) hβ₀ hfmonic hfmap
   -- The composite ring hom `↥(𝒪[K]) → K → L` agrees with `↥(𝒪[K]) → A → L`, by `hcompat`.
   have hcomp2 : (algebraMap K L).comp (algebraMap ↥(𝒪[K]) K) =
       (algebraMap A L).comp (algebraMap ↥(𝒪[K]) A) := RingHom.ext fun a => (hcompat a).symm
-  -- **Route (a)**: for a prescribed `a₀ : IsLocalRing.ResidueField A` that is a root of `f`'s
-  -- reduction mod `A`'s maximal ideal, produce a genuine element `y : A` that is both a root of `f`
-  -- and has residue in `A` exactly `a₀`. Applied below to `a₀ := β₀` and `a₀ := g β₀`
-  -- (sharing the same `f`), this pins the two roots' `A`-residues directly, closing the gap this
-  -- file's previous pass (see git history) identified: the old approach produced roots via
-  -- `IsAlgClosed.exists_root`, an arbitrary choice among Galois conjugates, with no control over
-  -- which conjugate's residue was hit.
+  -- For an element of `M` whose minimal polynomial over `𝓀[K]` is lifted by `f`, produce a root of
+  -- `f` in `A` whose residue is that element. Applied below to `β₀` and to `g β₀`, sharing `f`.
   have hroot_of_residue : ∀ a₀ : M, f.map (algebraMap ↥(𝒪[K]) 𝓀[K]) = minpoly 𝓀[K] (a₀ : M) →
       ∃ y : A, Polynomial.aeval y f = 0 ∧ IsLocalRing.residue A y = (a₀ : IsLocalRing.ResidueField A) := by
     intro a₀ ha₀map
@@ -1501,8 +1104,7 @@ theorem ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjecti
     rw [Polynomial.IsRoot.def, hcompres, ← Polynomial.map_map, ha₀map,
       Polynomial.eval_map_algebraMap]
     exact minpoly.aeval_algHom 𝓀[K] M.val a₀
-  -- **Piece A**: apply the above to `β₀` itself, giving `y : A` with `residue A y = β₀` and
-  -- `y` a root of `f`.
+  -- Applied to `β₀`: a root `y : A` of `f` with `residue A y = β₀`.
   obtain ⟨y, hyf, hyres⟩ := hroot_of_residue β₀ hfmap
   -- `(y : L)` is then a root of `f.map (algebraMap ↥(𝒪[K]) K)` over `K`: push `hyf` through
   -- `algebraMap A L`, using `hcomp2` to identify the two routes `↥(𝒪[K]) → K → L` and
@@ -1522,11 +1124,9 @@ theorem ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjecti
   have hminpoly : f.map (algebraMap ↥(𝒪[K]) K) = minpoly K (y : L) := by
     rwa [(hfmonic.map (algebraMap ↥(𝒪[K]) K)).leadingCoeff, inv_one, Polynomial.C_1, mul_one]
       at hminpoly_scaled
-  -- **Piece B**: lift `g : M ≃ₐ[𝓀[K]] M` to a `K`-automorphism `σ` of `L` lying in the
-  -- decomposition subgroup of `A`. Since `g` fixes `𝓀[K]` pointwise, `g β₀` has the same minimal
-  -- polynomial as `β₀` (`minpoly.algEquiv_eq`), so the *same* monic lift `f` used for `β₀` above
-  -- also lifts `g β₀`'s minimal polynomial, hence `hroot_of_residue` applies again, sharing `f`,
-  -- to produce a *second* root `y'` with residue exactly `g β₀`.
+  -- Since `g` fixes `𝓀[K]` pointwise, `g β₀` has the same minimal polynomial as `β₀`
+  -- (`minpoly.algEquiv_eq`), so `f` lifts it too and `hroot_of_residue` applies again, giving a
+  -- second root `y' : A` with residue `g β₀`.
   have hβg : IsIntegral 𝓀[K] (g β₀ : M) :=
     (isIntegral_algHom_iff g.toAlgHom g.injective).mpr hβ₀
   have hfmap_g : f.map (algebraMap ↥(𝒪[K]) 𝓀[K]) = minpoly 𝓀[K] (g β₀ : M) :=
@@ -1575,8 +1175,8 @@ theorem ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjecti
   have hσA : σ • A = A :=
     LocalField.valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField hσAcomap hAcomap
   have hσmem : σ ∈ A.decompositionSubgroup K := MulAction.mem_stabilizer_iff.mpr hσA
-  -- **Generator-extension helper**: two `𝓀[K]`-algebra automorphisms of `M` agreeing at the
-  -- primitive element `β₀` (`hprim : 𝓀[K]⟮β₀⟯ = ⊤`) agree everywhere.
+  -- Two `𝓀[K]`-algebra automorphisms of `M` agreeing at the primitive element `β₀`
+  -- (`hprim : 𝓀[K]⟮β₀⟯ = ⊤`) agree everywhere.
   have hgenext : ∀ h1 h2 : M ≃ₐ[𝓀[K]] M, h1 β₀ = h2 β₀ → h1 = h2 := by
     intro h1 h2 hh
     have heq : h1.toAlgHom.comp IntermediateField.topEquiv.toAlgHom =
@@ -1592,13 +1192,9 @@ theorem ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjecti
     simpa using hcongr
   refine ⟨⟨σ, hσmem⟩, hgenext _ g ?_⟩
   dsimp only
-  -- **Closing the gap**: since `y : A` has `residue A y = β₀` and `σ` (viewed inside the
-  -- decomposition subgroup, acting on `A`) sends `y` to `y'` (as elements of `L`, hence, `y` and
-  -- `y'` both lying in `A` and the action stabilizing `A`, as elements of `A` too), and `residue A`
-  -- is equivariant for this action (`IsLocalRing.ResidueField.residue_smul`), the induced action of
-  -- `σ` on `IsLocalRing.ResidueField A` sends `β₀ = residue A y` to `residue A y' = g β₀` directly
-  -- -- no need to separately track an abstract residue-field isomorphism or its compatibility with
-  -- a `C ↪ A` embedding, since `y`, `y'` are already genuine elements of `A` by construction.
+  -- `σ` sends `y` to `y'` in `A`, the action stabilizing `A`, and `residue A` is equivariant for
+  -- that action (`IsLocalRing.ResidueField.residue_smul`), so the induced action of `σ` on
+  -- `IsLocalRing.ResidueField A` sends `β₀ = residue A y` to `residue A y' = g β₀`.
   have hσyA : (⟨σ, hσmem⟩ : A.decompositionSubgroup K) • y = y' := by
     apply Subtype.ext
     show (σ : L ≃ₐ[K] L) (y : L) = (y' : L)
