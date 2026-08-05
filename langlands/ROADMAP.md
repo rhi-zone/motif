@@ -1619,6 +1619,50 @@ that avoids stalling on (a).
 - **Candidate 2 (totally ramified norm-group computation) remains untouched**, per the tradeoff
   stated above — this pass only closed candidate 1.
 
+#### Status 2026-08-05 (twelfth pass) — `decompositionSubgroup = ⊤` for adic completions CLOSED; associated-graded embeddings blocked and documented
+
+- **What got built.** `langlands/Langlands/RamificationFiltrationAdicCompletion.lean` (commit
+  `163c755`) adds `IsDedekindDomain.HeightOneSpectrum.decompositionSubgroup_eq_top`: for the
+  `R S K L v w` variable block already in use in that file, `(w.adicCompletionIntegers
+  L).decompositionSubgroup (v.adicCompletion K) = ⊤`. This closes the corollary the eleventh pass
+  scoped but didn't attempt — and turns out to need **no Galois/normality hypothesis at all**: the
+  underlying fact is that every algebraic extension of a *complete* field has a unique valuation
+  extension (`LocalField.valuationSubring_eq_of_comap_eq`, `Langlands.HenselianValuation`), so every
+  `σ : (w.adicCompletion L) ≃ₐ[v.adicCompletion K] (w.adicCompletion L)` automatically stabilizes
+  `w.adicCompletionIntegers L`, whether or not the extension is normal — exactly parallel to
+  `LocalField.decompositionSubgroup_eq_top` in `Langlands.WeilGroup` (same fact for `L =
+  AlgebraicClosure K`). The instance chain the eleventh pass thought was missing
+  (`CompleteSpace`/`ValuativeRel`/`Compatible` on `v.adicCompletion K`) turned out to already exist
+  in full, keyed to exactly this file's `R S K L v w` variable block, in `Langlands.NormMap`'s
+  `RankOne` section (`instRankOneValuedAdicCompletion`, `instValuativeRelValuedAdicCompletion`, and
+  the `Compatible` instances) plus its `Module.Finite (v.adicCompletion K) (w.adicCompletion L)`
+  instance (`NormMap.lean:363`) and `adicCompletionIntegers_comap_eq`/
+  `valuation_valuationSubring_eq_adicCompletionIntegers` (`NormMap.lean:409,424`) — importing
+  `Langlands.NormMap` (no cycle: nothing under `RamificationFiltration` is imported transitively by
+  it) was sufficient; no new instances had to be built. `lake build`: 8675 jobs, clean.
+- **What's still blocked, and precisely why.** The associated-graded embeddings (`ramificationGroup
+  i / ramificationGroup (i+1) ↪` residue-field data, for `i = 0` multiplicative and `i ≥ 1`
+  additive) were attempted directly in the general `RamificationFiltration.lean` setting (a chosen
+  uniformizer `π` with `hπ : maximalIdeal A = span {π}`). The homomorphism property was worked out
+  and confirmed to hold (recorded in `RamificationFiltration.lean`'s docstring: the `i = 0` case is
+  an exact computation via `Ideal.span_singleton_eq_span_singleton` needing no error-term estimate;
+  the `i ≥ 1` case needs a generic commutative-ring divisibility identity, `(1+x)^{i+1} - 1 -
+  (i+1)x` divisible by `x^2`, to bound the cross term). **The actual wall is proving the *kernel* of
+  either map, restricted to `ramificationGroup K A i`, is *exactly* `ramificationGroup K A (i+1)`**
+  — the `⊇` direction is free (test the defining `∀x` property at `x = π`), but `⊆` needs that a
+  congruence checked only at the uniformizer `π` propagates to *all* `x ∈ A`, which classically uses
+  monogenicity of the ring of integers over the inertia-fixed subfield (`O_L = O_{L_0}[π_L]` for a
+  totally ramified extension of a complete DVR, via an Eisenstein-polynomial argument). Checked this
+  pass: `grep -rli "monogenic\|PowerBasis"` over `Mathlib/RingTheory/Valuation/` and
+  `Mathlib/RingTheory/DiscreteValuationRing/` is empty — **no such theorem exists in Mathlib**.
+  Adding it as a hypothesis directly (rather than deriving it) would assume most of the content of
+  the theorem being proved, not supply a narrow missing typeclass — so, per this project's
+  stop-on-genuine-wall discipline, it was left undone and documented in
+  `RamificationFiltration.lean`'s "## Scope" section rather than forced with an ad hoc hypothesis or
+  a `sorry`. This also means the finiteness fact (step 2 of the original brief) and the
+  eventually-trivial filtration remain out of reach, since both are built on the embeddings.
+- **Candidate 2 (totally ramified norm-group computation) remains untouched.**
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
