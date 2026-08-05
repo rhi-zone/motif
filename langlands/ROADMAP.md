@@ -456,6 +456,114 @@ that avoids stalling on (a).
   proofs in-repo — duplicating an in-flight class field theory formalization
   would be the single most wasteful outcome in this whole plan.
 
+### Phase 2a — Unramified norm-group surjectivity (scoped first milestone, 2026-08-05)
+- **Why this exists:** Phase 2 as written has no small starting task — its
+  "first move" jumps straight to the full reciprocity map, sized comparable
+  to Serre's *Local Fields* Ch. VIII–XIII combined. This subsection scopes a
+  genuinely smaller first cut: the classical fact that for `L/K` the
+  **unramified** extension of local fields of degree `n`, the norm map is
+  as surjective as it can possibly be — this is the "easy half" of local
+  CFT (Serre Ch. V §2–3); the ramified/Lubin–Tate half is the hard part
+  Phase 2 is really about.
+- **Statement, full version (the classical theorem):** `N_{L/K}(L^×) =
+  ⟨π⟩^n · O_K^×` for `L/K` unramified of degree `n`, `π` any uniformizer of
+  `K` (also a uniformizer of `L`, since unramified). Equivalently the norm
+  map is surjective on unit groups `O_L^× ↠ O_K^×`.
+- **Investigated 2026-08-05 (research agent, read-only):** what's already in
+  place and what's missing, ingredient by ingredient:
+  - **Have, exactly what's needed:** a single-extension local norm map
+    `IsDedekindDomain.HeightOneSpectrum.localNormMap : (w.adicCompletion
+    L)ˣ →* (v.adicCompletion K)ˣ` in `Langlands/NormMap.lean` (built from
+    `Algebra.norm`, already proven to send local units to local units via
+    `localNormMap_mem_units`) — this had been an open question (is there a
+    *single-extension* norm map, as opposed to only the idele-level one?);
+    confirmed yes.
+  - **Have, residue-field level:** `Mathlib.FieldTheory.Finite.GaloisField.
+    norm_surjective` (norm `𝔽_{q^n} → 𝔽_q` is surjective) and
+    `ValuationSubring.surjective_unitGroupToResidueFieldUnits` (reduction
+    `O_L^× ↠ 𝓀[L]^×` is surjective, general valuation theory, no
+    completeness needed, kernel = `principalUnitGroup`). Composing these
+    with the residue-field correspondence already built in
+    `Langlands/UnramifiedExtension.lean` gives, essentially for free: **the
+    norm map on residue fields `𝓀[L]^× → 𝓀[K]^×` is surjective for the
+    unramified extension.**
+  - **Missing — real new content, not wiring:** closing the gap from
+    "surjective mod principal units" to "surjective on all of `O_K^×`"
+    needs lifting through the principal-units filtration `1 + π^i O_L`,
+    which classically requires (a) a graded/log isomorphism of successive
+    quotients `(1+π^iO_L)/(1+π^{i+1}O_L)` with the residue field
+    (additively), (b) the fact the norm acts there via the *trace* map
+    (`Mathlib.RingTheory.Trace.Basic.Algebra.trace_surjective` exists and is
+    the right trace-surjectivity ingredient, but nothing connects it to
+    norm-on-principal-units), and (c) a completeness/limit argument to
+    piece the filtration together into full unit-group surjectivity. None
+    of (a)–(c) exists in Mathlib or this repo — this is genuinely the
+    mathematical content Serre spends real pages on, not a missing lemma
+    name.
+- **Scoped milestone (what to actually build first):** stop at the
+  residue-field-level statement — `𝓀[L]^× → 𝓀[K]^×` is surjective for the
+  unramified extension, proved by composing the three pieces above (finite
+  field norm surjectivity + residue reduction surjectivity + the existing
+  `UnramifiedExtension.lean` residue correspondence) — plus, if the
+  `localNormMap`-reduces-to-residue-norm compatibility lemma turns out
+  tractable, `O_L^× ↠ O_K^×` **modulo principal units**
+  (`O_K^×/(1+𝔪_K)`). This is a clean, citable sub-theorem and an honest
+  stopping point that does not require the principal-units filtration
+  machinery.
+- **Explicitly deferred to a later phase:** the full unramified norm-group
+  theorem (`N_{L/K}(L^×) = ⟨π⟩^n · O_K^×`) needs the principal-units
+  filtration graded isomorphism first — that filtration machinery is itself
+  a legitimate next milestone after this one lands, not part of it.
+- **Depends on:** `Langlands/NormMap.lean` (have, single-extension local
+  norm map), `Langlands/UnramifiedExtension.lean` (have, residue-field
+  correspondence), `Mathlib.FieldTheory.Finite.GaloisField.norm_surjective`
+  (have), `ValuationSubring.surjective_unitGroupToResidueFieldUnits` (have).
+- **Size:** small for the residue-field-level statement itself, **but the
+  `localNormMap`-reduces-to-residue-norm compatibility square does not
+  compose from existing pieces** — attempted 2026-08-05 and stopped
+  (no file written, no `sorry`) after confirming via loogle against vendored
+  Mathlib that no lemma connects `Algebra.norm` (`LinearMap.det (lmul R S
+  x)`, `Mathlib/RingTheory/Norm/Defs.lean:64`) to a norm computed after
+  reducing mod an ideal/maximal ideal — searches for
+  `Algebra.norm (?A ⧸ ?I)`, `LinearMap.det, Ideal.Quotient.mk`, and
+  base-change-style norm lemmas all returned nothing on point. Two viable
+  routes to close it, both real sub-developments, not one-lemma glue:
+  1. **Determinant/basis route.** Establish `Module.Free` for
+     `w.adicCompletionIntegers L` over `v.adicCompletionIntegers K`
+     (plausible via `Module.free_of_finite_type_torsion_free'`,
+     `Mathlib/LinearAlgebra/FreeModule/PID.lean`, needing
+     `IsPrincipalIdealRing`/`Module.Finite`/`Module.IsTorsionFree` instances
+     for these adic-completion subrings not yet in this repo); lift that
+     basis to the residue fields via
+     `IsLocalRing.linearCombination_bijective_of_flat`
+     (`Mathlib/RingTheory/LocalRing/Module.lean:292`, a genuine
+     Nakayama/flatness tool that already exists and is on point); push the
+     matrix of `lmul` through `RingHom.map_det`
+     (`Mathlib/LinearAlgebra/Matrix/Determinant/Basic.lean`, confirmed to
+     exist) to match entrywise reduction.
+  2. **Galois/Frobenius route.** Use `Algebra.norm_eq_prod_automorphisms`
+     (`Mathlib/RingTheory/Norm/Transitivity.lean`) and
+     `prod_galRestrict_eq_norm`
+     (`Mathlib/RingTheory/IntegralClosure/IntegralRestrict.lean`) to express
+     the norm as a product over `Gal(L/K)` acting on the integral closure
+     directly, then match that action to Frobenius on residue fields. Needs
+     an `IsGalois` instance for the specific unramified completion
+     extension and an `IsIntegralClosure` instance linking
+     `w.adicCompletionIntegers L` to `v.adicCompletionIntegers K` — neither
+     exists yet; `UnramifiedExtension.lean`'s decomposition-subgroup
+     machinery is close but not packaged this way, and reconciling its
+     action with `galRestrict`'s is itself nontrivial.
+  Either route is comparable in size to what's already in
+  `Langlands/UnramifiedExtension.lean` — a legitimate follow-on milestone in
+  its own right, not a same-session composition on top of Phase 2a.
+- **Next concrete step (for whoever picks this up):** pick route 1 or 2
+  above and build the missing instance(s) it needs first, in isolation,
+  before attempting the compatibility square itself.
+- **Upstreamable:** the residue-field composition itself is likely too thin
+  to be its own Mathlib PR, but is a real building block toward an
+  upstreamable unramified-norm-group theorem once the principal-units
+  filtration exists.
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
