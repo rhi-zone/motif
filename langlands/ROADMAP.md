@@ -1575,6 +1575,50 @@ that avoids stalling on (a).
   Phase-2a-shaped quick win would be a mistake. Neither was attempted this pass, per its scope-only
   brief.
 
+#### Status 2026-08-05 (eleventh pass) — candidate 1 (higher ramification groups) CLOSED
+
+- **What got built.** `langlands/Langlands/RamificationFiltration.lean` (commit `6bdd1eb`) closes
+  Mathlib's own stated `TODO: Define higher ramification groups in lower numbering` in
+  `Mathlib/RingTheory/Valuation/RamificationGroup.lean`, in the same generality as that file (`K L`
+  fields, `[Algebra K L]`, `A : ValuationSubring L`) rather than specialized to this repo's
+  adic-completion setup. Defines `ValuationSubring.ramificationGroup K A i : Subgroup
+  (A.decompositionSubgroup K)`, Serre's `G_i` for `i : ℕ`, index-shifted by one relative to Serre
+  since `D`/`I` already exist as `decompositionSubgroup`/`inertiaSubgroup` and don't need
+  redefining (documented explicitly in the file's module docstring). Proves:
+  - `mem_maximalIdeal_smul_iff` / `smul_mem_pow_maximalIdeal` (`RamificationFiltration.lean:72,87`):
+    the decomposition-subgroup action fixes `𝔪_A` and its powers setwise — the ingredient needed to
+    show `ramificationGroup` is actually a subgroup.
+  - `ramificationGroup_succ_le` (`:128`): the filtration is decreasing, `G_{i+1} ≤ G_i`.
+  - `ramificationGroup_zero` (`:136`): `ramificationGroup K A 0 = A.inertiaSubgroup K`, the sanity
+    check that the indexing convention matches Serre's classical `G_0 = I`.
+  - `ramificationGroup_normal` (`:161`): each `G_i` is normal in the **full** decomposition group
+    `A.decompositionSubgroup K`, stronger than the classically-stated `G_i ⊴ G_0` — this fell out
+    directly from the same maximal-ideal-invariance lemma used for the subgroup structure, with no
+    extra hypothesis on the conjugating element needed, so it was proved in the strong form rather
+    than the weaker one originally anticipated.
+  `langlands/Langlands/RamificationFiltrationAdicCompletion.lean` (commit `6cfbb96`) adds the thin
+  adic-completion specialization requested alongside it: `IsDedekindDomain.HeightOneSpectrum.
+  ramificationGroup`, instantiating the general definition at `A := w.adicCompletionIntegers L`
+  over `v.adicCompletion K`, using the `R S K L v w` variable block from
+  `AdicCompletionIntegralClosure.lean`/`UnramifiedValuationExtension.lean`. Pure instantiation, no
+  new mathematical content. Both files: zero `sorry`, `lake build Langlands` green (re-verified
+  2026-08-05, 8675 jobs).
+- **What's left open, and why.** The "eventually trivial" finiteness fact (`∃ N, G_N = ⊥`) was not
+  attempted — its standard proof needs the associated-graded injections `G_i/G_{i+1} ↪
+  𝔪_A^i/𝔪_A^{i+1}` (or the multiplicative variant for `i = 0`), machinery beyond this pass's scope;
+  documented in the file's own module docstring rather than left as a `sorry`. The stretch-goal
+  structure theorems (`G_0/G_1` embeds in the residue field's multiplicative group, `G_i/G_{i+1}`
+  embeds additively for `i ≥ 1`) were not attempted, same reason. A corollary considered for the
+  adic-completion file — "Galois `⟹` `decompositionSubgroup = ⊤`", paralleling `Langlands.NormMap`'s
+  `hAfix` pattern via `LocalField.valuationSubring_eq_of_comap_eq` — was scoped but not attempted:
+  it needs a `CompleteSpace`/`NontriviallyNormedField`/`IsUltrametricDist` instance chain (or
+  `IsNonarchimedeanLocalField`) on `v.adicCompletion K` not present in the general `R S K L v w`
+  block used throughout `AdicCompletionIntegralClosure.lean`; supplying it is new scope, not a
+  by-product of what this pass built. Flagged as a Mathlib upstreaming candidate in `TODO.md` (it
+  closes Mathlib's own stated gap, in Mathlib's own generality).
+- **Candidate 2 (totally ramified norm-group computation) remains untouched**, per the tradeoff
+  stated above — this pass only closed candidate 1.
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
