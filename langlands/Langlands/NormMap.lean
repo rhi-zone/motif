@@ -1,3 +1,4 @@
+import Langlands.HenselianValuation
 import Langlands.IdeleGroup
 import Mathlib.NumberTheory.NumberField.Completion.FinitePlace
 import Mathlib.NumberTheory.RamificationInertia.Valuation
@@ -106,6 +107,52 @@ its base (not just rank-one) -- a separate blocker, not attempted here. -/
 noncomputable instance instRankOneValuedAdicCompletion :
     (Valued.v : Valuation (v.adicCompletion F) ℤᵐ⁰).RankOne :=
   Valuation.IsRankOneDiscrete.rankOne _ (by norm_num : (1 : ℝ≥0) < 2)
+
+/-- **`v.adicCompletion F` carries a `ValuativeRel` matching its ambient `Valued` structure.**
+Built via `ValuativeRel.ofValuation`, the generic "turn a valuation into a `ValuativeRel`"
+constructor from `Mathlib.RingTheory.Valuation.ValuativeRel.Basic`, applied to the already-ambient
+`Valued.v : Valuation (v.adicCompletion F) ℤᵐ⁰` (`Mathlib`'s
+`IsDedekindDomain.HeightOneSpectrum.instValuedAdicCompletion`). This is the first piece of the
+`NontriviallyNormedField`/`IsUltrametricDist`/`ValuativeRel`/`Compatible` bridge that
+`LocalField.valuationSubring_eq_of_comap_eq` (`Langlands.HenselianValuation`) needs on its base
+field: previously this bridge was only built for `K` satisfying `IsNonarchimedeanLocalField K`
+(`LocalField.valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField`), which required first
+manufacturing a `Valued` instance from an ambient `ValuativeRel`/`TopologicalSpace` (via
+`IsTopologicalAddGroup.rightUniformSpace` and friends). Here the direction is reversed and
+simpler: `v.adicCompletion F` already has a genuine `Valued` instance from Mathlib, so we only need
+to go *forward* to `ValuativeRel`, not backward. -/
+noncomputable instance instValuativeRelValuedAdicCompletion :
+    ValuativeRel (v.adicCompletion F) :=
+  ValuativeRel.ofValuation (Valued.v : Valuation (v.adicCompletion F) ℤᵐ⁰)
+
+/-- The ambient `Valued.v` on `v.adicCompletion F` is `Compatible` with the `ValuativeRel`
+instance just built from it (`instValuativeRelValuedAdicCompletion`) -- immediate from
+`Valuation.Compatible.ofValuation`, since that `ValuativeRel` instance *is*
+`ValuativeRel.ofValuation Valued.v`. -/
+instance : (Valued.v : Valuation (v.adicCompletion F) ℤᵐ⁰).Compatible :=
+  Valuation.Compatible.ofValuation _
+
+/-- **`v.adicCompletion F` is a nontrivially normed field**, via `Valued.toNontriviallyNormedField`
+applied to the ambient `Valued` structure together with `instRankOneValuedAdicCompletion`. -/
+noncomputable instance instNontriviallyNormedFieldAdicCompletion :
+    NontriviallyNormedField (v.adicCompletion F) :=
+  Valued.toNontriviallyNormedField (v.adicCompletion F) ℤᵐ⁰
+
+/-- **Closing the bridge**: the canonical valuation of the `NontriviallyNormedField` structure
+just built (`NormedField.valuation`) is `Compatible` with `instValuativeRelValuedAdicCompletion`.
+This is the last piece `LocalField.valuationSubring_eq_of_comap_eq` needs, generalizing
+`LocalField.valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField`'s bridge (built there
+only for `IsNonarchimedeanLocalField K`) to any bare Dedekind-domain adic completion
+`v.adicCompletion F`. Proved via `NormedField.valuation_compatible_of_eq_rankOne_hom_comp_restrict`
+(`Langlands.HenselianValuation`), whose hypothesis `hnorm` holds by the defining `rfl`
+`Valued.coe_valuation_eq_rankOne_hom_comp_valuation` (the `NormedField` structure above is
+*literally built from* `Valued.v`, so its canonical valuation agrees with `Valued.v`'s `RankOne`
+embedding on the nose). -/
+instance : (NormedField.valuation (K := v.adicCompletion F)).Compatible :=
+  NormedField.valuation_compatible_of_eq_rankOne_hom_comp_restrict
+    (Valued.v : Valuation (v.adicCompletion F) ℤᵐ⁰)
+    (fun x => congrFun
+      (Valued.coe_valuation_eq_rankOne_hom_comp_valuation (v.adicCompletion F) ℤᵐ⁰) x)
 
 end RankOne
 
@@ -239,24 +286,39 @@ would combine `isIntegral_norm` (the norm of an integral element is integral,
 closed (`Mathlib.RingTheory.Valuation.LocalSubring`), applied to `v.adicCompletionIntegers K`
 (which is literally a `ValuationSubring` by definition).
 
-The "integral closure = ring of integers" half of this needs
-`LocalField.valuationSubring_eq_of_comap_eq` (`Langlands.HenselianValuation`), which requires
-`Algebra.IsAlgebraic (v.adicCompletion K) (w.adicCompletion L)`. That algebraicity fact is now
-available unconditionally for any finite extension `L / K` of fraction fields of Dedekind domains
-(`instAlgebraIsAlgebraicAdicCompletionAdicCompletion` above, via the generalized
-`Module.Finite (v.adicCompletion K) (w.adicCompletion L)` instance above it -- itself a
-generalization, to arbitrary Dedekind domains, of Mathlib's
-`NumberField.HeightOneSpectrum.instModuleFiniteAdicCompletion`, which is only stated for number
-fields even though its proof never uses that). What remains is a *second*, separate gap:
-`valuationSubring_eq_of_comap_eq` also needs `v.adicCompletion K` to carry a
-`NontriviallyNormedField`/`IsUltrametricDist`/`ValuativeRel`/`Valuation.Compatible` bridge
-compatible with its own `Valued` structure -- the same bridge
-`valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField` builds, but only for `K` satisfying
-`IsNonarchimedeanLocalField K`, not for a bare `v.adicCompletion K` of an arbitrary Dedekind
-domain. Building that bridge generically (mirroring the RankOne/NontriviallyNormedField work done
-for the algebraicity gap) is not yet attempted here. This is recorded as a `sorry` isolating
-exactly that missing ingredient, so that the assembly argument below
-(`eventually_localNormMap_mem_units`) can be proved unconditionally on top of it. -/
+The "integral closure = ring of integers" half of this needs *uniqueness* of the extension of the
+valuation, `LocalField.valuationSubring_eq_of_comap_eq` (`Langlands.HenselianValuation`). That
+theorem needs two things on `v.adicCompletion K`: `Algebra.IsAlgebraic (v.adicCompletion K)
+(w.adicCompletion L)` (closed above, `instAlgebraIsAlgebraicAdicCompletionAdicCompletion`, for any
+finite extension of fraction fields of Dedekind domains) and a `NontriviallyNormedField`/
+`IsUltrametricDist`/`ValuativeRel`/`Valuation.Compatible` bridge compatible with `v.adicCompletion
+K`'s ambient `Valued` structure. **This bridge is now also closed**, generically for *any*
+Dedekind domain (not just `IsNonarchimedeanLocalField`, which is what
+`valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField` was specialized to): see the
+`instValuativeRelValuedAdicCompletion` / `instNontriviallyNormedFieldAdicCompletion` /
+`(NormedField.valuation (K := v.adicCompletion F)).Compatible` instances in the `RankOne` section
+above. Unlike the `IsNonarchimedeanLocalField` case (which has to *manufacture* a `Valued`
+instance from an ambient `ValuativeRel`/`TopologicalSpace`, going `ValuativeRel → Valued`), here
+`v.adicCompletion F` already has a genuine Mathlib `Valued` instance, so the bridge only needs to
+go the other way (`Valued → ValuativeRel`, via `ValuativeRel.ofValuation`), which is simpler and
+needs no uniform-space reconstruction.
+
+With both hypotheses of `valuationSubring_eq_of_comap_eq` now available unconditionally for
+`v.adicCompletion K`, **a third, separate gap remains**: `valuationSubring_eq_of_comap_eq` only
+proves *uniqueness* of a `ValuationSubring` of `L` comapping to `𝒪[K]` -- it does not construct
+one. To run the "integral closure = ring of integers" argument we additionally need *existence*:
+that the integral closure of `v.adicCompletionIntegers K` in `w.adicCompletion L` actually *is* a
+`ValuationSubring` extending it (equivalently, that some `ValuationSubring` of `w.adicCompletion L`
+comaps to `v.adicCompletionIntegers K` at all). This is a different, classical fact (existence of
+an extension of a valuation to a field extension, e.g. via Chevalley's extension theorem or the
+integral-closure-is-a-valuation-ring argument), not yet attempted here. A promising unconditional
+tool for it, found while investigating but not yet wired up: `LocalSubring.exists_le_valuationSubring`
+(`Mathlib.RingTheory.Valuation.LocalSubring`), which produces (via Zorn's lemma, over *any* field)
+a `ValuationSubring` dominating a given `LocalSubring` -- applying it to a suitable localization of
+the integral closure at a prime lying over `v`'s maximal ideal (via going-up, since the integral
+closure is integral over `v.adicCompletionIntegers K`) should give the required extension. This is
+recorded as a `sorry` isolating exactly that missing existence ingredient, so that the assembly
+argument below (`eventually_localNormMap_mem_units`) can be proved unconditionally on top of it. -/
 theorem localNormMap_mem_units {a : (w.adicCompletion L)ˣ}
     (ha : a ∈ (w.adicCompletionIntegers L).units) :
     localNormMap K L v w a ∈ (v.adicCompletionIntegers K).units := by
