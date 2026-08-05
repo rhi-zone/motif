@@ -564,6 +564,113 @@ that avoids stalling on (a).
   upstreamable unramified-norm-group theorem once the principal-units
   filtration exists.
 
+#### Status 2026-08-05 (second attempt) — residue-field half **CLOSED**, compatibility square still open
+
+- **Built:** `Langlands/ResidueFieldNorm.lean` (new, 165 lines, zero
+  `sorry`, `lake build Langlands.ResidueFieldNorm` green). Not yet in
+  `Langlands.lean`'s import list — consistent with `NormMap.lean`,
+  `HenselianValuation.lean`, `UnramifiedExtension.lean`, which are also
+  built module-by-module rather than from the root target.
+- **Key structural find (supersedes the prior session's "build `Module.Free`
+  first" framing for the *structure*, not for the square):**
+  `Valuation.HasExtension` (`Mathlib/RingTheory/Valuation/Extension.lean`)
+  is exactly the right abstraction, and `NormMap.lean`'s
+  `adicCompletionIntegers_comap_eq` (`Langlands/NormMap.lean:424`) is
+  literally its hypothesis in disguise —
+  `Valuation.isEquiv_iff_val_le_one` (`Mathlib/RingTheory/Valuation/
+  Basic.lean:913`) turns the comap-of-valuation-subrings equation into
+  `HasExtension`'s `val_isEquiv_comap`. Note `HasExtension` asks only for
+  `IsEquiv`, not equality, so the ramification-index factor `e` in the
+  valuation relation is harmless.
+  - `ResidueFieldNorm.lean:72` `hasExtension_valued_adicCompletion` —
+    `(Valued.v : Valuation (v.adicCompletion K) ℤᵐ⁰).HasExtension
+    (Valued.v : Valuation (w.adicCompletion L) ℤᵐ⁰)`.
+  - That single instance yields, from `Extension.lean`'s
+    `instAlgebra_valuationSubring` / `instIsLocalHomValuationInteger` /
+    `IsLocalRing.ResidueField`'s `Ideal.Quotient.algebraOfLiesOver`:
+    `Algebra K₀ L₀`, `IsLocalHom (algebraMap K₀ L₀)`,
+    `(maximalIdeal L₀).LiesOver (maximalIdeal K₀)`, and
+    **`Algebra 𝓀[K] 𝓀[L]`** — the instance whose absence previously made
+    the residue-field norm unstatable in the `adicCompletion` setting.
+    Re-stated in `adicCompletionIntegers` form at `ResidueFieldNorm.lean:92,
+    100, 108` via `inferInstanceAs`, because `adicCompletionIntegers`
+    (`Mathlib/RingTheory/DedekindDomain/AdicValuation.lean:809`) is a
+    non-reducible `def` for `Valued.v.valuationSubring` and instance search
+    does not see through it.
+  - `ResidueFieldNorm.lean:118` `coe_algebraMap_adicCompletionIntegers` and
+    `:127` `algebraMap_residueField_residue` (both `rfl`) pin these
+    instances to `adicCompletionComap`, so the structure is provably the
+    intended one and not something else instance search happened to find.
+- **Proved:** for `[Finite 𝓀[L]]`,
+  - `ResidueFieldNorm.lean:146` `residueField_norm_surjective` —
+    `Function.Surjective (Algebra.norm 𝓀[K] (S := 𝓀[L]))`;
+  - `ResidueFieldNorm.lean:157` `residueField_units_norm_surjective` —
+    `Function.Surjective (Units.map (Algebra.norm 𝓀[K]))`, i.e.
+    **`𝓀[L]^× ↠ 𝓀[K]^×`**.
+  Both are `FiniteField.norm_surjective` / `FiniteField.unitsMap_norm_surjective`
+  (`Mathlib.FieldTheory.Finite.GaloisField` — namespace `FiniteField`, not
+  `GaloisField` as the note above says; fully general in `Algebra K K'` with
+  `[Finite K']`, not tied to `GaloisField`) applied to the new instance.
+  `Finite 𝓀[L]` is a hypothesis: `R`, `S` here are arbitrary Dedekind
+  domains, so residue finiteness is not derivable.
+- **Scope caveat, stated in the file's docstrings:** these are the
+  **abstract** residue-field norm `Algebra.norm 𝓀[K] : 𝓀[L] → 𝓀[K]`. They
+  are *not* the reduction of `localNormMap` (`NormMap.lean:386`). The
+  unramifiedness of `w | v` is nowhere used and nowhere assumed.
+- **Compatibility square: still open, not attempted in code.** Verified this
+  session, via loogle against the vendored Mathlib:
+  - `IsLocalRing.residue, Algebra.norm` → 0 hits;
+    `Algebra.norm, Ideal.Quotient.mk` → 0 hits. No norm-mod-ideal lemma
+    exists, confirming the prior session's finding.
+  - `Module.Finite, Valuation.integer` → 0 hits;
+    `Module.Free, Valuation.integer` → 0 hits;
+    `Module.Finite, ValuationSubring` → 0 hits. So route 1's basis is not
+    available: `Module.Finite`/`Module.Free` for `L₀` over `K₀` would have
+    to be built from scratch (finiteness of the integral closure over a
+    complete DVR), which is the bulk of that route.
+  - Correction to route 1 above: `IsLocalRing.linearCombination_bijective_of_flat`
+    **does not exist** (loogle: unknown identifier; no grep hit in vendored
+    Mathlib). The on-point Nakayama-style tools that do exist are
+    `Module.exists_basis_of_basis_baseChange` and
+    `IsLocalRing.span_eq_top_of_tmul_eq_basis`, but both require
+    `Module.FinitePresentation K₀ L₀` — i.e. they need the finiteness above
+    as input, they do not supply it.
+  - `IsDiscreteValuationRing (v.adicCompletionIntegers K)` *does* exist as a
+    Mathlib instance
+    (`instIsDiscreteValuationRingSubtypeAdicCompletionMemValuationSubringAdicCompletionIntegers`),
+    so once `Module.Finite` + torsion-freeness land, PID-freeness follows.
+  - **Additional blocker not previously named:** even with a basis, the
+    reduction step needs `𝔪_K · L₀ = 𝔪_L`, i.e. *unramifiedness*. There is
+    currently no way to even state that in `NormMap.lean`'s setting — its
+    `w | v` has arbitrary ramification index `e`, and Mathlib has no
+    `Algebra.IsUnramified` for valuation-ring extensions (only
+    `Algebra.IsUnramifiedAt`/`IsUnramifiedIn` for Dedekind-domain primes and
+    `IsUnramifiedAtInfinitePlaces`). So route 1 needs *three* new pieces,
+    not one: finiteness/freeness, an unramifiedness formulation, and the
+    determinant reduction.
+  - **The `AdjoinRoot`-basis shortcut was checked and does not apply.**
+    `AdjoinRoot.powerBasisAux'` does exist and does work over an arbitrary
+    `CommRing` (unlike `AdjoinRoot.powerBasis`), so it would give a free
+    basis for free — but only for a ring of the form `AdjoinRoot f`.
+    `HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv`
+    (`Langlands/UnramifiedExtension.lean:715`) does not expose the internal
+    `AdjoinRoot f ≃+* C` isomorphism in its statement, and more decisively
+    its setting is the wrong one: it produces
+    `integralClosure R (IntermediateField.adjoin K {x})` inside an
+    **algebraically closed** ambient `L` (`[IsAlgClosed L]` is a hypothesis),
+    whereas `localNormMap` lives on `w.adicCompletion L`, which is not
+    algebraically closed and is not given as `K_v⟮x⟯`. Bridging the two
+    would require proving the completion extension is monogenic over
+    `K₀` — i.e. proving unramified-implies-monogenic in the completion
+    setting, which is itself the missing content, not a way around it.
+- **Honest summary of Phase 2a status:** `𝓀[L]^× ↠ 𝓀[K]^×` is **closed as
+  an abstract finite-field fact** in the correct `adicCompletion` setting,
+  with the residue-field algebra structure now genuinely present and pinned
+  to `adicCompletionComap`. It is **not** closed as the reduction of
+  `localNormMap`; that remains the gate to `O_L^× ↠ O_K^×` mod principal
+  units, and is a milestone-sized development (three pieces above), not
+  session-sized glue.
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
