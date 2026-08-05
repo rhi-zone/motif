@@ -3,39 +3,26 @@ import Mathlib.GroupTheory.FiniteIndexNormalSubgroup
 /-!
 # Transport of finite-index normal subgroups along a group isomorphism
 
-Pure group theory, with no connection to the rest of `Langlands` -- a general-purpose fact: a
-`MulEquiv e : G ≃* G'` induces an order isomorphism between the finite-index-normal-subgroup
-lattices `FiniteIndexNormalSubgroup G` and `FiniteIndexNormalSubgroup G'` (the indexing categories
-of the diagrams defining the profinite completions of `G` and `G'`,
-`Mathlib.Topology.Algebra.Category.ProfiniteGrp.Completion`), preserving index.
-
-This is a standalone step towards relating `ProfiniteGrp.ProfiniteCompletion.completion` at
-different universes via `ProfiniteGrp.uliftFunctor` (`Langlands.ProfiniteGrpUlift`): the
-finite-index-normal-subgroup lattices of `G` and `ULift.{v} G` (linked by `MulEquiv.ulift : ULift.{v}
-G ≃* G`) need to be identified, as the first step in comparing the diagrams
-`FiniteIndexNormalSubgroup (ULift.{v} G) ⥤ FiniteGrp` and `FiniteIndexNormalSubgroup G ⥤ FiniteGrp`.
-The remaining steps (a natural isomorphism between the two diagrams valued in `ProfiniteGrp`, and
-invoking `CategoryTheory.Limits.HasLimit.isoOfEquivalence` to conclude an isomorphism of the
-completions) are not attempted here.
+A group isomorphism `e : G ≃* G'` induces an index-preserving order isomorphism between the
+lattices `FiniteIndexNormalSubgroup G` and `FiniteIndexNormalSubgroup G'`. Since these lattices are
+the indexing categories of the diagrams defining profinite completions
+(`Mathlib.Topology.Algebra.Category.ProfiniteGrp.Completion`), this is the first step in comparing
+the profinite completions of isomorphic groups; `Langlands.ProfiniteCompletionUlift` carries that
+out for `MulEquiv.ulift : ULift.{v} G ≃* G`.
 
 ## Main results
 
-* `FiniteIndexNormalSubgroup.mapMulEquiv` : transport of a finite-index normal subgroup along a
+* `FiniteIndexNormalSubgroup.mapMulEquiv` : pushforward of a finite-index normal subgroup along a
   `MulEquiv`.
-* `FiniteIndexNormalSubgroup.index_mapMulEquiv` : transport preserves the index.
-* `FiniteIndexNormalSubgroup.orderIsoMulEquiv` : the induced order isomorphism between the two
-  finite-index-normal-subgroup lattices.
+* `FiniteIndexNormalSubgroup.index_mapMulEquiv` : the pushforward preserves the index.
+* `FiniteIndexNormalSubgroup.orderIsoMulEquiv` : the induced order isomorphism.
 
-## Proof idea
+## Implementation notes
 
-For `e : G ≃* G'` and `H : Subgroup G`, `Subgroup.index_map` gives `(H.map e).index = (H ⊔
-e.ker).index * e.range.index`; since `e` is bijective, `e.ker = ⊥` (so `H ⊔ e.ker = H`) and
-`e.range = ⊤` (so its index is `1`), giving `(H.map e).index = H.index`. Normality transports via
-`Subgroup.Normal.map` (using surjectivity of `e`). Together these show `H.map e.toMonoidHom` is
-again finite-index and normal whenever `H` is, giving `FiniteIndexNormalSubgroup.mapMulEquiv`;
-`mapMulEquiv e.symm` is a two-sided inverse (via `Subgroup.map_map` and `Subgroup.map_id`, since
-`e.symm.toMonoidHom.comp e.toMonoidHom = MonoidHom.id`), and both directions are order-preserving
-(pushforward of subgroups along an injective map preserves `≤`), giving the order isomorphism.
+Index preservation is `Subgroup.index_map`, which gives
+`(H.map e).index = (H ⊔ e.ker).index * e.range.index`, together with `e.ker = ⊥` and `e.range = ⊤`.
+Normality transports by `Subgroup.Normal.map` along the surjection `e`. The inverse of `mapMulEquiv
+e` is `mapMulEquiv e.symm`, both being pushforwards along injective maps and hence monotone.
 -/
 
 @[expose] public section
@@ -44,8 +31,8 @@ namespace FiniteIndexNormalSubgroup
 
 variable {G G' : Type*} [Group G] [Group G']
 
-/-- Transport a finite-index normal subgroup along a group isomorphism `e : G ≃* G'`, via the
-pushforward `Subgroup.map e.toMonoidHom`. -/
+/-- The pushforward `Subgroup.map e.toMonoidHom` of a finite-index normal subgroup along a group
+isomorphism `e : G ≃* G'`, again finite-index and normal. -/
 def mapMulEquiv (e : G ≃* G') (H : FiniteIndexNormalSubgroup G) : FiniteIndexNormalSubgroup G' :=
   haveI : (Subgroup.map e.toMonoidHom H.toSubgroup).Normal :=
     H.isNormal'.map e.toMonoidHom e.surjective
@@ -60,7 +47,7 @@ def mapMulEquiv (e : G ≃* G') (H : FiniteIndexNormalSubgroup G) : FiniteIndexN
 theorem toSubgroup_mapMulEquiv (e : G ≃* G') (H : FiniteIndexNormalSubgroup G) :
     (mapMulEquiv e H).toSubgroup = Subgroup.map e.toMonoidHom H.toSubgroup := rfl
 
-/-- Transport along a `MulEquiv` preserves the index of a finite-index normal subgroup. -/
+/-- Pushforward along a `MulEquiv` preserves the index of a finite-index normal subgroup. -/
 theorem index_mapMulEquiv (e : G ≃* G') (H : FiniteIndexNormalSubgroup G) :
     (mapMulEquiv e H).toSubgroup.index = H.toSubgroup.index := by
   rw [toSubgroup_mapMulEquiv, Subgroup.index_map, (MonoidHom.ker_eq_bot_iff _).mpr e.injective,
@@ -90,8 +77,8 @@ theorem mapMulEquiv_mono (e : G ≃* G') {H₁ H₂ : FiniteIndexNormalSubgroup 
     mapMulEquiv e H₁ ≤ mapMulEquiv e H₂ :=
   Subgroup.map_mono h
 
-/-- The order isomorphism between the finite-index-normal-subgroup lattices of `G` and `G'`
-induced by a group isomorphism `e : G ≃* G'`. -/
+/-- The order isomorphism `FiniteIndexNormalSubgroup G ≃o FiniteIndexNormalSubgroup G'` induced by
+a group isomorphism `e : G ≃* G'`, given by pushforward along `e` and along `e.symm`. -/
 def orderIsoMulEquiv (e : G ≃* G') :
     FiniteIndexNormalSubgroup G ≃o FiniteIndexNormalSubgroup G' where
   toFun := mapMulEquiv e
