@@ -1816,6 +1816,65 @@ that avoids stalling on (a).
   (`spectralNorm K L π < 1`, a real inequality) is exactly what gap (2)'s bridging step needs as
   input, so sequencing them the other way round has nothing to feed gap (2) until gap (1) exists.
 
+#### Status 2026-08-06 (fifteenth pass) — gap 1 CLOSED; gap 2 narrowed (two of four sub-blockers resolved), still not assembled, no theorem declared
+
+- **Task.** Close gap 1, then attempt gap 2, of the fourteenth pass's Eisenstein-ness-from-uniformizer
+  route; state the full `isEisensteinAt_minpoly_of_isUniformizer` theorem if both close.
+- **Gap 1 CLOSED**, commit `6b823af`: `LocalField.spectralNorm_lt_one_of_mem_nonunits`
+  (`Langlands/HenselianValuation.lean`, `LocalField.NormedFieldBridge` section, immediately before
+  `valuationSubring_eq_of_comap_eq`) — for `A : ValuationSubring L` with `A.comap (algebraMap K L) =
+  (valuation K).valuationSubring` and `π ∈ A.nonunits`, `π ≠ 0`: `spectralNorm K L π < 1`. Built from
+  `exists_rankOne_absoluteValue_extends` + `spectralNorm_unique_field_norm_ext` +
+  `ValuationSubring.mem_nonunits_iff_or` + `map_inv₀` + `inv_lt_one_of_one_lt₀`. No
+  `_of_isNonarchimedeanLocalField` wrapper: `spectralNorm K L π`'s type needs `NormedField K` already
+  at the *signature* level, so such a wrapper can't elaborate under only `[IsNonarchimedeanLocalField
+  K]` — the instance-construction `letI`/`haveI` block must be inlined once inside any Henselian
+  caller whose own conclusion doesn't mention `spectralNorm` (confirmed by hitting exactly this
+  "failed to synthesize instance NormedField K" error when first attempting such a wrapper, then
+  removing it in favor of the plain bundle-hypothesis version).
+- **Gap 2 narrowed, not closed.** Investigated the four sub-pieces the fourteenth pass's diagnosis
+  implied (transport `IsIntegrallyClosed`/`IsFractionRing` for `𝒪[K]`; transport the DVR pow-ideal
+  lemma across the `Valuation.integer`/`ValuationSubring` defeq; bridge the real-number bound back to
+  `Γ₀`; assemble the pieces into `Polynomial.IsEisensteinAt`). Two resolved this pass (via loogle +
+  one standalone `lake env lean` typecheck, not yet wired into a real proof):
+  1. `IsIntegrallyClosed`/`IsFractionRing` for any `V : ValuationSubring K` are **direct instances**
+     (`Mathlib/RingTheory/Valuation/LocalSubring.lean:35,38`,
+     `ValuationSubring.instIsFractionRingSubtypeMem`) — no transport code needed on this project's
+     side, contrary to the fourteenth pass's concern.
+  2. The DVR pow-ideal lemma has a **`ValuationSubring`-level route avoiding `Valuation.integer`
+     entirely**: `ValuationSubring.lean:468`'s `valuationSubring.integers : v.Integers
+     v.valuationSubring` supplies `Valuation.Integers` directly at the `ValuationSubring` level, so
+     `Valuation.Integers.maximalIdeal_pow_eq_setOf_le_v_algebraMap_pow`
+     (`DiscreteValuationRing/Basic.lean:672`) applies to `O := ↥(valuation K).valuationSubring`
+     directly, sidestepping the defeq transport the fourteenth pass flagged as needing "real care".
+     `IsDiscreteValuationRing ↥(valuation K).valuationSubring` is also available directly via
+     `Valuation.valuationSubring_isDiscreteValuationRing`
+     (`Mathlib/RingTheory/Valuation/Discrete/Basic.lean`), given `[IsCyclic ...][Nontrivial ...]` on
+     the value group (expected for a local field, not separately checked this pass).
+  3. **New, sharper than the fourteenth pass's plan**: `RankOne.hom' : Γ₀ →*₀ ℝ≥0` is a
+     `MonoidWithZeroHom`, so an *exact* valuation-level total-ramification hypothesis (`A.valuation
+     (algebraMap K L ϖ) = A.valuation π ^ n`) pushes forward to an *exact* real equation `‖ϖ‖ =
+     spectralNorm K L π ^ n = ‖(minpoly K π).coeff 0‖` (via `spectralNorm_eq_norm_coeff_zero_rpow`),
+     not merely the inequality the fourteenth pass's `StrictMono.le_iff_le` plan would have given —
+     an exact match directly forces `coeff 0 ∉ 𝔪_K ^ 2` (since `‖ϖ‖ > ‖ϖ‖²`), no slack to account for.
+  4. **Not attempted**: assembling (1)-(3) plus `minpoly.isIntegrallyClosed_eq_field_fractions'`
+     (`Mathlib/FieldTheory/Minpoly/IsIntegrallyClosed.lean`, confirmed applicable since `Algebra
+     ↥(A : ValuationSubring K) L` derives automatically by instance search given `[Algebra K L]` —
+     checked via a standalone `example ... : Algebra A L := inferInstance` typecheck, not committed)
+     into an actual `Polynomial.IsEisensteinAt` proof: precisely designing the "totally ramified"
+     hypothesis and applying it to a chosen uniformizer of `𝒪[K]`, the `IsScalarTower` wiring for
+     `minpoly ↥𝒪[K] π`, assembling `IsEisensteinAt`'s three fields, and checking the `IsCyclic`/
+     `Nontrivial` value-group side-condition from (2) actually discharges for
+     `IsNonarchimedeanLocalField K`. None of these hit a wall this pass — each has a named, real
+     lemma or already-typechecked instance — but none was written or built, so none should be
+     treated as confirmed working until it is. `lake build Langlands` re-verified clean (8676 jobs);
+     `grep -rn sorry langlands/Langlands/` empty.
+- **Next step for whoever picks this up:** design the exact "totally ramified" hypothesis first (item
+  4(a) above) — everything else in item 4 is mechanical assembly once that hypothesis's shape is
+  fixed, and getting the hypothesis shape wrong (e.g. omitting the specific uniformizer `ϖ` it should
+  quantify over, or phrasing it via `Associated` instead of the `A.valuation` equation) would force
+  rework of the assembly built on top of it.
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
