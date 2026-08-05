@@ -1756,7 +1756,7 @@ that avoids stalling on (a).
   elements sharing a minimal polynomial automatically share a `spectralNorm`, by definition, with no
   completeness needed for *that* fact.
 - **Built and committed, sorry-free** (`Langlands/TotallyRamifiedEisenstein.lean`, commit
-  `<COMMIT_HASH>`):
+  `55d1a9d`):
   - `spectralValue_coeff_le {R} [NormedDivisionRing R] {p : R[X]} {n} (hn : n < p.natDegree) :
     ‖p.coeff n‖ ≤ spectralValue p ^ (p.natDegree - n)` (`TotallyRamifiedEisenstein.lean:76`) — the
     per-coefficient bound obtained by unfolding `spectralValue p := iSup (spectralValueTerms p)`
