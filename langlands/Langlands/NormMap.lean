@@ -748,4 +748,88 @@ end NumberField.InfinitePlace
 
 end InfinitePlaceNorm
 
+section InfiniteIdeleNormMap
+
+/-! ### Assembling the archimedean local norms into an infinite idèle norm map
+
+This section builds `NumberField.InfiniteIdeleGroup.normMap : InfiniteIdeleGroup L →*
+InfiniteIdeleGroup K`, the archimedean half of `IdeleGroup.normMap`
+(`Langlands/IdeleGroup.lean`), mirroring `finiteNormMap`/`FiniteIdeleGroup.normMap` above but
+simpler: `InfiniteAdeleRing` is an *unrestricted* product, so there is no analogue of
+`eventually_finiteNormMap_mem_units` to prove, and the final assembly uses the plain
+`MulEquiv.piUnits` (units of a product = product of units) instead of
+`RestrictedProduct.unitsEquiv`. -/
+
+open NumberField NumberField.InfinitePlace
+
+variable {K L : Type*} [Field K] [Field L] [Algebra K L] [NumberField K] [NumberField L]
+
+omit [NumberField K] in
+/-- Membership witness for an element of the `attach`ed `Finset` of places `w` of `L` lying
+over a place `v` of `K`, unpacked from `Set.toFinite (placesOver L v)).toFinset` membership
+into a genuine `LiesOver` instance -- the archimedean analogue of
+`mem_liesOver_of_mem_toFinset` above. -/
+theorem mem_liesOver_of_mem_placesOver_toFinset {v : InfinitePlace K}
+    (w : {x : InfinitePlace L // x ∈ (Set.toFinite (placesOver L v)).toFinset}) :
+    (w : InfinitePlace L).1.LiesOver v.1 := by
+  have hw := w.2
+  rwa [Set.Finite.mem_toFinset] at hw
+
+/-- The `v`-component of the archimedean idèle norm map: the product of the local norms
+`N_{L_w/K_v}(a w)` over the (finitely many) places `w` of `L` lying over `v`. -/
+noncomputable def infiniteNormMapComponent (v : InfinitePlace K)
+    (a : ∀ w : InfinitePlace L, (w.Completion)ˣ) : (v.Completion)ˣ :=
+  ∏ w ∈ (Set.toFinite (placesOver L v)).toFinset.attach,
+    haveI := mem_liesOver_of_mem_placesOver_toFinset w
+    NumberField.InfinitePlace.localNormMap v (w : InfinitePlace L) (a w)
+
+omit [NumberField K] in
+theorem infiniteNormMapComponent_one (v : InfinitePlace K) :
+    infiniteNormMapComponent (L := L) v 1 = 1 := by
+  unfold infiniteNormMapComponent
+  refine Finset.prod_eq_one fun w _ => ?_
+  haveI := mem_liesOver_of_mem_placesOver_toFinset w
+  exact map_one _
+
+omit [NumberField K] in
+theorem infiniteNormMapComponent_mul (v : InfinitePlace K)
+    (a b : ∀ w : InfinitePlace L, (w.Completion)ˣ) :
+    infiniteNormMapComponent v (a * b) =
+      infiniteNormMapComponent v a * infiniteNormMapComponent v b := by
+  unfold infiniteNormMapComponent
+  rw [← Finset.prod_mul_distrib]
+  refine Finset.prod_congr rfl fun w _ => ?_
+  haveI := mem_liesOver_of_mem_placesOver_toFinset w
+  exact map_mul (NumberField.InfinitePlace.localNormMap v (w : InfinitePlace L)) (a w) (b w)
+
+/-- The archimedean idèle norm map, as a `MonoidHom` on the plain product of local unit
+groups; assembled into a genuine `InfiniteIdeleGroup` homomorphism below
+(`NumberField.InfiniteIdeleGroup.normMap`) via `MulEquiv.piUnits`. -/
+def infiniteNormMap : (∀ w : InfinitePlace L, (w.Completion)ˣ) →*
+    ∀ v : InfinitePlace K, (v.Completion)ˣ where
+  toFun a v := infiniteNormMapComponent v a
+  map_one' := funext fun v => infiniteNormMapComponent_one v
+  map_mul' a b := funext fun v => infiniteNormMapComponent_mul v a b
+
+end InfiniteIdeleNormMap
+
+namespace NumberField.InfiniteIdeleGroup
+
+variable {K L : Type*} [Field K] [Field L] [Algebra K L] [NumberField K] [NumberField L]
+
+variable (K L)
+
+/-- The archimedean idèle norm map `N_{L/K} : InfiniteIdeleGroup L →* InfiniteIdeleGroup K`,
+sending an infinite idèle `a` to the infinite idèle whose component at each place `v` of `K` is
+`∏_{w ∣ v} N_{L_w/K_v}(a w)`. Built by conjugating `infiniteNormMap` by `MulEquiv.piUnits` on
+each side, exactly mirroring `FiniteIdeleGroup.normMap` above (but with `MulEquiv.piUnits` in
+place of `RestrictedProduct.unitsEquiv`, since `InfiniteAdeleRing` is an unrestricted
+product). -/
+noncomputable def normMap : InfiniteIdeleGroup L →* InfiniteIdeleGroup K :=
+  (MulEquiv.piUnits (M := fun v : InfinitePlace K => v.Completion)).symm.toMonoidHom.comp
+    ((infiniteNormMap (K := K) (L := L)).comp
+      (MulEquiv.piUnits (M := fun w : InfinitePlace L => w.Completion)).toMonoidHom)
+
+end NumberField.InfiniteIdeleGroup
+
 end
