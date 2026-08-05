@@ -4,6 +4,9 @@ import Mathlib.NumberTheory.NumberField.Completion.FinitePlace
 import Mathlib.NumberTheory.RamificationInertia.Valuation
 import Mathlib.RingTheory.DedekindDomain.Ideal.Lemmas
 import Mathlib.RingTheory.Norm.Defs
+import Mathlib.RingTheory.Norm.Transitivity
+import Mathlib.RingTheory.Valuation.LocalSubring
+import Mathlib.FieldTheory.Minpoly.IsConjRoot
 
 /-!
 # Local pieces of the idèle norm map
@@ -68,6 +71,7 @@ This file assembles the infrastructure the idèle norm map `NumberField.IdeleGro
 noncomputable section
 
 open IsDedekindDomain
+open scoped Pointwise WithZeroTopology
 
 namespace IsDedekindDomain.HeightOneSpectrum
 
@@ -155,6 +159,181 @@ instance : (NormedField.valuation (K := v.adicCompletion F)).Compatible :=
       (Valued.coe_valuation_eq_rankOne_hom_comp_valuation (v.adicCompletion F) ℤᵐ⁰) x)
 
 end RankOne
+
+section IntegralClosure
+
+/-! ### Elements of a valuation-ring extension are integral over the base
+
+This section closes the `localNormMap_mem_units` gap: for a finite extension `Lw / Kv` of
+complete discretely-valued fields, `Bw` (the ring of integers of `Lw`) equals the integral
+closure of `Ov` (the ring of integers of `Kv`) in `Lw`, given `Bw` comaps to `Ov`. Only the
+"`Bw ⊆` integral closure" direction is needed here (the converse is the easy, purely formal
+half via `IsIntegrallyClosed`). The proof goes via Galois conjugates in a normal closure `N` of
+`Lw / Kv`: pass to `N`, where the (unique, since `Kv` is complete) valuation subring `A`
+extending `Ov` is fixed setwise by every automorphism of `N / Kv`
+(`ValuationSubring.comap_smul_eq` + `LocalField.valuationSubring_eq_of_comap_eq`); every root of
+`minpoly Kv x` in `N` is then a Galois conjugate of `x` (`IsConjRoot.exists_algEquiv`, using
+normality of `N`), hence lies in `A` too; so the coefficients of `minpoly Kv x`, being polynomial
+expressions in those roots, lie in `A ∩ Kv = Ov`. This avoids the elementary-symmetric-function/
+Vieta bookkeeping the "obvious" proof would need by working with roots directly rather than
+computing coefficients combinatorially. -/
+
+open Polynomial in
+/-- If a monic polynomial over a field `N` splits into linear factors with all roots in a
+subring `T`, the roots (as elements of `T`) reassemble into a polynomial over `T` mapping back
+to the original. Purely formal, by induction on the root multiset. -/
+theorem exists_toSubring_of_roots_mem {N : Type*} [Field N] (T : Subring N) (m : Multiset N)
+    (hm : ∀ r ∈ m, r ∈ T) : ∃ q : T[X], q.map T.subtype = (m.map (fun r => X - C r)).prod := by
+  induction m using Multiset.induction with
+  | empty => exact ⟨1, by simp⟩
+  | cons a s ih =>
+    obtain ⟨q, hq⟩ := ih (fun r hr => hm r (Multiset.mem_cons_of_mem hr))
+    refine ⟨(X - C (⟨a, hm a (Multiset.mem_cons_self a s)⟩ : T)) * q, ?_⟩
+    simp [Multiset.map_cons, Multiset.prod_cons, Polynomial.map_mul, hq]
+
+open Polynomial in
+/-- If a monic polynomial over a field `N` splits with all its roots in a subring `T`, all its
+coefficients lie in `T` too (the roots reassemble into a `T`-polynomial via
+`exists_toSubring_of_roots_mem`, and `coeff_map` reads off `T`-membership of each coefficient). -/
+theorem coeff_mem_subring_of_splits {N : Type*} [Field N] (T : Subring N) {p : N[X]}
+    (hpmon : p.Monic) (hp : p.Splits) (hpr : ∀ x, p.IsRoot x → x ∈ T) (i : ℕ) :
+    p.coeff i ∈ T := by
+  obtain ⟨q, hq⟩ := exists_toSubring_of_roots_mem T p.roots
+    (fun r hr => hpr r (Polynomial.mem_roots'.mp hr).2)
+  rw [hp.eq_prod_roots_of_monic hpmon, ← hq, Polynomial.coeff_map]
+  exact (q.coeff i).2
+
+/-- **Generalized Chevalley extension theorem**: for any field extension `K → L` and any
+`ValuationSubring O` of `K` (not just the fixed `(valuation K).valuationSubring` of
+`LocalField.exists_valuationSubring_extends`), there is a `ValuationSubring` of `L` whose comap
+along `algebraMap K L` is `O`. Verbatim generalization of
+`LocalField.exists_valuationSubring_extends` (`Langlands.WeilGroup`), parametrized over an
+arbitrary `O` instead of a fixed one -- the proof never used anything about `O` beyond it being a
+`ValuationSubring`. -/
+theorem exists_valuationSubring_extends' {K L : Type*} [Field K] [Field L] [Algebra K L]
+    (O : ValuationSubring K) :
+    ∃ A : ValuationSubring L, A.comap (algebraMap K L) = O := by
+  set f : ↥O →+* L := (algebraMap K L).comp O.subtype with hf
+  obtain ⟨A, hA, hloc⟩ := IsLocalRing.exists_factor_valuationRing f
+  haveI : IsLocalHom (f.codRestrict A.toSubring hA) := hloc
+  refine ⟨A, ValuationSubring.ext _ _ fun x => ?_⟩
+  rw [ValuationSubring.mem_comap]
+  constructor
+  · intro hx
+    by_contra hxO
+    have hx0 : x ≠ 0 := fun h => hxO (h ▸ O.zero_mem)
+    have hxinv : x⁻¹ ∈ O := (O.mem_or_inv_mem x).resolve_left hxO
+    set b : ↥O := ⟨x⁻¹, hxinv⟩ with hb
+    have hfb : f b ∈ A.toSubring := hA b
+    have hfb' : f b = (algebraMap K L x)⁻¹ := by
+      show (algebraMap K L) x⁻¹ = (algebraMap K L x)⁻¹
+      exact map_inv₀ _ _
+    have hne : algebraMap K L x ≠ 0 :=
+      (map_ne_zero_iff (algebraMap K L) (algebraMap K L).injective).mpr hx0
+    have hub : IsUnit (f.codRestrict A.toSubring hA b) := by
+      refine isUnit_iff_exists_inv.mpr ⟨⟨algebraMap K L x, hx⟩, Subtype.ext ?_⟩
+      show f b * algebraMap K L x = 1
+      rw [hfb', inv_mul_cancel₀ hne]
+    have hbunit : IsUnit b := IsLocalHom.map_nonunit b hub
+    obtain ⟨c, hc⟩ := isUnit_iff_exists_inv.mp hbunit
+    have hcx : (c : K) = x := by
+      have hbc : (b : K) * (c : K) = 1 := congrArg Subtype.val hc
+      rw [hb] at hbc
+      show (c : K) = x
+      field_simp at hbc
+      rw [hbc]
+    exact hxO (hcx ▸ c.2)
+  · intro hxO
+    exact hA ⟨x, hxO⟩
+
+/-- **Main lemma**: for a finite extension `Lw / Kv` of a complete nontrivially-normed
+nonarchimedean field `Kv`, if `B` is a `ValuationSubring` of `Lw` comapping to `Ov := (valuation
+Kv).valuationSubring`, every `x ∈ B` is integral over `Ov`. This is the standard fact that the
+ring of integers of a finite extension of a complete discretely-valued field is the integral
+closure of the base ring of integers (Serre, *Local Fields*, Ch. II §2), proved via Galois
+conjugates in a normal closure -- see the section docstring above for the argument. -/
+theorem isIntegral_of_mem_of_comap_eq {Kv Lw : Type*} [NontriviallyNormedField Kv]
+    [IsUltrametricDist Kv] [ValuativeRel Kv] [(NormedField.valuation (K := Kv)).Compatible]
+    [CompleteSpace Kv] [Field Lw] [Algebra Kv Lw] [FiniteDimensional Kv Lw]
+    (B : ValuationSubring Lw)
+    (hB : B.comap (algebraMap Kv Lw) = (ValuativeRel.valuation Kv).valuationSubring)
+    {x : Lw} (hx : x ∈ B) : IsIntegral (ValuativeRel.valuation Kv).valuationSubring x := by
+  set O := (ValuativeRel.valuation Kv).valuationSubring with hOdef
+  rcases eq_or_ne x 0 with rfl | hx0
+  · exact isIntegral_zero
+  haveI : Algebra.IsAlgebraic Kv Lw := Algebra.IsAlgebraic.of_finite _ _
+  haveI : IsAlgClosure Kv (AlgebraicClosure Lw) :=
+    IsAlgClosure.ofAlgebraic Kv Lw (AlgebraicClosure Lw)
+  haveI : Normal Kv (AlgebraicClosure Lw) := IsAlgClosure.normal Kv (AlgebraicClosure Lw)
+  set N := IntermediateField.normalClosure Kv Lw (AlgebraicClosure Lw) with hN
+  haveI : Normal Kv N := normalClosure.normal Kv Lw (AlgebraicClosure Lw)
+  letI : Algebra Lw N := normalClosure.algebra Kv Lw (AlgebraicClosure Lw)
+  set x' : N := algebraMap Lw N x with hx'def
+  have hx'0 : x' ≠ 0 := by
+    rw [hx'def, Ne, map_eq_zero_iff _ (algebraMap Lw N).injective]
+    exact hx0
+  -- The unique valuation subring of `N` extending `O`.
+  obtain ⟨A, hA⟩ := exists_valuationSubring_extends' (K := Kv) (L := N) O
+  have hAfix : ∀ σ : N ≃ₐ[Kv] N, σ • A = A := by
+    intro σ
+    have h1 : (σ • A).comap (algebraMap Kv N) = O :=
+      (ValuationSubring.comap_smul_eq σ A).trans hA
+    exact LocalField.valuationSubring_eq_of_comap_eq Kv h1 hA
+  have hcomap_ι : A.comap (algebraMap Lw N) = B := by
+    apply LocalField.valuationSubring_eq_of_comap_eq Kv
+    · show (A.comap (algebraMap Lw N)).comap (algebraMap Kv Lw) = O
+      rw [ValuationSubring.comap_comap]
+      have heq : (algebraMap Lw N).comp (algebraMap Kv Lw) = algebraMap Kv N :=
+        (IsScalarTower.algebraMap_eq Kv Lw N).symm
+      rw [heq, hA]
+    · exact hB
+  have hx'A : x' ∈ A := by
+    rw [← ValuationSubring.mem_comap (A := A) (f := algebraMap Lw N), hcomap_ι]
+    exact hx
+  have hxi : IsIntegral Kv x' := Algebra.IsIntegral.isIntegral x'
+  have hroots : ∀ r : N, ((minpoly Kv x').map (algebraMap Kv N)).IsRoot r → r ∈ A.toSubring := by
+    intro r hr
+    have hconj : IsConjRoot Kv x' r := by
+      apply isConjRoot_of_aeval_eq_zero hxi
+      rwa [Polynomial.IsRoot, Polynomial.eval_map, ← Polynomial.aeval_def] at hr
+    obtain ⟨σ, hσ⟩ := hconj.symm.exists_algEquiv
+    have hfix := hAfix σ
+    have hiff : (σ x' : N) ∈ σ • A ↔ x' ∈ A := by
+      simp [ValuationSubring.mem_pointwise_smul_iff_inv_smul_mem, AlgEquiv.smul_def]
+    rw [hfix] at hiff
+    rw [← hσ]
+    exact hiff.mpr hx'A
+  have hcoeffs : ∀ i, ((minpoly Kv x').map (algebraMap Kv N)).coeff i ∈ A.toSubring :=
+    coeff_mem_subring_of_splits A.toSubring ((minpoly.monic hxi).map (algebraMap Kv N))
+      (Normal.splits inferInstance x') hroots
+  have hcoeffs' : ∀ i, (minpoly Kv x').coeff i ∈ O := by
+    intro i
+    have hmem := hcoeffs i
+    rw [Polynomial.coeff_map] at hmem
+    have : (minpoly Kv x').coeff i ∈ A.comap (algebraMap Kv N) :=
+      (ValuationSubring.mem_comap (A := A) (f := algebraMap Kv N)).mpr hmem
+    rwa [hA] at this
+  -- Transfer to `minpoly Kv x` (equal to `minpoly Kv x'` since `algebraMap Lw N` is injective).
+  have hminpoly_eq : minpoly Kv x' = minpoly Kv x :=
+    minpoly.algHom_eq (IsScalarTower.toAlgHom Kv Lw N) (algebraMap Lw N).injective x
+  rw [hminpoly_eq] at hcoeffs'
+  -- Assemble the monic polynomial over `O` witnessing integrality.
+  have hsub : (↑(minpoly Kv x).coeffs : Set Kv) ⊆ O.toSubring := by
+    intro c hc
+    simp only [Polynomial.coeffs, Finset.coe_image, Set.mem_image, Finset.mem_coe,
+      Polynomial.mem_support_iff] at hc
+    obtain ⟨n, _, rfl⟩ := hc
+    exact hcoeffs' n
+  have hxi_x : IsIntegral Kv x := Algebra.IsIntegral.isIntegral x
+  refine ⟨(minpoly Kv x).toSubring O.toSubring hsub, ?_, ?_⟩
+  · exact (Polynomial.monic_toSubring _ _ _).mpr (minpoly.monic hxi_x)
+  · show Polynomial.eval₂ (algebraMap (↥O) Lw) x ((minpoly Kv x).toSubring O.toSubring hsub) = 0
+    rw [IsScalarTower.algebraMap_eq (↥O) Kv Lw,
+      ← Polynomial.eval₂_map, show algebraMap (↥O) Kv = O.toSubring.subtype from rfl,
+      Polynomial.map_toSubring _ O.toSubring hsub]
+    exact minpoly.aeval Kv x
+
+end IntegralClosure
 
 variable {R S K L : Type*} [CommRing R] [IsDedekindDomain R] [Field K] [Algebra R K]
   [IsFractionRing R K] [CommRing S] [IsDedekindDomain S] [Field L] [Algebra S L]
@@ -272,57 +451,101 @@ theorem finite_liesOver (v : HeightOneSpectrum R) :
     (Set.Finite.subset (IsDedekindDomain.primesOver_finite v.asIdeal S) hsub)
     (HeightOneSpectrum.asIdeal_injective.injOn)
 
+/-- **The canonical `ValuativeRel.valuation` of `v.adicCompletion K` has the same valuation ring as
+`Valued.v`, i.e. as `v.adicCompletionIntegers K`.** Both are `Compatible` with the same ambient
+`ValuativeRel` instance (`instValuativeRelValuedAdicCompletion`, built as `ValuativeRel.ofValuation
+Valued.v`), hence equivalent (`ValuativeRel.isEquiv`); equivalent valuations share a valuation
+subring (`Valuation.isEquiv_iff_valuationSubring`). This lets the generic
+`isIntegral_of_mem_of_comap_eq` above (stated in terms of the abstract `ValuativeRel.valuation`)
+be applied to the concrete `v.adicCompletionIntegers K`. -/
+theorem valuation_valuationSubring_eq_adicCompletionIntegers :
+    (ValuativeRel.valuation (v.adicCompletion K)).valuationSubring
+      = v.adicCompletionIntegers K := by
+  show (ValuativeRel.valuation (v.adicCompletion K)).valuationSubring = Valued.v.valuationSubring
+  rw [← Valuation.isEquiv_iff_valuationSubring]
+  exact ValuativeRel.isEquiv _ _
+
+omit [Module.Finite K L] [Algebra.IsIntegral R S] in
+/-- **The comap-containment fact**: `w.adicCompletionIntegers L` comaps *exactly* to
+`v.adicCompletionIntegers K` along `adicCompletionComap`. Proved via continuity + density, not
+via the closedness argument originally sketched (`Valued.isClopen_valuationSubring`): the two
+continuous maps `y ↦ w-valuation (adicCompletionComap y)` and `y ↦ (v-valuation y) ^ e` (`e` the
+ramification index) agree on the dense image of `K` (by `valuation_liesOver`, the corresponding
+*exact* identity for elements of `K` itself, not just an inequality), hence agree everywhere
+(`DenseRange.equalizer`); raising to the `e`-th power (`e ≠ 0`) preserves the `≤ 1` boundary
+(`pow_le_one_iff_of_nonneg`), giving the comap equality directly, in both directions at once. -/
+theorem adicCompletionIntegers_comap_eq :
+    (w.adicCompletionIntegers L).comap (adicCompletionComap K L v w)
+      = v.adicCompletionIntegers K := by
+  set e := v.asIdeal.ramificationIdx' w.asIdeal with hedef
+  have he0 : e ≠ 0 := Ideal.IsDedekindDomain.ramificationIdx'_ne_zero_of_liesOver w.asIdeal v.ne_bot
+  have hcont1 :
+      Continuous (fun y : v.adicCompletion K => Valued.v (adicCompletionComap K L v w y)) :=
+    (Valued.continuous_valuation_of_surjective (valuedAdicCompletion_surjective L w)).comp
+      (continuous_adicCompletionComap K L v w)
+  have hcont2 : Continuous (fun y : v.adicCompletion K => (Valued.v y) ^ e) :=
+    (Valued.continuous_valuation_of_surjective (valuedAdicCompletion_surjective K v)).pow e
+  have hden : DenseRange (algebraMap K (v.adicCompletion K)) := denseRange_algebraMap K v
+  have hcomp : (fun y : v.adicCompletion K => Valued.v (adicCompletionComap K L v w y))
+      ∘ (algebraMap K (v.adicCompletion K)) =
+      (fun y : v.adicCompletion K => (Valued.v y) ^ e) ∘ (algebraMap K (v.adicCompletion K)) := by
+    funext k
+    simp only [Function.comp_apply, adicCompletionComap_algebraMap]
+    rw [show (algebraMap L (adicCompletion L w) (algebraMap K L k))
+        = ((algebraMap K L k : L) : adicCompletion L w) from rfl,
+      show (algebraMap K (adicCompletion K v) k) = ((k : K) : adicCompletion K v) from rfl,
+      valuedAdicCompletion_eq_valuation', valuedAdicCompletion_eq_valuation',
+      valuation_liesOver L v w]
+  have heq : ∀ y : v.adicCompletion K,
+      Valued.v (adicCompletionComap K L v w y) = (Valued.v y) ^ e :=
+    congrFun (hden.equalizer hcont1 hcont2 hcomp)
+  ext y
+  rw [ValuationSubring.mem_comap, mem_adicCompletionIntegers, mem_adicCompletionIntegers, heq]
+  exact pow_le_one_iff_of_nonneg zero_le he0
+
+omit [Algebra.IsIntegral R S] in
 /-- **Key local fact.** The local norm map sends local units to local units: if `a` has
 valuation `1` at `w` (i.e. `a ∈ w.adicCompletionIntegers L`, as a unit), its norm
 `N_{L_w/K_v}(a)` has valuation `1` at `v`.
 
-This is the standard fact from local field theory that, for a finite extension of *complete*
-discretely-valued fields (`v.adicCompletion K` is complete, being defined as a
-`UniformSpace.Completion`), the extension of `v` to `L_w` is unique, so
-`w.adicCompletionIntegers L` is exactly the integral closure of `v.adicCompletionIntegers K` in
-`w.adicCompletion L` (see e.g. Serre, *Local Fields*, Ch. II §2). Granting that, the proof
-would combine `isIntegral_norm` (the norm of an integral element is integral,
-`Mathlib.RingTheory.Norm.Transitivity`) with the fact that a `ValuationSubring` is integrally
-closed (`Mathlib.RingTheory.Valuation.LocalSubring`), applied to `v.adicCompletionIntegers K`
-(which is literally a `ValuationSubring` by definition).
-
-The "integral closure = ring of integers" half of this needs *uniqueness* of the extension of the
-valuation, `LocalField.valuationSubring_eq_of_comap_eq` (`Langlands.HenselianValuation`). That
-theorem needs two things on `v.adicCompletion K`: `Algebra.IsAlgebraic (v.adicCompletion K)
-(w.adicCompletion L)` (closed above, `instAlgebraIsAlgebraicAdicCompletionAdicCompletion`, for any
-finite extension of fraction fields of Dedekind domains) and a `NontriviallyNormedField`/
-`IsUltrametricDist`/`ValuativeRel`/`Valuation.Compatible` bridge compatible with `v.adicCompletion
-K`'s ambient `Valued` structure. **This bridge is now also closed**, generically for *any*
-Dedekind domain (not just `IsNonarchimedeanLocalField`, which is what
-`valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField` was specialized to): see the
-`instValuativeRelValuedAdicCompletion` / `instNontriviallyNormedFieldAdicCompletion` /
-`(NormedField.valuation (K := v.adicCompletion F)).Compatible` instances in the `RankOne` section
-above. Unlike the `IsNonarchimedeanLocalField` case (which has to *manufacture* a `Valued`
-instance from an ambient `ValuativeRel`/`TopologicalSpace`, going `ValuativeRel → Valued`), here
-`v.adicCompletion F` already has a genuine Mathlib `Valued` instance, so the bridge only needs to
-go the other way (`Valued → ValuativeRel`, via `ValuativeRel.ofValuation`), which is simpler and
-needs no uniform-space reconstruction.
-
-With both hypotheses of `valuationSubring_eq_of_comap_eq` now available unconditionally for
-`v.adicCompletion K`, **a third, separate gap remains**: `valuationSubring_eq_of_comap_eq` only
-proves *uniqueness* of a `ValuationSubring` of `L` comapping to `𝒪[K]` -- it does not construct
-one. To run the "integral closure = ring of integers" argument we additionally need *existence*:
-that the integral closure of `v.adicCompletionIntegers K` in `w.adicCompletion L` actually *is* a
-`ValuationSubring` extending it (equivalently, that some `ValuationSubring` of `w.adicCompletion L`
-comaps to `v.adicCompletionIntegers K` at all). This is a different, classical fact (existence of
-an extension of a valuation to a field extension, e.g. via Chevalley's extension theorem or the
-integral-closure-is-a-valuation-ring argument), not yet attempted here. A promising unconditional
-tool for it, found while investigating but not yet wired up: `LocalSubring.exists_le_valuationSubring`
-(`Mathlib.RingTheory.Valuation.LocalSubring`), which produces (via Zorn's lemma, over *any* field)
-a `ValuationSubring` dominating a given `LocalSubring` -- applying it to a suitable localization of
-the integral closure at a prime lying over `v`'s maximal ideal (via going-up, since the integral
-closure is integral over `v.adicCompletionIntegers K`) should give the required extension. This is
-recorded as a `sorry` isolating exactly that missing existence ingredient, so that the assembly
-argument below (`eventually_localNormMap_mem_units`) can be proved unconditionally on top of it. -/
+Proved via the standard fact from local field theory that, for a finite extension of *complete*
+discretely-valued fields, the extension of `v` to `L_w` is unique, so `w.adicCompletionIntegers L`
+is exactly the integral closure of `v.adicCompletionIntegers K` in `w.adicCompletion L` (Serre,
+*Local Fields*, Ch. II §2) -- `isIntegral_of_mem_of_comap_eq` above, applied via the comap fact
+`adicCompletionIntegers_comap_eq` and the bridge `valuation_valuationSubring_eq_adicCompletionIntegers`.
+Both `a` and `a⁻¹` are then integral over `v.adicCompletionIntegers K`, so their norms are too
+(`Algebra.isIntegral_norm`); since `v.adicCompletionIntegers K` is integrally closed in
+`v.adicCompletion K` (`IsIntegrallyClosedIn`, an instance for any `ValuationSubring`), both norms
+actually lie in `v.adicCompletionIntegers K`, i.e. `localNormMap K L v w a` is a unit there. -/
 theorem localNormMap_mem_units {a : (w.adicCompletion L)ˣ}
     (ha : a ∈ (w.adicCompletionIntegers L).units) :
     localNormMap K L v w a ∈ (v.adicCompletionIntegers K).units := by
-  sorry
+  have hbridge := valuation_valuationSubring_eq_adicCompletionIntegers K v
+  have hcomap : (w.adicCompletionIntegers L).comap (adicCompletionComap K L v w)
+      = (ValuativeRel.valuation (v.adicCompletion K)).valuationSubring := by
+    rw [hbridge]; exact adicCompletionIntegers_comap_eq K L v w
+  have h1 : IsIntegral (v.adicCompletionIntegers K) (a : w.adicCompletion L) := by
+    have := isIntegral_of_mem_of_comap_eq (w.adicCompletionIntegers L) hcomap
+      (x := (a : w.adicCompletion L)) (Submonoid.val_mem_of_mem_units _ ha)
+    rwa [hbridge] at this
+  have h2 : IsIntegral (v.adicCompletionIntegers K)
+      ((a⁻¹ : (w.adicCompletion L)ˣ) : w.adicCompletion L) := by
+    have := isIntegral_of_mem_of_comap_eq (w.adicCompletionIntegers L) hcomap
+      (x := ((a⁻¹ : (w.adicCompletion L)ˣ) : w.adicCompletion L))
+      (Submonoid.inv_val_mem_of_mem_units _ ha)
+    rwa [hbridge] at this
+  have hn1 := Algebra.isIntegral_norm (R := v.adicCompletionIntegers K) (v.adicCompletion K) h1
+  have hn2 := Algebra.isIntegral_norm (R := v.adicCompletionIntegers K) (v.adicCompletion K) h2
+  obtain ⟨y1, hy1⟩ := IsIntegrallyClosedIn.algebraMap_eq_of_integral hn1
+  obtain ⟨y2, hy2⟩ := IsIntegrallyClosedIn.algebraMap_eq_of_integral hn2
+  refine Submonoid.mem_units_of_val_mem_inv_val_mem _ ?_ ?_
+  · show Algebra.norm (v.adicCompletion K) (a : w.adicCompletion L) ∈
+      (v.adicCompletionIntegers K).toSubmonoid
+    exact hy1 ▸ y1.2
+  · rw [← map_inv]
+    show Algebra.norm (v.adicCompletion K) ((a⁻¹ : (w.adicCompletion L)ˣ) : w.adicCompletion L) ∈
+      (v.adicCompletionIntegers K).toSubmonoid
+    exact hy2 ▸ y2.2
 
 /-- **Main assembly lemma**, and the key missing piece for `IdeleGroup.normMap`
 (`Langlands/IdeleGroup.lean`): if a family `a : ∀ w, (w.adicCompletion L)ˣ` of local units at
