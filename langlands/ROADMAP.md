@@ -1663,6 +1663,91 @@ that avoids stalling on (a).
   eventually-trivial filtration remain out of reach, since both are built on the embeddings.
 - **Candidate 2 (totally ramified norm-group computation) remains untouched.**
 
+#### Status 2026-08-06 (thirteenth pass) — monogenicity for the totally ramified case: correct Mathlib route identified, precise remaining gap scoped, no code written
+
+- **Task.** Attempt full monogenicity (`O_L = O_K[α]`) for finite extensions of complete DVRs with
+  separable residue extension, per Serre's unramified-times-totally-ramified decomposition. The
+  unramified half is already fully available:
+  `Mathlib.RingTheory.LocalRing.Etale.IsLocalRing.exists_adjoin_eq_top` (general étale local rings,
+  landed by the UW Math AI Lab) and this repo's `HenselianLocalRing.
+  exists_isDiscreteValuationRing_integralClosure_residueField_equiv`
+  (`Langlands/UnramifiedExtension.lean:715`, read in full this pass, no changes needed) construct
+  the unramified subextension concretely. What was missing, per the twelfth pass's diagnosis in
+  `RamificationFiltration.lean`, is the totally ramified half: `O_L = O_{L_0}[π_L]` for `π_L` a
+  uniformizer, via an Eisenstein-polynomial argument.
+- **Correction to the twelfth pass's diagnosis.** That pass's `grep -rli "monogenic\|PowerBasis"`
+  over `Mathlib/RingTheory/Valuation/` and `Mathlib/RingTheory/DiscreteValuationRing/` (both empty)
+  was accurate as far as it went, but searched the wrong directories: the relevant machinery lives
+  in `Mathlib/RingTheory/Polynomial/Eisenstein/IsIntegral.lean` and
+  `Mathlib/RingTheory/Discriminant.lean`, filed under Eisenstein polynomials and number-field
+  ring-of-integers computations (its only current Mathlib caller is
+  `Mathlib/NumberTheory/NumberField/Cyclotomic/Basic.lean`, for cyclotomic fields), not under
+  `Valuation`/`DiscreteValuationRing` at all — general Dedekind-domain content, not
+  valuation-ring-specific. Confirmed present this pass:
+  - `Polynomial.IsEisensteinAt.irreducible` (`Eisenstein/Basic.lean:231`) — a primitive Eisenstein
+    polynomial is irreducible, the standard criterion.
+  - `Algebra.discr_mul_isIntegral_mem_adjoin` (`Discriminant.lean`) — for `B : PowerBasis K L` with
+    `B.gen` integral over an integrally closed `R` with fraction field `K`, `L/K` finite separable:
+    `Algebra.discr K B.basis • z ∈ R[B.gen]` for every `z : L` integral over `R`.
+  - `Polynomial.IsEisensteinAt.mem_adjoin_of_smul_prime_pow_smul_of_minpoly_isEisensteinAt`
+    (`Eisenstein/IsIntegral.lean:365`) — if `minpoly R B.gen` is Eisenstein at a prime `p` and
+    `p ^ n • z ∈ R[B.gen]` for some `n`, then `z ∈ R[B.gen]` outright (by induction on `n`, peeling
+    off one factor of `p` at a time via `mem_adjoin_of_smul_prime_smul_of_minpoly_isEisensteinAt`).
+  Composed: for `R` a DVR with uniformizer `p`, `discr K B.basis` is a nonzero element of `R`
+  (nonzero by separability, in `R` by `IsIntegrallyClosed`), hence — `R` being a DVR — equal to
+  `unit * p ^ n` for a unique `n` (the `p`-adic valuation of the discriminant); multiplying the
+  discriminant lemma's conclusion by the unit's inverse turns it into `p ^ n • z ∈ R[B.gen]`, and
+  the induction lemma then gives `z ∈ R[B.gen]` for *every* `z : L` integral over `R` — i.e.
+  `Algebra.adjoin R {B.gen} = ⊤` as a subalgebra of the integral closure. This is a real,
+  Mathlib-supported route to totally-ramified monogenicity that does **not** need topological
+  completeness of `R` (the induction bottoms out after finitely many steps, bounded by `n = v_p(disc
+  f)`; `R = ℤ` in the cyclotomic-field caller is not `p`-adically complete at all). The twelfth
+  pass's docstring claim that the classical argument "needs completeness" is corrected by this: what
+  needs Henselian/complete `K` is a different step (below), not this index-computation step itself.
+- **What Henselian-ness is actually needed for.** The one fact this route does not hand over for
+  free is Eisenstein-ness of `minpoly R π` itself, for `π` a chosen uniformizer of `O_L` in a totally
+  ramified extension. Classically: writing `f = minpoly K π = ∏ (X - π_i)` over the splitting field,
+  each coefficient `a_i` (`i < e = deg f`) is (up to sign) an elementary symmetric function of the
+  conjugates `π_j`, and Eisenstein-ness needs `v(a_i) ≥ 1` for `i < e` and `v(a_0) = 1` exactly —
+  which needs every conjugate `π_j` to have the *same* valuation as `π` itself. That equality of
+  valuations across conjugates is exactly the "unique extension of the valuation to any algebraic
+  extension of a Henselian field" fact this repo already has
+  (`Langlands.HenselianValuation`/`LocalField.valuationSubring_eq_of_comap_eq`, used by
+  `RamificationFiltrationAdicCompletion.lean`'s `decompositionSubgroup_eq_top`). This step —
+  "uniformizer of a totally ramified extension of a Henselian DVR has Eisenstein minimal
+  polynomial" — was not attempted this pass; it is the one piece of genuine new content standing
+  between the existing infrastructure (Eisenstein/discriminant machinery above, plus this repo's
+  Henselian-valuation uniqueness machinery) and a closed totally-ramified monogenicity theorem. It
+  is a bounded, well-scoped statement (not "assume most of the theorem," unlike the hypothesis the
+  twelfth pass declined to add) — a genuine next-step candidate, not a wall in the same sense as the
+  twelfth pass's.
+- **A second, independent check this pass: the discriminant-unit route does not apply to any
+  ramified case.** `Langlands.MonogenicMaximalOrder`'s
+  `Algebra.adjoin_eq_top_of_isUnit_aeval_derivative_minpoly` (the tool driving the *unramified* half
+  in `UnramifiedExtension.lean:715`) needs `IsUnit (aeval x (minpoly A x).derivative)`. For `x = π` a
+  root of a degree-`e` Eisenstein-type polynomial with `e ≥ 2`, `v_L(f'(π)) = v_L(e) + (e-1) \cdot
+  v_L(\pi) \geq e - 1 > 0` in the totally ramified normalization `v_L(π) = 1` (this is, up to a unit,
+  the valuation of the different, which is classically positive exactly when the extension is
+  ramified — trivial different characterizes unramifiedness). So `f'(π)` is never a unit for `e ≥
+  2`, tame or wild: this confirms (rather than assumes) that the totally ramified case genuinely
+  needs the separate Eisenstein/discriminant argument above, not a variant of the tool already used
+  for the unramified half. (This computation was carried out this session, not sourced from a
+  citation — flagged as such, though it is a standard fact: the different is trivial iff the
+  extension is unramified.)
+- **Net effect on `RamificationFiltration.lean`'s associated-graded embeddings.** Not closed this
+  pass. The wall documented there is now more precisely located — not "no Mathlib
+  monogenicity-of-DVR-extension theorem exists" (there is a usable route, corrected above) but "the
+  Eisenstein-ness-from-uniformizer step is unbuilt." No `.lean` files were touched this pass; `lake
+  build Langlands` re-verified clean (8675 jobs) before and after, unchanged.
+- **Not attempted, scoped for a future pass:** (1) the Eisenstein-ness-from-uniformizer lemma
+  itself; (2) wiring a `PowerBasis K L` for `π` (needs `K(π) = L`, itself needing Eisenstein
+  irreducibility of `minpoly K π`, circular with (1) unless sequenced correctly — irreducibility over
+  `K` needs Eisenstein-ness at the `R`-level *first*, which is the right order since `(1)` produces
+  exactly that); (3) the DVR unit/`p`-power factorization glue connecting `Algebra.
+  discr_mul_isIntegral_mem_adjoin`'s output to the induction lemma's `p ^ n • z` hypothesis; (4) the
+  composition step combining this half with the unramified half into monogenicity over `O_K` proper
+  (Serre's actual combining argument, not yet checked in detail this pass).
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
