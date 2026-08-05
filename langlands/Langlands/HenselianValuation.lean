@@ -676,6 +676,28 @@ theorem exists_rankOne_absoluteValue_extends [Algebra.IsAlgebraic K L]
     rw [Valued.toNormedField.norm_le_one_iff]
     exact A.valuation_le_one_iff x
 
+/-- A nonunit `π ≠ 0` of a `ValuationSubring A` of `L` extending `𝒪[K]` (i.e. `A.comap
+(algebraMap K L) = 𝒪[K]`) has `spectralNorm K L π < 1`, provided `K` is complete.
+
+This is gap 1 of `Langlands.TotallyRamifiedEisenstein`'s Eisenstein-ness-from-uniformizer route:
+connecting a concrete uniformizer of a `ValuationSubring` to the abstract `spectralNorm` hypothesis
+`spectralNorm_coeff_lt_one` needs. The absolute value `f` supplied by
+`exists_rankOne_absoluteValue_extends` agrees with `spectralNorm K L` everywhere by
+`spectralNorm_unique_field_norm_ext` (using `[CompleteSpace K]`), so it suffices to show `f π < 1`.
+Since `π` is a nonunit, `π⁻¹ ∉ A` (`ValuationSubring.mem_nonunits_iff_or`), hence `f π⁻¹ > 1` by the
+`≤ 1 ↔ ∈ A` characterization from `exists_rankOne_absoluteValue_extends`; since `f` is
+multiplicative and `f π⁻¹ = (f π)⁻¹` (`map_inv₀`), `f π = (f π⁻¹)⁻¹ < 1`. -/
+theorem spectralNorm_lt_one_of_mem_nonunits [Algebra.IsAlgebraic K L] [CompleteSpace K]
+    {A : ValuationSubring L} (hA : A.comap (algebraMap K L) = (valuation K).valuationSubring)
+    {π : L} (hπ : π ∈ A.nonunits) (hπ0 : π ≠ 0) :
+    spectralNorm K L π < 1 := by
+  obtain ⟨f, hfK, hfA⟩ := exists_rankOne_absoluteValue_extends K A hA
+  rw [← spectralNorm_unique_field_norm_ext hfK π]
+  have hinv_notmem : π⁻¹ ∉ A := (A.mem_nonunits_iff_or.mp hπ).resolve_left hπ0
+  have hf_inv_gt : 1 < f π⁻¹ := lt_of_not_ge (fun h => hinv_notmem ((hfA π⁻¹).mp h))
+  have h2 : (f π⁻¹)⁻¹ < 1 := inv_lt_one_of_one_lt₀ hf_inv_gt
+  rwa [map_inv₀, inv_inv] at h2
+
 /-- Uniqueness of the extension of a complete nonarchimedean valuation to an algebraic extension:
 if `K` is complete with respect to a nontrivial nonarchimedean norm and `L / K` is algebraic, any
 two `ValuationSubring`s of `L` restricting to `𝒪[K]` coincide.
