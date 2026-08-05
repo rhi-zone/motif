@@ -1262,6 +1262,94 @@ that avoids stalling on (a).
   `n+1`), then prove `CauchySeq (fun n => (x n : w.adicCompletion L))` from the same valuation
   bound, then close with `cauchySeq_tendsto_of_complete` and `continuous_norm_adicCompletion`.
 
+#### Status 2026-08-05 (ninth pass) — full unramified norm-group surjectivity CLOSED: `N_{L/K}(L^×) ⊇ O_K^×`
+
+- **New file `langlands/Langlands/UnramifiedNormSurjective.lean`** (commits `a21df52`, `4e1ac36`),
+  zero `sorry`, full `lake build` green (8670 jobs; `grep -rn sorry langlands/Langlands/` empty).
+  Same-session continuation of the eighth pass, pushed through to completion at a peer session's
+  request rather than stopping at the eighth pass's documented scoping point — the blocker that
+  pass flagged as "genuine Lean engineering, not a landscape gap" turned out to be exactly that:
+  no new mathematical fact was needed anywhere in this pass, only assembling what the eighth pass
+  had already confirmed exists.
+- **The main theorem:** `exists_isUnit_algebraMap_norm_eq_of_isUnramified` (`:309`) — under
+  `IsUnramified K L v w`, for every unit `y : K₀`, there is a unit `x : L₀` with `Algebra.norm K₀ x
+  = y` exactly. This is `N_{L/K}(L^×) ⊇ O_K^×`, the surjectivity core of the classical unramified
+  norm-group theorem (the "easy half" of local CFT, Serre Ch. V §2-3) — the milestone the original
+  Phase 2a scoping (top of this section) set out to reach.
+- **Route, in order:**
+  1. `exists_isUnit_norm_residue_eq` (`:67`) — the base case, `residue K₀ (N x₀) = residue K₀ y`
+     for some unit `x₀ : L₀`, built directly from `residueField_units_norm_surjective`
+     (`Langlands.ResidueFieldNorm`) and `surjective_units_map_residue`
+     (`Langlands.UnitGroupModPrincipalUnitsSurjective`) composed through
+     `residue_norm_eq_norm_residue_of_isUnramified` (`Langlands.NormMapResidueCompatibility`,
+     fifth pass) — **bypassing `localNormMap` entirely**, a simplification not anticipated in the
+     eighth pass's writeup (which expected to route the base case through
+     `localNormMap_units_surjective_mod_principalUnits`); working at the ring level throughout
+     turned out to need one fewer bridging layer.
+  2. `exists_isUnit_mul_one_add_uniformizer_eq` (`:83`) and
+     `exists_uniformizer_pow_smul_mul_one_add_uniformizer_pow_succ_eq` (`:118`) restate the base
+     case and the eighth pass's one-step correction
+     (`exists_one_add_uniformizer_pow_smul_norm_sub_mem`,
+     `Langlands.PrincipalUnitsCauchySequence`) as an **exact multiplicative invariant** `y =
+     Algebra.norm K₀ x · (1 + π^{n+1}·t)` (rather than the additive `mod π^{n+1}` congruence the
+     eighth pass's writeup sketched) — the multiplicative form is what makes the induction close
+     exactly rather than only up to higher-order terms, and what makes `approxUnit (n+1) =
+     approxUnit n · (1 + π^{n+1} • z)` hold *definitionally*, not just propositionally, which the
+     Cauchy bound (step 4 below) needs. Each step's algebra was closed via `linear_combination`
+     with hand-derived coefficients (not `ring`/`field_simp` directly, since `K₀`/`L₀` are only
+     commutative rings, not fields — inverses are tracked via `IsUnit.exists_right_inv` witnesses,
+     not `⁻¹`).
+  3. `approxData`/`approxUnit`/`approxError` (`:150`-`:180`) — the successive-approximation
+     sequence itself, built by structural recursion on `ℕ` returning a dependent `Subtype` (motive
+     `fun n => {p // IsUnit p.1 ∧ y = N p.1 · (1+π^{n+1}·p.2)}`), choosing witnesses via
+     `Exists.choose` at each step. Exposing the correction witness `z` *inside* the recursive
+     definition (rather than only asserting its existence abstractly) was the key design choice —
+     it makes `approxUnit_succ_eq` (`:193`, `approxUnit (n+1) = approxUnit n · (1+π^{n+1}•z)` for
+     some `z`) provable by `rfl`, with no separate uniqueness/reconstruction argument needed to
+     recover the step relationship from the abstract existence statement.
+  4. `cauchySeq_approxUnit` (`:233`) — Cauchy-ness, via the **`NontriviallyNormedField`
+     structure already built in `Langlands.NormMap`** (`instNontriviallyNormedFieldAdicCompletion`,
+     confirmed to have `toUniformSpace := Valued.toUniformSpace` literally, i.e. no topology
+     diamond against the `Valued`-based instances the rest of Phase 2a uses) rather than the
+     `Valued.hasBasis_uniformity`/`Filter.HasBasis.cauchySeq_iff` route the task brief suggested —
+     `cauchySeq_of_le_geometric` (`Mathlib.Analysis.SpecificLimits.Basic`) applies directly once
+     consecutive differences are bounded by `‖algebraMap π‖^{n+1}` (both `x_n`, `z_n` having norm
+     `≤ 1`, being elements of `L₀`; `‖algebraMap π‖ < 1` since `π` is a non-unit, via
+     `Valuation.mem_maximalIdeal_iff`). This substitution of the metric-space route for the
+     valuation-basis route the eighth pass's writeup anticipated turned out to be strictly less
+     work, since the `NormedField` machinery was already sitting in `NormMap.lean` for unrelated
+     reasons (the same discovery pattern as `NormMapContinuity.lean`'s continuity lemma).
+  5. `norm_approxUnit_eq_one` (`:266`) — every `approxUnit n` has norm exactly `1` (not just `≤
+     1`): its inverse, also a unit of `L₀`, has norm `≤ 1` too, giving `‖approxUnit n‖ ≥ 1` via
+     `mul_le_of_le_one_right`.
+  6. The main theorem (`:309`) assembles the rest: `cauchySeq_tendsto_of_complete` (using
+     `CompleteSpace (w.adicCompletion L)`, confirmed to exist as the same generic Mathlib instance
+     `CompleteSpace (v.adicCompletion K)` specializes from, `Mathlib.RingTheory.DedekindDomain.
+     AdicValuation:731` — no gap on the `L`-side either, exactly as the eighth pass predicted)
+     gives a limit `xL`; continuity of `‖·‖` plus (5) forces `‖xL‖ = 1` (via `tendsto_nhds_unique`
+     against the constant-`1` sequence), hence `xL ∈ L₀` and `IsUnit xL` in `L₀`
+     (`adicCompletionIntegers.isUnit_iff_valued_eq_one`, found by loogle, not anticipated in the
+     eighth pass's writeup); pushing the exact invariant `y = N(x_n)·(1+π^{n+1}·t_n)` through
+     `algebraMap K₀ (v.adicCompletion K)` and taking `n → ∞` (the error term `π^{n+1}·t_n → 0` via
+     `squeeze_zero_norm` + `tendsto_pow_atTop_nhds_zero_of_lt_one`, and `N(x_n) → N(xL)` via
+     `continuous_norm_adicCompletion`, `Langlands.NormMapContinuity`, composed with `hxL`) gives
+     `algebraMap y = algebraMap (N xL)` by `tendsto_nhds_unique`, hence `y = N(xL)` by injectivity
+     of `algebraMap K₀ (v.adicCompletion K)` (`Subtype.coe_injective`).
+- **What this does and does not close.** This closes `N_{L/K}(L^×) ⊇ O_K^×` (surjectivity onto
+  units), the scoped stopping point of the original Phase 2a milestone. It does **not** close the
+  full classical statement `N_{L/K}(L^×) = ⟨π⟩^n·O_K^×` — the reverse inclusion `⊆` and the
+  `⟨π⟩^n` factor tracking the valuation/uniformizer part of the norm image are untouched; those are
+  comparatively routine (the reverse inclusion is essentially "the norm of any element has the
+  expected valuation," and `π` itself is visibly a norm since `L/K` is unramified — `N_{L/K}(π) =
+  π^n` up to a unit, by the standard unramified-extension norm-of-uniformizer computation) but were
+  not attempted this session, the task having been scoped to surjectivity.
+- **No genuine Mathlib wall was hit anywhere in this pass.** Every fact the eighth pass flagged as
+  needed (`Valued.hasBasis_uniformity`/`Filter.HasBasis.cauchySeq_iff`, `CompleteSpace
+  (w.adicCompletion L)`) either existed as anticipated or was superseded by a simpler pre-existing
+  route (`NontriviallyNormedField`/`cauchySeq_of_le_geometric` in place of the valuation-basis
+  approach). The entire session was proof engineering — correct bookkeeping of a multiplicative
+  Hensel-lift recursion and its limit — not lemma discovery.
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
