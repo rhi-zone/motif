@@ -50,6 +50,10 @@ nonarchimedean local field and `L / K` algebraic, a `ValuationSubring` of `L` wh
   that agree on `dist` but were built via unrelated, non-defeq constructions — the tool needed to
   reconcile a `Valued`/`RankOne`-built `NontriviallyNormedField` with a `spectralNorm`-built one on
   the same field (see the "nineteenth pass" and later entries of `ROADMAP.md`).
+* `LocalField.exists_completeSpace_of_finiteDimensional` : for `A : ValuationSubring L` with
+  `A.comap (algebraMap K L) = 𝒪[K]`, `K` complete, `L / K` finite, `L` is complete with respect to
+  the `Valued.mk' A.valuation`-determined uniform space — the permanent, reusable assembly of the
+  "twentieth pass" transport lemmas above, composed with `spectralNorm.completeSpace`.
 
 ## Implementation notes
 
@@ -717,6 +721,57 @@ theorem exists_rankOne_absoluteValue_extends [Algebra.IsAlgebraic K L]
   · show ‖x‖ ≤ 1 ↔ x ∈ A
     rw [Valued.toNormedField.norm_le_one_iff]
     exact A.valuation_le_one_iff x
+
+/-- **Completeness transport across the `Valued`/`spectralNorm` diamond.** For `A : ValuationSubring
+L` with `A.comap (algebraMap K L) = 𝒪[K]`, `K` complete, and `L / K` finite, `L` is complete with
+respect to the uniform space determined by `A.valuation` via `Valued.mk'` — the same canonical
+uniform structure `exists_rankOne_absoluteValue_extends` and this file's other theorems build via
+`Valued.mk'` + `Valued.toNontriviallyNormedField`.
+
+**Design choice (shape (a) from the task, not (b)):** the conclusion is stated as `CompleteSpace L`
+relative to the explicit `UniformSpace` term `(Valued.mk' A.valuation).toUniformSpace`, not relative
+to an ambient `[Valued L A.ValueGroup]`/`[RankOne A.valuation]` instance argument. This is possible
+(and preferable to threading those as hypotheses) because `Valued.mk' A.valuation` needs no
+`RankOne` instance to determine `L`'s uniform structure — `RankOne` is only needed internally, to
+build the *normed*-field structure used to compare against `spectralNorm`, not to state the
+conclusion. A caller that has already done `letI := Valued.mk' A.valuation` (mirroring
+`exists_rankOne_absoluteValue_extends`'s own downstream usage pattern) gets `CompleteSpace L`
+immediately by `haveI := exists_completeSpace_of_finiteDimensional K A hA`, with no further `letI`
+chain to repeat.
+
+**Why this needs `Langlands.HenselianValuation`'s new `UniformSpaceTransport` lemmas and not just
+`spectralNorm.completeSpace` directly**: `Mathlib`'s general "finite extension of a complete
+nonarchimedean field is complete" theorem, `spectralNorm.completeSpace`, is pinned to
+`spectralNorm.uniformSpace K L` — a uniform structure built from the abstract sup-over-embeddings
+spectral norm, a *different, non-defeq* construction from `Valued.mk' A.valuation`'s (built from the
+concrete `A.valuation`/`RankOne` data), even though both norms agree pointwise. Composing them
+requires the `PseudoMetricSpace.ext`-based transport
+(`CompleteSpace.of_pseudoMetricSpace_toDist_eq`, `UniformSpaceTransport` section above), applied to
+the pointwise norm equality supplied by `spectralNorm_unique_field_norm_ext` (using the same
+absolute value `exists_rankOne_absoluteValue_extends` builds, here inlined via the same `hR` from
+`exists_rankOne_compatible` so the two constructions provably agree rather than merely being
+propositionally equal witnesses of separate existentials). -/
+theorem exists_completeSpace_of_finiteDimensional [CompleteSpace K] [Algebra.IsAlgebraic K L]
+    [FiniteDimensional K L] (A : ValuationSubring L)
+    (hA : A.comap (algebraMap K L) = (valuation K).valuationSubring) :
+    @CompleteSpace L (Valued.mk' A.valuation).toUniformSpace := by
+  obtain ⟨hR, hcompat⟩ := exists_rankOne_compatible K A hA
+  letI := hR
+  letI : Valued L A.ValueGroup := Valued.mk' A.valuation
+  letI hnfValued : NontriviallyNormedField L := Valued.toNontriviallyNormedField L A.ValueGroup
+  letI hnfSpectral : NontriviallyNormedField L := spectralNorm.nontriviallyNormedField K L
+  -- `‖·‖` notation is ambiguous with both `hnfValued`/`hnfSpectral` in scope (it resolves to
+  -- whichever instance typeclass search prefers, not necessarily `hnfValued`), so every `L`-typed
+  -- norm/dist below is pinned explicitly to `hnfValued` rather than written via bare `‖·‖`/`dist`.
+  have hfK : ∀ x : K, (@norm L hnfValued.toNorm) (algebraMap K L x) = ‖x‖ := fun x => by
+    rw [← hcompat x]; rfl
+  have hfK' : ∀ x : K, (@NormedField.toAbsoluteValue L hnfValued.toNormedField)
+      (algebraMap K L x) = ‖x‖ := hfK
+  have hnorm_eq : ∀ y : L, (@norm L hnfValued.toNorm) y = spectralNorm K L y := fun y =>
+    spectralNorm_unique_field_norm_ext hfK' y
+  have hdist_eq : hnfValued.toDist = hnfSpectral.toDist :=
+    Dist.ext (funext fun x => funext fun y => hnorm_eq (x - y))
+  exact CompleteSpace.of_pseudoMetricSpace_toDist_eq hdist_eq (spectralNorm.completeSpace K L)
 
 /-- A nonunit `π ≠ 0` of a `ValuationSubring A` of `L` extending `𝒪[K]` (i.e. `A.comap
 (algebraMap K L) = 𝒪[K]`) has `spectralNorm K L π < 1`, provided `K` is complete.
