@@ -213,6 +213,68 @@ theorem exists_norm_one_add_uniformizer_pow_smul_eq_trace_add
     rw [map_add, map_mul, hres0, zero_mul, add_zero]
     exact residue_trace_eq_trace_residue_of_isUnramified K L v w hU x
 
+/-! ### `1 + π^{n+1} • x` is a local unit, and the identity transfers to `localNormMap`
+
+Closes the two gaps flagged in the module docstring (points 2 of the "Scope" section, and item 2
+of the seventh pass's "explicitly not built this session" list in `ROADMAP.md`), to the extent
+they are load-bearing for the successive-approximation assembly of
+`Langlands.PrincipalUnitsCauchySequence`. -/
+
+omit [Module.Finite K L] [Algebra.IsIntegral R S]
+  [Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)] in
+/-- `1 + π^{n+1} • x` is a unit of `L₀`, for `π` a uniformizer of `K₀` and `x : L₀` — no
+`IsUnramified` hypothesis needed, only the *forward* containment `𝔪_K·L₀ ≤ 𝔪_L` that always holds
+(`map_maximalIdeal_le`), since `π^{n+1} ∈ 𝔪_K` puts `π^{n+1} • x ∈ 𝔪_K·L₀ ≤ 𝔪_L`, so
+`1 + π^{n+1} • x` reduces to `1 ≠ 0` in `𝓀[L]` (`residue_ne_zero_iff_isUnit`). -/
+theorem isUnit_one_add_uniformizer_pow_smul {π : v.adicCompletionIntegers K} (hπ : Irreducible π)
+    (n : ℕ) (x : w.adicCompletionIntegers L) :
+    IsUnit (1 + π ^ (n + 1) • x : w.adicCompletionIntegers L) := by
+  refine (residue_ne_zero_iff_isUnit _).mp ?_
+  have hπmem : π ∈ maximalIdeal (v.adicCompletionIntegers K) :=
+    hπ.maximalIdeal_eq ▸ Ideal.mem_span_singleton_self π
+  have hπnmem : π ^ (n + 1) ∈ maximalIdeal (v.adicCompletionIntegers K) :=
+    Ideal.pow_mem_of_mem _ hπmem (n + 1) n.succ_pos
+  have hmem : π ^ (n + 1) • x ∈ maximalIdeal (w.adicCompletionIntegers L) := by
+    rw [Algebra.smul_def]
+    exact (maximalIdeal (w.adicCompletionIntegers L)).mul_mem_right _
+      (map_maximalIdeal_le K L v w (Ideal.mem_map_of_mem _ hπnmem))
+  have hres0 : residue (w.adicCompletionIntegers L) (π ^ (n + 1) • x) = 0 :=
+    (Ideal.Quotient.eq_zero_iff_mem).mpr hmem
+  rw [map_add, hres0, add_zero, map_one]
+  exact one_ne_zero
+
+omit [Module.Finite K L] [Algebra.IsIntegral R S]
+  [Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)] in
+/-- The image of `1 + π^{n+1} • x` in `L` (via `algebraMap L₀ L`) is a unit of the field `L` —
+the field-level counterpart of `isUnit_one_add_uniformizer_pow_smul`, obtained by pushing that
+local-ring unit forward along the (injective) ring hom `algebraMap L₀ L`. -/
+theorem isUnit_algebraMap_one_add_uniformizer_pow_smul {π : v.adicCompletionIntegers K}
+    (hπ : Irreducible π) (n : ℕ) (x : w.adicCompletionIntegers L) :
+    IsUnit (algebraMap (w.adicCompletionIntegers L) (w.adicCompletion L)
+      (1 + π ^ (n + 1) • x)) :=
+  (isUnit_one_add_uniformizer_pow_smul K L v w hπ n x).map _
+
+omit [Algebra.IsIntegral R S] in
+/-- The ring-level norm of `1 + π^{n+1} • x` (in `K₀`) agrees, under `algebraMap K₀ K`, with the
+field-level `Algebra.norm K` applied to the image of `1 + π^{n+1} • x` in `L` — i.e. `localNormMap`
+applied to the unit of `(w.adicCompletion L)ˣ` corresponding to `1 + π^{n+1} • x` (via
+`isUnit_algebraMap_one_add_uniformizer_pow_smul`) reduces, after applying `algebraMap K₀ K`, to
+`Algebra.norm K₀ (1 + π^{n+1} • x)`. This is `algebraMap_norm_eq_norm_algebraMap`
+(`Langlands.NormMapResidueCompatibility`) specialized to `x := 1 + π^{n+1} • x`, restated through
+`localNormMap`'s definition (`Units.map (Algebra.norm (v.adicCompletion K))`), mirroring
+`NormMapResidueCompatibility.lean`'s `localNormMap_reduce`. -/
+theorem localNormMap_coe_one_add_uniformizer_pow_smul {π : v.adicCompletionIntegers K}
+    (hπ : Irreducible π) (n : ℕ) (x : w.adicCompletionIntegers L) :
+    (localNormMap K L v w
+        (isUnit_algebraMap_one_add_uniformizer_pow_smul K L v w hπ n x).unit :
+        v.adicCompletion K) =
+      algebraMap (v.adicCompletionIntegers K) (v.adicCompletion K)
+        (Algebra.norm (v.adicCompletionIntegers K) (1 + π ^ (n + 1) • x)) := by
+  show Algebra.norm (v.adicCompletion K)
+      ((isUnit_algebraMap_one_add_uniformizer_pow_smul K L v w hπ n x).unit :
+        w.adicCompletion L) = _
+  rw [IsUnit.unit_spec, ← algebraMap_norm_eq_norm_algebraMap K L v w]
+
 end IsDedekindDomain.HeightOneSpectrum
 
 end
