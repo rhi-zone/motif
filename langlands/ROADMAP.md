@@ -1748,6 +1748,74 @@ that avoids stalling on (a).
   composition step combining this half with the unramified half into monogenicity over `O_K` proper
   (Serre's actual combining argument, not yet checked in detail this pass).
 
+#### Status 2026-08-06 (fourteenth pass) — spectral-value coefficient bound proved and committed; the two remaining assembly gaps precisely relocated, no `LocalField.isEisensteinAt_minpoly_of_isUniformizer` statement declared
+
+- **Task.** Attempt the Eisenstein-ness-from-uniformizer lemma scoped by the thirteenth pass, via a
+  route through `Mathlib/Analysis/Normed/Unbundled/SpectralNorm.lean` (`spectralNorm K L x :=
+  spectralValue (minpoly K x)`) that sidesteps most of the Galois/conjugate-valuation argument: two
+  elements sharing a minimal polynomial automatically share a `spectralNorm`, by definition, with no
+  completeness needed for *that* fact.
+- **Built and committed, sorry-free** (`Langlands/TotallyRamifiedEisenstein.lean`, commit
+  `<COMMIT_HASH>`):
+  - `spectralValue_coeff_le {R} [NormedDivisionRing R] {p : R[X]} {n} (hn : n < p.natDegree) :
+    ‖p.coeff n‖ ≤ spectralValue p ^ (p.natDegree - n)` (`TotallyRamifiedEisenstein.lean:76`) — the
+    per-coefficient bound obtained by unfolding `spectralValue p := iSup (spectralValueTerms p)`
+    (`le_ciSup (spectralValueTerms_bddAbove p) n` dominates each term, then
+    `spectralValueTerms_of_lt_natDegree` identifies the term as `‖p.coeff n‖ ^ (1/(natDegree-n:ℝ))`,
+    and raising both sides to the `(natDegree-n)`-th power via `Real.rpow_inv_natCast_pow` +
+    `Real.rpow_le_rpow` gives the claim). Confirmed via direct read of
+    `Mathlib/Analysis/Normed/Unbundled/SpectralNorm.lean` that no such per-`n` bound is already
+    packaged (only the `≤ 1` boundary case, `spectralValue_le_one_iff`, exists).
+  - `spectralNorm_coeff_lt_one {K} [NormedField K] {L} [Field L] [Algebra K L] {x : L} (hx :
+    spectralNorm K L x < 1) {n} (hn : n < (minpoly K x).natDegree) : ‖(minpoly K x).coeff n‖ < 1`
+    (`TotallyRamifiedEisenstein.lean:105`) — the sharper *strict* form needed for
+    `Polynomial.IsEisensteinAt.mem` (ideal membership, not just valuation-ring membership), via
+    `pow_le_pow_of_le_one` collapsing the exponent `natDegree - n ≥ 1` down to `1`.
+- **The two gaps that remain, now relocated precisely** (documented in the new file's module
+  docstring, not repeated here in full):
+  1. Connecting a concrete uniformizer `π` of a `ValuationSubring A` of `L` (with `A.comap
+     (algebraMap K L) = 𝒪[K]`) to the hypothesis `spectralNorm K L π < 1` these two lemmas need. This
+     is formal given machinery already in `Langlands.HenselianValuation`
+     (`exists_rankOne_absoluteValue_extends`, `spectralNorm_unique_field_norm_ext`) plus the
+     `IsNonarchimedeanLocalField K → NormedField K` instance-construction block already written out
+     at `Langlands/HenselianValuation.lean:715-732`
+     (`valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField`), plus
+     `ValuationSubring.mem_nonunits_iff_or`/`coe_mem_nonunits_iff`
+     (`Mathlib/RingTheory/Valuation/ValuationSubring.lean:562-620`, confirmed present this pass) for
+     `f π ≠ 1`. Not assembled into a standalone lemma this pass.
+  2. Converting the resulting real-number bound (from `spectralNorm_coeff_lt_one`) and exact value
+     (from `spectralNorm_eq_norm_coeff_zero_rpow`, `SpectralNorm.lean:988`, note: namespaced as
+     `spectralNorm.spectralNorm_eq_norm_coeff_zero_rpow` — the task brief's transcription omitted the
+     `namespace spectralNorm` wrapping it, verify with `open scoped spectralNorm` or full
+     qualification before use) into the *ideal-power* statement
+     `(minpoly K π).coeff 0 ∉ 𝔪_K ^ 2` that `Polynomial.IsEisensteinAt.notMem` needs. Confirmed
+     present this pass, via loogle (`IsDiscreteValuationRing, maximalIdeal, pow`):
+     `Valuation.integer.integers.maximalIdeal_pow_eq_setOf_le_v_algebraMap_pow` and
+     `Irreducible.maximalIdeal_pow_eq_setOf_le_v_coe_pow`
+     (`Mathlib/RingTheory/DiscreteValuationRing/Basic.lean:676,698`), identifying `(maximalIdeal O ^
+     n : Set O)` with `{y | v (algebraMap O K y) ≤ v (algebraMap O K ϖ) ^ n}` for `O` a DVR with
+     valuation `v` and irreducible uniformizer `ϖ`. These are stated for `v.integer`
+     (`Valuation.integer`, a plain `Subring`), not for `(valuation K).valuationSubring` (a bundled
+     `ValuationSubring`) as used throughout `Langlands.HenselianValuation` — the two carrier types are
+     defeq (`Valuation.valuationSubring` is literally `{ v.integer with mem_or_inv_mem' := ... }`,
+     `Mathlib/RingTheory/Valuation/ValuationSubring.lean:439`) but transporting the `IsDiscreteValuationRing`
+     instance and the pow-ideal lemma across that defeq, and bridging the *real*-number
+     inequality/equality out of step (2)'s starting lemmas back down to a `Γ₀`-valued
+     (`ValueGroupWithZero K`) inequality via the ambient `RankOne.hom` embedding's
+     `StrictMono.le_iff_le`, was not attempted.
+- **Why no `LocalField.isEisensteinAt_minpoly_of_isUniformizer` statement was declared.** Writing the
+  full signature before either gap above is closed would force a choice between `sorry` (forbidden,
+  hard constraint) or hypotheses strong enough to trivialize the theorem (e.g. hypothesizing the
+  ideal-power condition directly) — neither is acceptable. The two lemmas that are committed are
+  self-contained and reusable regardless of how the remaining assembly proceeds; `lake build
+  Langlands` re-verified clean (8676 jobs, one file added) and `grep -rn sorry Langlands/` confirmed
+  zero non-prose occurrences project-wide.
+- **Next step for whoever picks this up:** gap (1) first (it is the more mechanical of the two —
+  copying an existing, already-typechecking instance-construction block), then gap (2)'s
+  `ValuationSubring`/`Valuation.integer` defeq transport, in that order — gap (1)'s output
+  (`spectralNorm K L π < 1`, a real inequality) is exactly what gap (2)'s bridging step needs as
+  input, so sequencing them the other way round has nothing to feed gap (2) until gap (1) exists.
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
