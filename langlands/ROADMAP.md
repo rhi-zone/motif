@@ -1093,6 +1093,94 @@ that avoids stalling on (a).
     sequenced every other piece of Phase 2a (primitives before the square, the square
     before the composition).
 
+#### Status 2026-08-05 (seventh pass) — step 2 (norm linearizes to trace on the graded pieces) CLOSED, for every filtration level
+
+- **New file** `langlands/Langlands/NormTraceLinearization.lean`, zero `sorry`,
+  `lake build Langlands.NormTraceLinearization` and full `lake build` both green (8670 jobs;
+  `grep -rn sorry langlands/Langlands/` empty). Not yet in `Langlands.lean`'s import list,
+  consistent with the rest of Phase 2a's files.
+- **Worked out on paper first, then checked against Mathlib, per the task's brief.** The
+  classical computation `N(1+πx) ≡ 1+Tr(x)·π \pmod{π^2}` is the constant/linear-coefficient
+  read-off of the determinant Taylor expansion `det(1+tA) = 1 + tr(A)·t + O(t^2)` applied to
+  `A :=` the matrix of left multiplication by `x` in a chosen `K₀`-basis of `L₀` — i.e. this is
+  not new content Serre proves by hand; it is the `k=1` case of the standard
+  characteristic-polynomial-coefficients-are-elementary-symmetric-functions fact, which Mathlib
+  already has as `Matrix.det_one_add_smul` (`Mathlib.LinearAlgebra.Matrix.Charpoly.Coeff`,
+  found via loogle query `Matrix.det (1 + ?t • ?A)`, one query, first try — this is the single
+  ingredient that makes the whole step close in one session rather than needing new
+  determinant-Taylor-expansion theory).
+- **Closed as an exact algebraic identity, not merely a mod-`t^2` congruence**, and — the one
+  genuine improvement over the roadmap's own scoping — **for every filtration level `n`, not
+  just `n = 0`/`i = 1`.** The task's brief explicitly invited scoping down to `i = 1` alone if
+  defensible ("check whether step 3 actually needs the general-`i` version"); it turned out
+  general `i` costs nothing extra, because the same proof that gives the `i=1` case, with `t`
+  replaced by `π^{n+1}`, gives every `i = n+1` for free — the argument only ever uses
+  `π^{n+1} ∈ 𝔪_K` (true for every `n ≥ 0`), never a `mod π^2`-specific fact. So the file proves
+  the fully general statement and the `i=1` case is simply `n = 0` of it; no separate
+  future-work item for general `i` is needed.
+- **Route, three pieces:**
+  1. `Algebra.exists_norm_one_add_smul_eq` (`NormTraceLinearization.lean:83`) — fully general, no
+     valuation or local-ring content at all: for `S` a finite free `R`-algebra, `t : R`, `x : S`,
+     `∃ c, Algebra.norm R (1 + t•x) = 1 + t·Algebra.trace R S x + t²·c`. Proved via
+     `Algebra.leftMulMatrix b (1+t•x) = 1 + t•(leftMulMatrix b x)` (since `leftMulMatrix b` is an
+     `R`-algebra hom, so respects `+`, `1`, and `R`-scalar `•`) fed into `Matrix.det_one_add_smul`,
+     matched against `Algebra.norm_eq_matrix_det`/`Algebra.trace_eq_matrix_trace`.
+  2. `IsLocalRing.residue_trace_eq_trace_residue` / `residue_trace_eq_trace_residue_of_eq_map`
+     (`:110`, `:129`) — the trace analogue of `NormMapResidueCompatibility.lean`'s
+     `residue_norm_eq_norm_residue`/`_of_eq_map`, proved the same way (`IsLocalRing.basisQuotient`
+     plus entrywise reduction) but genuinely easier: trace is a sum of diagonal entries, so it
+     commutes with any ring hom applied entrywise via the general `AddMonoidHom.map_trace`
+     (found by loogle query `Matrix.trace, Matrix.map`, one query), with no determinant/`RingHom.map_det`
+     step needed. The `_of_eq_map` version carries over the same instance-mismatch fix as the norm
+     case (`Algebra.algebra_ext` reconciling `Ideal.Quotient.algebraQuotientMapQuotient` against
+     `Langlands.ResidueFieldNorm`'s `Valuation.HasExtension`-built `Algebra 𝓀[K] 𝓀[L]` instance) —
+     copied directly from the fifth pass's proof of the norm version, no new idea needed there.
+  3. `IsDedekindDomain.HeightOneSpectrum.residue_trace_eq_trace_residue_of_isUnramified` (`:164`)
+     specializes (2) to `K₀`/`L₀` under `IsUnramified`, exactly mirroring
+     `residue_norm_eq_norm_residue_of_isUnramified` from the fifth pass.
+- **The main theorem:** `exists_norm_one_add_uniformizer_pow_smul_eq_trace_add`
+  (`NormTraceLinearization.lean:194`) — for `π` a uniformizer of `K₀` (`Irreducible π`, giving
+  `maximalIdeal K₀ = Ideal.span {π}` via Mathlib's `Irreducible.maximalIdeal_eq`, using the
+  pre-existing `IsDiscreteValuationRing K₀` instance), `IsUnramified K L v w`, `n : ℕ`, and
+  `x : L₀`: there is `y : K₀` with `Algebra.norm K₀ (1 + π^{n+1}•x) = 1 + π^{n+1}·y` and
+  `residue K₀ y = Algebra.trace 𝓀[K] (residue L₀ x)`. Combines (1) (with `t := π^{n+1}`) and (3):
+  `y := Algebra.trace K₀ L₀ x + π^{n+1}·c` from (1)'s witness `c`, and `residue K₀ y =
+  residue K₀ (trace K₀ L₀ x)` since `π^{n+1} ∈ maximalIdeal K₀` kills the `π^{n+1}·c` term, then
+  (3) identifies that with `Algebra.trace 𝓀[K] (residue L₀ x)`.
+- **What this identity means, read against the `(1+𝔪_K^i)/(1+𝔪_K^{i+1})` framing of the sixth
+  pass's step 2:** identifying `𝔪_K^{n+1}/𝔪_K^{n+2}` with `𝓀[K]` via `y ↦ 1+π^{n+1}y`
+  (likewise `𝔪_L^{n+1}/𝔪_L^{n+2}` with `𝓀[L]`, using that `L₀`'s maximal ideal is
+  `Ideal.span {algebraMap K₀ L₀ π}` under `IsUnramified` — `π` remains a uniformizer of `L₀`
+  too, matching the roadmap's "same filtration index on both sides" observation for the
+  unramified case), this theorem is exactly "the map induced on the `(n+1)`-th graded piece by
+  `x ↦ N(1+π^{n+1}x)` is `Algebra.trace 𝓀[K] : 𝓀[L] → 𝓀[K]`" for `i = n+1 = 1, 2, 3, …`.
+- **Explicitly not built this session (left for step 3's assembly, per the task's scoping
+  instruction not to force step 3):**
+  1. No bundled quotient-group objects `(1+𝔪_K^i)/(1+𝔪_K^{i+1})` or `𝔪_K^i/𝔪_K^{i+1}` — the
+     result is stated as a concrete algebraic identity (`∃ y, N(1+π^{n+1}x) = 1+π^{n+1}y ∧
+     residue y = trace (residue x)`) rather than as a genuine `AddMonoidHom`/`MonoidHom` between
+     bundled quotients. Building that packaging (and proving the identification
+     `𝔪_K^{n+1}/𝔪_K^{n+2} ≃+ 𝓀[K]` as an actual `Module`/`AddEquiv`, not just the ad hoc
+     `y ↦ 1+π^{n+1}y` reading used informally above) is bookkeeping, not new mathematical
+     content, but was not attempted — nothing in step 3's Cauchy-sequence argument (as sketched
+     in the sixth pass) obviously needs the bundled form over the concrete-identity form; whoever
+     assembles step 3 should check this directly rather than assume it.
+  2. `1 + π^{n+1} • x` is not shown to be a genuine element of `L₀ˣ` (a local unit) here, nor is
+     the result connected to `localNormMap` (field-level, `w.adicCompletion L`) the way
+     `NormMapResidueCompatibility.lean`'s `localNormMap_reduce` connects the norm compatibility
+     square to `localNormMap`. This theorem works entirely at the `Algebra.norm K₀ : L₀ → K₀`
+     ring level, matching how the fifth-pass square was *proved* (`algebraMap_norm_eq_norm_algebraMap`
+     bridges ring-norm to field-norm only afterward) — the same bridging lemma should transfer
+     here without new difficulty (`1+π^{n+1}x` is visibly a unit of the local ring `L₀`, since it
+     reduces to `1 ≠ 0` in the residue field), but was not written, since it is not needed to
+     state step 2's mathematical content and the task scoped this session to step 2 itself.
+  3. **Step 3 (Cauchy-sequence assembly) remains untouched, as instructed** — still explicitly
+     out of scope for this session, per the task's brief. With steps 1 and 2 now both closed, the
+     `ROADMAP.md` state is: the full unramified norm-group theorem needs only the
+     successive-approximation/completeness argument described in the sixth pass's step 3 sketch,
+     built on top of `localNormMap_units_surjective_mod_principalUnits` (sixth pass) and this
+     session's `exists_norm_one_add_uniformizer_pow_smul_eq_trace_add`.
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
