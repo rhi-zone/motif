@@ -1,4 +1,5 @@
 import Langlands.IdeleGroup
+import Mathlib.NumberTheory.NumberField.Completion.FinitePlace
 import Mathlib.NumberTheory.RamificationInertia.Valuation
 import Mathlib.RingTheory.DedekindDomain.Ideal.Lemmas
 import Mathlib.RingTheory.Norm.Defs
@@ -67,12 +68,51 @@ noncomputable section
 
 open IsDedekindDomain
 
+namespace IsDedekindDomain.HeightOneSpectrum
+
+section RankOne
+
+open scoped WithZero NNReal
+
+variable {A F : Type*} [CommRing A] [IsDedekindDomain A] [Field F] [Algebra A F]
+  [IsFractionRing A F] (v : HeightOneSpectrum A)
+
+/-- **Connecting instance**: the `v`-adic completion of the fraction field of a Dedekind domain
+has a rank-one valuation. Mathlib already builds `Valuation.IsRankOneDiscrete` for
+`(Valued.v : Valuation (v.adicCompletion F) ℤᵐ⁰)` completely generally (for *any* Dedekind domain
+`A` with fraction field `F`, not just `𝓞 K` for a number field `K`) in
+`Mathlib.NumberTheory.NumberField.Completion.FinitePlace` -- it just lives under the
+`NumberField` namespace because that is where it happens to have been added, even though its
+statement never mentions `NumberField`. That instance is built via
+`Valuation.IsRankOneDiscrete.mk'` applied to `v.valuation F`: cyclicity of the value group comes
+from `Subgroup.isCyclic` (any subgroup of the cyclic group `ℤᵐ⁰ˣ` is cyclic), nontriviality from
+`v.valuation F`'s surjectivity (`HeightOneSpectrum.valuation_surjective`).
+
+What was missing is turning that `IsRankOneDiscrete` fact into an actual `Valuation.RankOne`
+*instance* -- the `ℝ≥0`-embedded-value-group structure that `Valued.toNormedField`/`NormedField`
+and this session's uniqueness-of-valuation-extension machinery (`Langlands.HenselianValuation`)
+need as a hypothesis. `Valuation.IsRankOneDiscrete.rankOne` builds a `RankOne` instance from *any*
+real `e > 1`, with no further hypotheses: it does not need the residue field `A ⧸ v.asIdeal` to be
+finite (contrast `NumberField.instRankOneAdicCompletion`, which specifically uses
+`e = absNorm v.asIdeal` so the resulting norm matches the classical adic absolute value -- a
+choice only available when `Module.Finite ℤ A`/`Module.Free ℤ A`, i.e. essentially when `A = 𝓞 K`).
+For a bare Dedekind domain with no such finiteness assumption, any fixed `e` (here `e := 2`)
+suffices to get an unconditional `RankOne` instance.
+
+This alone does not close `IsDedekindDomain.HeightOneSpectrum.localNormMap_mem_units` below: the
+remaining gap there is uniqueness of the extension of a *complete* discrete valuation to a finite
+extension of `v.adicCompletion A`, which additionally needs the completion to be algebraic over
+its base (not just rank-one) -- a separate blocker, not attempted here. -/
+noncomputable instance instRankOneValuedAdicCompletion :
+    (Valued.v : Valuation (v.adicCompletion F) ℤᵐ⁰).RankOne :=
+  Valuation.IsRankOneDiscrete.rankOne _ (by norm_num : (1 : ℝ≥0) < 2)
+
+end RankOne
+
 variable {R S K L : Type*} [CommRing R] [IsDedekindDomain R] [Field K] [Algebra R K]
   [IsFractionRing R K] [CommRing S] [IsDedekindDomain S] [Field L] [Algebra S L]
   [IsFractionRing S L] [Algebra R S] [Algebra K L] [Algebra R L] [IsScalarTower R S L]
   [IsScalarTower R K L] [Module.Finite K L] [Algebra.IsIntegral R S] [Module.IsTorsionFree R S]
-
-namespace IsDedekindDomain.HeightOneSpectrum
 
 variable (K L) (v : HeightOneSpectrum R) (w : HeightOneSpectrum S) [w.asIdeal.LiesOver v.asIdeal]
 
