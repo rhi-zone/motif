@@ -764,6 +764,115 @@ that avoids stalling on (a).
   listed above — they are confirmed stable across two independent sessions
   on the same Mathlib commit.
 
+#### Status 2026-08-05 (fourth pass) — the missing integral-closure fact was already in this repo; primitives (1) and (2) both closed
+
+- **Correction to the third-pass conclusion.** The third pass concluded no
+  route to `Module.Finite`/`Module.Free` was buildable without proving, from
+  scratch, that `w.adicCompletionIntegers L` equals the integral closure of
+  `v.adicCompletionIntegers K` in `w.adicCompletion L` (the "hard
+  direction": elements of the top valuation ring are integral over the
+  base, which needs completeness). **That hard direction had already been
+  proved in this repo**, one session earlier than the third pass, as
+  `IsDedekindDomain.HeightOneSpectrum.isIntegral_of_mem_of_comap_eq`
+  (`NormMap.lean:214`, landed in commit `be81faa`, "close
+  `localNormMap_mem_units` via Galois-conjugate integrality argument") — via
+  a normal-closure-plus-Galois-conjugates argument that genuinely uses
+  `LocalField.valuationSubring_eq_of_comap_eq` (completeness/uniqueness of
+  valuation extension). It was used only pointwise, to show local units
+  have unit norms, in `localNormMap_mem_units`; nobody had recognized it as
+  the general integral-closure fact three sessions had been searching for.
+  This is a **process finding**, not just a math one: the third-pass
+  loogle-based search strategy (querying vendored Mathlib for "is this
+  connected to `IsIntegralClosure`/`spectralNorm`/etc.") never checked
+  whether the fact already existed *in this repo's own files* under a
+  different name/framing.
+- **Primitive (1) — `Module.Finite`/`Module.Free` for
+  `w.adicCompletionIntegers L` over `v.adicCompletionIntegers K` —
+  CLOSED.** New file `langlands/Langlands/AdicCompletionIntegralClosure.lean`
+  (commit `106870a`), zero `sorry`, `lake build
+  Langlands.AdicCompletionIntegralClosure` and full `lake build` both green
+  (8670 jobs). Content:
+  - `Valuation.isIntegral_imp_map_le_one` (`:67`): the genuinely missing
+    "easy direction" — a standalone generalization of the forward direction
+    of `Valuation.Integers.isIntegral_iff_v_le_one`
+    (`Mathlib/RingTheory/Valuation/Integral.lean`) that drops its bundled
+    `exists_of_le_one` surjectivity field (false here: `v.adicCompletionIntegers
+    K` is a proper subring of `w.adicCompletionIntegers L` in general, not
+    all of it). Proof is the same dominant-term/ultrametric argument as the
+    Mathlib original, ported by hand since the `Valuation.Integers`
+    structure itself doesn't apply.
+  - `isIntegral_iff_mem_adicCompletionIntegers` (`:163`): combines the easy
+    direction with `isIntegral_of_mem_of_comap_eq` (`NormMap.lean`) to get
+    the full iff.
+  - `instIsIntegralClosureAdicCompletionIntegers` (`:187`): the
+    `IsIntegralClosure (w.adicCompletionIntegers L) (v.adicCompletionIntegers
+    K) (w.adicCompletion L)` instance this unlocks.
+  - `instModuleFiniteAdicCompletionIntegers` / `instModuleFreeAdicCompletionIntegers`
+    (`:198`, `:204`): from `IsIntegralClosure.finite`/`.module_free`
+    (`Mathlib/RingTheory/DedekindDomain/IntegralClosure.lean`), under an
+    added `[Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)]`
+    hypothesis — those two Mathlib lemmas are themselves scoped to finite
+    *separable* extensions, so this repo's instances inherit that scope.
+    Separability is automatic in characteristic `0` (number fields, this
+    project's primary target) but not attempted in general (positive
+    characteristic local fields can have inseparable extensions).
+  - Building this also required constructing, from scratch,
+    `Algebra (v.adicCompletionIntegers K) (w.adicCompletion L)` (the
+    composite through `v.adicCompletion K`), the matching `IsScalarTower`
+    instances, and `Module.IsTorsionFree (v.adicCompletionIntegers K)
+    (w.adicCompletion L)` (from injectivity of the algebra map into a field)
+    — none of these existed prior to this file, and `IsIntegralClosure.module_free`
+    needs the torsion-free instance as a hypothesis.
+- **Primitive (2) — formulate unramifiedness for valuation-ring extensions
+  (general `e`) — CLOSED (formulation only, not connected to anything
+  downstream yet).** New file
+  `langlands/Langlands/UnramifiedValuationExtension.lean` (commit `61eab9b`),
+  zero `sorry`, builds green. `IsUnramified K L v w : Prop` is defined as
+  `𝔪_K · O_L = 𝔪_L` (`Ideal.map (algebraMap K₀ L₀) (maximalIdeal K₀) =
+  maximalIdeal L₀`), directly on the algebra structure from primitive (1).
+  `map_maximalIdeal_le` proves the containment `𝔪_K · O_L ≤ 𝔪_L` holds
+  unconditionally (`IsLocalRing.map_maximalIdeal_le`, using the `IsLocalHom`
+  instance already in `ResidueFieldNorm.lean`), so `isUnramified_iff_le`
+  reduces `IsUnramified` to the one nontrivial reverse containment. This was
+  a much smaller piece than primitive (1) — `Ideal.ramificationIdx'`
+  (`Mathlib/NumberTheory/RamificationInertia/Ramification.lean`) turned out
+  to already be stated generally enough (any `CommRing`s with an `Algebra`
+  instance and any two ideals) to apply directly to `K₀ → L₀`, no new
+  ramification-index theory was needed, only the packaging.
+- **Compatibility square (does `localNormMap` reduce mod the maximal ideal
+  to the `ResidueFieldNorm.lean` residue norm?) — NOT attempted this
+  session, per the task's own instruction not to force it.** With
+  primitives (1) and (2) now in hand, the determinant/basis route sketched
+  in the second-pass entry above is substantially more tractable than it
+  was: `Module.Free` (primitive 1) gives an integral basis of `L₀` over
+  `K₀`; for a *finite free* module over a local ring, a basis always
+  reduces (mod the maximal ideal) to a basis of the quotient — a standard
+  Nakayama-type fact, not yet located/proved in this repo. The quotient
+  `L₀ ⧸ 𝔪_K·L₀` only equals `𝓀[L] = L₀ ⧸ 𝔪_L` (the residue field target of
+  `ResidueFieldNorm.lean`'s norm) **under `IsUnramified`** (primitive 2) —
+  this is precisely why unramifiedness is the natural hypothesis for this
+  square, matching Serre's scoping of the "easy half" of local CFT. The
+  remaining gap, concretely: (a) locate or prove "basis of finite free
+  module over local ring reduces to basis of quotient by maximal ideal"
+  (Nakayama consequence, likely exists in Mathlib under
+  `Module.Free`/`IsLocalRing` somewhere, not checked this session); (b)
+  under `IsUnramified`, identify `L₀ ⧸ 𝔪_K·L₀` with `𝓀[L]`; (c) show
+  `Algebra.norm K L` (the determinant of the multiplication matrix in the
+  chosen basis) reduces mod `𝔪_K` to `Algebra.norm 𝓀[K]` of the reduced
+  element in the reduced basis — a determinant-reduces-mod-ideal argument.
+  None of (a)-(c) attempted; this is the concrete next-session starting
+  point, smaller in scope than the second-pass entry's "route 1" since (1)
+  and (2) are now discharged prerequisites rather than open blockers.
+- **Full build status**: `grep -rn sorry langlands/Langlands/` empty across
+  the whole `Langlands/` tree; full `lake build` green, 8670 jobs.
+- **Mathlib-upstreaming candidate flagged** (not attempted, see
+  `/home/me/git/rhizone/motif/TODO.md`): `Valuation.isIntegral_imp_map_le_one`
+  and the general pattern "a valuation subring extending a base valuation
+  ring, in the `Valuation.HasExtension` sense, over a *complete* base field
+  in a finite extension, equals the integral closure of the base" look like
+  a genuine gap in Mathlib's own `Valuation`/`ValuationSubring` API, not
+  specific to this project's `HeightOneSpectrum`/adele setup.
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
