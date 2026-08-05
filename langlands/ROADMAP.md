@@ -2161,6 +2161,104 @@ and not attempted.
   `spectralNorm.nontriviallyNormedField`, and separately attempt the `A = integralClosure 𝒪[K] M`
   argument sketched above as its own lemma before trying to assemble the full bundle.
 
+#### Status 2026-08-06 (nineteenth pass) — diamond reproduced first-hand and root-caused; not a
+Field-instance clash per se but a non-defeq `UniformSpace M` clash between two independently
+*constructed* bundles. No `.lean` file changed (scratch repro built and deleted, nothing
+committed); this is a diagnosis-only pass, as scoped.
+
+- **Reproduced the eighteenth pass's diamond directly** (scratch file, `lake build`-verified, then
+  deleted — not committed). Two isolated attempts to compose `spectralNorm.nontriviallyNormedField`
+  onto an `M` carrying only an ambient `[Field M]` (no pre-existing norm/valuation structure)
+  **typechecked with no diamond** — `letI hnf := spectralNorm.nontriviallyNormedField K M` followed
+  by `ValuativeRel.ofValuation (NormedField.valuation (K := M))`, and separately a `have key : A =
+  (NormedField.valuation (K := M)).valuationSubring` goal against a pre-existing `A : ValuationSubring
+  M`, both compiled clean. **The diamond is not triggered by `spectralNorm` meeting a bare ambient
+  `[Field M]`** — the eighteenth pass's report of hitting it in that shape could not be reproduced in
+  isolation; either it needs a more specific context than isolable in a small snippet, or (more
+  likely, per the finding below) the actual trigger is the co-presence of a *second* pre-existing
+  normed/valued bundle on `M`, which the isolated attempts didn't include.
+- **Reproduced a genuine, clean diamond by registering both bundles at once** — mirroring what the
+  real composition task requires: `M` needs the totally-ramified half's `Valued`/`RankOne`-based
+  `NontriviallyNormedField M` (built via `Valued.mk' A.valuation` +
+  `Valued.toNontriviallyNormedField`, the same route `exists_rankOne_absoluteValue_extends` already
+  uses) **and** the general finiteness-only completeness result, which only comes from
+  `spectralNorm.completeSpace`. Registering both `NontriviallyNormedField M` instances (`hnfValued`
+  via `Valued.mk'`/`Valued.toNontriviallyNormedField`, `hnfSpectral` via
+  `spectralNorm.nontriviallyNormedField`) in the same local context and then writing `haveI :
+  CompleteSpace M := spectralNorm.completeSpace K M` gives, verbatim:
+  ```
+  error: Type mismatch
+    spectralNorm.completeSpace K M
+  has type
+    @CompleteSpace M (spectralNorm.uniformSpace K M)
+  but is expected to have type
+    @CompleteSpace M this✝.toUniformSpace
+  ```
+  This is a **hard type mismatch, not a resolvable-by-more-unfolding defeq failure**: the expected
+  type's `UniformSpace M` was resolved (via ordinary local-instance search, picking whichever
+  `NontriviallyNormedField M`/`Valued M _` instance is in scope) to the `Valued`-route instance, while
+  `spectralNorm.completeSpace K M`'s stated type is pinned to `spectralNorm.uniformSpace K M` — the
+  metric space `spectralNorm.metricSpace K M`'s own `UniformSpace`, built from a completely different
+  construction path (the abstract sup-over-embeddings spectral norm, `SpectralNorm.lean:644–940`) than
+  `Valued.toNontriviallyNormedField`'s (built from the `RankOne`-normalized embedding of a concrete
+  `ValuationSubring A : ValuationSubring M`). The eighteenth pass's wording ("not recognized as
+  definitionally equal ... even though the two are propositionally identical") describes the same
+  phenomenon at the point where a proof step needs the two to agree; this pass's error is the same
+  mechanism caught one step earlier, as an outright type mismatch rather than a failed instance
+  search.
+- **Diagnosis: Lean/typeclass-resolution artifact, not a genuine mathematical ambiguity — but not a
+  trivial one to dismiss either.** The two `NontriviallyNormedField M` structures represent the *same*
+  norm mathematically: `spectralNorm_unique_field_norm_ext` (already used three times elsewhere in
+  `HenselianValuation.lean`, e.g. `spectralNorm_lt_one_of_mem_nonunits`) proves any absolute value on
+  `M` extending `‖·‖` on `K` — which the `Valued`-route norm is, by
+  `exists_rankOne_absoluteValue_extends`'s own conclusion — equals `spectralNorm K M` pointwise. So the
+  *values* agree provably; what doesn't automatically agree is the *Lean term* for the bundled
+  `UniformSpace M` (or `MetricSpace M`, or `NontriviallyNormedField M`) instance, because
+  `spectralNorm.nontriviallyNormedField` and `Valued.toNontriviallyNormedField` each construct their
+  structure from scratch via unrelated code paths (`SpectralNorm.lean`'s anonymous-constructor merge
+  off `(inferInstance : Field L)` vs. `Valued`'s uniformity machinery off a `Valuation`/`RankOne` pair)
+  — there is no shared "attach this norm to the existing structure" constructor connecting them, only
+  two independent ways to build a full bundle from lower-level data.
+- **Checked for a Mathlib synonym-management tool that would close this generically** (the task's
+  explicit ask): `NormedField.induced` exists (`Mathlib/Analysis/Normed/Field/Basic.lean`) — "an
+  injective ring hom from a `Field` into an existing `NormedField` induces a `NormedField` structure on
+  the domain" — but it *also* builds a fresh instance, so it doesn't itself dissolve a diamond between
+  two already-built instances; it would need to be the *only* route taken (build `NormedField M` via
+  `NormedField.induced` off the inclusion `M ↪ (whatever already-normed ambient field)`, never touching
+  `spectralNorm.nontriviallyNormedField` directly) to avoid creating a second bundle at all —
+  structurally the same idea as the already-known `Valued.mk'` workaround the user asked not to reach
+  for as a patch, since it also routes around `spectralNorm` rather than reconciling with it.
+  `UniformSpace.replaceTopology` (`Mathlib/Topology/UniformSpace/Defs.lean`) is the actual Mathlib
+  primitive for "install a `UniformSpace` whose topology is *definitionally* a given, already-fixed
+  `TopologicalSpace`, given a proof the propositional topologies agree" — the right shape of tool for
+  this exact problem — but there is no `CompleteSpace`-level or `UniformSpace`-uniformity-level analogue
+  (`UniformSpace.replaceUniformity`, `CompleteSpace.replaceUniformity` — checked via loogle, neither
+  exists), so `replaceTopology` alone is not enough to transport *completeness* (a uniformity-level, not
+  merely topology-level, property) from `spectralNorm.completeSpace` onto the ambient `Valued`-based
+  uniform structure. Building that transport by hand — prove `spectralNorm K M = ‖·‖` pointwise on the
+  `Valued`-route norm (available, per above), derive the two `dist` functions agree, get topology
+  agreement then *uniformity* agreement (Cauchy-filter level, stronger than topology alone), and only
+  then move `CompleteSpace` across — is real new proof work, comparable in size to what the eighteenth
+  and eighteenth-pass status entries already flagged, not a lemma lookup.
+- **Root-cause verdict:** the diamond is real, reproducible, and is a Lean/typeclass artifact (both
+  sides are the same field with the same norm) rather than a genuine mathematical ambiguity — but
+  resolving it "at the root" in the sense the task asked (not routing around via `Valued.mk'` /
+  `NormedField.induced`, which both just relocate the problem to "never build the `spectralNorm`
+  instance at all") requires writing the missing uniformity-level transport lemma by hand; Mathlib has
+  the topology-level primitive (`UniformSpace.replaceTopology`) but not the uniformity/completeness-level
+  one. This was not attempted this pass — it is a genuine, scoped, and nontrivial next milestone (build
+  a `spectralNorm`-agrees-with-ambient-norm-therefore-same-uniformity-therefore-same-completeness
+  lemma), not a redesign and not something closeable by finding an existing Mathlib name.
+- **Next step for whoever picks this up:** state and prove, as a standalone lemma (independent of the
+  rest of the tower-monogenicity composition), something like: given two `NontriviallyNormedField M`
+  instances whose `‖·‖` functions agree pointwise (by `funext` from `spectralNorm_unique_field_norm_ext`
+  applied to the `Valued`-route absolute value), their `UniformSpace M` instances are equal as terms
+  (via a `UniformSpace`/`PseudoMetricSpace` `ext`-style lemma keyed on `dist`, e.g. check for
+  `PseudoMetricSpace.ext`/`UniformSpace.ext` and whether `dist` uniquely determines the uniformity for a
+  `NontriviallyNormedField`), then `▸`-transport `spectralNorm.completeSpace`'s `CompleteSpace` instance
+  across that equality onto the ambient one. This is the "different construction route" the eighteenth
+  pass's `Valued.mk'` note gestured at, done as a genuine bridge rather than a substitution.
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
