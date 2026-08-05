@@ -2,48 +2,42 @@ import Mathlib.GroupTheory.SpecificGroups.Cyclic
 import Mathlib.GroupTheory.Coset.Card
 
 /-!
-# Subgroups of a finite cyclic group are classified by divisors of its order
+# Subgroups of a finite cyclic group
 
-Pure group theory, with no connection to the rest of `Langlands` -- a general-purpose fact about
-finite cyclic groups: for every divisor `d` of `Nat.card G`, there is a *unique* subgroup of `G` of
-order `d`. This is the standard classification of subgroups of a finite cyclic group (e.g. Lidl &
-Niederreiter, *Finite Fields*, Theorem 2.6, for the special case of `GF(q^n)`'s subfield lattice;
-Dummit & Foote, *Abstract Algebra*, Theorem 14.19, for the general cyclic-group statement).
+For a finite cyclic group `G` and every divisor `d` of `Nat.card G` there is a unique subgroup of
+`G` of order `d`, namely the kernel of the `d`-th power endomorphism `powMonoidHom d`. This is the
+classical classification of the subgroup lattice of a finite cyclic group.
 
-Not (as far as a Loogle/Mathlib search found) already in Mathlib: `IsCyclic.card_powMonoidHom_ker`
-and `IsCyclic.card_powMonoidHom_range` (`Mathlib.GroupTheory.SpecificGroups.Cyclic`) give the
-cardinality of the kernel/range of the `d`-th power map on a cyclic group, but nothing in Mathlib
-packages this into "existence and uniqueness of a subgroup of each order dividing `Nat.card G`".
+Mathlib's `IsCyclic.card_powMonoidHom_ker` and `IsCyclic.card_powMonoidHom_range`
+(`Mathlib.GroupTheory.SpecificGroups.Cyclic`) compute the cardinalities of the kernel and range of
+the `d`-th power map; this file packages them into the existence and uniqueness statement.
 
-## Main result
+## Main results
 
-* `IsCyclic.existsUnique_subgroup_card_eq` : for `G` a finite cyclic group and `d ∣ Nat.card G`,
-  there is a unique subgroup `H ≤ G` with `Nat.card H = d`, namely the kernel of the `d`-th power
-  endomorphism `powMonoidHom d`.
+* `IsCyclic.subgroup_eq_powMonoidHom_ker_of_card_eq` : a subgroup of order `d` is the kernel of
+  `powMonoidHom d`.
+* `IsCyclic.existsUnique_subgroup_card_eq` : for `d ∣ Nat.card G` there is a unique subgroup of
+  order `d`.
+* `mulEquivOfGenerators` : two groups equipped with a distinguished generator and of equal
+  `Nat.card` are isomorphic by an isomorphism matching the generators.
+* `zpowers_quotientGroupMk'_eq_top_of_zpowers_eq_top` : the image of a generator generates the
+  quotient by a normal subgroup.
 
-## Proof idea
+## Implementation notes
 
-Existence: `(powMonoidHom d).ker = {x : G | x ^ d = 1}` has cardinality `(Nat.card G).gcd d = d`
-(since `d ∣ Nat.card G`), by `IsCyclic.card_powMonoidHom_ker`.
+Cardinalities are handled throughout with `Nat.card`, so no `Fintype` instance is ever introduced;
+`Fintype.ofFinite`-derived instances are not defeq-canonical, and mixing independently derived
+copies for the same type makes `isDefEq`/`whnf` diverge.
 
-Uniqueness (`IsCyclic.subgroup_eq_powMonoidHom_ker_of_card_eq`): any subgroup `K ≤ G` of order `d`
-consists of solutions to `x ^ d = 1` (Lagrange *within* `K`, via `Subgroup.orderOf_dvd_natCard`,
-applied to elements of `G` directly -- this stays entirely within `Nat.card`, never introducing a
-`Fintype` instance, since `Fintype.ofFinite`-derived instances are not defeq-canonical and mixing
-independently-derived copies for the same type is a common way to make `isDefEq`/`whnf` time out),
-i.e. `K ≤ (powMonoidHom d).ker`. Since both are finite of the same cardinality `d`, the inclusion
-map `K → (powMonoidHom d).ker` is injective with `Nat.card` of the codomain `≤` that of the domain,
-hence bijective (`Function.Injective.bijective_of_nat_card_le`), hence the inclusion of subgroups
-is an equality.
+Every occurrence of `powMonoidHom d` carries an explicit `(α := G)`. Leaving `α` to unification at
+some occurrences (via `.ker`/`Nat.card`) but not others sends elaboration of the combining
+`refine`/`exact` calls down a deferred-metavariable path whose cost grows with each heartbeat
+increase rather than converging.
 
-**Elaboration gotcha found while proving this** (unrelated to `Fintype`): every occurrence of
-`powMonoidHom d` here is annotated `powMonoidHom d (α := G)`. Leaving the implicit type argument
-`α` to be inferred silently at some occurrences (relying on unification with `.ker`/`Nat.card` to
-pin it down) but not others made `refine`/`exact` calls combining them time out at `isDefEq`/`whnf`
-even at several times the default heartbeat budget -- not a slow-but-finite check, but one that
-needed genuinely more heartbeats each time the budget was raised, indicative of elaboration going
-down a bad (deferred-metavariable) path rather than a merely expensive but convergent one.
-Annotating `α` explicitly and consistently everywhere made every occurrence elaborate immediately.
+## References
+
+* Dummit and Foote, *Abstract Algebra*, Theorem 14.19.
+* Lidl and Niederreiter, *Finite Fields*, Theorem 2.6, for the subfield-lattice special case.
 -/
 
 @[expose] public section
@@ -52,11 +46,10 @@ namespace IsCyclic
 
 variable {G : Type*} [CommGroup G] [IsCyclic G] [Finite G]
 
-/-- Any subgroup of a finite cyclic group `G` of order `d` (necessarily `d ∣ Nat.card G`, by
-Lagrange) equals the kernel of the `d`-th power endomorphism: every element of a subgroup of order
-`d` has order dividing `d` (Lagrange applied *inside* the subgroup, `Subgroup.orderOf_dvd_natCard`),
-and the kernel has the same (finite) cardinality `d` once `d ∣ Nat.card G`, so the inclusion of
-subgroups is an equality. -/
+/-- A subgroup `K` of a finite cyclic group `G` with `Nat.card K = d` is the kernel of the `d`-th
+power endomorphism. Every element of `K` has order dividing `d` by Lagrange's theorem inside `K`
+(`Subgroup.orderOf_dvd_natCard`), so `K ≤ (powMonoidHom d).ker`, and the kernel again has
+cardinality `d` since `d ∣ Nat.card G`, forcing equality. -/
 theorem subgroup_eq_powMonoidHom_ker_of_card_eq (K : Subgroup G) {d : ℕ}
     (hd : d ∣ Nat.card G) (hK : Nat.card K = d) : K = (powMonoidHom d (α := G)).ker := by
   have hle : K ≤ (powMonoidHom d (α := G)).ker := by
@@ -78,8 +71,9 @@ theorem subgroup_eq_powMonoidHom_ker_of_card_eq (K : Subgroup G) {d : ℕ}
     simpa [Subgroup.coe_inclusion] using h
   rwa [hxy] at hy
 
-/-- **Classification of subgroups of a finite cyclic group**: for every divisor `d` of `Nat.card G`
-there is a unique subgroup of `G` with `Nat.card H = d`. -/
+/-- **Classification of the subgroups of a finite cyclic group**: for every divisor `d` of
+`Nat.card G` there is a unique subgroup `H` of `G` with `Nat.card H = d`, namely the kernel of
+`powMonoidHom d`. -/
 theorem existsUnique_subgroup_card_eq {d : ℕ} (hd : d ∣ Nat.card G) :
     ∃! H : Subgroup G, Nat.card H = d := by
   have hcard : Nat.card (powMonoidHom d (α := G)).ker = d := by
@@ -90,28 +84,26 @@ theorem existsUnique_subgroup_card_eq {d : ℕ} (hd : d ∣ Nat.card G) :
 
 end IsCyclic
 
-/-- **Two groups generated by a single specified element, of the same finite `Nat.card`, are
-isomorphic via a `MulEquiv` matching the two generators.** Pure group theory: identifies both `G`
-and `G'` with `Multiplicative (ZMod (Nat.card G))` via `zmodMulEquivOfGenerator`
-(`Mathlib.GroupTheory.SpecificGroups.Cyclic`), then composes. This is the standard fact that a
-cyclic group of order `n` is determined up to unique-generator-preserving isomorphism by `n` alone
--- used to identify, level by level, the finite quotients of two different presentations of the
-same procyclic group (e.g. `Multiplicative ℤ ⧸ H` for `H` of index `n`, against any other cyclic
-group of order `n` with a prescribed generator). -/
+/-- Two groups `G`, `G'` generated by distinguished elements `g`, `g'` and with
+`Nat.card G = Nat.card G'` are isomorphic. Both are identified with
+`Multiplicative (ZMod (Nat.card G))` via `zmodMulEquivOfGenerator`
+(`Mathlib.GroupTheory.SpecificGroups.Cyclic`); the resulting isomorphism sends `g` to `g'`
+(`mulEquivOfGenerators_apply_self`). A cyclic group is therefore determined, together with a
+choice of generator, by its `Nat.card` alone. -/
 noncomputable def mulEquivOfGenerators {G G' : Type*} [Group G] [Group G'] {g : G} {g' : G'}
     (hg : ∀ x : G, x ∈ Subgroup.zpowers g) (hg' : ∀ x : G', x ∈ Subgroup.zpowers g')
     (hn : Nat.card G = Nat.card G') : G ≃* G' :=
   (zmodMulEquivOfGenerator hg rfl).symm.trans (zmodMulEquivOfGenerator hg' hn.symm)
 
+/-- `mulEquivOfGenerators` carries the distinguished generator of `G` to that of `G'`. -/
 @[simp]
 theorem mulEquivOfGenerators_apply_self {G G' : Type*} [Group G] [Group G'] {g : G} {g' : G'}
     (hg : ∀ x : G, x ∈ Subgroup.zpowers g) (hg' : ∀ x : G', x ∈ Subgroup.zpowers g')
     (hn : Nat.card G = Nat.card G') : mulEquivOfGenerators hg hg' hn g = g' := by
   simp [mulEquivOfGenerators, zmodMulEquivOfGenerator_symm_apply_generator]
 
-/-- The image of a generator of `G` under a quotient map `G → G ⧸ N` generates the quotient: pure
-group theory, used to see that a quotient of a cyclic (or just singly-generated) group is again
-singly generated by the same generator's image. -/
+/-- The image of a generator of `G` under the quotient map `G → G ⧸ N` generates `G ⧸ N`; in
+particular a quotient of a singly generated group is again singly generated. -/
 theorem zpowers_quotientGroupMk'_eq_top_of_zpowers_eq_top {G : Type*} [Group G] {g : G}
     (hg : ∀ x : G, x ∈ Subgroup.zpowers g) (N : Subgroup G) [N.Normal] (y : G ⧸ N) :
     y ∈ Subgroup.zpowers (QuotientGroup.mk' N g) := by
