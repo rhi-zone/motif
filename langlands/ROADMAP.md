@@ -1875,6 +1875,99 @@ that avoids stalling on (a).
   quantify over, or phrasing it via `Associated` instead of the `A.valuation` equation) would force
   rework of the assembly built on top of it.
 
+#### Status 2026-08-06 (sixteenth pass) — `LocalField.isEisensteinAt_minpoly_of_isUniformizer` CLOSED (no `sorry`); monogenicity assembly not attempted
+
+- **Task.** Design and close the fifteenth pass's remaining "totally ramified" hypothesis + assembly
+  gap; state and prove the full Eisenstein theorem targeted since the thirteenth pass.
+- **Closed, commit-pending in `langlands/Langlands/TotallyRamifiedEisenstein.lean`** (zero `sorry`,
+  `lake build Langlands` clean, 8676 jobs):
+  ```
+  theorem LocalField.isEisensteinAt_minpoly_of_isUniformizer
+      {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K]
+      [(NormedField.valuation (K := K)).Compatible] [CompleteSpace K]
+      {L : Type*} [Field L] [Algebra K L] [Algebra.IsAlgebraic K L]
+      [IsDiscreteValuationRing ↥(valuation K).valuationSubring]
+      {ϖ : ↥(valuation K).valuationSubring} (hϖ : Irreducible ϖ) {π : L}
+      (hram : ‖(ϖ : K)‖ = spectralNorm K L π ^ (minpoly K π).natDegree) :
+      (minpoly ↥(valuation K).valuationSubring π).IsEisensteinAt
+        (IsLocalRing.maximalIdeal ↥(valuation K).valuationSubring)
+  ```
+  This is the exact target signature scoped since the thirteenth pass, with
+  `[IsDiscreteValuationRing ↥(valuation K).valuationSubring]` kept as an explicit hypothesis per the
+  task brief (deriving it from `IsCyclic`/`Nontrivial` value-group conditions is orthogonal,
+  structural content about `K`, not attempted here).
+- **The hypothesis design deviates from the fifteenth pass's plan, and this is the key finding of
+  this pass.** The fifteenth pass planned an exact `A.valuation`-level equation (`A : ValuationSubring
+  L` extending `𝒪[K]`) pushed forward through a `RankOne A.valuation` instance's `hom'`. Attempting
+  this directly (via `Langlands.HenselianValuation`'s `exists_rankOne_compatible`/
+  `exists_rankOne_absoluteValue_extends`) hit a real obstruction: `hR.hom'` for `hR : RankOne
+  A.valuation`, once resolved through dot notation, is the *parent* `RankLeOne` structure's `hom'`
+  operating on the canonical `MonoidWithZeroHom.ValueGroup₀`-embedded value group, not directly on
+  `A.ValueGroup` — so `hR.hom' (A.valuation x)` does not typecheck as the fifteenth pass's writeup
+  implied; only `hR.hom' (A.valuation.restrict (algebraMap K L x))` (already used by
+  `exists_rankOne_absoluteValue_extends` for `x : K` specifically) does, and generalizing that fact to
+  all `y : L` was not straightforward from the section's existing lemmas. **This detour turned out to
+  be unnecessary**: `spectralNorm K L` is already the canonical, unique norm extension (by
+  `spectralNorm_unique_field_norm_ext`, applicable to *any* absolute value extending `‖·‖`, including
+  ones built from a `RankOne A.valuation` instance), so the classical "totally ramified of degree `n`"
+  condition is *exactly* `‖ϖ‖ = spectralNorm K L π ^ n` with no reference to a specific `A` or
+  `RankOne` instance needed. This is simpler to state, simpler to prove from, and — as a consequence —
+  the final theorem needs **no** `A : ValuationSubring L`, `hA`, `π ∈ A.nonunits`, or `π ≠ 0`
+  hypothesis at all: `spectralNorm K L π < 1` is *derived* from `hram` plus `‖ϖ‖ < 1` (from `ϖ`
+  irreducible), not proved via `A` first. **`LocalField.spectralNorm_lt_one_of_mem_nonunits`
+  (`Langlands.HenselianValuation`, gap 1 from the fifteenth pass) and the whole `RankOne`/
+  `exists_rankOne_absoluteValue_extends` machinery are unused by the closed theorem** —
+  `TotallyRamifiedEisenstein.lean` has zero dependency on `Langlands.HenselianValuation`.
+- **New general-purpose lemmas** (same file, `LocalField` namespace, reusable independent of the
+  Eisenstein argument): `mem_valuationSubring_iff_norm_le_one` (`x ∈ (valuation K).valuationSubring ↔
+  ‖x‖ ≤ 1`, from `Valuation.Compatible.vle_iff_le` applied to both `valuation K` and
+  `NormedField.valuation`), `valuation_le_iff_norm_le` (the same bridging generalized beyond the `≤ 1`
+  special case), `mem_maximalIdeal_iff_norm_lt_one` (`x ∈ 𝔪_{𝒪[K]} ↔ ‖(x:K)‖ < 1`, proved directly from
+  first principles — if `‖x‖ = 1` exactly then `x⁻¹` also has norm `≤ 1` hence lies in `𝒪[K]`,
+  witnessing `x` a unit; conversely a unit's inverse has norm `≤ 1`, forcing the product of norms to
+  exceed `1` unless `‖x‖ = 1` — no dependence on `ValuationSubring.mem_nonunits_iff`, which is stated
+  for the *different* `ValuationSubring.valuation` rather than the ambient `ValuativeRel`-canonical
+  `valuation K`, avoiding an `IsEquiv`-transport detour).
+- **Assembly, following the fifteenth pass's diagnosis closely with no further obstructions**: all
+  coefficients of `minpoly K π` lie in `𝒪[K]` (monic leading coefficient trivially; non-leading via
+  `spectralNorm_coeff_lt_one`, this file's existing fourteenth-pass lemma); `Polynomial.toSubring`
+  lifts this to a monic witness for `IsIntegral ↥𝒪[K] π` (`Algebra ↥𝒪[K] L` and the defeq between
+  `↥𝒪[K]` and `↥𝒪[K].toSubring` both resolve automatically by instance search / `exact`, confirmed
+  live, not merely assumed); `minpoly.isIntegrallyClosed_eq_field_fractions'` (using the direct
+  `IsIntegrallyClosed`/`IsFractionRing ↥𝒪[K] K` instances from `Mathlib.RingTheory.Valuation.LocalSubring`,
+  confirmed exactly as the fifteenth pass predicted) identifies `minpoly K π` with the base change of
+  `minpoly ↥𝒪[K] π`, transporting the coefficient bounds down via `Polynomial.natDegree_map_eq_of_injective`
+  (injectivity via `IsFractionRing.injective`, not the `IsSimpleRing`-requiring generic
+  `RingHom.injective` the naive `(algebraMap ↥𝒪[K] K).injective` term elaborates to) and
+  `Polynomial.coeff_map`. The `notMem` field uses the exact equality `‖(minpoly K π).coeff 0‖ = ‖ϖ‖`
+  (from `hram` via `spectralNorm.spectralNorm_eq_norm_coeff_zero_rpow` and
+  `Real.rpow_inv_natCast_pow`) together with `‖ϖ‖ > ‖ϖ‖ ^ 2` (as `0 < ‖ϖ‖ < 1`) and
+  `Valuation.Integers.maximalIdeal_pow_eq_setOf_le_v_algebraMap_pow` exactly as the fifteenth pass
+  located it (via `Valuation.valuationSubring.integers`, no `Valuation.integer` defeq transport
+  needed).
+- **Monogenicity (item 3 of the task brief) not attempted this pass** — ran out of budget after
+  closing the Eisenstein theorem itself. Checked what's available:
+  `Mathlib/RingTheory/Polynomial/Eisenstein/IsIntegral.lean` (confirmed, despite living alongside
+  cyclotomic-specific lemmas in the same file, to contain genuinely general statements — not
+  `NumberField`-specific) has `mem_adjoin_of_smul_prime_smul_of_minpoly_isEisensteinAt`: for `R`
+  integrally closed with fraction field `K`, `L / K` with an integral power basis `B` whose generator
+  has Eisenstein minimal polynomial at a *prime* `p : R`, any integral `z` with `p • z ∈ R[B.gen]`
+  satisfies `z ∈ R[B.gen]`. This is the natural next lever (combined with
+  `Algebra.discr_mul_isIntegral_mem_adjoin`, per the thirteenth pass's citation) but wiring it to
+  `𝒪[K]`/`↥(valuation K).valuationSubring` — building the `PowerBasis`, checking `Prime ϖ` (should
+  follow from `Irreducible ϖ` since a DVR is a PID/UFD, not separately checked), and the induction to
+  peel off finitely many factors of `ϖ` bounded by the discriminant — was not attempted. This is a
+  genuinely new, not-yet-scoped-in-detail piece of work, not a small remainder.
+- **Also not attempted**: the `RamificationFiltration.lean` `## Scope` section's actual downstream use
+  (feeding this theorem into the associated-graded-embedding kernel argument blocked since the twelfth
+  pass) — that still needs the monogenicity step above first, plus wiring the specific uniformizer `π`
+  of `RamificationFiltration.lean`'s `A : ValuationSubring L` (with `hπ : 𝔪_A = Ideal.span {π}`) to
+  this theorem's hypotheses.
+- **Verification**: `lake build Langlands` clean (8676 jobs, no `sorry`); `grep -rn sorry
+  langlands/Langlands/` shows only prose mentions of the word (in this file's own module doc and
+  `RamificationFiltration.lean`'s `## Scope` discussion of why `sorry` was avoided), zero actual
+  `sorry` tactics.
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
