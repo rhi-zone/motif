@@ -586,6 +586,128 @@ theorem eventually_localNormMap_mem_units
 
 end IsDedekindDomain.HeightOneSpectrum
 
+section FiniteIdeleNormMap
+
+/-! ### Assembling the finite-place local norms into a finite idèle norm map
+
+This section builds `NumberField.FiniteIdeleGroup.normMap : FiniteIdeleGroup S L →*
+FiniteIdeleGroup R K`, the finite-place half of `IdeleGroup.normMap`
+(`Langlands/IdeleGroup.lean`), by taking, at each place `v` of `R`, the product of
+`IsDedekindDomain.HeightOneSpectrum.localNormMap` over the (finitely many,
+`finite_liesOver`) places `w` of `S` lying over `v`, then checking (via
+`eventually_localNormMap_mem_units`) that this assembles into a genuine finite idèle via
+`RestrictedProduct.mkUnit`. -/
+
+open IsDedekindDomain IsDedekindDomain.HeightOneSpectrum
+
+variable {R S K L : Type*} [CommRing R] [IsDedekindDomain R] [Field K] [Algebra R K]
+  [IsFractionRing R K] [CommRing S] [IsDedekindDomain S] [Field L] [Algebra S L]
+  [IsFractionRing S L] [Algebra R S] [Algebra K L] [Algebra R L] [IsScalarTower R S L]
+  [IsScalarTower R K L] [Module.Finite K L] [Algebra.IsIntegral R S] [Module.IsTorsionFree R S]
+
+variable (K L)
+
+/-- Membership witness for an element of the `attach`ed `Finset` of places `w` of `S` lying
+over a place `v` of `R`, unpacked from `Set.Finite.toFinset` membership into a genuine
+`LiesOver` instance. Factored out since inlining `(Set.Finite.mem_toFinset _).mp w.2` directly
+at each use site confuses elaboration (the implicit arguments of `Set.Finite.mem_toFinset` are
+not determined early enough). -/
+theorem mem_liesOver_of_mem_toFinset {v : HeightOneSpectrum R}
+    (w : {x : HeightOneSpectrum S // x ∈ (finite_liesOver (R := R) (S := S) v).toFinset}) :
+    (w : HeightOneSpectrum S).asIdeal.LiesOver v.asIdeal := by
+  have hw := w.2
+  rwa [Set.Finite.mem_toFinset] at hw
+
+/-- The `v`-component of the finite-place idèle norm map: the product of the local norms
+`N_{L_w/K_v}(a w)` over the (finitely many) places `w` of `S` lying over `v`. -/
+noncomputable def finiteNormMapComponent (v : HeightOneSpectrum R)
+    (a : ∀ w : HeightOneSpectrum S, (w.adicCompletion L)ˣ) : (v.adicCompletion K)ˣ :=
+  ∏ w ∈ (finite_liesOver (R := R) (S := S) v).toFinset.attach,
+    haveI := mem_liesOver_of_mem_toFinset w
+    localNormMap K L v (w : HeightOneSpectrum S) (a w)
+
+omit [Module.Finite K L] in
+theorem finiteNormMapComponent_one (v : HeightOneSpectrum R) :
+    finiteNormMapComponent (R := R) (S := S) K L v 1 = 1 := by
+  unfold finiteNormMapComponent
+  refine Finset.prod_eq_one fun w _ => ?_
+  haveI := mem_liesOver_of_mem_toFinset w
+  exact map_one _
+
+omit [Module.Finite K L] in
+theorem finiteNormMapComponent_mul (v : HeightOneSpectrum R)
+    (a b : ∀ w : HeightOneSpectrum S, (w.adicCompletion L)ˣ) :
+    finiteNormMapComponent K L v (a * b) =
+      finiteNormMapComponent K L v a * finiteNormMapComponent K L v b := by
+  unfold finiteNormMapComponent
+  rw [← Finset.prod_mul_distrib]
+  refine Finset.prod_congr rfl fun w _ => ?_
+  haveI := mem_liesOver_of_mem_toFinset w
+  exact map_mul (localNormMap K L v (w : HeightOneSpectrum S)) (a w) (b w)
+
+/-- The finite-place idèle norm map, as a `MonoidHom` on the un-restricted product of local
+unit groups; assembled into a genuine `FiniteIdeleGroup` homomorphism below
+(`NumberField.FiniteIdeleGroup.normMap`) once its values are shown to satisfy the
+restricted-product condition (`eventually_finiteNormMap_mem_units`). -/
+def finiteNormMap : (∀ w : HeightOneSpectrum S, (w.adicCompletion L)ˣ) →*
+    ∀ v : HeightOneSpectrum R, (v.adicCompletion K)ˣ where
+  toFun a v := finiteNormMapComponent K L v a
+  map_one' := funext fun v => finiteNormMapComponent_one K L v
+  map_mul' a b := funext fun v => finiteNormMapComponent_mul K L v a b
+
+/-- If a family of local units `a` at places of `S` is almost everywhere a genuine local unit
+(the restricted-product condition defining a finite idèle of `L`), so is its image under
+`finiteNormMap`, at places of `R`: this is `eventually_localNormMap_mem_units` repackaged as a
+statement about the assembled product map, using that a finite product of local units is a
+local unit (`Subgroup.prod_mem`). -/
+theorem eventually_finiteNormMap_mem_units
+    {a : ∀ w : HeightOneSpectrum S, (w.adicCompletion L)ˣ}
+    (ha : ∀ᶠ w : HeightOneSpectrum S in Filter.cofinite,
+      a w ∈ (w.adicCompletionIntegers L).units) :
+    ∀ᶠ v : HeightOneSpectrum R in Filter.cofinite,
+      finiteNormMap K L a v ∈ (v.adicCompletionIntegers K).units := by
+  filter_upwards [eventually_localNormMap_mem_units K L ha] with v hv
+  unfold finiteNormMap finiteNormMapComponent
+  refine Subgroup.prod_mem _ fun w _ => ?_
+  exact hv (w : HeightOneSpectrum S) (mem_liesOver_of_mem_toFinset w)
+
+end FiniteIdeleNormMap
+
+namespace NumberField.FiniteIdeleGroup
+
+open IsDedekindDomain IsDedekindDomain.HeightOneSpectrum
+open scoped RestrictedProduct
+
+variable {R S K L : Type*} [CommRing R] [IsDedekindDomain R] [Field K] [Algebra R K]
+  [IsFractionRing R K] [CommRing S] [IsDedekindDomain S] [Field L] [Algebra S L]
+  [IsFractionRing S L] [Algebra R S] [Algebra K L] [Algebra R L] [IsScalarTower R S L]
+  [IsScalarTower R K L] [Module.Finite K L] [Algebra.IsIntegral R S] [Module.IsTorsionFree R S]
+
+variable (K L)
+
+/-- `finiteNormMap` repackaged as a `MonoidHom` between restricted products of unit groups
+(rather than the un-restricted products it is originally stated on): this is the form that
+composes directly with `RestrictedProduct.unitsEquiv` to give the finite idèle norm map below. -/
+def finiteNormMapRestricted :
+    (Πʳ w : HeightOneSpectrum S, [(w.adicCompletion L)ˣ,
+        (Submonoid.ofClass (w.adicCompletionIntegers L)).units]_[Filter.cofinite]) →*
+      Πʳ v : HeightOneSpectrum R, [(v.adicCompletion K)ˣ,
+        (Submonoid.ofClass (v.adicCompletionIntegers K)).units]_[Filter.cofinite] where
+  toFun y := ⟨finiteNormMap K L y.1, eventually_finiteNormMap_mem_units K L y.2⟩
+  map_one' := Subtype.ext (map_one (finiteNormMap K L))
+  map_mul' y1 y2 := Subtype.ext (map_mul (finiteNormMap K L) y1.1 y2.1)
+
+/-- The finite-place idèle norm map `N_{L/K} : FiniteIdeleGroup S L →* FiniteIdeleGroup R K`,
+sending a finite idèle `a` to the finite idèle whose component at each place `v` of `R` is
+`∏_{w ∣ v} N_{L_w/K_v}(a w)`. Built by conjugating `finiteNormMapRestricted` by
+`RestrictedProduct.unitsEquiv` on each side. -/
+noncomputable def normMap : FiniteIdeleGroup S L →* FiniteIdeleGroup R K :=
+  (RestrictedProduct.unitsEquiv fun v : HeightOneSpectrum R => v.adicCompletion K).symm.toMonoidHom.comp
+    ((finiteNormMapRestricted K L).comp
+      (RestrictedProduct.unitsEquiv fun w : HeightOneSpectrum S => w.adicCompletion L).toMonoidHom)
+
+end NumberField.FiniteIdeleGroup
+
 section InfinitePlaceNorm
 
 /-! ### The archimedean local norm map
