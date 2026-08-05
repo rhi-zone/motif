@@ -8,120 +8,70 @@ import Mathlib.RingTheory.ClassGroup.Basic
 /-!
 # The idèle group and idèle class group
 
-This is a first-pass port of the idèle group / idèle class group development from
-María Inés de Frutos-Fernández's Lean 3 `ideles` project
-(`github.com/mariainesdff/ideles`, files `ideles_R.lean` / `ideles_K.lean`) to Lean 4 /
-Mathlib4.
+Mathlib contains the adèle ring `NumberField.AdeleRing R K`, split as
+`InfiniteAdeleRing K × FiniteAdeleRing R K`, together with its topology, its `K`-algebra
+structure, and the subgroup of principal adèles `NumberField.AdeleRing.principalSubgroup`. This
+file develops the multiplicative side: the idèle group, the diagonal embedding of `Kˣ`, the idèle
+class group, and the maps from these to the ideal class group of `K`.
 
-Mathlib4 already contains the adèle ring (`NumberField.AdeleRing`, split as
-`InfiniteAdeleRing × FiniteAdeleRing`) together with its topology, its `K`-algebra
-structure, and the subgroup of principal adèles (`NumberField.AdeleRing.principalSubgroup`).
-What is missing (as of this writing) is everything downstream of the units: the idèle
-group itself, the diagonal embedding of `Kˣ`, and the idèle class group as a quotient.
+Throughout, `R` is a Dedekind domain with fraction field `K`. The intended instantiation is
+`R = 𝓞 K`, but as with `AdeleRing` the definitions are stated generally, so that e.g. `R = ℤ`,
+`K = ℚ` is also allowed.
+
+This is a port of María Inés de Frutos-Fernández's Lean 3 `ideles` project
+(`github.com/mariainesdff/ideles`, files `ideles_R.lean` / `ideles_K.lean`); Lean 3 names are
+recorded in the docstrings below.
 
 ## Main definitions
 
-- `NumberField.IdeleGroup R K` : the idèle group of `K`, defined as the unit group of the
-  adèle ring `NumberField.AdeleRing R K`. Here `R` is a Dedekind domain with fraction field
-  `K` (the intended use is `R = 𝓞 K`, but as with `AdeleRing` the definition is stated more
-  generally to allow e.g. `R = ℤ`, `K = ℚ`).
-- `NumberField.IdeleGroup.principalSubgroup R K` : the subgroup of principal idèles
-  `(x)ᵥ`, `x ∈ Kˣ`.
+- `NumberField.IdeleGroup R K` : the idèle group of `K`, the unit group of `AdeleRing R K`.
+- `NumberField.IdeleGroup.diagonalEmbedding`, `NumberField.IdeleGroup.principalSubgroup R K` :
+  the embedding `x ↦ (x)ᵥ` of `Kˣ` and its image, the subgroup of principal idèles.
 - `NumberField.FiniteIdeleGroup R K`, `NumberField.InfiniteIdeleGroup K` : the finite and
-  infinite idèle groups, and `NumberField.IdeleGroup.equivProd` : the topological-group
-  isomorphism `IdeleGroup R K ≃ₜ* InfiniteIdeleGroup K × FiniteIdeleGroup R K`, together with
-  the projections `IdeleGroup.infinitePart` / `IdeleGroup.finitePart`.
-- `NumberField.IdeleGroup.toFractionalIdealHom`, `NumberField.IdeleGroup.toClassGroup` : the
-  maps from the idèle group to the group of fractional ideals and to the ideal class group
-  of `K`.
-- `NumberField.IdeleClassGroup R K` : the idèle class group, defined as the quotient of the
-  idèle group by the principal idèles.
-- `NumberField.IdeleClassGroup.toClassGroup` : the descent of `IdeleGroup.toClassGroup` along the
-  quotient by principal idèles, since these map to the trivial ideal class
-  (`IdeleGroup.toClassGroup_diagonalEmbedding`).
-- `NumberField.IdeleGroup.toClassGroup_eq_one_iff` : an idèle maps to the trivial class iff its
-  `toFractionalIdeal` is principal, i.e. the kernel of `toClassGroup`.
-- `NumberField.IdeleClassGroup.ker_mk`, `NumberField.IdeleClassGroup.mulExact_diagonalEmbedding_mk` :
-  the kernel of the quotient map `mk : IdeleGroup R K →* IdeleClassGroup R K` is the principal
-  idèles, packaged as the exactness of `1 → Kˣ → IdeleGroup R K → IdeleClassGroup R K → 1`.
-- `NumberField.IdeleClassGroup.ker_toClassGroup` : the kernel of the map to `ClassGroup R`,
-  as the image under `mk` of `ker IdeleGroup.toClassGroup`.
-- `NumberField.IdeleGroup.content` : the idèle norm (content map) `IdeleGroup R K → ℝ`, trivial
-  on principal idèles (`content_diagonalEmbedding`, the adelic product formula).
-- `NumberField.IdeleGroup.normMap` : the idèle norm map for a finite extension `L / K`, defined
-  in `Langlands/NormMap.lean` (not here, to avoid a circular import: its construction needs the
-  local norm map infrastructure built there) by combining the finite- and archimedean-place
-  norm maps via `IdeleGroup.equivProd` (see the survey in the "norm map on idèles" section
-  below for the history of this definition).
+  infinite idèle groups, with the topological-group isomorphism
+  `NumberField.IdeleGroup.equivProd : IdeleGroup R K ≃ₜ* InfiniteIdeleGroup K × FiniteIdeleGroup R K`
+  and the projections `IdeleGroup.infinitePart` / `IdeleGroup.finitePart`.
+- `NumberField.IdeleGroup.exponent`, `NumberField.IdeleGroup.toFractionalIdeal` : the `v`-adic
+  exponent of an idèle and the fractional ideal `∏_v v ^ exponent a v` it determines;
+  `NumberField.IdeleGroup.toFractionalIdealHom` and `NumberField.IdeleGroup.toClassGroup` package
+  these as maps to the group of nonzero fractional ideals and to `ClassGroup R`.
+- `NumberField.IdeleClassGroup R K` : the idèle class group, the quotient of the idèle group by
+  the principal idèles, with quotient map `NumberField.IdeleClassGroup.mk`.
+- `NumberField.IdeleClassGroup.toClassGroup` : the descent of `IdeleGroup.toClassGroup` along
+  that quotient.
+- `NumberField.IdeleGroup.content` : the idèle norm `‖·‖_𝔸 : IdeleGroup R K → ℝ`.
+- `NumberField.IdeleGroup.normMap` : the idèle norm map of a finite extension `L / K`, defined in
+  `Langlands/NormMap.lean` rather than here to avoid a circular import.
+
+## Main results
+
+- `NumberField.IdeleGroup.diagonalEmbedding_injective` : the diagonal embedding of `Kˣ` is
+  injective.
+- `NumberField.IdeleGroup.toFractionalIdeal_diagonalEmbedding` : a principal idèle `(x)ᵥ`
+  determines the principal fractional ideal `(x⁻¹)`; hence
+  `NumberField.IdeleGroup.toClassGroup_diagonalEmbedding` and
+  `NumberField.IdeleGroup.principalSubgroup_le_ker_toClassGroup`.
+- `NumberField.IdeleGroup.exists_toFractionalIdeal_eq` : every nonzero fractional ideal is
+  determined by some idèle; hence `NumberField.IdeleClassGroup.toClassGroup_surjective`.
+- `NumberField.IdeleClassGroup.ker_toClassGroup` : the kernel of the map to `ClassGroup R` is the
+  image under `mk` of `ker IdeleGroup.toClassGroup`.
+- `NumberField.IdeleGroup.content_diagonalEmbedding` : principal idèles have content `1`, the
+  adelic form of the product formula.
 
 ## Implementation notes
 
-Both `IdeleGroup R K` and `IdeleClassGroup R K` get their topology and topological-group
-structure "for free" from general Mathlib instances:
+`IdeleGroup R K` and `IdeleClassGroup R K` inherit their topology and topological-group structure
+from general Mathlib instances: `Units.instTopologicalSpaceUnits` together with
+`IsTopologicalGroup αˣ` for a topological monoid with continuous multiplication, and
+`QuotientGroup.instTopologicalSpace` / `QuotientGroup.instIsTopologicalGroup` for the quotient
+(every subgroup of the commutative group `IdeleGroup R K` being normal). The corresponding Lean 3
+constructions (`finite_idele_group'.topological_space`, `topological_group_quotient`, ...) have no
+counterpart here.
 
-- `Units.instTopologicalSpaceUnits` puts a topology on the units of any topological monoid
-  (via the embedding `u ↦ (u, u⁻¹)` into `M × Mᵐᵒᵖ`), and
-  `instance [ContinuousMul α] : IsTopologicalGroup αˣ` (in
-  `Mathlib.Topology.Algebra.Group.Basic`) upgrades this to a topological group whenever the
-  ambient monoid has continuous multiplication -- which `AdeleRing R K` does, being a
-  topological ring.
-- `QuotientGroup.instTopologicalSpace` and `QuotientGroup.instIsTopologicalGroup` (in
-  `Mathlib.Topology.Algebra.Group.Quotient`) give the quotient topology and, since
-  `IdeleGroup R K` is commutative (so every subgroup is normal), a topological group
-  structure on the quotient.
-
-This means the topological bookkeeping that occupies a significant fraction of the Lean 3
-`ideles_R.lean` / `ideles_K.lean` files (`finite_idele_group'.topological_space`,
-`finite_idele_group'.topological_group`, `topological_group_quotient`, ...) is essentially
-free in Lean 4, since Mathlib4's `AdeleRing` and `RestrictedProduct` infrastructure already
-carries the relevant topology and continuity lemmas.
-
-Injectivity of the diagonal embedding `diagonalEmbedding_injective` (the Lean 3
-`inj_units_K.injective`) is now proved: it follows directly from injectivity of
-`algebraMap K (AdeleRing R K)` (`NumberField.AdeleRing.algebraMap_injective`, already in
-Mathlib4) via `Units.map_injective`, with no need for the Lean 3 argument via nonempty
-`HeightOneSpectrum R`.
-
-The splitting `IdeleGroup R K ≃ₜ* FiniteIdeleGroup K × (InfiniteAdeleRing K)ˣ` (Lean 3
-`I_K.as_prod`) is also done, as `IdeleGroup.equivProd`, together with the projections
-`IdeleGroup.infinitePart` / `IdeleGroup.finitePart` (Lean 3 `I_K.fst`). This is transported
-directly from the definitional equality `AdeleRing R K = InfiniteAdeleRing K × FiniteAdeleRing R K`
-via the general topological-group isomorphism between the units of a product monoid and the
-product of the unit groups (`MulEquiv.prodUnits` / `Homeomorph.prodUnits`).
-
-The map from the idèle group to the group of fractional ideals (`IdeleGroup.toFractionalIdealHom`,
-Lean 3 `map_to_fractional_ideals`) and its composite with the class group quotient
-(`IdeleGroup.toClassGroup`, Lean 3 `I_K.map_to_class_group` / `C_K.map_to_class_group`) send an
-idèle `a` to `∏_v v^(exponent a v)`, where `exponent a v` is the `v`-adic valuation of the finite
-component of `a`. The two supporting facts (`IdeleGroup.toFractionalIdeal_ne_zero`,
-`IdeleGroup.toFractionalIdeal_mul`) are proved via `finprod_ne_zero` (using the `Semifield`
-structure on nonzero fractional ideals of a Dedekind domain) and via an auxiliary lemma
-`IdeleGroup.exponent_mul` showing `exponent` is additive in the idèle, which itself follows from
-multiplicativity of the valuation `Valued.v` at each place `v`.
-
-Principal idèles map to the trivial ideal class: `IdeleGroup.toFractionalIdeal_diagonalEmbedding`
-shows `toFractionalIdeal (diagonalEmbedding x) = (x⁻¹)` (a principal fractional ideal), from which
-`IdeleGroup.toClassGroup_diagonalEmbedding` deduces `toClassGroup (diagonalEmbedding x) = 1` via
-`ClassGroup.mk_eq_one_iff`. The identification of `toFractionalIdeal (diagonalEmbedding x)` uses
-`FractionalIdeal.finprod_heightOneSpectrum_factorization_principal_fraction` together with the
-auxiliary computation `IdeleGroup.exponent_diagonalEmbedding`, which expresses the `v`-adic
-exponent of a principal idèle `(x)ᵥ` (for `x = n/d`, `n : R`, `d ∈ R⁰`) as a difference of
-`Associates.count` factorization multiplicities, matched against the local valuation via
-`IsDedekindDomain.HeightOneSpectrum.valuation_of_mk'` and the exponential/logarithm API for
-`WithZero (Multiplicative ℤ)` (`WithZero.log`, `WithZero.log_div`, `WithZero.log_exp`).
-
-This gives `IdeleGroup.principalSubgroup_le_ker_toClassGroup`, so `toClassGroup` descends along
-the quotient by `QuotientGroup.lift` to `NumberField.IdeleClassGroup.toClassGroup :
-IdeleClassGroup R K →* ClassGroup R`. Surjectivity of this descended map
-(`IdeleClassGroup.toClassGroup_surjective`) is proved via `IdeleGroup.exists_toFractionalIdeal_eq`:
-every nonzero fractional ideal `I` arises as `toFractionalIdeal a` for some idèle `a`, built with
-local finite component at each place `v` a field element of valuation `WithZero.exp (count K v I)`
-(furnished by surjectivity of the local valuation,
-`IsDedekindDomain.HeightOneSpectrum.valuation_surjective`, applied pointwise via `choose`), which
-is a local unit (valuation `1`) at all but finitely many `v` since `count K v I` is eventually `0`
-(`FractionalIdeal.finite_factors`), and hence assembles into a genuine unit of the finite adèle
-ring via `RestrictedProduct.mkUnit`. Combined with `ClassGroup.mk0_surjective` (every ideal class
-is represented by a nonzero integral ideal), this gives surjectivity onto `ClassGroup R`.
+Likewise `equivProd` is transported from the definitional splitting of `AdeleRing R K` via
+`MulEquiv.prodUnits` / `Homeomorph.prodUnits`, and `diagonalEmbedding_injective` follows from
+`NumberField.AdeleRing.algebraMap_injective` via `Units.map_injective`, in place of the Lean 3
+argument through nonemptiness of `HeightOneSpectrum R`.
 
 ## References
 * María Inés de Frutos-Fernández, *ideles* (Lean 3), `github.com/mariainesdff/ideles`.
@@ -170,11 +120,8 @@ theorem coe_diagonalEmbedding_apply (x : Kˣ) :
 /-- The subgroup of principal idèles `(x)ᵥ`, `x ∈ Kˣ`. -/
 abbrev principalSubgroup : Subgroup (IdeleGroup R K) := (diagonalEmbedding R K).range
 
-/-- The diagonal embedding of `K*` into the idèle group is injective, at least once `K` is a
-number field. In the Lean 3 development (`inj_units_K.injective`) this followed from
-injectivity of `inj_K : K →+* finite_adele_ring' R K`, which needed `R` to not be a field
-(equivalently, `HeightOneSpectrum R` nonempty); here it should follow instead from
-`NumberField.AdeleRing.algebraMap_injective`. -/
+/-- The diagonal embedding of `Kˣ` into the idèle group is injective, for `K` a number field.
+This is the Lean 3 `inj_units_K.injective`. -/
 theorem diagonalEmbedding_injective [NumberField K] :
     Function.Injective (diagonalEmbedding R K) :=
   Units.map_injective (AdeleRing.algebraMap_injective R K)
@@ -351,8 +298,12 @@ theorem toFractionalIdeal_mul (a b : IdeleGroup R K) :
   rw [exponent_mul, zpow_add₀ (FractionalIdeal.coeIdeal_ne_zero.mpr v.ne_bot)]
 
 /-- The fractional ideal determined by a principal idèle `(x)ᵥ` is the (principal) fractional
-ideal `(x⁻¹)`. This is the Lean 3 `map_to_fractional_ideals.map_units_K`-type fact underlying
-the triviality of `toClassGroup` on principal idèles. -/
+ideal `(x⁻¹)`, whence the triviality of `toClassGroup` on principal idèles.
+
+The computation goes through `exponent_diagonalEmbedding`, which for `x = n/d` with `n : R`,
+`d ∈ R⁰` expresses the `v`-adic exponent of `(x)ᵥ` as a difference of `Associates.count`
+factorization multiplicities, and
+`FractionalIdeal.finprod_heightOneSpectrum_factorization_principal_fraction`. -/
 theorem toFractionalIdeal_diagonalEmbedding (x : Kˣ) :
     toFractionalIdeal (diagonalEmbedding R K x) =
       FractionalIdeal.spanSingleton (nonZeroDivisors R) ((x : K)⁻¹) := by
@@ -499,10 +450,8 @@ theorem toClassGroup_surjective : Function.Surjective (toClassGroup R K) := by
   rw [heq, ClassGroup.mk_mk0, hJ]
 
 /-- The kernel of `IdeleClassGroup.toClassGroup` is the image, under the quotient map `mk`, of
-the kernel of `IdeleGroup.toClassGroup`. This is the general fact about kernels of a
-`QuotientGroup.lift` (`QuotientGroup.ker_lift`), specialized to our situation; combined with
-`IdeleGroup.toClassGroup_eq_one_iff`, it identifies the classes of idèles whose determined
-fractional ideal is principal as exactly the kernel of the map to the class group. -/
+the kernel of `IdeleGroup.toClassGroup`: the general description of the kernel of a
+`QuotientGroup.lift` (`QuotientGroup.ker_lift`). -/
 theorem ker_toClassGroup : (toClassGroup R K).ker =
     Subgroup.map (mk R K) (IdeleGroup.toClassGroup (R := R) (K := K)).ker :=
   QuotientGroup.ker_lift _ _ _
@@ -511,18 +460,14 @@ end IdeleClassGroup
 
 /-! ### The idèle norm (content map)
 
-Mathlib already provides the archimedean half of this: `NumberField.InfiniteAdeleRing.instNorm`
-puts a multiplicative `‖·‖` on the infinite adèle ring, given by the product of the normalized
-absolute values across infinite places (`InfiniteAdeleRing.norm_def`), and
-`InfiniteAdeleRing.coe_norm_eq_abs_norm` shows this restricts to `|Algebra.norm ℚ x|` on
-principal elements -- the archimedean half of the product formula. The finite half is the
-absolute norm of a fractional ideal, `FractionalIdeal.absNorm : FractionalIdeal R⁰ K →*₀ ℚ`
-(Xavier Roblot, `Mathlib.RingTheory.FractionalIdeal.Norm`), which is already exactly
-multiplicative and already satisfies the matching principal-element identity
-(`FractionalIdeal.absNorm_span_singleton`). Multiplying the two together gives the idèle norm
-`‖·‖_𝔸 : IdeleGroup R K →* ℝ` (well, a `MonoidHom`-shaped function -- see `content_mul`),
-and the two known principal-element identities combine (via
-`IdeleGroup.toFractionalIdeal_diagonalEmbedding` and `Algebra.norm_inv`) to reprove the full
+The idèle norm `‖·‖_𝔸` is the product of two halves already available in Mathlib.
+The archimedean half is `NumberField.InfiniteAdeleRing.instNorm`, the product of the normalized
+absolute values across the infinite places (`InfiniteAdeleRing.norm_def`), which restricts to
+`|Algebra.norm ℚ x|` on principal elements (`InfiniteAdeleRing.coe_norm_eq_abs_norm`). The finite
+half is the absolute norm of a fractional ideal,
+`FractionalIdeal.absNorm : FractionalIdeal R⁰ K →*₀ ℚ`, which is multiplicative and satisfies the
+matching identity `FractionalIdeal.absNorm_span_singleton` on principal ideals. Multiplicativity
+of the product is `content_mul`, and the two principal-element identities combine to give the
 product formula `‖(x)ᵥ‖_𝔸 = 1` as `content_diagonalEmbedding`. -/
 
 namespace IdeleGroup
@@ -589,57 +534,15 @@ end IdeleGroup
 
 /-! ### The norm map on idèles for a finite extension
 
-**Survey.** For a finite extension `L / K` of number fields (with rings of integers `S / R`),
-the classical idèle norm map `N_{L/K} : IdeleGroup S L →* IdeleGroup R K` sends an idèle `a` to
-the idèle whose component at each place `v` of `K` is `∏_{w ∣ v} N_{L_w / K_v}(a_w)`, the product
-of local norms over the (finitely many) places `w` of `L` lying above `v`.
+For a finite extension `L / K` of fraction fields of Dedekind domains `S / R`, the idèle norm map
+`N_{L/K} : IdeleGroup S L →* IdeleGroup R K` sends an idèle `a` to the idèle whose component at a
+place `v` of `K` is `∏_{w ∣ v} N_{L_w/K_v}(a_w)`, the product of the local norms over the finitely
+many places `w` of `L` above `v`. It is the Lean 3 `ideles_K.lean` `norm_idele.map`.
 
-As of this writing, Mathlib does not have the pieces this needs:
-
-- No relation "`w` (a `HeightOneSpectrum S`) lies over `v` (a `HeightOneSpectrum R`)" for a finite
-  ring extension `S / R` of Dedekind domains, analogous to `Ideal.LiesOver` /
-  `IsDedekindDomain.HeightOneSpectrum.comap`-under-an-extension. (There is a `comap` along the
-  completion/localization equivalence at a *fixed* place, `AdicValuation.lean` line 662, but
-  nothing relating the spectra of `R` and `S`.) The infinite-place analogue is closer to
-  existing: `NumberField.InfinitePlace.comap` and `ComplexEmbedding.LiesOver` already give a
-  restriction map `InfinitePlace L → InfinitePlace K` and a "lies over" relation on embeddings
-  (`Mathlib.NumberTheory.NumberField.InfinitePlace.Embeddings`), but this file does not attempt
-  to build the finite-adèle analogue from only the archimedean half.
-- No local norm map `L_w →+* K_v` (or `N_{L_w/K_v} : L_w → K_v` as a monoid hom on units) between
-  completions at places of different fields; `Mathlib.RingTheory.Norm` gives `Algebra.norm K x`
-  for a finite extension `L / K` acting on `L` itself, not on completions at extended places.
-- No ring hom `AdeleRing S L →+* AdeleRing R K` (or its restriction to finite/infinite parts)
-  induced by a finite extension `L / K`, from which `IdeleGroup S L →* IdeleGroup R K` could be
-  obtained by restriction to units; nothing under the name `baseChange`/`extensionMap` for
-  `FiniteAdeleRing` or `InfiniteAdeleRing` was found by grep.
-
-Building `N_{L/K}` correctly therefore requires first formalizing the place-lying-over relation
-and the local norm maps it indexes -- genuinely new infrastructure, not a routine extension of
-what is already in the file. The declaration below records the intended type signature (matching
-the Lean 3 `ideles_K.lean` `norm_idele.map` up to naming) with a `sorry`, so that later work can
-fill in the construction without having to re-derive the statement.
-
-**Update:** `Langlands/NormMap.lean` fills in all three gaps above (not routine extensions,
-but already present in Mathlib under different names than the original survey looked for, or
-straightforward assembly once the pieces are in place):
-the place-lying-over relation is `w.asIdeal.LiesOver v.asIdeal` (`Mathlib.RingTheory.Ideal.Over`,
-`IsDedekindDomain.HeightOneSpectrum.under`), and the local norm map between completions is built
-(genuinely, not `sorry`'d) as `IsDedekindDomain.HeightOneSpectrum.localNormMap`, via
-`UniformSpace.Completion.mapRingHom` applied to the uniform continuity of `algebraMap K L` between
-valued fields, `IsDedekindDomain.HeightOneSpectrum.uniformContinuous_algebraMap_liesOver` (a 2026
-Mathlib addition in `Mathlib.NumberTheory.RamificationInertia.Valuation`). The proof that the local
-norm map sends local units to local units at all but finitely many (finite) places is
-**fully proved, no `sorry`** (`IsDedekindDomain.HeightOneSpectrum.eventually_localNormMap_mem_units`,
-built on `localNormMap_mem_units`'s Galois-conjugate integrality argument -- see `NormMap.lean`'s
-module docstring). The third gap -- an archimedean/infinite-place local norm map, and the
-assembly of both halves into the idèle norm map -- is also now closed: `NormMap.lean` builds
-`NumberField.InfinitePlace.localNormMap` for the archimedean case (no companion unit-preservation
-lemma needed, since `InfiniteAdeleRing` is an *unrestricted* product), assembles both local norm
-maps into `NumberField.FiniteIdeleGroup.normMap` / `NumberField.InfiniteIdeleGroup.normMap` (taking,
-at each place of the base, the product of local norms over the finitely many places lying above it,
-via `RestrictedProduct.mkUnit` / `MulEquiv.piUnits` respectively), and combines both halves via
-`IdeleGroup.equivProd` into `NumberField.IdeleGroup.normMap` below -- defined in `NormMap.lean`
-rather than here, to avoid a circular import (its construction needs the local norm map
-infrastructure built there). No `sorry` remains anywhere in this development. -/
+The construction is `NumberField.IdeleGroup.normMap`, in `Langlands/NormMap.lean`: the local norm
+maps at the finite and infinite places are assembled into
+`NumberField.FiniteIdeleGroup.normMap` and `NumberField.InfiniteIdeleGroup.normMap`, which are
+combined via `IdeleGroup.equivProd`. It is defined there rather than here to avoid a circular
+import. -/
 
 end NumberField
