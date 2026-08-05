@@ -688,16 +688,91 @@ theorem compactSpace_absoluteGaloisGroup : CompactSpace (Field.absoluteGaloisGro
     { toEquiv := ψ.symm.toEquiv, continuous_toFun := hψsymm_cont, continuous_invFun := hφcont }
   exact e.compactSpace
 
-/-- **Not yet in Mathlib and not proved here**: `residueAction' K` (equivalently `residueAction
-K`) is continuous, for the Krull topology on `G_K` and the Krull topology on `Gal(kbar/𝓀[K])`.
-Plausible (the residue action of an open subgroup of `G_K` fixing a large enough subfield of `K̄`
-should fix correspondingly many finite subextensions of `kbar/𝓀[K]`), but the precise
-"correspondingly many" comparison between ramification-theoretic and Krull-topology neighborhoods
-is genuinely local-field-theoretic content (related to, but not identical with, the unramified
-lifting theorem `ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective`) that
-is not assembled here. -/
+/-- **Continuity of `residueAction' K`**, for the Krull topology on `G_K` and on `Gal(kbar/𝓀[K])`.
+Given `W ∈ 𝓝 1` in `Gal(kbar/𝓀[K])`, `krullTopology_mem_nhds_one_iff` gives a finite-dimensional
+`M ≤ kbar` (over `𝓀[K]`) with `M.fixingSubgroup ⊆ W`. Taking a primitive element `β₀` of `M`,
+lifting its minimal polynomial to a monic `f` over `𝒪[K]`
+(`HenselianLocalRing.exists_monic_lift_minpoly`), and using
+`ValuationSubring.exists_aeval_root_residue_eq` (no Hensel's lemma needed here, only that
+`valuationSubringExtension K` is integrally closed in the algebraically closed `L`) produces `y` in
+`valuationSubringExtension K` that is a root of `f` with residue exactly `β₀`. Setting
+`N := K⟮(y : L)⟯` (finite-dimensional over `K`, since `y` is integral over `K` with minimal
+polynomial dividing `f`'s image over `K`), every `σ` fixing `N` pointwise fixes `y`, hence (by
+`IsLocalRing.ResidueField.residue_smul`, the residue map's equivariance for the decomposition
+action -- every `σ` lies in the decomposition subgroup of `valuationSubringExtension K` by
+`decompositionSubgroup_eq_top`) fixes `residueAction' K σ`'s value at `β₀`. Since `β₀` generates `M`
+over `𝓀[K]`, this forces `residueAction' K σ` to fix all of `M` pointwise
+(`IntermediateField.algHom_ext_of_eq_adjoin`), i.e. `N.fixingSubgroup ⊆ (residueAction' K)⁻¹' W`,
+witnessing `(residueAction' K)⁻¹' W ∈ 𝓝 1`. -/
 theorem continuous_residueAction' : Continuous (residueAction' K) := by
-  sorry
+  apply continuous_of_continuousAt_one _ (continuousAt_def.mpr _)
+  intro W hW
+  rw [map_one] at hW
+  obtain ⟨M, hMfd, hMW⟩ := (krullTopology_mem_nhds_one_iff 𝓀[K] kbar W).mp hW
+  haveI := hMfd
+  haveI : PerfectField 𝓀[K] := PerfectField.ofFinite
+  haveI : Algebra.IsAlgebraic 𝓀[K] M := Algebra.IsAlgebraic.of_finite 𝓀[K] M
+  obtain ⟨β₀, hprim⟩ := Field.exists_primitive_element 𝓀[K] M
+  have hβ₀ : IsIntegral 𝓀[K] (β₀ : M) := IsIntegral.of_finite 𝓀[K] (β₀ : M)
+  obtain ⟨f, hfmonic, -, hfmap⟩ := HenselianLocalRing.exists_monic_lift_minpoly hβ₀
+  set A := valuationSubringExtension K with hAdef
+  -- `β₀` (viewed in `kbar`) is a root of `f`'s reduction mod `A`'s maximal ideal.
+  have ha₀ : (f.map ((IsLocalRing.residue A).comp (algebraMap ↥(𝒪[K]) A))).IsRoot (M.val β₀) := by
+    have hcompres : (IsLocalRing.residue A).comp (algebraMap ↥(𝒪[K]) A) =
+        (algebraMap 𝓀[K] kbar).comp (algebraMap ↥(𝒪[K]) 𝓀[K]) :=
+      RingHom.ext fun a =>
+        (IsLocalRing.ResidueField.algebraMap_residue (R := ↥(𝒪[K])) (S := A) a).symm
+    rw [Polynomial.IsRoot.def, hcompres, ← Polynomial.map_map, hfmap, Polynomial.eval_map_algebraMap]
+    exact minpoly.aeval_algHom 𝓀[K] M.val β₀
+  -- `y : A`, a genuine root of `f` in `A`, with residue exactly `β₀`.
+  obtain ⟨y, hyf, hyres⟩ := ValuationSubring.exists_aeval_root_residue_eq A hfmonic ha₀
+  have hcomp2 : (algebraMap K L).comp (algebraMap ↥(𝒪[K]) K) =
+      (algebraMap A L).comp (algebraMap ↥(𝒪[K]) A) :=
+    RingHom.ext fun a => (integersAlgebraMap_compat K a).symm
+  have hyK_aeval : Polynomial.aeval (y : L) (f.map (algebraMap ↥(𝒪[K]) K)) = 0 := by
+    have hstep := Polynomial.hom_eval₂ f (algebraMap ↥(𝒪[K]) A) (algebraMap A L) (y : A)
+    rw [← Polynomial.aeval_def, hyf, map_zero, ← hcomp2, ← Polynomial.eval₂_map,
+      ← Polynomial.aeval_def] at hstep
+    exact hstep.symm
+  have hyKint : IsIntegral K (y : L) := ⟨f.map (algebraMap ↥(𝒪[K]) K), hfmonic.map _, hyK_aeval⟩
+  set N : IntermediateField K L := IntermediateField.adjoin K {(y : L)} with hNdef
+  haveI hNfd : FiniteDimensional K N := IntermediateField.adjoin.finiteDimensional hyKint
+  -- `Field.absoluteGaloisGroup K` is a `def`, not reducible, so `rw` cannot see through it to match
+  -- `krullTopology_mem_nhds_one_iff`'s `Gal(L/K)`-shaped statement (see the analogous comment in
+  -- `compactSpace_absoluteGaloisGroup`'s proof above); apply the `Iff` directly instead.
+  apply (krullTopology_mem_nhds_one_iff K L (⇑(residueAction' K) ⁻¹' W)).mpr
+  refine ⟨N, hNfd, fun σ hσ => ?_⟩
+  rw [SetLike.mem_coe, IntermediateField.mem_fixingSubgroup_iff] at hσ
+  have hyL : (y : L) ∈ N := by rw [hNdef]; exact IntermediateField.subset_adjoin K _ rfl
+  have hσy : σ (y : L) = (y : L) := hσ (y : L) hyL
+  -- `σ` (via `decompositionEquiv`, since every `σ` stabilizes `A`) fixes `y` as an element of `A`.
+  have hσyA : (decompositionEquiv K σ) • y = y := by
+    apply Subtype.ext
+    show (σ : L ≃ₐ[K] L) (y : L) = (y : L)
+    exact hσy
+  -- Hence, by equivariance of the residue map, `σ`'s residue action fixes `β₀`.
+  have hresidue := IsLocalRing.ResidueField.residue_smul
+    (ValuationSubring.decompositionSubgroup K A) (decompositionEquiv K σ) y
+  rw [hσyA, hyres] at hresidue
+  have hβfix : residueAction' K σ (M.val β₀) = M.val β₀ := by
+    rw [residueAction'_apply]
+    show (MulSemiringAction.toRingAut (ValuationSubring.decompositionSubgroup K A) kbar
+      (decompositionEquiv K σ)) (M.val β₀) = M.val β₀
+    rw [MulSemiringAction.toRingAut_apply, MulSemiringAction.toRingEquiv_apply_apply]
+    exact hresidue.symm
+  -- `β₀` generates `M` over `𝓀[K]`, so fixing `β₀` forces `residueAction' K σ` to fix all of `M`.
+  apply hMW
+  rw [SetLike.mem_coe, IntermediateField.mem_fixingSubgroup_iff]
+  intro x hx
+  have heq : (residueAction' K σ).toAlgHom.comp (M.val.comp IntermediateField.topEquiv.toAlgHom) =
+      M.val.comp IntermediateField.topEquiv.toAlgHom := by
+    apply IntermediateField.algHom_ext_of_eq_adjoin 𝓀[K] hprim.symm
+    rintro z hz
+    simp only [Set.mem_singleton_iff] at hz
+    simp only [AlgHom.comp_apply]
+    exact hz ▸ hβfix
+  have hcongr := DFunLike.congr_fun heq (IntermediateField.topEquiv.symm (⟨x, hx⟩ : M))
+  simpa using hcongr
 
 /-- `(residueAction' K).range` is a closed subgroup of `Gal(kbar/𝓀[K])`: the continuous
 (`continuous_residueAction'`) image of the compact (`compactSpace_absoluteGaloisGroup`) group
