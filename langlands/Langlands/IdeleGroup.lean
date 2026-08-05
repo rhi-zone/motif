@@ -48,9 +48,11 @@ group itself, the diagonal embedding of `Kˣ`, and the idèle class group as a q
   as the image under `mk` of `ker IdeleGroup.toClassGroup`.
 - `NumberField.IdeleGroup.content` : the idèle norm (content map) `IdeleGroup R K → ℝ`, trivial
   on principal idèles (`content_diagonalEmbedding`, the adelic product formula).
-- `NumberField.IdeleGroup.normMap` : the intended type of the idèle norm map for a finite
-  extension `L / K`; a `sorry` stub, since the local norm maps it needs are not yet in Mathlib
-  (see the survey in the "norm map on idèles" section below).
+- `NumberField.IdeleGroup.normMap` : the idèle norm map for a finite extension `L / K`, defined
+  in `Langlands/NormMap.lean` (not here, to avoid a circular import: its construction needs the
+  local norm map infrastructure built there) by combining the finite- and archimedean-place
+  norm maps via `IdeleGroup.equivProd` (see the survey in the "norm map on idèles" section
+  below for the history of this definition).
 
 ## Implementation notes
 
@@ -617,38 +619,27 @@ what is already in the file. The declaration below records the intended type sig
 the Lean 3 `ideles_K.lean` `norm_idele.map` up to naming) with a `sorry`, so that later work can
 fill in the construction without having to re-derive the statement.
 
-**Update:** `Langlands/NormMap.lean` fills in the first two gaps above (not a routine extension,
-but already present in Mathlib under different names than the original survey looked for):
+**Update:** `Langlands/NormMap.lean` fills in all three gaps above (not routine extensions,
+but already present in Mathlib under different names than the original survey looked for, or
+straightforward assembly once the pieces are in place):
 the place-lying-over relation is `w.asIdeal.LiesOver v.asIdeal` (`Mathlib.RingTheory.Ideal.Over`,
 `IsDedekindDomain.HeightOneSpectrum.under`), and the local norm map between completions is built
 (genuinely, not `sorry`'d) as `IsDedekindDomain.HeightOneSpectrum.localNormMap`, via
 `UniformSpace.Completion.mapRingHom` applied to the uniform continuity of `algebraMap K L` between
 valued fields, `IsDedekindDomain.HeightOneSpectrum.uniformContinuous_algebraMap_liesOver` (a 2026
 Mathlib addition in `Mathlib.NumberTheory.RamificationInertia.Valuation`). The proof that the local
-norm map sends local units to local units at all but finitely many (finite) places is now also
+norm map sends local units to local units at all but finitely many (finite) places is
 **fully proved, no `sorry`** (`IsDedekindDomain.HeightOneSpectrum.eventually_localNormMap_mem_units`,
 built on `localNormMap_mem_units`'s Galois-conjugate integrality argument -- see `NormMap.lean`'s
-module docstring). What remains missing for `normMap` below is strictly the third gap above: an
-archimedean/infinite-place local norm map (nothing for this exists in Mathlib -- the closest thing,
-`NumberField.InfiniteAdeleRing.instNorm`, is the idèle *content* map, not a norm map between
-completions of different fields) and the assembly of both halves into a genuine ring hom
-`AdeleRing S L →+* AdeleRing R K` (no `baseChange`/`extensionMap` for `AdeleRing`/
-`InfiniteAdeleRing` exists in Mathlib). Building either is out of scope for the work done so far;
-`normMap` remains a `sorry` for this reason. -/
-
-section NormMap
-
-variable (S L : Type*) [CommRing S] [IsDedekindDomain S] [Field L] [Algebra S L]
-  [IsFractionRing S L] [Algebra R S] [Algebra K L] [Algebra R L]
-  [IsScalarTower R S L] [IsScalarTower R K L] [Module.Finite K L]
-
-/-- The idèle norm map for a finite extension `L / K` (of fraction fields of Dedekind domains
-`S / R`), sending an idèle of `L` to its norm idèle of `K`. See the module-level survey above:
-the finite-place half is fully built (`Langlands/NormMap.lean`), but an archimedean/infinite-place
-local norm map and the assembly of both halves into a ring hom on the full adèle rings are still
-missing from Mathlib, hence the `sorry`. -/
-noncomputable def IdeleGroup.normMap : IdeleGroup S L →* IdeleGroup R K := sorry
-
-end NormMap
+module docstring). The third gap -- an archimedean/infinite-place local norm map, and the
+assembly of both halves into the idèle norm map -- is also now closed: `NormMap.lean` builds
+`NumberField.InfinitePlace.localNormMap` for the archimedean case (no companion unit-preservation
+lemma needed, since `InfiniteAdeleRing` is an *unrestricted* product), assembles both local norm
+maps into `NumberField.FiniteIdeleGroup.normMap` / `NumberField.InfiniteIdeleGroup.normMap` (taking,
+at each place of the base, the product of local norms over the finitely many places lying above it,
+via `RestrictedProduct.mkUnit` / `MulEquiv.piUnits` respectively), and combines both halves via
+`IdeleGroup.equivProd` into `NumberField.IdeleGroup.normMap` below -- defined in `NormMap.lean`
+rather than here, to avoid a circular import (its construction needs the local norm map
+infrastructure built there). No `sorry` remains anywhere in this development. -/
 
 end NumberField

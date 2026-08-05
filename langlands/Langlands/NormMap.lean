@@ -832,4 +832,27 @@ noncomputable def normMap : InfiniteIdeleGroup L →* InfiniteIdeleGroup K :=
 
 end NumberField.InfiniteIdeleGroup
 
+namespace NumberField
+
+variable (R S K L : Type*) [CommRing R] [IsDedekindDomain R] [Field K] [Algebra R K]
+  [IsFractionRing R K] [CommRing S] [IsDedekindDomain S] [Field L] [Algebra S L]
+  [IsFractionRing S L] [Algebra R S] [Algebra K L] [Algebra R L] [IsScalarTower R S L]
+  [IsScalarTower R K L] [Module.Finite K L] [Algebra.IsIntegral R S] [Module.IsTorsionFree R S]
+  [NumberField K] [NumberField L]
+
+/-- The idèle norm map `N_{L/K} : IdeleGroup S L →* IdeleGroup R K` for a finite extension
+`L / K` (of fraction fields of Dedekind domains `S / R`), sending an idèle `a` to the idèle
+whose component at each place `v` of `K` is `∏_{w ∣ v} N_{L_w/K_v}(a_w)`. Assembled from the
+finite-place half (`FiniteIdeleGroup.normMap`) and the archimedean half
+(`InfiniteIdeleGroup.normMap`) via the splitting `IdeleGroup.equivProd`. This is the
+`IdeleGroup.normMap` whose type was recorded (with a `sorry`) in `Langlands/IdeleGroup.lean`;
+defined here rather than there to avoid a circular import, since the construction needs the
+local norm map infrastructure built in this file. -/
+noncomputable def IdeleGroup.normMap : IdeleGroup S L →* IdeleGroup R K :=
+  (IdeleGroup.equivProd R K).symm.toMonoidHom.comp
+    ((MonoidHom.prodMap (InfiniteIdeleGroup.normMap K L) (FiniteIdeleGroup.normMap K L)).comp
+      (IdeleGroup.equivProd S L).toMonoidHom)
+
+end NumberField
+
 end
