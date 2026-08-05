@@ -671,6 +671,99 @@ that avoids stalling on (a).
   units, and is a milestone-sized development (three pieces above), not
   session-sized glue.
 
+#### Status 2026-08-05 (third pass) — re-verification confirms no drift; one new route considered and closed
+
+- **Re-verified against live files and current vendored Mathlib** (still
+  commit `520045a` per `.lake/packages/mathlib` git log, unchanged since the
+  second-pass session — `langlands/flake.lock` has not moved since the
+  original project-skeleton commit `6df4f72`, so this is the *same* Mathlib
+  checkout, not a newer one). `Langlands/ResidueFieldNorm.lean` (165 lines),
+  `Langlands/NormMap.lean` (763 lines), `Langlands/UnramifiedExtension.lean`
+  (1211 lines) all match the second-pass description exactly.
+  `lake build Langlands.ResidueFieldNorm` green (3412 jobs).
+  `grep -rn sorry langlands/Langlands/` empty.
+- **All prior loogle findings re-run fresh, all still 0 hits, confirming no
+  Mathlib drift on this specific gap:** `Algebra.norm (?A ⧸ ?I)`,
+  `LinearMap.det, Ideal.Quotient.mk`, `IsLocalRing.residue, Algebra.norm`,
+  `Algebra.norm, Ideal.Quotient.mk`, `Module.Finite, Valuation.integer`,
+  `Module.Free, Valuation.integer`, `Module.Finite, ValuationSubring`,
+  `Module.Free, ValuationSubring`, `IsDiscreteValuationRing, Module.Finite`,
+  `Valuation.Integers, Module.Finite` — all 0 hits.
+  `IsLocalRing.linearCombination_bijective_of_flat` still does not exist
+  (unknown identifier). `Module.exists_basis_of_basis_baseChange` and
+  `IsLocalRing.span_eq_top_of_tmul_eq_basis` still exist, still need
+  `Module.FinitePresentation`/`Module.Finite K₀ L₀` as *input*.
+- **New candidate route considered this session (route 3): finiteness via
+  `IsIntegralClosure.finite` instead of via `Module.Free`/PID theory.**
+  `IsIntegralClosure.finite` (`Mathlib/RingTheory/DedekindDomain/
+  IntegralClosure.lean`) gives `Module.Finite A C` for `C` the integral
+  closure of a Noetherian integrally-closed domain `A` in a finite separable
+  extension `L` of `Frac(A)`. `v.adicCompletionIntegers K` already has
+  `IsDiscreteValuationRing` (hence Noetherian, hence — via
+  `Valuation.Integers.isIntegrallyClosed_integers` — integrally closed), so
+  the two domain-side hypotheses on `A` are already satisfied. This looked
+  like a shortcut around building `Module.Free` from PID theory from
+  scratch. **It is not**, because it needs `[IsIntegralClosure C A L]` as an
+  *instance* — i.e. it needs `w.adicCompletionIntegers L` to actually **be**
+  the integral closure of `v.adicCompletionIntegers K` in `w.adicCompletion
+  L`, and that fact does not exist in Mathlib for general valuation-ring
+  extensions:
+  - `ValuationRing, IsIntegralClosure` → 0 hits;
+    `Valuation.integer, IsIntegralClosure` → 0 hits;
+    `Valuation.HasExtension, IsIntegral` → 0 hits;
+    `FiniteDimensional, ValuationSubring, IsIntegral` → 0 hits. No lemma
+    connects a `Valuation.HasExtension` pair (which this repo already has,
+    `ResidueFieldNorm.lean:72`) to the statement that the top valuation
+    subring equals the integral closure of the bottom one.
+  - Two directions would be needed to build this fact by hand: (i)
+    integral-over-`K₀` elements of `L` land in `L₀` — a standard
+    non-archimedean argument (dominant-term bound on a monic relation) that
+    does *not* need completeness, but is not in Mathlib in this generality
+    either; (ii) elements of `L₀` are integral over `K₀` — the hard
+    direction, which genuinely needs completeness of `K` (uniqueness of the
+    valuation extension to a finite extension of a complete field), and is
+    itself the kind of fact `IsIntegralClosure.finite` was supposed to
+    shortcut around, not a corollary of it. Proving only (i) would not
+    unlock `IsIntegralClosure.finite`, which needs the full `IsIntegralClosure`
+    instance (both directions), so a partial result here wires nothing
+    downstream.
+  - Checked whether Mathlib's separate non-archimedean-analysis
+    normed-field development (`Mathlib/Analysis/Normed/Unbundled/
+    SpectralNorm.lean`, `spectralNorm`/`isNonarchimedean_spectralNorm`,
+    the de Frutos-Fernández et al. formalization of unique norm extension
+    on complete fields) could supply direction (ii) via a
+    spectral-norm-equals-valuation identification. It is disconnected from
+    this repo's `Valued`/`adicCompletion` framework: `spectralNorm,
+    integralClosure` → 0 hits; no lemma equates `spectralNorm` with a
+    `Valuation`/`Valued.v` instance anywhere in vendored Mathlib. Bridging
+    the two formalizations would itself be new work, not a shortcut.
+  - `UnramifiedExtension.lean:808,901` already uses `IsIntegralClosure.finite
+    R K K' C` — but in the `[IsAlgClosed L]`/`K⟮x⟯` setting checked and
+    rejected in the second-pass session (line 715's theorem doesn't expose
+    the needed isomorphism and isn't in the `adicCompletion` setting), not
+    the `w.adicCompletionIntegers L` setting needed here. Confirms this is
+    the same wall from a different angle, not a way around it.
+- **Conclusion: no route to `Module.Finite`/`Module.Free` for
+  `w.adicCompletionIntegers L` over `v.adicCompletionIntegers K` is
+  buildable from existing Mathlib pieces without first proving, from
+  scratch, that a valuation subring extending another (in the
+  `Valuation.HasExtension` sense) equals the integral closure of the base in
+  a finite extension of a complete field.** That fact is itself genuine
+  local-field theory (uses completeness essentially, via uniqueness of
+  valuation extension) and is not present under any of the three
+  formalizations checked (`Valuation`/`ValuationSubring`,
+  `IsIntegralClosure`, `spectralNorm`). No code was written this session —
+  every candidate stopped at a landscape check, not a proof attempt, so
+  there is nothing partial to leave as `sorry` and nothing was.
+- **Status unchanged from second pass**: residue-field half closed
+  (`ResidueFieldNorm.lean`), compatibility square open, routes 1 and 2 as
+  scoped in the second-pass entry above still stand, route 3 is now also
+  ruled out for the same reason as route 1 (needs the same missing
+  integral-closure-equals-valuation-ring fact, just reached via a different
+  Mathlib lemma). Next session should not re-run any of the loogle queries
+  listed above — they are confirmed stable across two independent sessions
+  on the same Mathlib commit.
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
