@@ -11,108 +11,73 @@ import Mathlib.Algebra.Order.GroupWithZero.WithZero
 import Mathlib.Algebra.Order.Archimedean.Basic
 
 /-!
-# Bridging `ValuationSubring` and `NormedField`, and uniqueness of valuation extension
+# Uniqueness of the extension of a complete nonarchimedean valuation
 
-This file bridges the `ValuationSubring`/`ValuativeRel` formalism (used for
+This file bridges the `ValuationSubring`/`ValuativeRel` formalism (used by
 `IsNonarchimedeanLocalField`) with the `NormedField`/`AbsoluteValue` formalism (used by
-`Mathlib.Analysis.Normed.Unbundled.SpectralNorm`), in order to prove: for `K` a complete
+`Mathlib.Analysis.Normed.Unbundled.SpectralNorm`), and proves that for `K` a complete
 nonarchimedean local field and `L / K` algebraic, a `ValuationSubring` of `L` whose comap along
-`algebraMap K L` is `𝒪[K]` is *unique*. Combined with the fact that `K`-automorphisms of `L`
-preserve this comap condition (`ValuationSubring.comap_smul_eq`), this gives that the
-decomposition subgroup of any such extension is all of `Gal(L/K)`.
+`algebraMap K L` is `𝒪[K]` is unique. Since `K`-automorphisms of `L` preserve that comap condition
+(`ValuationSubring.comap_smul_eq`), the decomposition subgroup of such an extension is all of
+`Gal(L/K)`.
 
-## Main definitions/results
+## Main results
 
-* `LocalField.exists_rankOne_compatible` : given a `ValuationSubring A` of `L` extending `𝒪[K]`
-  (in the sense `A.comap (algebraMap K L) = 𝒪[K]`), there is a `RankOne A.valuation` instance
-  whose associated embedding `A.ValueGroup → ℝ≥0`, pulled back along
-  `A.valuation.restrict ∘ algebraMap K L`, reproduces `‖·‖` on `K`. This packages the two
-  genuinely deep facts described in the docstring below and is now **fully proved, with no
-  `sorry`**: the former `hLtoK` gap (a reverse-direction minimal-polynomial estimate not derivable
-  from `Valuation.exists_pow_le_of_isAlgebraic` alone) is closed by
-  `Valuation.exists_pow_eq_of_isAlgebraic`; the compatible-normalization gap (Step 3g) is closed by
-  `Valuation.exists_rpow_eq_of_isEquiv`, a from-scratch proof of Hölder's uniqueness theorem for
-  archimedean linearly ordered groups, specialized to `ℝ≥0`-valued valuations (see that lemma's
-  docstring for the argument; it is not otherwise in Mathlib, which only has the *existence* half,
-  `Archimedean.exists_orderAddMonoidHom_real_injective`).
-* `LocalField.exists_rankOne_absoluteValue_extends` : given the same hypotheses, there is an
-  `AbsoluteValue L ℝ` extending the norm on `K` (from a fixed rank-1 embedding for `K`) whose
-  closed unit ball is `A`. This is the purely formal consequence of
-  `exists_rankOne_compatible` described in the implementation notes below; it has no `sorry` of
-  its own.
-* `LocalField.valuationSubring_eq_of_comap_eq` : uniqueness of the valuation subring extension,
-  via `spectralNorm_unique_field_norm_ext` (the "unique norm extension theorem" for complete
-  nonarchimedean fields) applied to the absolute values produced by the above.
-* `ValuationSubring.comap_smul_eq` : the comap of a `G`-translate of a valuation subring (for
-  `G = L ≃ₐ[K] L`) along `algebraMap K L` does not depend on the translate, since automorphisms
-  in `G` fix `K` pointwise. A purely formal fact, no `sorry`.
+* `MulArchimedean.of_units` : `MulArchimedean Γ₀ˣ` implies `MulArchimedean Γ₀`, for `Γ₀` a
+  linearly ordered commutative group with zero.
+* `Valuation.exists_pow_le_of_isAlgebraic` : for `v : Valuation L Γ₀` and `x : L` nonzero and
+  algebraic over `K`, some coefficient index `i < (minpoly K x).natDegree` satisfies
+  `v x ^ (natDegree - i) ≤ v (algebraMap K L (coeff i))`.
+* `Valuation.exists_pow_eq_of_isAlgebraic` : the same setting yields an *exact* equality
+  `v (algebraMap K L c) = v x ^ m` for some `c ≠ 0` and `1 ≤ m ≤ (minpoly K x).natDegree`.
+* `Valuation.exists_rpow_eq_of_isEquiv` : Hölder's uniqueness theorem for `ℝ≥0`-valued
+  valuations — equivalent valuations `v₁`, `v₂` with `v₁` nontrivial satisfy `v₂ = v₁ ^ t` for a
+  unique `t > 0`.
+* `LocalField.exists_rankOne_compatible` : for a `ValuationSubring A` of `L` with
+  `A.comap (algebraMap K L) = 𝒪[K]`, a `RankOne A.valuation` instance whose embedding
+  `A.ValueGroup → ℝ≥0`, pulled back along `A.valuation.restrict ∘ algebraMap K L`, reproduces
+  `‖·‖` on `K`.
+* `LocalField.exists_rankOne_absoluteValue_extends` : under the same hypotheses, an
+  `AbsoluteValue L ℝ` extending `‖·‖` on `K` whose closed unit ball is `A`.
+* `LocalField.valuationSubring_eq_of_comap_eq` and
+  `LocalField.valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField` : uniqueness of the
+  valuation subring extension, for `K` given by the abstract normed-field bundle and by
+  `IsNonarchimedeanLocalField` respectively.
+* `ValuationSubring.comap_smul_eq` : the comap of a `(L ≃ₐ[K] L)`-translate of a valuation subring
+  along `algebraMap K L` is independent of the translate.
 
 ## Implementation notes
 
-`exists_rankOne_compatible` packages together two facts, both now fully proved:
+`exists_rankOne_compatible` combines two facts:
 
-1. **Rank preservation under algebraic extension**: if `K` has a rank-≤-1 (i.e. real-valued)
-   valuation and `L / K` is algebraic, then any valuation subring `A` of `L` restricting to
-   `𝒪[K]` is again of rank ≤ 1, i.e. `A.valuation` (valued in the abstract group `A.ValueGroup`)
-   admits an order-embedding into `ℝ≥0`. This is a standard fact (e.g. Bourbaki, *Commutative
-   Algebra*, VI §10, or Engler-Prestel, *Valued Fields*), not yet in Mathlib. Equivalently (given
-   nontriviality, which transfers from `𝒪[K]` via the comap hypothesis), by
-   `Valuation.nonempty_rankOne_iff_mulArchimedean` this is the statement that
-   `MonoidWithZeroHom.ValueGroup₀ (.ofClass A.valuation)` is `MulArchimedean`.
-2. **Compatible normalization**: moreover the embedding `A.ValueGroup → ℝ≥0` can be chosen so
-   that it agrees with the fixed embedding used to build the `NormedField K` structure on `K`
-   (i.e. so that the extended norm genuinely restricts to `‖·‖` on `K`, not just something
-   equivalent to it).
+1. **Rank preservation under algebraic extension**: if `K` carries a rank-≤-1 (real-valued)
+   valuation and `L / K` is algebraic, any valuation subring `A` of `L` restricting to `𝒪[K]` is
+   again of rank ≤ 1, i.e. `A.valuation` admits an order embedding of `A.ValueGroup` into `ℝ≥0`.
+   Given nontriviality (which transfers from `𝒪[K]` along the comap hypothesis), by
+   `Valuation.nonempty_rankOne_iff_mulArchimedean` this is equivalent to
+   `MonoidWithZeroHom.ValueGroup₀ (.ofClass A.valuation)` being `MulArchimedean`.
+2. **Compatible normalization**: the embedding `A.ValueGroup → ℝ≥0` can be chosen to agree with
+   the embedding used to build the `NormedField K` structure, so that the extended norm restricts
+   to `‖·‖` on `K` and not merely to an equivalent norm.
 
-Once these are granted (i.e. once `exists_rankOne_compatible` is discharged), the rest is formal
-— this is exactly what `exists_rankOne_absoluteValue_extends` carries out: build
-`Valued L A.ValueGroup` via `Valued.mk'` (which needs no ambient topology on `L`), transport the
-resulting `RankOne A.valuation` instance into a `NontriviallyNormedField L` via
-`Valued.toNontriviallyNormedField`, and take `f := NormedField.toAbsoluteValue L`; then
+Everything downstream is formal. `exists_rankOne_absoluteValue_extends` builds
+`Valued L A.ValueGroup` via `Valued.mk'` (which needs no ambient topology on `L`), transports the
+`RankOne A.valuation` instance into a `NontriviallyNormedField L` via
+`Valued.toNontriviallyNormedField`, and takes `f := NormedField.toAbsoluteValue L`; then
 `f x ≤ 1 ↔ x ∈ A` is `Valued.toNormedField.norm_le_one_iff` composed with
 `ValuationSubring.valuation_le_one_iff`.
 
-## A genuine gap found while attempting `exists_rankOne_compatible`
+The hypothesis `[(NormedField.valuation (K := K)).Compatible]` is necessary:
+`[NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K]` are independent parameters,
+and nothing among them forces `ValuativeRel.valuation K` to be nontrivial relative to `‖·‖`. With
+`ValuativeRel K := ValuativeRel.ofValuation (1 : Valuation K ℝ≥0)` and `A := (⊤ : ValuationSubring
+L)`, the comap hypothesis holds while `A.valuation` is trivial, so no `RankOne A.valuation`
+instance exists.
 
-Two reusable pieces of infrastructure for the "rank preservation under algebraic extension"
-argument are proved below with no `sorry`:
+## References
 
-* `MulArchimedean.of_units`: for `Γ₀` a `LinearOrderedCommGroupWithZero`, `MulArchimedean Γ₀ˣ`
-  transfers to `MulArchimedean Γ₀` (via the order isomorphism `WithZero Γ₀ˣ ≃*o Γ₀`, i.e.
-  `WithZero.withZeroUnitsEquiv`, and `MulArchimedean.comap` along its inverse).
-* `Valuation.exists_pow_le_of_isAlgebraic`: the "ultrametric inequality applied to the minimal
-  polynomial" bound — for `v : Valuation L Γ₀` and `x : L` algebraic over `K` with `x ≠ 0`, some
-  coefficient `i < (minpoly K x).natDegree` of the minimal polynomial satisfies
-  `v x ^ (natDegree - i) ≤ v (algebraMap K L (coeff i))`. This is the key tool that bounds `v x`
-  above by a power of a `K`-value, for *any* `x : L` and *any* valuation `v` on `L` — it does not
-  need `L` finite over `K`, only algebraicity, and it needs no compatibility hypothesis between
-  `K`'s norm and its `ValuativeRel` structure.
-
-However, **`exists_rankOne_compatible`, as stated, is not provable from its current hypotheses**,
-and this was confirmed with a concrete counterexample rather than left as an unverified
-suspicion. The issue: `[NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K]` are
-three *independent* typeclass parameters with no built-in link between them — nothing forces
-`ValuativeRel.valuation K` to be equivalent to (or even nontrivial relative to) the norm `‖·‖`.
-Concretely: instantiate `ValuativeRel K := ValuativeRel.ofValuation (1 : Valuation K ℝ≥0)` (the
-*trivial* valuation, whose `valuationSubring` is all of `K`) alongside any nontrivially normed
-ultrametric `K`. Then take `A := (⊤ : ValuationSubring L)`. Since `(⊤ : ValuationSubring L).comap
-(algebraMap K L) = ⊤ = (1 : Valuation K ℝ≥0).valuationSubring`, the hypothesis `hA` holds. But
-`A.valuation` (`⊤`'s own valuation) is the *trivial* valuation on `L` — it has no `IsNontrivial`
-instance, hence no `RankOne` instance can possibly exist for it, directly contradicting the `∃ hR
-: RankOne A.valuation, …` conclusion. (`nix develop --command lake env lean` on a standalone file
-confirms `example : ValuativeRel.IsRankLeOne K` — let alone any norm-compatibility fact — is *not*
-derivable from `[NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K]` alone; no
-instance bridges them.)
-
-This was fixed by strengthening the hypotheses of `exists_rankOne_compatible`, adding
-`[(NormedField.valuation (K := K)).Compatible]` (see the `## Fix` section on the theorem itself)
-to tie `valuation K` to the norm via `Valuation.Compatible` from
-`Mathlib.RingTheory.Valuation.ValuativeRel.Basic`. With the signature corrected,
-`exists_rankOne_compatible` is now **fully proved**: fact #1 (rank preservation) uses the two
-lemmas above plus `Valuation.exists_pow_eq_of_isAlgebraic`; fact #2 (compatible normalization)
-uses `Valuation.exists_rpow_eq_of_isEquiv` (Hölder uniqueness for `ℝ≥0`-valued valuations, proved
-from scratch below) to rescale the rank-≤-1 embedding obtained for fact #1 so it matches `‖·‖`
-on `K` exactly.
+* Bourbaki, *Commutative Algebra*, VI §10
+* Engler–Prestel, *Valued Fields*, Thm. 3.2.4
 -/
 
 noncomputable section
@@ -122,11 +87,9 @@ open scoped NNReal
 
 section ReusableInfrastructure
 
-/-- **General archimedean transfer for groups with zero.** If the units `Γ₀ˣ` of a linearly
-ordered commutative group with zero are `MulArchimedean`, so is `Γ₀` itself. Proved via the order
-isomorphism `WithZero Γ₀ˣ ≃*o Γ₀` (`WithZero.withZeroUnitsEquiv`): `MulArchimedean` transfers to
-`WithZero Γ₀ˣ` from `Γ₀ˣ` (`WithZero.instMulArchimedean`), then pulls back along the (strictly
-monotone) inverse of that isomorphism via `MulArchimedean.comap`. -/
+/-- If the unit group `Γ₀ˣ` of a linearly ordered commutative group with zero is `MulArchimedean`,
+so is `Γ₀`. Transferred along the order isomorphism `WithZero Γ₀ˣ ≃*o Γ₀`
+(`WithZero.withZeroUnitsEquiv`). -/
 theorem MulArchimedean.of_units {Γ₀ : Type*} [LinearOrderedCommGroupWithZero Γ₀]
     (h : MulArchimedean Γ₀ˣ) : MulArchimedean Γ₀ := by
   classical
@@ -134,13 +97,13 @@ theorem MulArchimedean.of_units {Γ₀ : Type*} [LinearOrderedCommGroupWithZero 
   exact MulArchimedean.comap (WithZero.withZeroUnitsEquiv (G := Γ₀)).symm.toMonoidHom
     WithZero.withZeroUnitsEquiv_symm_strictMono
 
-/-- **Ultrametric bound via the minimal polynomial.** If `v` is a valuation on `L` and `x : L` is
-algebraic (and nonzero) over a subfield `K`, then applying the ultrametric inequality to the
-equation `(minpoly K x).aeval x = 0` (rearranged as `x ^ n = -∑_{i < n} c_i x ^ i` for `n` the
-degree and `c_i` the coefficients) shows the maximum term on the right dominates, giving some
-`i < n` with `v x ^ (n - i) ≤ v (algebraMap K L (c_i))`. This is the key tool bounding `v x` above
-by a power of a `K`-value: it needs only algebraicity (not finiteness) of `x` over `K`, and no
-compatibility between valuations on `K` and `L` beyond `v` itself. -/
+/-- Ultrametric bound via the minimal polynomial: for `v` a valuation on `L` and `x : L` nonzero
+and algebraic over a subfield `K` with `n := (minpoly K x).natDegree`, there is an index `i < n`
+with `v x ^ (n - i) ≤ v (algebraMap K L ((minpoly K x).coeff i))`.
+
+Obtained by applying the ultrametric inequality to `x ^ n = -∑ i ∈ range n, c i • x ^ i`, where the
+maximal term on the right dominates. Only algebraicity of `x` over `K` is required, not finiteness
+of `L / K`, and no compatibility between valuations on `K` and on `L` beyond `v` itself. -/
 theorem Valuation.exists_pow_le_of_isAlgebraic {K L Γ₀ : Type*} [Field K] [Field L] [Algebra K L]
     [LinearOrderedCommGroupWithZero Γ₀] (v : Valuation L Γ₀) {x : L} (hx : x ≠ 0)
     (halg : IsAlgebraic K x) :
@@ -175,26 +138,22 @@ theorem Valuation.exists_pow_le_of_isAlgebraic {K L Γ₀ : Type*} [Field K] [Fi
     rw [mul_comm (v x ^ i), mul_comm (v x ^ i)]; exact heq
   exact (mul_le_mul_iff_right₀ hvxi_pos).mp heq'
 
-/-- **Exact archimedean bound via the minimal polynomial (reverse direction).** If `v` is a
-valuation on `L` and `x : L` is algebraic (and nonzero) over a subfield `K`, then some power
-`x ^ m` (with `1 ≤ m ≤ (minpoly K x).natDegree`) has *exactly* the same `v`-valuation as
-`algebraMap K L c` for some nonzero `c : K`. Combined with `exists_pow_le_of_isAlgebraic` (which
-only bounds `v x` from *above* by a `K`-value), this supplies the missing reverse-direction bound:
-since the equality is exact, `1 < v x` forces `1 < v (algebraMap K L c) = v x ^ m`, i.e. some
-`K`-anchor exceeding `1` is *dominated* by a power of `x`, not just dominating one -- this is
-exactly what `Bourbaki, *Comm. Alg.* VI §10.1` / `Engler-Prestel, *Valued Fields* Thm. 3.2.4` use
-(via the reversed-minimal-polynomial relationship) to show rank ≤ 1 is preserved under algebraic
-extension; this lemma reaches the same conclusion directly, without introducing `Polynomial.
-reverse` or the minimal polynomial of `x⁻¹` as separate infrastructure.
+/-- Exact form of the minimal polynomial bound: for `v` a valuation on `L` and `x : L` nonzero and
+algebraic over a subfield `K`, some power `x ^ m` with `1 ≤ m ≤ (minpoly K x).natDegree` has
+exactly the valuation of `algebraMap K L c` for some nonzero `c : K`.
 
-Proof idea: the minimal polynomial relation `∑_{i=0}^n c_i x^i = 0` (`c_n = 1`, monic) expresses
-`0` as a sum of `n+1` terms `t_i := algebraMap K L c_i * x ^ i`. If the valuations `v (t_i)` were
-pairwise distinct among the terms with nonzero coefficient, the (unique) maximal term would
-dominate the whole sum (`Valuation.map_sum_eq_of_lt`), forcing `v 0 = v (t_j) ≠ 0`, absurd. So two
-distinct indices `i ≠ j` (both with nonzero coefficient) must tie in valuation:
-`v (algebraMap c_i) * v x ^ i = v (algebraMap c_j) * v x ^ j`; canceling the smaller power of `v x`
-(nonzero, since `x ≠ 0`) and setting `m := max i j - min i j`, `c :=` the corresponding ratio of
-coefficients gives `v (algebraMap c) = v x ^ m` exactly. -/
+Where `exists_pow_le_of_isAlgebraic` bounds `v x` above by a `K`-value, the equality here gives the
+reverse direction as well: if `1 < v x` then `1 < v (algebraMap K L c) = v x ^ m`, exhibiting a
+`K`-element of valuation exceeding `1` dominated by a power of `x`. This is the step that transfers
+rank ≤ 1 across an algebraic extension (Bourbaki, *Comm. Alg.* VI §10.1; Engler–Prestel, *Valued
+Fields* Thm. 3.2.4), obtained here without passing through `Polynomial.reverse` or `minpoly K x⁻¹`.
+
+The minimal polynomial relation writes `0` as the sum of the terms
+`t i := algebraMap K L ((minpoly K x).coeff i) * x ^ i`. Were the values `v (t i)` pairwise
+distinct over the support of the coefficients, the maximal term would dominate the sum
+(`Valuation.map_sum_eq_of_lt`), forcing `v 0 ≠ 0`. Two distinct indices `i < j` therefore satisfy
+`v (t i) = v (t j)`; cancelling `v x ^ i` gives the claim with `m := j - i` and
+`c := (minpoly K x).coeff i * ((minpoly K x).coeff j)⁻¹`. -/
 theorem Valuation.exists_pow_eq_of_isAlgebraic {K L Γ₀ : Type*} [Field K] [Field L] [Algebra K L]
     [LinearOrderedCommGroupWithZero Γ₀] (v : Valuation L Γ₀) {x : L} (hx : x ≠ 0)
     (halg : IsAlgebraic K x) :
@@ -288,22 +247,21 @@ theorem Valuation.exists_pow_eq_of_isAlgebraic {K L Γ₀ : Type*} [Field K] [Fi
   · obtain ⟨m, c, hm1, hmn, hc0, hceq⟩ := hcore j i hgt hile hcj hci hveq.symm
     exact ⟨m, c, hm1, hmn, hc0, hceq⟩
 
-/-- **Hölder's uniqueness theorem for archimedean groups, specialized to `ℝ≥0`-valued
-valuations.** If `v₁ v₂ : Valuation K ℝ≥0` are equivalent (`v₁.IsEquiv v₂`, i.e. they induce the
-same preorder/valuation subring on `K`) and `v₁` is nontrivial, then `v₂` equals `v₁` raised to a
-fixed positive real power: `∃ t > 0, ∀ x, v₂ x = v₁ x ^ t`. This is the archimedean-linearly-ordered-
-group uniqueness fact (any two strictly monotone embeddings of such a group into `ℝ` agree up to a
-positive real scalar) specialized to the case where both embeddings already land directly in `ℝ≥0`:
-this sidesteps needing `MulArchimedean`/`ValueGroup₀` machinery as a separate hypothesis, since any
-subgroup of `(ℝ, +)` (reached here via `Real.log`) is automatically archimedean, being a subgroup of
-an archimedean group. Not currently in Mathlib in any form (only the *existence* half,
-`Archimedean.exists_orderAddMonoidHom_real_injective` in `Mathlib.Data.Real.Embedding`, is present).
-The proof is the classical density argument: pick an anchor `c₀` with `v₁ c₀ > 1` (so `v₂ c₀ > 1`
-too, via `hequiv`), then show `Real.log (v₁ x) / Real.log (v₁ c₀) = Real.log (v₂ x) / Real.log
-(v₂ c₀)` for every `x` by comparing against every rational `p / n` via the valuation identity
-`v c₀ ^ p < v x ^ n ↔ v (c₀ ^ p / x ^ n) < 1`, which -- being purely an order-comparison against `1`
--- transfers across `hequiv` unchanged; density of `ℚ` in `ℝ` then forces the two ratios to agree
-exactly, not just up to rational approximation. -/
+/-- Hölder's uniqueness theorem, specialized to `ℝ≥0`-valued valuations: equivalent valuations
+`v₁ v₂ : Valuation K ℝ≥0` with `v₁` nontrivial satisfy `v₂ x = v₁ x ^ t` for a fixed `t > 0`.
+
+This is the uniqueness half of the embedding theorem for archimedean linearly ordered groups (any
+two strictly monotone embeddings into `ℝ` agree up to a positive real scalar), stated for
+embeddings already landing in `ℝ≥0`, which avoids `MulArchimedean`/`ValueGroup₀` as a separate
+hypothesis: the image subgroup of `(ℝ, +)` obtained via `Real.log` is archimedean automatically.
+Mathlib has the existence half, `Archimedean.exists_orderAddMonoidHom_real_injective`, but not this
+one.
+
+The proof is the classical density argument. Fix an anchor `c₀` with `1 < v₁ c₀`, hence `1 < v₂ c₀`
+by equivalence. For every `x` the identity `v c₀ ^ p < v x ^ n ↔ v (c₀ ^ p / x ^ n) < 1` is a
+comparison against `1` and so transfers across `hequiv`; running it over all `p / n ∈ ℚ` and using
+density of `ℚ` in `ℝ` forces
+`Real.log (v₁ x) / Real.log (v₁ c₀) = Real.log (v₂ x) / Real.log (v₂ c₀)`. -/
 theorem Valuation.exists_rpow_eq_of_isEquiv {K : Type*} [Field K] (v₁ v₂ : Valuation K ℝ≥0)
     [hv₁ : v₁.IsNontrivial] (hequiv : v₁.IsEquiv v₂) :
     ∃ t : ℝ, 0 < t ∧ ∀ x : K, v₂ x = v₁ x ^ t := by
@@ -404,15 +362,15 @@ end ReusableInfrastructure
 
 section NormedFieldValuativeRelBridge
 
-/-- **Bridging lemma, closing the gap documented above.** If the norm on `K` literally equals
-`hv.hom ∘ v.restrict` for some `Compatible`, `RankOne` valuation `v` on `K` -- which is exactly
-what happens whenever the `NormedField`/`Valued` structure on `K` is *built from* `v` (e.g. via
-`Valued.toNormedField`/`Valued.toNontriviallyNormedField`, using
-`Valued.toNormedField.coe_valuation_eq_rankOne_hom_comp_valuation` to see the hypothesis `hnorm`
-holds by `rfl` in that case) -- then the norm's own canonical valuation `NormedField.valuation` is
-again `Compatible` with the ambient `ValuativeRel K`. This is precisely the extra hypothesis added
-to `LocalField.exists_rankOne_compatible` below to rule out instantiating a `ValuativeRel K`
-independent of (in particular, trivial relative to) the norm. -/
+/-- If the norm on `K` equals `RankOne.hom v ∘ v.restrict` for a `Compatible`, `RankOne` valuation
+`v`, then the norm's canonical valuation `NormedField.valuation` is itself `Compatible` with the
+ambient `ValuativeRel K`.
+
+The hypothesis `hnorm` holds by `rfl` whenever the `NormedField`/`Valued` structure on `K` is built
+from `v` — via `Valued.toNormedField` or `Valued.toNontriviallyNormedField`, by
+`Valued.toNormedField.coe_valuation_eq_rankOne_hom_comp_valuation`. This supplies the
+`Compatible` instance required by `LocalField.exists_rankOne_compatible`, which rules out a
+`ValuativeRel K` unrelated to the norm. -/
 theorem NormedField.valuation_compatible_of_eq_rankOne_hom_comp_restrict
     {K Γ₀ : Type*} [NormedField K] [IsUltrametricDist K] [ValuativeRel K]
     [LinearOrderedCommGroupWithZero Γ₀]
@@ -433,76 +391,46 @@ variable (K : Type*) [NontriviallyNormedField K] [IsUltrametricDist K] [Valuativ
   [(NormedField.valuation (K := K)).Compatible]
   {L : Type*} [Field L] [Algebra K L]
 
-/-- **Fixed statement** (see the module docstring for the counterexample this repairs, and the
-`## Fix` section below for what changed and why): a `ValuationSubring A` of an algebraic extension
-`L` of `K` with `A.comap (algebraMap K L) = 𝒪[K]` admits a `RankOne` structure on `A.valuation`
-(i.e. `A` has rank ≤ 1, and is nontrivial since `𝒪[K]` is) whose associated embedding
-`A.ValueGroup → ℝ≥0` is normalized to agree with the fixed `NontriviallyNormedField` structure on
-`K`: pulling the resulting embedding back along `A.valuation.restrict ∘ algebraMap K L` reproduces
-`‖·‖` on `K`.
+/-- A `ValuationSubring A` of an algebraic extension `L / K` with
+`A.comap (algebraMap K L) = 𝒪[K]` admits a `RankOne` structure on `A.valuation` whose embedding
+`A.ValueGroup → ℝ≥0` is normalized to the `NontriviallyNormedField` structure on `K`: pulling it
+back along `A.valuation.restrict ∘ algebraMap K L` reproduces `‖·‖`.
 
-This packages the two facts described in the module docstring:
-1. rank preservation of a rank-≤-1 valuation under an algebraic extension (equivalently, that
-   `MonoidWithZeroHom.ValueGroup₀ (.ofClass A.valuation)` is `MulArchimedean`; see
-   `Valuation.nonempty_rankOne_iff_mulArchimedean`), and
-2. that the resulting embedding into `ℝ≥0` can be normalized to match the one already fixed on
-   `K`, not just something equivalent to it.
+This combines rank preservation under an algebraic extension (equivalently, `MulArchimedean` of
+`MonoidWithZeroHom.ValueGroup₀ (.ofClass A.valuation)`, by
+`Valuation.nonempty_rankOne_iff_mulArchimedean`) with the normalization of the resulting embedding
+into `ℝ≥0` to match the one already fixed on `K`.
 
-## Fix
+The section hypothesis `[(NormedField.valuation (K := K)).Compatible]` is `Valuation.Compatible`
+from `Mathlib.RingTheory.Valuation.ValuativeRel.Basic`, i.e. `x ≤ᵥ y ↔ ‖x‖ ≤ ‖y‖`. It yields
+`ValuativeRel.IsNontrivial K` and `ValuativeRel.IsRankLeOne K`, hence a `RankOne (valuation K)`
+instance whose `hom'` matches `‖·‖` exactly rather than up to equivalence (`hRK_compat` below);
+this is the statement for the base field itself, i.e. the case `L = K`, `A = 𝒪[K]`. Without it the
+statement is false: for the trivial `ValuativeRel K` and `A = ⊤` the comap hypothesis holds while
+`A.valuation` is trivial.
 
-The extra hypothesis `[(NormedField.valuation (K := K)).Compatible]` (added to the
-`NormedFieldBridge` section variables) ties `valuation K` to `‖·‖`: it is the `Valuation.Compatible`
-class from `Mathlib.RingTheory.Valuation.ValuativeRel.Basic`, saying `x ≤ᵥ y ↔ ‖x‖ ≤ ‖y‖`. This
-rules out the counterexample from the module docstring: with `ValuativeRel K := .ofValuation
-(1 : Valuation K ℝ≥0)` (trivial), `x ≤ᵥ y` holds unconditionally (for `x ≠ 0`), so `Compatible`
-would force `‖x‖ ≤ ‖y‖` for *all* `x ≠ 0, y`, contradicting nontriviality of `‖·‖`. Concretely, this
-hypothesis is what's needed to derive `ValuativeRel.IsNontrivial K` and `ValuativeRel.IsRankLeOne K`
-(hence a `RankOne (valuation K)` instance, built explicitly below with `hom'` matching `‖·‖`
-on the nose, not just up to equivalence -- see `hRK_compat`), which is fact #1 + fact #2 restricted
-to the base field `K` itself (i.e. the case `L = K`, `A = 𝒪[K]`).
+The proof extends rank ≤ 1 from `K` to `L` as follows. By `hequiv`, the restriction of
+`A.valuation` to `K` is equivalent to `valuation K`.
 
-Extending this rank-≤-1-ness from `K` to all of `L`: via `hequiv` below, the K-restriction of
-`A.valuation` is equivalent to `valuation K`, hence itself rank ≤ 1 with matching normalization;
-`A.valuation` on the whole of `L` is bridged to this via the "rank preservation under algebraic
-extension" argument. The proof below carries this out as far as it goes:
-
-* Steps 3a-3c build the reusable one-directional pieces: nontriviality of `A.valuation`
-  (`hvA_nontrivial`), the bound `A.valuation x ≤ A.valuation (algebraMap c)` for `x` with
-  `1 < A.valuation x` (`hbound`, via `Valuation.exists_pow_le_of_isAlgebraic`), and the
-  `K`-internal archimedean bound `valuation K c ≤ (valuation K d) ^ M` for any `c` and any `d`
-  with `1 < valuation K d` (`hKboundPos`/`hAanchorPos`, via `hRK`'s `MulArchimedean` value group
-  and `nonempty_rankOne_iff_mulArchimedean`).
-* Step 3d (`hLtoK`) was the reverse-direction bound (some `K`-anchor dominated *by* a power of an
-  arbitrary `y : L`, not the other way round) -- not obtainable from
-  `Valuation.exists_pow_le_of_isAlgebraic` by any combination of applications to `y`, `y⁻¹`, or
-  auxiliary elements. **This gap is now closed** by `Valuation.exists_pow_eq_of_isAlgebraic`
-  (proved in `ReusableInfrastructure` above): rather than going through the explicit
-  reversed-minimal-polynomial relationship between `minpoly K y` and `minpoly K y⁻¹` (the route
-  Bourbaki, *Comm. Alg.* VI §10.1 / Engler-Prestel, *Valued Fields* Thm. 3.2.4 take), it directly
-  extracts an *exact* equality `v (algebraMap K L c) = v y ^ m` from a tie between two terms of
-  the minimal-polynomial sum (forced by `Valuation.map_sum_eq_of_lt`, since no term can uniquely
-  dominate a sum that equals `0`).
-* Steps 3e-3f assemble `hbound`, `hLtoK`, and `hAanchorPos` into `MulArchimedean A.ValueGroup`
-  directly (`hMArchA`, via the `MulArchimedean` class's `arch` field) and transfer this to obtain
-  `Nonempty (RankOne A.valuation)` (`hR`) via `nonempty_rankOne_iff_mulArchimedean` -- i.e. rank
-  ≤ 1 of `A.valuation` is now **fully proved**, with no remaining `sorry`.
-* Step 3g fixes the normalization: `hR` is *some* `RankOne` instance, not necessarily the one
-  matching `‖·‖` on `K`. This needs Hölder's uniqueness theorem for archimedean linearly ordered
-  groups (any two strictly monotone monoid homs into `ℝ≥0` agree up to a positive real power) --
-  not in Mathlib, so it is proved from scratch here as `Valuation.exists_rpow_eq_of_isEquiv`
-  (specialized to the case where both homs already land in `ℝ≥0`, which sidesteps needing
-  `MulArchimedean`/`ValueGroup₀` as a separate hypothesis). Applying it to the two `ℝ≥0`-valued
-  valuations obtained by pushing `A.valuation.restrict.comap (algebraMap K L)` forward along
-  `hR.hom'` and `(valuation K).restrict` forward along `hRK.hom'` gives an exponent `t`; rescaling
-  `hR.hom'` by `t` (via `NNReal.rpow`) produces the compatible `RankOne` instance `hR'`.
-
-With Step 3g closed, `exists_rankOne_compatible` has **no remaining `sorry`**. -/
+* Steps 3a–3c give nontriviality of `A.valuation` (`hvA_nontrivial`), the bound
+  `A.valuation x ≤ A.valuation (algebraMap K L c)` for `1 < A.valuation x`
+  (`hbound`, from `Valuation.exists_pow_le_of_isAlgebraic`), and the archimedean bound
+  `valuation K c ≤ valuation K d ^ M` for `1 < valuation K d` (`hKboundPos`, `hAanchorPos`, from
+  the `MulArchimedean` value group of `hRK`).
+* Step 3d (`hLtoK`) supplies the reverse bound — a `K`-element of valuation exceeding `1` dominated
+  by a power of an arbitrary `y : L` — from `Valuation.exists_pow_eq_of_isAlgebraic`.
+* Steps 3e–3f assemble these into `MulArchimedean A.ValueGroup` (`hMArchA`) and transfer it to
+  `Nonempty (RankOne A.valuation)` via `nonempty_rankOne_iff_mulArchimedean`.
+* Step 3g normalizes: the instance `hR` obtained above need not match `‖·‖` on `K`. Applying
+  `Valuation.exists_rpow_eq_of_isEquiv` to the `ℝ≥0`-valued valuations obtained by pushing
+  `A.valuation.restrict.comap (algebraMap K L)` along `hR.hom'` and `(valuation K).restrict` along
+  `hRK.hom'` gives an exponent `t`; rescaling `hR.hom'` by `t` via `NNReal.rpow` produces the
+  compatible instance `hR'`. -/
 theorem exists_rankOne_compatible [Algebra.IsAlgebraic K L]
     (A : ValuationSubring L) (hA : A.comap (algebraMap K L) = (valuation K).valuationSubring) :
     ∃ hR : RankOne A.valuation, ∀ x : K,
       (hR.hom' (A.valuation.restrict (algebraMap K L x)) : ℝ) = ‖x‖ := by
-  -- **Step 1**: build the `Compatible`, norm-matching `RankOne (valuation K)` instance from the
-  -- new hypothesis.
+  -- **Step 1**: build the `Compatible`, norm-matching `RankOne (valuation K)` instance.
   haveI hvK_nontrivial : ValuativeRel.IsNontrivial K :=
     (ValuativeRel.isNontrivial_iff_isNontrivial (NormedField.valuation (K := K))).mpr inferInstance
   haveI hvK_rankLeOne : ValuativeRel.IsRankLeOne K :=
@@ -634,13 +562,10 @@ theorem exists_rankOne_compatible [Algebra.IsAlgebraic K L]
     refine ⟨M, ?_⟩
     have h := (hequiv.le_iff_le (x := c) (y := d ^ M)).mpr (by rwa [map_pow])
     rwa [Valuation.comap_apply, Valuation.comap_apply, map_pow, map_pow] at h
-  -- **Step 3d.** `hbound` above (via `Valuation.exists_pow_le_of_isAlgebraic`) only ever bounds a
-  -- power of an element `x : L` *above* by a `K`-value. The reverse bound needed here -- some
-  -- `K`-anchor exceeding `1` *dominated* by a power of `y` -- is now supplied directly by
-  -- `Valuation.exists_pow_eq_of_isAlgebraic` (proved above in `ReusableInfrastructure`): applied
-  -- to `y`, it gives `m ≥ 1` and `d : K` (both from ties in the minimal-polynomial-term
-  -- valuations, per that lemma's docstring) with `A.valuation (algebraMap K L d) = A.valuation y
-  -- ^ m` *exactly*. Since `1 < A.valuation y` and `m ≥ 1`, this anchor is automatically `> 1`.
+  -- Step 3d: the reverse of `hbound` -- a `K`-element of valuation exceeding `1` dominated by a
+  -- power of an arbitrary `y : L`. `Valuation.exists_pow_eq_of_isAlgebraic` applied to `y` gives
+  -- `m ≥ 1` and `d : K` with `A.valuation (algebraMap K L d) = A.valuation y ^ m` exactly; with
+  -- `1 < A.valuation y` and `m ≥ 1` that value exceeds `1`.
   have hLtoK : ∀ y : L, y ≠ 0 → 1 < A.valuation y →
       ∃ (d : K) (N : ℕ), 1 < A.valuation (algebraMap K L d) ∧
         A.valuation (algebraMap K L d) ≤ A.valuation y ^ N := by
@@ -684,13 +609,11 @@ theorem exists_rankOne_compatible [Algebra.IsAlgebraic K L]
       (MonoidWithZeroHom.ValueGroup₀.embedding (f := MonoidWithZeroHom.ofClass A.valuation)).toMonoidHom
       (MonoidWithZeroHom.ValueGroup₀.embedding_strictMono (f := MonoidWithZeroHom.ofClass A.valuation))
   obtain ⟨hR⟩ := Valuation.nonempty_rankOne_iff_mulArchimedean.mpr hMArchA'
-  -- **Step 3g.** `hR` is *some* `RankOne A.valuation` instance (Steps 3a-3f establish its
-  -- existence unconditionally), but its embedding need not agree with `‖·‖` on `K`. Fix this by
-  -- pushing `A.valuation.restrict.comap (algebraMap K L)` and `(valuation K).restrict` forward
-  -- along `hR.hom'`/`hRK.hom'` respectively into two genuinely `ℝ≥0`-valued, equivalent
-  -- valuations on `K`, applying `Valuation.exists_rpow_eq_of_isEquiv` (proved above) to relate
-  -- them by a positive real exponent `t`, then rescaling `hR.hom'` by `t` (via `NNReal.rpow`) to
-  -- get a new `RankOne A.valuation` instance whose embedding matches `‖·‖` on `K` exactly.
+  -- Step 3g: the embedding of `hR` need not agree with `‖·‖` on `K`. Push
+  -- `A.valuation.restrict.comap (algebraMap K L)` and `(valuation K).restrict` forward along
+  -- `hR.hom'` and `hRK.hom'` into two equivalent `ℝ≥0`-valued valuations on `K`, relate them by a
+  -- positive exponent `t` via `Valuation.exists_rpow_eq_of_isEquiv`, then rescale `hR.hom'` by `t`
+  -- (`NNReal.rpow`) to obtain a `RankOne A.valuation` instance matching `‖·‖` on `K`.
   set v' : Valuation K (MonoidWithZeroHom.ValueGroup₀ (.ofClass A.valuation)) :=
     A.valuation.restrict.comap (algebraMap K L) with hv'_def
   set v1 : Valuation K ℝ≥0 := v'.map hR.hom' hR.strictMono'.monotone with hv1_def
@@ -730,10 +653,14 @@ theorem exists_rankOne_compatible [Algebra.IsAlgebraic K L]
   rw [this, ← ht x]
   exact hv2_apply x
 
-/-- Given a rank-1 structure on `A.valuation` compatible with `‖·‖` on `K` (packaged by
-`exists_rankOne_compatible`), the purely formal part of `exists_rankOne_absoluteValue_extends`:
-transport the `Valued`/`RankOne` data into a `NontriviallyNormedField L` (via `Valued.mk'` and
-`Valued.toNontriviallyNormedField`) and take the associated `AbsoluteValue`. -/
+/-- A `ValuationSubring A` of an algebraic extension `L / K` with
+`A.comap (algebraMap K L) = 𝒪[K]` is the closed unit ball of an absolute value on `L` extending
+`‖·‖` on `K`.
+
+The rank-1 structure on `A.valuation` compatible with `‖·‖` comes from
+`exists_rankOne_compatible`; the remainder transports the `Valued`/`RankOne` data into a
+`NontriviallyNormedField L` via `Valued.mk'` and `Valued.toNontriviallyNormedField` and takes the
+associated `AbsoluteValue`. -/
 theorem exists_rankOne_absoluteValue_extends [Algebra.IsAlgebraic K L]
     (A : ValuationSubring L) (hA : A.comap (algebraMap K L) = (valuation K).valuationSubring) :
     ∃ f : AbsoluteValue L ℝ, (∀ x : K, f (algebraMap K L x) = ‖x‖) ∧ ∀ x : L, f x ≤ 1 ↔ x ∈ A := by
@@ -749,15 +676,14 @@ theorem exists_rankOne_absoluteValue_extends [Algebra.IsAlgebraic K L]
     rw [Valued.toNormedField.norm_le_one_iff]
     exact A.valuation_le_one_iff x
 
-/-- **Uniqueness of the extension of a complete nonarchimedean valuation to an algebraic
-extension.** If `K` is complete with respect to a nontrivial nonarchimedean norm and `L / K` is
-algebraic, then any two `ValuationSubring`s of `L` restricting to `𝒪[K]` coincide.
+/-- Uniqueness of the extension of a complete nonarchimedean valuation to an algebraic extension:
+if `K` is complete with respect to a nontrivial nonarchimedean norm and `L / K` is algebraic, any
+two `ValuationSubring`s of `L` restricting to `𝒪[K]` coincide.
 
-This is the standard fact that makes the decomposition subgroup of a Henselian (in particular,
-complete) valued field's valuation ring extension equal to the *whole* Galois group: it is proved
-here from `spectralNorm_unique_field_norm_ext` (Mathlib's unique norm extension theorem) via
-`exists_rankOne_absoluteValue_extends`, so its only dependency on unformalized mathematics is
-that one lemma. -/
+This is what makes the decomposition subgroup of a Henselian (in particular complete) valued
+field's valuation ring extension the whole Galois group. Proved from
+`spectralNorm_unique_field_norm_ext`, the unique norm extension theorem, applied to the absolute
+values supplied by `exists_rankOne_absoluteValue_extends`. -/
 theorem valuationSubring_eq_of_comap_eq [Algebra.IsAlgebraic K L] [CompleteSpace K]
     {A B : ValuationSubring L}
     (hA : A.comap (algebraMap K L) = (valuation K).valuationSubring)
@@ -769,20 +695,16 @@ theorem valuationSubring_eq_of_comap_eq [Algebra.IsAlgebraic K L] [CompleteSpace
   rw [← hfA, ← hgB, spectralNorm_unique_field_norm_ext hfK x,
     spectralNorm_unique_field_norm_ext hgK x]
 
-/-- **Reusable specialization for `IsNonarchimedeanLocalField`.** The same uniqueness-of-extension
-fact as `valuationSubring_eq_of_comap_eq`, but taking a nonarchimedean local field `K` directly as
-the hypothesis (via `IsNonarchimedeanLocalField K`) instead of requiring the caller to separately
-supply the abstract `NontriviallyNormedField`/`IsUltrametricDist`/`ValuativeRel`/`Compatible`/
-`CompleteSpace` bundle that theorem takes. This factors out, once, the `NormedField`/`Valued`/
-`RankOne`/`CompleteSpace` instance-chain bridge that `LocalField.decompositionSubgroup_eq_top`
-(`Langlands.WeilGroup`) used to build inline, specifically for its own ambient base field: with the
-bridge extracted here (taking `L` as a free type variable, as `valuationSubring_eq_of_comap_eq`
-already does), it is reusable for *any* field `L` algebraic over the same `K` -- not just
-`L = AlgebraicClosure K` (`decompositionSubgroup_eq_top`'s use) but also a finite subextension
-`K(x) ⊆ L` (needed by
-`ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective` in
-`Langlands.UnramifiedExtension`) -- without duplicating the instance construction at each call
-site. -/
+/-- `valuationSubring_eq_of_comap_eq` for a nonarchimedean local field `K`, taking
+`IsNonarchimedeanLocalField K` in place of the
+`NontriviallyNormedField`/`IsUltrametricDist`/`ValuativeRel`/`Compatible`/`CompleteSpace` bundle.
+
+The `NormedField`/`Valued`/`RankOne`/`CompleteSpace` instance chain is constructed here once. Since
+`L` is a free type variable, this applies to any `L` algebraic over `K`: both
+`L = AlgebraicClosure K`, as used by `LocalField.decompositionSubgroup_eq_top`
+(`Langlands.WeilGroup`), and a finite subextension `K(x) ⊆ L`, as used by
+`ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective`
+(`Langlands.UnramifiedExtension`). -/
 theorem valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField
     {K : Type*} [Field K] [ValuativeRel K] [TopologicalSpace K] [IsNonarchimedeanLocalField K]
     {L : Type*} [Field L] [Algebra K L] [Algebra.IsAlgebraic K L]
@@ -799,10 +721,9 @@ theorem valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField
   letI : NontriviallyNormedField K := Valued.toNontriviallyNormedField K (ValueGroupWithZero K)
   haveI : IsUltrametricDist K := inferInstance
   haveI : CompleteSpace K := inferInstance
-  -- The `NontriviallyNormedField K` structure above is built *from* `Valued.v = valuation K`, so
-  -- its own `NormedField.valuation` agrees with `Valued.v` on the nose, giving the `Compatible`
-  -- instance `valuationSubring_eq_of_comap_eq` requires -- exactly as in
-  -- `decompositionSubgroup_eq_top`'s proof, now shared rather than duplicated.
+  -- The `NontriviallyNormedField K` structure above is built from `Valued.v = valuation K`, so its
+  -- `NormedField.valuation` agrees with `Valued.v` definitionally, giving the `Compatible`
+  -- instance `valuationSubring_eq_of_comap_eq` requires.
   have hnorm : ∀ x : K, (NormedField.valuation x : NNReal)
       = RankOne.hom (Valued.v (R := K)) ((Valued.v (R := K)).restrict x) := fun x =>
     congrFun (Valued.coe_valuation_eq_rankOne_hom_comp_valuation K (ValueGroupWithZero K)) x
@@ -822,7 +743,7 @@ variable {K L : Type*} [Field K] [Field L] [Algebra K L]
 
 /-- The comap of a `σ`-translate of a valuation subring of `L` (for `σ : L ≃ₐ[K] L`) along
 `algebraMap K L` does not depend on `σ`: automorphisms of `L` over `K` fix `K` pointwise, so
-`σ • A` restricts to the same subring of `K` that `A` does. Purely formal, no `sorry`. -/
+`σ • A` restricts to the same subring of `K` that `A` does. -/
 theorem ValuationSubring.comap_smul_eq (σ : L ≃ₐ[K] L) (A : ValuationSubring L) :
     (σ • A).comap (algebraMap K L) = A.comap (algebraMap K L) := by
   ext x
