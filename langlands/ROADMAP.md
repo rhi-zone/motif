@@ -1350,6 +1350,97 @@ that avoids stalling on (a).
   approach). The entire session was proof engineering — correct bookkeeping of a multiplicative
   Hensel-lift recursion and its limit — not lemma discovery.
 
+#### Status 2026-08-05 (tenth pass) — full Phase 2a statement CLOSED: `N_{L/K}(L^×) = ⟨π⟩^n · O_K^×`
+
+- **New file `langlands/Langlands/UnramifiedNormRange.lean`** (commit `d5ec480`), zero `sorry`,
+  full `lake build` green (8670 jobs; `grep -rn sorry langlands/Langlands/` empty). Not yet in
+  `Langlands.lean`'s import list, consistent with the rest of Phase 2a's files.
+- **Re-derived from the actual math first, per the task's brief, rather than trusting the ninth
+  pass's "comparatively routine" hedge in either direction.** The route sketched there (every
+  nonzero element of `L_w` is `(uniformizer)^k · unit`, since `L₀` is a DVR) turned out to be
+  exactly right and to close with no new mathematical content — every ingredient needed either
+  already existed in Mathlib or was already sitting in this repo's earlier Phase 2a files.
+- **The main theorem:** `localNormMap_range_eq` (`UnramifiedNormRange.lean:275`) — under
+  `IsUnramified K L v w` and `Irreducible π` (`π` a uniformizer of `K₀`),
+  ```
+  MonoidHom.range (localNormMap K L v w) =
+    Subgroup.zpowers (uniformizerUnit v hπ ^ n) ⊔ (v.adicCompletionIntegers K).units
+  ```
+  as an equality of subgroups of `(v.adicCompletion K)ˣ`, where `n := Module.finrank
+  (v.adicCompletion K) (w.adicCompletion L)` (the local degree `[L_w : K_v]`, which — since
+  `L/K` is unramified — is the residue degree) and `uniformizerUnit v hπ : (v.adicCompletion K)ˣ`
+  is the unit corresponding to (the image of) `π`. This is the full classical statement
+  `N_{L/K}(L^×) = ⟨π⟩^n · O_K^×` (Serre, *Local Fields*, Ch. V §2-3), stated at the level of
+  `localNormMap`'s actual codomain (`(v.adicCompletion K)ˣ`, i.e. `K_v^×`) rather than invented
+  vocabulary — `⟨π⟩^n` is `Subgroup.zpowers`, `O_K^×` is the pre-existing
+  `(v.adicCompletionIntegers K).units` (`Submonoid.units`, already used throughout `NormMap.lean`),
+  and the sup of two subgroups of an abelian group is exactly the pointwise product
+  (`Subgroup.mem_sup`) — no new statement-shape vocabulary was invented, matching the task's
+  instruction to prefer existing Mathlib idiom over hand-rolled shapes.
+- **Route, in order:**
+  1. `algebraMap_uniformizer_irreducible` (`:71`) — under `IsUnramified`, the image of `π` in `L₀`
+     is itself irreducible, i.e. a uniformizer of `L₀`: `IsUnramified` says `𝔪_K·L₀ = 𝔪_L`, and
+     `𝔪_K = (π)` (`Irreducible.maximalIdeal_eq`, Mathlib), so `𝔪_L = (algebraMap π)`
+     (`Ideal.map_span`/`Set.image_singleton`), which is exactly
+     `IsDiscreteValuationRing.irreducible_iff_uniformizer` (Mathlib) read backwards. This closes
+     the task brief's "does `π` remain a uniformizer of `L₀`" question definitively yes, formally.
+  2. **The `π^k · unit` decomposition** (`exists_zpow_mul_unit_eq`, `:139`) — the task brief's
+     "plausible route", verified and built exactly as sketched: `IsDiscreteValuationRing.
+     associated_pow_irreducible` (confirmed present in Mathlib by loogle, `Mathlib.RingTheory.
+     DiscreteValuationRing.Basic`; every nonzero element of a DVR is associated to a power of a
+     fixed irreducible) gives the decomposition for `n : ℕ` directly when a unit `a` of
+     `w.adicCompletion L` already lies in `L₀` (`Valued.v a ≤ 1`); applying it to `a⁻¹` instead and
+     inverting (`inv_le_one_of_one_le₀`, `mul_inv`, `zpow_neg`/`zpow_natCast`) extends the exponent
+     to `k : ℤ` for the general case. **`IsDiscreteValuationRing (w.adicCompletionIntegers L)` and
+     `(v.adicCompletionIntegers K)` are unconditional Mathlib instances** (`Mathlib.NumberTheory.
+     NumberField.Completion.FinitePlace`, generic in the Dedekind-domain/fraction-field/place
+     triple — not gated on any number-field-specific hypothesis, confirmed by reading the instance
+     directly), so no new instance was needed for this either — resolving the task brief's
+     "genuine gap, comparable to compatibility-square gaps" concern in the negative: this route hit
+     no wall of that kind.
+  3. `norm_algebraMap_uniformizer_eq` (`:168`) — `Algebra.norm (v.adicCompletion K)` of (the `L₀`-
+     route image of) `π` is exactly `π^n`, via Mathlib's `Algebra.norm_algebraMap`
+     (`Algebra.norm R (algebraMap R S x) = x ^ Module.finrank R S`, confirmed present by loogle,
+     one query) applied directly **at the field level** (`R := v.adicCompletion K`, `S :=
+     w.adicCompletion L`), using `Langlands.ResidueFieldNorm.coe_algebraMap_adicCompletionIntegers`
+     (already proved by `rfl` in an earlier pass) to identify the `L₀`-route image of `π` with the
+     `adicCompletionComap`/`K_v`-route image `Algebra.norm_algebraMap` is stated for. **This
+     resolves the task brief's flagged uncertainty about which "`n`" is correct** (ring-level
+     `Module.finrank K₀ L₀` vs. field-level `Module.finrank K_v L_w`) by sidestepping it entirely:
+     working at the field level from the start means only the field-level `n` — the natural one
+     for a statement about `localNormMap`'s codomain — ever appears; no comparison lemma between
+     the two `finrank`s was needed anywhere.
+  4. `localNormMap_range_le` (`:253`) — the reverse inclusion, combining (2) and (3) with the
+     pre-existing `localNormMap_mem_units` (`Langlands.NormMap`, norm of a local unit of `L₀` is a
+     local unit of `K₀`): decompose a preimage `a = ϖ^k · u`, push through `localNormMap`
+     (`Units.map`, so `map_mul`/`map_zpow` apply directly, being a genuine group hom on unit
+     groups — this is why the file works with `Units.map`-embedded elements throughout rather than
+     raw ring elements, sidestepping all `0`/inverse case-splitting that a `MonoidHom` on the full
+     ring (rather than its unit group) would have required), and land in the claimed sup via
+     `Subgroup.mem_sup`.
+  5. `localNormMap_range_eq` (`:275`) combines (4) with the reverse direction: `uniformizerUnit^n`
+     is itself `localNormMap` of the uniformizer unit (from (3), transported to `Units.map` form by
+     `Units.ext`), and every element of `(v.adicCompletionIntegers K).units` is a norm by the ninth
+     pass's `exists_isUnit_algebraMap_norm_eq_of_isUnramified`.
+- **No genuine gap was hit anywhere in this pass** — every ingredient the task brief flagged as
+  uncertain (the `π^k · unit` decomposition's existence in Mathlib for this specific setup, which
+  `finrank` is the right `n`, whether `π` remains a uniformizer of `L₀`) resolved cleanly using
+  Mathlib facts confirmed by loogle plus results already sitting in this repo's earlier Phase 2a
+  files. The only friction was ordinary Lean bookkeeping — `algebraMap` vs. plain-coercion
+  syntactic mismatches in `rw`/`rfl` steps (several instances, all resolved by matching the
+  notation style already used at each call site) and getting unit-vs-ring-element type ascriptions
+  right for `Inv`/`Units.map` — not any new mathematical or landscape gap.
+- **Milestone assessment.** Phase 2a's originally-scoped goal (top of this section, "the easy
+  half of local CFT") is now **fully closed**: `N_{L/K}(L^×) = ⟨π⟩^n · O_K^×` for `L/K` unramified,
+  proved end to end from the `IsUnramified` hypothesis with zero `sorry`. This is a genuine
+  milestone completion, not an incremental step — it is the first full classical theorem-statement
+  (as opposed to a supporting lemma or a one-directional inclusion) this repo's Phase 2a work has
+  closed. What it does *not* do: it says nothing about the *ramified* case (Phase 2's actual hard
+  content — Lubin–Tate theory, the reciprocity map itself) or about assembling this single-place
+  statement into a global/idelic norm-group statement (`NormMap.lean`'s idèle norm map exists, but
+  connecting its image to a global class-field-theory statement is untouched). See Phase 2's
+  section below for what's next.
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
