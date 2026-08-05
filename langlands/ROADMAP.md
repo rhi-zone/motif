@@ -1968,6 +1968,109 @@ that avoids stalling on (a).
   `RamificationFiltration.lean`'s `## Scope` discussion of why `sorry` was avoided), zero actual
   `sorry` tactics.
 
+#### Status 2026-08-06 (seventeenth pass) — totally-ramified monogenicity CLOSED (no `sorry`); general (tower) monogenicity and the `RamificationFiltration.lean` wiring not attempted
+
+- **Task.** Close the sixteenth pass's item 3 (monogenicity, `O_L = O_K[π]`, for the totally
+  ramified case) using `isEisensteinAt_minpoly_of_isUniformizer` plus
+  `mem_adjoin_of_smul_prime_smul_of_minpoly_isEisensteinAt`; attempt the composition step (general
+  monogenicity via the unramified-times-totally-ramified tower) if time allowed; return to
+  `RamificationFiltration.lean`'s associated-graded embeddings if time allowed after that.
+- **Closed, commit `531f1b4`, `langlands/Langlands/TotallyRamifiedEisenstein.lean`** (zero `sorry`,
+  `lake build Langlands` clean, 8676 jobs):
+  ```
+  theorem LocalField.adjoin_eq_integralClosure_of_isUniformizer
+      {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K]
+      [(NormedField.valuation (K := K)).Compatible] [CompleteSpace K]
+      {L : Type*} [Field L] [Algebra K L] [Algebra.IsAlgebraic K L]
+      [IsDiscreteValuationRing ↥(valuation K).valuationSubring]
+      [FiniteDimensional K L] [Algebra.IsSeparable K L]
+      {ϖ : ↥(valuation K).valuationSubring} (hϖ : Irreducible ϖ) {π : L}
+      (hram : ‖(ϖ : K)‖ = spectralNorm K L π ^ (minpoly K π).natDegree)
+      (hgen : (minpoly K π).natDegree = Module.finrank K L) :
+      Algebra.adjoin ↥(valuation K).valuationSubring ({π} : Set L) =
+        integralClosure ↥(valuation K).valuationSubring L
+  ```
+  `hgen` is the new ingredient beyond the Eisenstein theorem's hypotheses: it is exactly "`π` also
+  generates `L` over `K`" (`K⟮π⟯ = L`), the condition implicit in "`π` is a uniformizer of a totally
+  ramified extension" that the Eisenstein theorem alone doesn't need (it only ever uses `K(π)`, the
+  subextension `π` generates, not all of `L`).
+- **Used the more general Mathlib lever than the sixteenth pass named.** The sixteenth pass flagged
+  `mem_adjoin_of_smul_prime_smul_of_minpoly_isEisensteinAt` (the single-`p`-factor peeling step) as
+  the next lever; this pass used its wrapper
+  `mem_adjoin_of_smul_prime_pow_smul_of_minpoly_isEisensteinAt` (`p ^ n • z ∈ R[gen] → z ∈ R[gen]`,
+  proved by iterating the single-factor version) directly, since the discriminant is only known to
+  be *some* power of `ϖ` up to a unit, not literally `ϖ` itself — no new gap, just using the already
+  correct general-purpose wrapper instead of manually iterating the single-factor lemma.
+- **Proof assembly, four pieces:**
+  1. **A `PowerBasis K L` with generator `π`.** `hgen` promotes `IntermediateField.adjoin K {π}` to
+     `⊤` (via `IntermediateField.adjoin.finrank` + `Submodule.eq_top_of_finrank_eq`, transported
+     across `IntermediateField.toSubalgebra`/`Subalgebra.toSubmodule`), and thence, via
+     `IntermediateField.adjoin_simple_toSubalgebra_of_isAlgebraic` +
+     `IntermediateField.top_toSubalgebra`, promotes the *Subalgebra* `Algebra.adjoin K {π} = K[π]`
+     to `⊤` as well — the Subalgebra route (not `IntermediateField.equivOfEq`/`topEquiv`) was the one
+     that actually worked: `IntermediateField.equivOfEq` has no `_apply` simp lemma exposing that it
+     preserves the ambient coercion to `L` (only `Subalgebra.equivOfEq_apply` and
+     `Subalgebra.topEquiv_apply` exist and compose cleanly), so `Algebra.adjoin.powerBasis hxK` (the
+     `Subalgebra`-valued `PowerBasis`, `Mathlib.RingTheory.Adjoin.PowerBasis`, needs its own import —
+     not pulled in transitively by `Discriminant.lean`) mapped along
+     `(Subalgebra.equivOfEq _ _ htopalg).trans Subalgebra.topEquiv` is what closed `B.gen = π`.
+  2. **`Prime ϖ`** from `Irreducible ϖ`, via `PrincipalIdealRing.to_uniqueFactorizationMonoid`
+     (`↥𝒪[K]` is a PID since `IsDiscreteValuationRing` extends `IsPrincipalIdealRing`) +
+     `UniqueFactorizationMonoid.irreducible_iff_prime` — confirmed a DVR-is-a-PID route works
+     directly; the sixteenth pass's guess ("should follow ... not separately checked") holds, though
+     the actual lemma needed (`PrincipalIdealRing.to_uniqueFactorizationMonoid`) is not the one a
+     first guess (`IsDiscreteValuationRing.toUniqueFactorizationMonoid`, which turned out to need an
+     unrelated `HasUnitMulPowIrreducibleFactorization` hypothesis, not just `IsDiscreteValuationRing`)
+     would suggest.
+  3. **`discr K B.basis` factors as `unit * ϖ ^ m`.** `Algebra.discr_isIntegral` gives integrality
+     over `↥𝒪[K]`; `IsIntegrallyClosed.isIntegral_iff` (already a direct instance for
+     `ValuationSubring`s, per the fifteenth/sixteenth passes) pins it to an actual `d : ↥𝒪[K]`;
+     `discr_not_zero_of_basis` (separability) gives `d ≠ 0`; `IsDiscreteValuationRing.
+     associated_pow_irreducible` (already used by the tenth pass's `UnramifiedNormRange.lean`) gives
+     `Associated d (ϖ ^ m)`, unfolded to `d = ϖ ^ m * v` for a unit `v`.
+  4. **Assembly**: `Algebra.discr_mul_isIntegral_mem_adjoin` gives `discr • z ∈ 𝒪[K][π]` for any `z`
+     integral over `𝒪[K]`; `d • z = discr • z` via `IsScalarTower.algebraMap_smul`; substituting
+     `d = ϖ^m * v` and using `Subalgebra.smul_mem` with `v⁻¹` cancels the unit, leaving `ϖ^m • z ∈
+     𝒪[K][π]`; `mem_adjoin_of_smul_prime_pow_smul_of_minpoly_isEisensteinAt` then gives `z ∈
+     𝒪[K][π]` outright. Combined with `adjoin_le_integralClosure` (the trivial `≤` direction) this is
+     the full equality `Algebra.adjoin ↥𝒪[K] {π} = integralClosure ↥𝒪[K] L`.
+- **Genuine build friction, none a wall**: `Algebra.adjoin.powerBasis`/`Algebra.discr_isIntegral`/
+  `Algebra.discr_mul_isIntegral_mem_adjoin` all take their base field `K` as an *explicit* first
+  argument (not inferable from named implicit args alone — passing `(R := ↥𝒪[K])` without also
+  supplying `K` positionally left `K`'s metavariable unresolved in a way that surfaced as confusing
+  "expected `Type`" errors pointing at unrelated argument positions); `Ideal.span`/`Submodule.span`
+  are propositionally but not syntactically equal (`Ideal.submodule_span_eq` bridges them); and a
+  `set O := ... with hOdef` (rather than `let`) inside the final theorem's proof caused `ϖ`'s own
+  binder to be silently re-generalized into a shadowed, display-inconsistent `ϖ✝`/`ϖ` pair — switched
+  to `let` (matching `isEisensteinAt_minpoly_of_isUniformizer`'s own proof style) to avoid it. None
+  of these needed new infrastructure; all were resolved within the session's normal build-iterate
+  loop, unlike the genuine walls flagged in the ROADMAP entries above this one.
+- **Not attempted (per the task's explicit "don't force it" permission, budget spent on step 1):**
+  1. **General (tower) monogenicity** — combining this theorem with the already-complete unramified
+     half (`HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv`,
+     `Langlands/UnramifiedExtension.lean:715`) via Serre's pass-to-the-maximal-unramified-subfield-
+     then-adjoin-a-uniformizer argument. Not scoped in detail this pass beyond what the task brief
+     already sketches; the two halves are proved in visibly different settings (the unramified half
+     works inside `IsAlgClosed L` with a from-scratch `AdjoinRoot` construction; the totally ramified
+     half here works with an ambient `ValuativeRel`/`NormedField`/`spectralNorm` bundle) — reconciling
+     those two settings into a single tower statement is real, unscoped work, not a small remainder.
+  2. **`RamificationFiltration.lean`'s associated-graded-embedding kernel argument** (blocked since
+     the twelfth pass). Still needs: (a) the composition step above (monogenicity over `O_K`, not
+     just over the maximal unramified subfield), since the associated-graded argument is stated for a
+     general `A : ValuationSubring L` over `K` directly, not pre-decomposed into an unramified/totally
+     ramified tower; (b) wiring the specific uniformizer `π` of `RamificationFiltration.lean`'s
+     `hπ : IsLocalRing.maximalIdeal A = Ideal.span {π}` to this theorem's `hram`/`hgen` hypotheses
+     (needs, at minimum, phrasing `hram` in terms of `A`'s own valuation rather than `spectralNorm`,
+     or a bridging lemma between the two — not attempted, not checked for obstructions this pass).
+- **Next step for whoever picks this up:** (1) is the more valuable and more tractable of the two —
+  it produces a second closed classical theorem (full monogenicity) reusable well beyond
+  `RamificationFiltration.lean`; scope it by first reading both halves' exact statements side by side
+  (`UnramifiedExtension.lean:715`'s conclusion and `adjoin_eq_integralClosure_of_isUniformizer`'s
+  hypotheses above) and identifying precisely which instance/hypothesis bridges are needed to state
+  a single tower theorem, before writing any proof code — this project's own recurring failure mode
+  (per `CLAUDE.md`'s "flagged as mechanical, turned out to need a workaround") is exactly the risk
+  here given the two halves' visibly different ambient settings.
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
