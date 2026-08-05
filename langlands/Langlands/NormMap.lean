@@ -134,6 +134,74 @@ place `w` of `S` lying over a place `v` of `R`. -/
 instance : Algebra (v.adicCompletion K) (w.adicCompletion L) :=
   (adicCompletionComap K L v w).toAlgebra
 
+omit [Module.Finite K L] [Algebra.IsIntegral R S] in
+/-- `adicCompletionComap` is continuous: it is built by composing the (unconditionally
+continuous) `UniformSpace.Completion.map` of a uniformly continuous map with the two
+homeomorphisms `adicCompletion.equiv`, whose continuity in each direction is
+`adicCompletion.continuous_toCompletion` / `adicCompletion.continuous_ofCompletion`. -/
+theorem continuous_adicCompletionComap : Continuous (adicCompletionComap K L v w) :=
+  (adicCompletion.continuous_ofCompletion L w).comp <|
+    UniformSpace.Completion.continuous_map.comp (adicCompletion.continuous_toCompletion K v)
+
+omit [Module.Finite K L] [Algebra.IsIntegral R S] in
+/-- `adicCompletionComap` agrees, on the image of `K`, with `algebraMap K (w.adicCompletion L)`
+composed through `algebraMap K L`. This is the compatibility fact needed for
+`IsScalarTower K (v.adicCompletion K) (w.adicCompletion L)`. -/
+theorem adicCompletionComap_algebraMap (x : K) :
+    adicCompletionComap K L v w (algebraMap K (v.adicCompletion K) x) =
+      algebraMap L (w.adicCompletion L) (algebraMap K L x) := by
+  apply (adicCompletion.equiv L w).injective
+  simp only [adicCompletionComap, RingHom.comp_apply, RingEquiv.toRingHom_eq_coe,
+    RingEquiv.coe_toRingHom, RingEquiv.apply_symm_apply, adicCompletion.equiv_apply,
+    algebraMap_adicCompletion_toCompletion, UniformSpace.Completion.algebraMap_def,
+    UniformSpace.Completion.coe_mapRingHom,
+    UniformSpace.Completion.map_coe (uniformContinuous_algebraMap_liesOver K L v w)]
+  exact congrArg _ <|
+    (IsScalarTower.algebraMap_apply K (WithVal (v.valuation K)) (WithVal (w.valuation L)) x).symm.trans
+      (IsScalarTower.algebraMap_apply K L (WithVal (w.valuation L)) x)
+
+/-- The scalar tower `K → v.adicCompletion K → w.adicCompletion L`, for a place `w` of `S` lying
+over a place `v` of `R`. Needed (together with `instContinuousSMulAdicCompletionAdicCompletion`
+below) to instantiate Mathlib's `NumberField.HeightOneSpectrum.instModuleFiniteAdicCompletion`-style
+finiteness argument in the general Dedekind-domain setting. -/
+instance : IsScalarTower K (v.adicCompletion K) (w.adicCompletion L) :=
+  .of_algebraMap_eq fun x => (adicCompletionComap_algebraMap K L v w x).symm
+
+/-- `v.adicCompletion K` acts continuously on `w.adicCompletion L`, via `adicCompletionComap`. -/
+instance : ContinuousSMul (v.adicCompletion K) (w.adicCompletion L) where
+  continuous_smul :=
+    (continuous_adicCompletionComap K L v w).comp continuous_fst |>.mul continuous_snd
+
+open scoped TensorProduct Valued in
+/-- **`w.adicCompletion L` is a finite `v.adicCompletion K`-module.** Mathlib already proves this
+(`NumberField.HeightOneSpectrum.instModuleFiniteAdicCompletion` in
+`Mathlib.NumberTheory.NumberField.Completion.FinitePlace`), but only under `[NumberField K]
+[NumberField L]` hypotheses -- even though the proof itself only uses `Module.Finite K L`
+(to get `Kv ⊗[K] L` finite-dimensional over `Kv`) together with the `Algebra`/`ContinuousSMul`/
+`IsScalarTower` instances just built above, none of which need `K`/`L` to be number fields. The
+proof is otherwise identical: `Φ : Kv ⊗[K] L →ₗ[Kv] Lw` (the multiplication map) has closed,
+hence (being finite-dimensional) all of, `Lw` as its range, since its range is dense
+(`w.denseRange_algebraMap L`, itself fully general for any Dedekind domain). -/
+instance : Module.Finite (v.adicCompletion K) (w.adicCompletion L) :=
+  let Φ : v.adicCompletion K ⊗[K] L →ₗ[v.adicCompletion K] w.adicCompletion L :=
+    Algebra.TensorProduct.lift (Algebra.algHom (v.adicCompletion K) (v.adicCompletion K)
+      (w.adicCompletion L)) (Algebra.algHom K L (w.adicCompletion L))
+      (fun _ _ => mul_comm ..) |>.toLinearMap
+  have h_dense : DenseRange Φ := by
+    apply (w.denseRange_algebraMap L).mono
+    rintro _ ⟨l, rfl⟩
+    exact ⟨1 ⊗ₜ l, by simp [Φ, Algebra.algHom]⟩
+  .of_surjective Φ (by
+    rw [← Set.range_eq_univ, ← Φ.coe_range, ← Φ.range.closed_of_finiteDimensional.closure_eq]
+    exact h_dense.closure_range)
+
+/-- **Algebraicity of `w.adicCompletion L` over `v.adicCompletion K`.** The missing ingredient
+`LocalField.valuationSubring_eq_of_comap_eq` (`Langlands.HenselianValuation`) needs to apply
+uniqueness-of-valuation-extension to `w.adicCompletion L / v.adicCompletion K`: finite extensions
+are algebraic. -/
+instance : Algebra.IsAlgebraic (v.adicCompletion K) (w.adicCompletion L) :=
+  .of_finite _ _
+
 /-- The local norm map `N_{L_w/K_v} : (w.adicCompletion L)ˣ →* (v.adicCompletion K)ˣ`, for a place
 `w` of `S` lying over a place `v` of `R`: the norm of the finite (as `L / K` is finite, hence so is
 `L_w / K_v`, though this finiteness is not needed for the definition itself) extension
@@ -169,13 +237,26 @@ discretely-valued fields (`v.adicCompletion K` is complete, being defined as a
 would combine `isIntegral_norm` (the norm of an integral element is integral,
 `Mathlib.RingTheory.Norm.Transitivity`) with the fact that a `ValuationSubring` is integrally
 closed (`Mathlib.RingTheory.Valuation.LocalSubring`), applied to `v.adicCompletionIntegers K`
-(which is literally a `ValuationSubring` by definition). The "integral closure = ring of
-integers" half of this -- uniqueness of the extension of a *complete* valuation, e.g. via
-Krasner's lemma or Henselianity of `v.adicCompletionIntegers K` -- is not yet in Mathlib; only
-the relationship between the valuations themselves across the extension is
-(`valuation_liesOver` above). This is recorded as a `sorry` isolating exactly that missing
-ingredient, so that the assembly argument below (`eventually_localNormMap_mem_units`) can be
-proved unconditionally on top of it. -/
+(which is literally a `ValuationSubring` by definition).
+
+The "integral closure = ring of integers" half of this needs
+`LocalField.valuationSubring_eq_of_comap_eq` (`Langlands.HenselianValuation`), which requires
+`Algebra.IsAlgebraic (v.adicCompletion K) (w.adicCompletion L)`. That algebraicity fact is now
+available unconditionally for any finite extension `L / K` of fraction fields of Dedekind domains
+(`instAlgebraIsAlgebraicAdicCompletionAdicCompletion` above, via the generalized
+`Module.Finite (v.adicCompletion K) (w.adicCompletion L)` instance above it -- itself a
+generalization, to arbitrary Dedekind domains, of Mathlib's
+`NumberField.HeightOneSpectrum.instModuleFiniteAdicCompletion`, which is only stated for number
+fields even though its proof never uses that). What remains is a *second*, separate gap:
+`valuationSubring_eq_of_comap_eq` also needs `v.adicCompletion K` to carry a
+`NontriviallyNormedField`/`IsUltrametricDist`/`ValuativeRel`/`Valuation.Compatible` bridge
+compatible with its own `Valued` structure -- the same bridge
+`valuationSubring_eq_of_comap_eq_of_isNonarchimedeanLocalField` builds, but only for `K` satisfying
+`IsNonarchimedeanLocalField K`, not for a bare `v.adicCompletion K` of an arbitrary Dedekind
+domain. Building that bridge generically (mirroring the RankOne/NontriviallyNormedField work done
+for the algebraicity gap) is not yet attempted here. This is recorded as a `sorry` isolating
+exactly that missing ingredient, so that the assembly argument below
+(`eventually_localNormMap_mem_units`) can be proved unconditionally on top of it. -/
 theorem localNormMap_mem_units {a : (w.adicCompletion L)ˣ}
     (ha : a ∈ (w.adicCompletionIntegers L).units) :
     localNormMap K L v w a ∈ (v.adicCompletionIntegers K).units := by
