@@ -45,6 +45,11 @@ nonarchimedean local field and `L / K` algebraic, a `ValuationSubring` of `L` wh
   `IsNonarchimedeanLocalField` respectively.
 * `ValuationSubring.comap_smul_eq` : the comap of a `(L ≃ₐ[K] L)`-translate of a valuation subring
   along `algebraMap K L` is independent of the translate.
+* `PseudoMetricSpace.toUniformSpace_eq_of_toDist_eq` and `CompleteSpace.of_pseudoMetricSpace_toDist_eq` :
+  transport a `CompleteSpace` instance across two `PseudoMetricSpace` structures on the same type
+  that agree on `dist` but were built via unrelated, non-defeq constructions — the tool needed to
+  reconcile a `Valued`/`RankOne`-built `NontriviallyNormedField` with a `spectralNorm`-built one on
+  the same field (see the "nineteenth pass" and later entries of `ROADMAP.md`).
 
 ## Implementation notes
 
@@ -359,6 +364,43 @@ theorem Valuation.exists_rpow_eq_of_isEquiv {K : Type*} [Field K] (v₁ v₂ : V
   exact hv2x_eq
 
 end ReusableInfrastructure
+
+section UniformSpaceTransport
+
+/-- Two `PseudoMetricSpace` structures on the same type that agree on `dist` induce the same
+`UniformSpace` structure, regardless of how each instance's `toUniformSpace` field was
+independently constructed.
+
+This is the uniform-space-level corollary of `PseudoMetricSpace.ext`: that lemma proves full
+structural equality `m = m'` of two `PseudoMetricSpace`s from `dist` equality alone, using each
+side's own `uniformity_dist` axiom (a proof every `PseudoMetricSpace` instance is required to
+carry, pinning `uniformity = ⨅ ε>0, 𝓟{p | dist p.1 p.2 < ε}` as a function of `dist`) together
+with `UniformSpace.ext`. Taking `toUniformSpace` of that equality gives this. -/
+theorem PseudoMetricSpace.toUniformSpace_eq_of_toDist_eq {α : Type*} {m m' : PseudoMetricSpace α}
+    (h : m.toDist = m'.toDist) : m.toUniformSpace = m'.toUniformSpace := by
+  rw [PseudoMetricSpace.ext h]
+
+/-- Transport a `CompleteSpace` instance across two `PseudoMetricSpace` structures on the same
+type that agree on `dist`, even when their `UniformSpace` fields were built via unrelated
+constructions and are not defeq.
+
+This is the missing tool identified by the "nineteenth pass" of `ROADMAP.md`'s Phase 2b: composing
+a `Valued`/`RankOne`-built `NontriviallyNormedField M` (the totally-ramified route, via
+`Valued.mk'` + `Valued.toNontriviallyNormedField`) with `spectralNorm.completeSpace` (which is
+pinned to `spectralNorm.uniformSpace K M`, built from the unrelated abstract sup-over-embeddings
+construction in `Mathlib.Analysis.Normed.Unbundled.SpectralNorm`) fails as a hard type mismatch,
+not a slow-to-unify defeq issue, because the two `UniformSpace M` terms come from unrelated
+construction paths. Mathlib has `UniformSpace.replaceTopology` (topology level only) but no
+`UniformSpace.replaceUniformity` / `CompleteSpace.replaceUniformity`; `PseudoMetricSpace.ext`,
+keyed on `dist` rather than on the construction route, supplies the missing uniformity-level
+transport instead. The `dist` equality hypothesis itself follows from pointwise norm equality
+(e.g. via `spectralNorm_unique_field_norm_ext`, already used elsewhere in this file), funext'd. -/
+theorem CompleteSpace.of_pseudoMetricSpace_toDist_eq {α : Type*} {m m' : PseudoMetricSpace α}
+    (h : m.toDist = m'.toDist) (h' : @CompleteSpace α m'.toUniformSpace) :
+    @CompleteSpace α m.toUniformSpace :=
+  (PseudoMetricSpace.toUniformSpace_eq_of_toDist_eq h).symm ▸ h'
+
+end UniformSpaceTransport
 
 section NormedFieldValuativeRelBridge
 

@@ -2259,6 +2259,74 @@ committed); this is a diagnosis-only pass, as scoped.
   across that equality onto the ambient one. This is the "different construction route" the eighteenth
   pass's `Valued.mk'` note gestured at, done as a genuine bridge rather than a substitution.
 
+#### Status 2026-08-06 (twentieth pass) — the missing uniformity-level transport lemma landed; the
+diamond closes cleanly, including the concrete repro. `Langlands/HenselianValuation.lean` gained a
+new `UniformSpaceTransport` section (two theorems, no `sorry`, builds clean via `lake build
+Langlands.HenselianValuation`). No `sorry` anywhere in the file.
+
+- **Verified both loogle-found lemmas the nineteenth pass identified**, by re-grepping this
+  project's vendored Mathlib rather than trusting the prior report: `PseudoMetricSpace.ext`
+  (`Mathlib/Topology/MetricSpace/Pseudo/Defs.lean:157`, `{m m' : PseudoMetricSpace α} (h :
+  m.toDist = m'.toDist) : m = m'`, tagged `@[ext]`) and `UniformSpace.ext`
+  (`Mathlib/Topology/UniformSpace/Defs.lean:249`, `{u₁ u₂ : UniformSpace α} (h : 𝓤[u₁] = 𝓤[u₂]) :
+  u₁ = u₂`) both exist with exactly the stated signatures. Also reconfirmed by reading source (not
+  just the prior report) that `spectralNorm.normedField` (`SpectralNorm.lean:851`) sets `dist`
+  directly and does not override `toUniformSpace`, while `Valued.toNormedField`
+  (`NormedValued.lean:149–165`) explicitly overrides `toUniformSpace := Valued.toUniformSpace` — the
+  two non-defeq construction routes the diamond is between.
+- **Reproduced the diamond first-hand** in a scratch file (`lake env lean`, deleted after, not
+  committed): registering `hnfValued := Valued.toNontriviallyNormedField M A.ValueGroup` and
+  `hnfSpectral := spectralNorm.nontriviallyNormedField K M` in the same context and writing `haveI :
+  CompleteSpace M := spectralNorm.completeSpace K M` reproduces verbatim the nineteenth pass's error
+  (`Type mismatch ... has type @CompleteSpace M (spectralNorm.uniformSpace K M) but is expected to
+  have type @CompleteSpace M this.toUniformSpace`).
+- **Landed the general transport lemma, proved and building**, in a new `UniformSpaceTransport`
+  section of `HenselianValuation.lean` (after `ReusableInfrastructure`, before
+  `NormedFieldValuativeRelBridge`):
+  ```
+  theorem PseudoMetricSpace.toUniformSpace_eq_of_toDist_eq {α : Type*} {m m' : PseudoMetricSpace α}
+      (h : m.toDist = m'.toDist) : m.toUniformSpace = m'.toUniformSpace := by
+    rw [PseudoMetricSpace.ext h]
+
+  theorem CompleteSpace.of_pseudoMetricSpace_toDist_eq {α : Type*} {m m' : PseudoMetricSpace α}
+      (h : m.toDist = m'.toDist) (h' : @CompleteSpace α m'.toUniformSpace) :
+      @CompleteSpace α m.toUniformSpace :=
+    (PseudoMetricSpace.toUniformSpace_eq_of_toDist_eq h).symm ▸ h'
+  ```
+  The first is `PseudoMetricSpace.ext` composed with `toUniformSpace`; the second `▸`-transports a
+  `CompleteSpace` instance across the resulting equality. Both are proved with no `sorry` and no
+  unfinished goals.
+- **Verified the transport actually closes the concrete diamond, not just the abstract shape**: in
+  the same scratch file, after obtaining `hR`/`hcompat` from the already-proved
+  `LocalField.exists_rankOne_compatible`, building `hnfValued` via `Valued.mk'` +
+  `Valued.toNontriviallyNormedField`, and `hnfSpectral` via `spectralNorm.nontriviallyNormedField`,
+  the pointwise norm equality `∀ y : M, ‖y‖ = spectralNorm K M y` follows from
+  `spectralNorm_unique_field_norm_ext` applied to `f := NormedField.toAbsoluteValue M` (the same
+  `f` `exists_rankOne_absoluteValue_extends` already builds internally) together with `hcompat`;
+  `ext x y` (the `Dist` structure's own `@[ext]` lemma — plain `funext` does not apply to a `Dist`
+  record) turns that into `hnfValued.toDist = hnfSpectral.toDist`; and
+  `CompleteSpace.of_pseudoMetricSpace_toDist_eq` applied to that plus `spectralNorm.completeSpace K
+  M` produces `CompleteSpace M` under `hnfValued.toUniformSpace` (the `Valued`-route uniform
+  structure) with **zero errors, zero `sorry`, zero warnings**. This is a strictly stronger
+  confirmation than the nineteenth pass's diagnosis-only pass: the fix is not just plausible in
+  shape, it discharges the exact failing goal from the exact reproduced diamond.
+- **Not wired into a permanent theorem in this file**: the concrete repro's surrounding hypotheses
+  (`A : ValuationSubring M`, `FiniteDimensional K M`, etc., mirroring what
+  `exists_rankOne_absoluteValue_extends` already assumes) don't correspond to any existing theorem
+  statement in this file, and pinning a *permanent* `CompleteSpace L` conclusion would require
+  deciding which `UniformSpace L` instance the statement is stated relative to (the whole diamond is
+  that there are two, and nothing yet makes one of them the file's canonical choice) — a design
+  decision distinct from "does the transport lemma work," which this pass answers unambiguously yes.
+  That composition (assembling a permanent `exists_bundle_of_finiteDimensional`-shaped theorem, the
+  eighteenth pass's original target) remains open, but the specific technical wall the seventeenth
+  through nineteenth passes hit is now closed.
+- **Next step for whoever picks this up:** use `CompleteSpace.of_pseudoMetricSpace_toDist_eq` to
+  finish assembling `exists_bundle_of_finiteDimensional` (or an equivalent), deciding explicitly
+  which `NontriviallyNormedField M` instance (the `Valued`-route one, matching this file's other
+  theorems' pattern) is canonical at the point `CompleteSpace M` is asserted, and the separate,
+  unrelated `IsDiscreteValuationRing` half the seventeenth/eighteenth passes flagged as needing real
+  new proof work (not a composition or lemma-lookup question).
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
