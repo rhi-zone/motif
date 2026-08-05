@@ -2071,6 +2071,96 @@ that avoids stalling on (a).
   (per `CLAUDE.md`'s "flagged as mechanical, turned out to need a workaround") is exactly the risk
   here given the two halves' visibly different ambient settings.
 
+#### Status 2026-08-06 (eighteenth pass) — spike on the seventeenth pass's "not attempted item 1": does the totally-ramified bundle transport onto the unramified half's `M`? Norm/completeness half has a real composable path but hit a genuine diamond wall in one attempt; the DVR half has no ready-made Mathlib lemma and needs new proof work. No `sorry`, nothing committed (the one composition attempt did not typecheck and was reverted).
+
+This pass targeted one narrow question, precisely scoped by the parent task: once `M`
+(`IntermediateField K {x}`, the unramified half's maximal unramified subextension,
+`Langlands/UnramifiedExtension.lean:715`) is built with **no valuation structure attached**, does
+`𝒪[M]` inherit completeness and discreteness of valuation from `K`, in a form composing with the
+totally-ramified half's `NontriviallyNormedField`/`IsUltrametricDist`/`ValuativeRel`/`Compatible`/
+`CompleteSpace`/`IsDiscreteValuationRing` bundle (`TotallyRamifiedEisenstein.lean:163`)? The
+"two generators into one"/full tower-monogenicity composition itself was explicitly out of scope
+and not attempted.
+
+- **Mathlib does have the general "finite extension of a complete nonarchimedean field is
+  complete" result, confirmed by reading the source, and it is not specific to adic completions.**
+  `Mathlib/Analysis/Normed/Unbundled/SpectralNorm.lean`: `spectralNorm.nontriviallyNormedField K L`
+  builds a `NontriviallyNormedField L` from `[NontriviallyNormedField K] [Field L] [Algebra K L]
+  [Algebra.IsAlgebraic K L]` via the spectral norm; `isNonarchimedean_spectralNorm` gives it's
+  nonarchimedean (`IsUltrametricDist L` via `IsUltrametricDist.isUltrametricDist_of_isNonarchimedean_norm`,
+  `Mathlib/Analysis/Normed/Group/Ultra.lean:57`); `spectralNorm.completeSpace` (line 936, needs
+  `[CompleteSpace K] [FiniteDimensional K L]`) gives `@CompleteSpace L (uniformSpace K L)`; and
+  `spectralNorm_extends` shows the norm extends `‖·‖` on `K`. This is [BGR, Theorem 3.2.4/2] and is
+  a genuine derivation, not a definitional freebie.
+- **`Langlands/NormMap.lean`'s adic-completion instance block (`RankOne` section, lines 92–129) is
+  confirmed, by reading the actual definitions, to be the latter — completeness there is
+  definitional, not derived from finiteness.** `v.adicCompletion F` and `w.adicCompletion L` are
+  literally *defined* as `UniformSpace.Completion`s (via `adicCompletion.equiv`), so their
+  `CompleteSpace` instances are free by construction. The one instance in that block that *is* a
+  genuine derivation from finiteness is `Module.Finite (v.adicCompletion K) (w.adicCompletion L)`
+  (line 363, via a dense-range-plus-closed-finite-dimensional-range argument) — but that is a
+  different fact (finiteness of the completion as a module) from completeness itself. So this
+  block does **not** answer the open question; `spectralNorm.completeSpace` is the correct general
+  tool for an abstract finite extension with no prior completion structure.
+- **Attempted the concrete composition** (norm/completeness/`ValuativeRel`/`Compatible` half only,
+  in `Langlands/HenselianValuation.lean`'s `NormedFieldBridge` section, as a new theorem
+  `exists_bundle_of_finiteDimensional`) and hit a reproducible instance diamond, confirmed on two
+  successive builds with the identical error (the skill's stop-on-repeated-error signal):
+  `letI hnf : NontriviallyNormedField M := spectralNorm.nontriviallyNormedField K M` reconstructs
+  `Field M` via an anonymous-constructor merge `{ (inferInstance : Field L) with ... }` internal to
+  that def; the resulting `hnf.toField` is not recognized as definitionally equal, at the
+  transparency Lean's typeclass-diamond check uses, to the ambient `[Field M]` instance already
+  required by the theorem's own hypotheses (`[Algebra K M]`) — even though the two are
+  propositionally identical. This blocked `ValuativeRel.ofValuation (NormedField.valuation (K :=
+  M))` with `synthesized type class instance is not definitionally equal to expression inferred by
+  typing rules`. The edit was reverted (`git checkout`); nothing was committed.
+- **A plausible, un-executed workaround, evidenced by already-working code in this same file:**
+  `LocalField.exists_rankOne_absoluteValue_extends` (line 664) also has an ambient `[Field L]` in
+  scope and *does* build a `NontriviallyNormedField L` successfully, via `Valued.mk' A.valuation`
+  then `Valued.toNontriviallyNormedField` — a route that adds a valuation on top of the existing
+  `Field L` instance rather than reconstructing it, and so does not hit the diamond above. Composing
+  that route (via a `ValuationSubring M` extending `𝒪[K]`, from `exists_rankOne_compatible`) with
+  the generic `FiniteDimensional.complete` (`Mathlib/Topology/Algebra/Module/FiniteDimension.lean`,
+  needs `ContinuousSMul K M` + `IsUniformAddGroup M` + `T2Space M`, all plausible but unverified for
+  the `Valued`-induced topology) instead of `spectralNorm.completeSpace` was identified as a way to
+  route around the diamond, but was not attempted — budget for this pass was spent on diagnosing the
+  wall precisely rather than iterating further variants.
+- **The `IsDiscreteValuationRing` half of the bundle has no ready-made Mathlib lemma and needs real
+  new proof work, not composition.** Grepped `Mathlib/RingTheory/DiscreteValuationRing/TFAE.lean`
+  and `Mathlib/RingTheory/DedekindDomain/IntegralClosure.lean`: the only path found is
+  `IsDiscreteValuationRing.TFAE` (needs `[IsNoetherianRing R] [IsLocalRing R] [IsDomain R]`, not
+  `¬ IsField R`) applied to a Dedekind domain (`integralClosure.isDedekindDomain`, confirmed to
+  exist, needs `Algebra.IsSeparable K L`) that is also local. Confirmed by reading
+  `UnramifiedExtension.lean:892` (`hCisLocalRing := e.isLocalRing`) that the existing local-ring
+  proof for that file's `C := integralClosure R K'` is bespoke — it transports `IsLocalRing` along
+  a specific `AdjoinRoot f ≃+* C` ring equivalence tied to the chosen generator `x`, not a generic
+  "integral closure of a Henselian/complete DVR in an arbitrary finite extension is local" lemma.
+  `Mathlib/RingTheory/Henselian.lean` has no such generic lemma either (grepped; only `TFAE` and the
+  Hensel-lift existence/uniqueness theorem). A plausible general strategy, sketched but not
+  attempted: the valuation subring `A` of `M` extending `𝒪[K]` is unique
+  (`LocalField.valuationSubring_eq_of_comap_eq`, already in this repo) and automatically local (all
+  `ValuationSubring`s are); showing `A = integralClosure 𝒪[K] M` and that the integral closure is
+  Dedekind (via `Algebra.IsSeparable K M`, available in the totally-ramified bundle) plus not a
+  field would give `IsDiscreteValuationRing A` via the same `TFAE` step `UnramifiedExtension.lean`
+  already uses (lines 897–910) — but proving `A = integralClosure 𝒪[K] M` and threading
+  nontriviality is a real proof, not a lemma lookup.
+- **Conclusion for the parent task's question:** the norm/completeness/`ValuativeRel`/`Compatible`
+  half of the bundle transports via a real, general Mathlib theorem
+  (`spectralNorm.completeSpace` + friends), but composing it onto an abstract finite extension `M`
+  that already carries an ambient `Field M` instance hit a diamond that needs a different
+  construction route than the one tried (see the `Valued.mk'` workaround above). The
+  `IsDiscreteValuationRing` half is not a composition question at all — Mathlib has no generic
+  "integral closure of a Henselian/complete local ring in a finite extension is local" theorem, and
+  this repo's own precedent (`UnramifiedExtension.lean`) proves it by a bespoke, generator-specific
+  argument each time. Reconciling the two monogenicity halves into one tower theorem remains real,
+  unscoped work, exactly as the seventeenth pass flagged — this pass narrows *why* (a diamond in one
+  concrete route, plus a missing general local-ness lemma) without closing it.
+- **Next step for whoever picks this up:** retry the composition using the `Valued.mk'`/
+  `Valued.toNontriviallyNormedField` route (diamond-safe, evidenced by
+  `exists_rankOne_absoluteValue_extends` already compiling with an ambient `[Field L]`) instead of
+  `spectralNorm.nontriviallyNormedField`, and separately attempt the `A = integralClosure 𝒪[K] M`
+  argument sketched above as its own lemma before trying to assemble the full bundle.
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
