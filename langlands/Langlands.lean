@@ -7,6 +7,7 @@ import Langlands.IdeleGroup
 import Langlands.MonogenicMaximalOrder
 import Langlands.ProfiniteCompletionUlift
 import Langlands.ProfiniteGrpUlift
+import Langlands.RamificationFiltration
 import Langlands.ResidueField
 import Langlands.WeilDeligneRepresentation
 import Langlands.WeilGroup
