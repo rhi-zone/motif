@@ -1003,6 +1003,96 @@ that avoids stalling on (a).
   needing the principal-units filtration graded isomorphism) remains out of
   scope for Phase 2a as originally scoped, unchanged from prior passes.
 
+#### Status 2026-08-05 (sixth pass) — mod-principal-units surjectivity CLOSED; full `O_K^×` surjectivity scoped, not attempted
+
+- **New file** `langlands/Langlands/UnitGroupModPrincipalUnitsSurjective.lean`, zero
+  `sorry`, `lake build Langlands.UnitGroupModPrincipalUnitsSurjective` and full
+  `lake build` both green (8670 jobs; `grep -rn sorry langlands/Langlands/` empty).
+  Not yet in `Langlands.lean`'s import list, consistent with the rest of Phase 2a's
+  files.
+- **Closed exactly the composition the fifth pass scoped as the next step:**
+  `IsDedekindDomain.HeightOneSpectrum.localNormMap_units_surjective_mod_principalUnits`
+  — for every `t : (ResidueField K₀)ˣ` (a class of `O_K^× / (1 + 𝔪_K)`, presented as a
+  residue-field unit rather than via `ValuationSubring.unitsModPrincipalUnitsEquivResidueFieldUnits`
+  by name, since the two are the same group and the residue-field presentation is what
+  `localNormMap_reduce` and `residueField_units_norm_surjective` are already stated in
+  terms of), there is a local unit `a` of `L₀ = w.adicCompletionIntegers L` whose norm
+  `localNormMap K L v w a` reduces mod `𝔪_K` to `t`. This is `N_{L/K} : O_L^× ↠
+  O_K^× / (1 + 𝔪_K)`, the milestone Phase 2a originally scoped as its stopping point.
+- **The API-mismatch "known snag" flagged at the end of the fifth pass (`localNormMap_mem_units`'s
+  `Submonoid.units` vs. `ValuationSubring.unitGroupToResidueFieldUnits`'s purpose-built
+  `.unitGroup`) turned out to need no reconciliation lemma at all** — the proof sidesteps
+  `ValuationSubring.unitGroup`/`unitGroupToResidueFieldUnits` entirely and instead composes
+  three pieces already in the right form: (1) `Submonoid.unitsEquivUnitsType : S.units ≃*
+  Sˣ` (general submonoid API, converts a `Submonoid.units`-style element directly to the
+  ring's own unit type, no bridging lemma needed since it's definitionally the same
+  `Aˣ` that `localNormMap_reduce`'s residue statement is phrased in terms of once
+  unfolded); (2) `IsLocalRing.surjective_units_map_of_local_ringHom` applied to
+  `IsLocalRing.residue_surjective` (both fully general, no valuation content) gives
+  surjectivity of reduction-mod-maximal-ideal on unit groups for *any* local ring, in
+  particular `L₀`; (3) `residueField_units_norm_surjective` (`Langlands.ResidueFieldNorm`,
+  the abstract residue norm) and `localNormMap_reduce` (`Langlands.NormMapResidueCompatibility`,
+  the compatibility square) match up the two sides. The only nontrivial bookkeeping was
+  unfolding `Units.map (residue A).toMonoidHom (S.unitsEquivUnitsType ⟨x, hx⟩)` down to
+  `residue A ⟨x, hx.1⟩` (`rfl`, since `unitsEquivUnitsType`'s underlying value is literally
+  the representative) to match `localNormMap_reduce`'s statement shape, plus a
+  `Units.coe_map`/`Units.ext` dance to move between unit-level and value-level equalities.
+  No new instances, no new general lemmas — exactly the "session-sized, no new instances
+  expected" scope the fifth pass predicted.
+- **Full unramified norm-group theorem — the route to close it, worked out but not
+  attempted this session (per the task's brief: land mod-principal-units surjectivity as
+  the main goal, don't force the full lift).** The classical argument
+  (Serre, *Local Fields*, Ch. V §2–3) for upgrading `O_L^× ↠ O_K^× / (1+𝔪_K)` to full
+  `O_L^× ↠ O_K^×` in the unramified case is a Hensel-type successive-approximation
+  argument, not a single lemma — concretely:
+  1. **Graded pieces of the principal-units filtration are the residue field,
+     additively, matching on both sides under `IsUnramified`.** For `i ≥ 1`,
+     `(1 + 𝔪_K^i) / (1 + 𝔪_K^{i+1}) ≅ 𝔪_K^i / 𝔪_K^{i+1} ≅ 𝓀[K]` (additively, via
+     `1 + πx ↦ x mod 𝔪_K`, `π` a uniformizer), and likewise on the `L` side with `𝓀[L]`
+     — the *same* isomorphism data as `IsLocalRing.residue`/`basisQuotient`, one filtration
+     step down. Since `L/K` is unramified, `π` (a uniformizer of `K`) is also a uniformizer
+     of `L`, so the filtration steps `1 + 𝔪_K^i` and `1 + 𝔪_L^i` are indexed compatibly
+     (no ramification-index rescaling needed) — this is precisely why the unramified case
+     is the "easy half"; for ramified extensions the filtration on the two sides is indexed
+     by different powers and the graded pieces don't align this simply.
+  2. **The norm, restricted to each graded piece, acts as the trace.** The standard
+     computation `N(1 + πx) ≡ 1 + Tr(x)·π mod π^{i+2}·(\text{higher order in } x)` (a
+     first-order expansion of the norm/determinant of `1 + πx` acting by multiplication)
+     identifies the induced map on graded pieces `𝓀[L] → 𝓀[K]` with
+     `Algebra.trace 𝓀[K] : 𝓀[L] → 𝓀[K]` (additive), not with `Algebra.norm` (multiplicative)
+     — this is the standard fact that norm "looks like" trace infinitesimally near `1`.
+     `Mathlib.RingTheory.Trace.Basic`'s `Algebra.trace_surjective` (cited already in the
+     original Phase 2a scoping, still not connected to anything) is exactly the ingredient
+     this step needs, once the norm-linearizes-to-trace identity itself is proved — that
+     identity is new content, not in Mathlib or this repo.
+  3. **Completeness assembles the filtration into full surjectivity.** Given `y ∈ O_K^×`,
+     step 1 lifts `t := y mod (1+𝔪_K)` to some `x_1 ∈ O_L^×` with `N(x_1) ≡ y mod (1+𝔪_K)`
+     (this session's theorem). Write `y = N(x_1)·u_1` with `u_1 ∈ 1 + 𝔪_K`; step 2's
+     graded-trace-surjectivity lifts `u_1` to `1 + z_1 ∈ 1 + 𝔪_L` with
+     `N(1+z_1) ≡ u_1 mod (1+\mathfrak m_K^2)`, giving `x_2 := x_1(1+z_1)` with
+     `N(x_2) ≡ y mod (1+\mathfrak m_K^2)`; iterating produces a Cauchy sequence
+     `x_1, x_2, \dots` in `O_L^×` (in the `𝔪_L`-adic topology) converging (by completeness
+     of `L`, already available via `adicCompletion`) to `x` with `N(x) = y` exactly.
+     This is a genuine limit/Cauchy-sequence argument over `adicCompletion L`, not
+     algebraic bookkeeping — the kind of thing `Mathlib.Topology.UniformSpace.Cauchy` /
+     `CompleteSpace` machinery is built for, but no prior work in this repo has done a
+     successive-approximation argument of this shape, so there is no local pattern to
+     reuse.
+  - **Net assessment:** step 1 (this session) and step 3's completeness *infrastructure*
+    (already available, `adicCompletion` is complete) are in hand; steps 1's counterpart
+    at each filtration level (step 2, the norm-linearizes-to-trace identity) is genuinely
+    new mathematical content — comparable in size to the compatibility-square work of the
+    fourth/fifth passes, not a short lemma. This is exactly the "principal-units filtration
+    machinery" the original Phase 2a scoping (top of this section) flagged as **explicitly
+    deferred to a later phase**, and that assessment still stands: it is a legitimate
+    next milestone in its own right, sized similarly to what this section has already
+    built, not a same-session extension of it.
+  - **Next concrete step for whoever picks this up:** prove the norm-linearizes-to-trace
+    identity on a single graded piece first, in isolation (step 2 above), before attempting
+    the successive-approximation assembly (step 3) — mirroring how this project has
+    sequenced every other piece of Phase 2a (primitives before the square, the square
+    before the composition).
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
