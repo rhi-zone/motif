@@ -624,10 +624,17 @@ the place-lying-over relation is `w.asIdeal.LiesOver v.asIdeal` (`Mathlib.RingTh
 (genuinely, not `sorry`'d) as `IsDedekindDomain.HeightOneSpectrum.localNormMap`, via
 `UniformSpace.Completion.mapRingHom` applied to the uniform continuity of `algebraMap K L` between
 valued fields, `IsDedekindDomain.HeightOneSpectrum.uniformContinuous_algebraMap_liesOver` (a 2026
-Mathlib addition in `Mathlib.NumberTheory.RamificationInertia.Valuation`). What remains missing --
-the base-change ring hom on adèle rings, i.e. the proof that the local norm map sends local units
-to local units at all but finitely many places -- is still a genuine gap, so `normMap` below
-remains a `sorry`. -/
+Mathlib addition in `Mathlib.NumberTheory.RamificationInertia.Valuation`). The proof that the local
+norm map sends local units to local units at all but finitely many (finite) places is now also
+**fully proved, no `sorry`** (`IsDedekindDomain.HeightOneSpectrum.eventually_localNormMap_mem_units`,
+built on `localNormMap_mem_units`'s Galois-conjugate integrality argument -- see `NormMap.lean`'s
+module docstring). What remains missing for `normMap` below is strictly the third gap above: an
+archimedean/infinite-place local norm map (nothing for this exists in Mathlib -- the closest thing,
+`NumberField.InfiniteAdeleRing.instNorm`, is the idèle *content* map, not a norm map between
+completions of different fields) and the assembly of both halves into a genuine ring hom
+`AdeleRing S L →+* AdeleRing R K` (no `baseChange`/`extensionMap` for `AdeleRing`/
+`InfiniteAdeleRing` exists in Mathlib). Building either is out of scope for the work done so far;
+`normMap` remains a `sorry` for this reason. -/
 
 section NormMap
 
@@ -637,8 +644,9 @@ variable (S L : Type*) [CommRing S] [IsDedekindDomain S] [Field L] [Algebra S L]
 
 /-- The idèle norm map for a finite extension `L / K` (of fraction fields of Dedekind domains
 `S / R`), sending an idèle of `L` to its norm idèle of `K`. See the module-level survey above:
-this requires local norm maps at each extended place, which Mathlib does not yet provide, hence
-the `sorry`. -/
+the finite-place half is fully built (`Langlands/NormMap.lean`), but an archimedean/infinite-place
+local norm map and the assembly of both halves into a ring hom on the full adèle rings are still
+missing from Mathlib, hence the `sorry`. -/
 noncomputable def IdeleGroup.normMap : IdeleGroup S L →* IdeleGroup R K := sorry
 
 end NormMap
