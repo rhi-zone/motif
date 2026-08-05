@@ -873,6 +873,136 @@ that avoids stalling on (a).
   a genuine gap in Mathlib's own `Valuation`/`ValuationSubring` API, not
   specific to this project's `HeightOneSpectrum`/adele setup.
 
+#### Status 2026-08-05 (fifth pass) — the compatibility square is CLOSED
+
+- **New file** `langlands/Langlands/NormMapResidueCompatibility.lean`, zero
+  `sorry`, `lake build Langlands.NormMapResidueCompatibility` and full
+  `lake build` both green (8670 jobs; `grep -rn sorry langlands/Langlands/`
+  still empty). Not yet in `Langlands.lean`'s import list, consistent with
+  `NormMap.lean`/`HenselianValuation.lean`/`UnramifiedExtension.lean`/
+  `ResidueFieldNorm.lean`/`AdicCompletionIntegralClosure.lean`/
+  `UnramifiedValuationExtension.lean`, which are also all built
+  module-by-module rather than from the root target.
+- **The three-step path the fourth pass laid out (a)-(c) all closed, plus a
+  route-around for a subtlety the fourth pass didn't anticipate:**
+  1. **(a) — basis-reduces-to-basis-of-quotient (Nakayama-type fact).**
+     Not built from scratch as the fourth pass expected — it was already in
+     Mathlib, unrecognized: `IsLocalRing.basisQuotient`
+     (`Mathlib/RingTheory/LocalRing/Quotient.lean`), for `[IsLocalRing R]
+     [Module.Finite R S] [Module.Free R S]`, gives a basis of `S ⧸
+     Ideal.map (algebraMap R S) (maximalIdeal R)` over `ResidueField R`
+     from a basis of `S` over `R`, plus a companion `basisQuotient_repr`
+     pinning down how `Basis.repr` reduces. A fresh loogle query
+     (`Module.Free, IsLocalRing, Module.Basis`) surfaced it directly — the
+     fourth-pass session's searches never tried this exact combination.
+  2. **(c) — determinant reduces mod the ideal.** `RingHom.map_det`
+     (`Mathlib/LinearAlgebra/Matrix/Determinant/Basic.lean`, confirmed
+     already in the fourth-pass writeup) plus `Algebra.leftMulMatrix_eq_repr_mul`
+     (the direct entrywise formula for `leftMulMatrix`, not the
+     `LinearMap.toMatrix`-wrapped `leftMulMatrix_apply`) combine directly
+     with (a)'s `basisQuotient_repr`/`basisQuotient_apply` to give a fully
+     general, valuation-theory-free fact:
+     `IsLocalRing.residue_norm_eq_norm_residue`
+     (`NormMapResidueCompatibility.lean:63`) — for any finite free algebra
+     `S` over a local ring `R`, `Algebra.norm` commutes with reduction mod
+     the maximal ideal. This is a genuinely reusable, self-contained lemma,
+     not specific to this project's adic-completion setting at all.
+  3. **(b) — identifying `L₀ ⧸ 𝔪_K·L₀` with `𝓀[L]` under `IsUnramified`, and
+     the instance-mismatch subtlety this actually raised.** Naively
+     rewriting the ideal via the `IsUnramified` equation
+     (`rw [hU] at h`) fails with "motive is not type correct": the
+     `Algebra (R ⧸ 𝔪) (S ⧸ pS)` instance baked into
+     `IsLocalRing.basisQuotient`'s ambient context
+     (`Ideal.Quotient.algebraQuotientMapQuotient`) is stated for the
+     specific syntactic form `Ideal.map (algebraMap R S) 𝔪`, not for an
+     arbitrary ideal — `rw` cannot generalize through it. Worse, even after
+     fixing the type-level identification, `𝓀[L]`'s *actual* algebra
+     structure over `𝓀[K]` in this repo (`Langlands.ResidueFieldNorm`,
+     built via `Valuation.HasExtension`/`Ideal.Quotient.algebraOfLiesOver`)
+     is a *different* `Algebra` term than `algebraQuotientMapQuotient`,
+     even though both are mathematically "the" residue-field algebra
+     structure induced by the same ring hom. Fixed by proving a version of
+     the general lemma, `IsLocalRing.residue_norm_eq_norm_residue_of_eq_map`
+     (`:82`), parametrized over an arbitrary `Algebra (R⧸𝔪) (S⧸I)` instance
+     satisfying only a compatibility hypothesis on `algebraMap`, then
+     discharging that hypothesis for the two instances via
+     `Algebra.algebra_ext` (two `Algebra` structures agreeing as terms once
+     their `algebraMap`s agree pointwise) — both instances' `algebraMap`s
+     reduce to the same formula, `mk 𝔪 r ↦ mk I (algebraMap R S r)`
+     (`Ideal.Quotient.algebraMap_quotient_map_quotient` for one side,
+     `Ideal.Quotient.algebraMap_mk_of_liesOver`-shaped for the other, both
+     already `rfl`/`simp` lemmas in Mathlib), so the ext argument is
+     immediate once stated. This closes (b) as
+     `residue_norm_eq_norm_residue_of_isUnramified` (`:139`).
+  4. **Connecting the ring-norm `Algebra.norm K₀` to the field-norm inside
+     `localNormMap` (an extra piece the fourth pass's three-step sketch
+     didn't separate out, since it conflated "the norm" without
+     distinguishing the ring-level and field-level versions).**
+     `Algebra.algebraMap_intNorm`
+     (`Mathlib/RingTheory/IntegralClosure/IntegralRestrict.lean`, general
+     norm/fraction-field compatibility for an integral-closure pair) plus
+     `Algebra.intNorm_eq_norm` (`intNorm` agrees with `Algebra.norm` once
+     the extension is finite free, which `L₀/K₀` now is, by primitive (1))
+     give `algebraMap_norm_eq_norm_algebraMap` (`:192`): `algebraMap K₀ K
+     (Algebra.norm K₀ x) = Algebra.norm K (algebraMap L₀ L x)` — i.e. the
+     ring-norm and the field-norm (`localNormMap`'s underlying map) agree
+     under the field inclusions. Needed three more instances not
+     previously built at the `K₀`/`L₀` level (as opposed to the ambient
+     field level already available): `IsDomain`, `IsIntegrallyClosed`,
+     `IsFractionRing K₀ K` (all three via `inferInstanceAs` through the
+     generic `ValuationSubring` instances, same pattern as
+     `ResidueFieldNorm.lean`'s `Algebra`/`IsLocalHom` restatements — needed
+     because `adicCompletionIntegers` is a non-reducible `def` for
+     `Valued.v.valuationSubring`), `Algebra.IsIntegral K₀ L₀` (from
+     `Algebra.IsIntegral.of_finite`, using primitive (1)'s
+     `Module.Finite`), and `Module.IsTorsionFree K₀ L₀` (built by hand,
+     mirroring `AdicCompletionIntegralClosure.lean`'s proof pattern for
+     `Module.IsTorsionFree K₀ (w.adicCompletion L)`, via injectivity of
+     `algebraMap K₀ L₀` — itself derived from injectivity of the composite
+     into the field, using `coe_algebraMap_adicCompletionIntegers`).
+  5. **The square itself:** `localNormMap_reduce`
+     (`NormMapResidueCompatibility.lean:206`) combines steps 3 and 4: for a
+     unit `a` of `w.adicCompletion L` landing in `w.adicCompletionIntegers
+     L`, `IsUnramified K L v w →` the residue (in `𝓀[K]`, via
+     `IsLocalRing.residue`) of `localNormMap K L v w a` (which lands in
+     `v.adicCompletionIntegers K`, by the already-existing
+     `localNormMap_mem_units`) equals `Algebra.norm 𝓀[K]`
+     (`Langlands.ResidueFieldNorm`'s residue-field norm) of the residue of
+     `a`. This is the compatibility square from the module docstring, fully
+     closed, `IsUnramified` used exactly where the fourth pass predicted it
+     would be needed and nowhere else.
+- **Scope note:** `IsLocalRing.residue_norm_eq_norm_residue` and
+  `residue_norm_eq_norm_residue_of_eq_map` (steps 2-3 above) are stated with
+  no reference to `HeightOneSpectrum`/adic completions at all — they are
+  general facts about `Algebra.norm` for any finite free algebra over a
+  local ring, and are plausible standalone Mathlib-upstreaming candidates in
+  their own right (`Mathlib.RingTheory.LocalRing.Quotient` or
+  `Mathlib.RingTheory.Norm.Defs` look like natural homes), independent of
+  whether the rest of this file's valuation-specific content is
+  upstreamed. Not attempted this session.
+- **Not attempted this session, explicitly deferred:** tying
+  `residueField_units_norm_surjective` (`𝓀[L]ˣ ↠ 𝓀[K]ˣ`) through
+  `localNormMap_reduce` to get `O_L^× ↠ O_K^× / (1+𝔪_K)` (surjectivity of
+  `localNormMap` on unit groups modulo principal units — the milestone this
+  section originally scoped as the stopping point). The composition is
+  believed to go through cleanly by inspection — lift a target
+  `𝓀[K]`-residue via `ValuationSubring.surjective_unitGroupToResidueFieldUnits`
+  applied twice (once at each of `K₀`, `L₀`) and `residueField_units_norm_surjective`
+  in between, then use `localNormMap_reduce` to match residues — but was
+  not built this session (the task's brief was scoped to the compatibility
+  square as the main goal, with this composition as an optional stretch not
+  to be forced), and the exact API mismatch between `localNormMap_mem_units`'s
+  `(_).units` (generic `Submonoid.units`) and
+  `ValuationSubring.unitGroupToResidueFieldUnits`'s `.unitGroup` (a
+  purpose-built `Subgroup Kˣ`) would need to be reconciled first — likely a
+  short lemma, not a new development, but not checked. This is the concrete
+  next step for whoever picks this up, and is now genuinely session-sized
+  (no new instances or general lemmas expected to be needed), unlike every
+  prior entry in this section.
+- **The full unramified norm-group theorem** (`N_{L/K}(L^×) = ⟨π⟩^n·O_K^×`,
+  needing the principal-units filtration graded isomorphism) remains out of
+  scope for Phase 2a as originally scoped, unchanged from prior passes.
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
