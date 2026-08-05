@@ -1,17 +1,22 @@
 import Mathlib.Analysis.Normed.Unbundled.SpectralNorm
+import Mathlib.RingTheory.Polynomial.Eisenstein.Basic
+import Mathlib.FieldTheory.Minpoly.IsIntegrallyClosed
+import Mathlib.RingTheory.Valuation.LocalSubring
+import Mathlib.RingTheory.Valuation.ValuativeRel.Basic
+import Mathlib.RingTheory.Valuation.ValuationSubring
+import Mathlib.RingTheory.DiscreteValuationRing.Basic
+import Mathlib.Topology.Algebra.Valued.NormedValued
 
 /-!
-# Towards Eisenstein-ness of the minimal polynomial of a uniformizer
+# Eisenstein-ness of the minimal polynomial of a uniformizer
 
-## Scope (status as of this pass)
+`LocalField.isEisensteinAt_minpoly_of_isUniformizer` (the theorem that a uniformizer of a totally
+ramified extension of a complete discretely-valued field has an Eisenstein minimal polynomial over
+`𝒪[K] := (valuation K).valuationSubring`) is now proved, without `sorry`, in this file — closing the
+gap scoped in `ROADMAP.md` Phase 2b's thirteenth pass and
+`langlands/Langlands/RamificationFiltration.lean`'s `## Scope` section.
 
-This file is a **partial** step towards
-`LocalField.isEisensteinAt_minpoly_of_isUniformizer` (the theorem that a uniformizer of a
-totally ramified extension of complete/Henselian DVRs has an Eisenstein minimal polynomial),
-scoped in `ROADMAP.md` Phase 2b's thirteenth pass and `langlands/Langlands/RamificationFiltration.lean`'s
-`## Scope` section.
-
-What is proved here, in full and without `sorry`:
+## Main results
 
 * `spectralValue_coeff_le` : for a monic-or-not `p : R[X]` over a `NormedDivisionRing R` and
   `n < p.natDegree`, `‖p.coeff n‖ ≤ spectralValue p ^ (p.natDegree - n)`. This is the coefficient
@@ -23,85 +28,59 @@ What is proved here, in full and without `sorry`:
 * `spectralNorm_coeff_lt_one` : the corollary for `spectralNorm K L x := spectralValue (minpoly K x)`,
   `x : L`: if `spectralNorm K L x < 1`, every non-leading coefficient of `minpoly K x` has norm
   `< 1` strictly (not just `≤ 1`), the sharper bound Eisenstein-ness needs for its `mem` field.
+* `LocalField.mem_valuationSubring_iff_norm_le_one`, `LocalField.valuation_le_iff_norm_le`,
+  `LocalField.mem_maximalIdeal_iff_norm_lt_one` : bridging lemmas between the ambient `ValuativeRel
+  K`-canonical valuation `valuation K` and the norm `‖·‖`, for a `K` in the
+  `NontriviallyNormedField`/`IsUltrametricDist`/`ValuativeRel`/`Compatible` bundle used throughout
+  `Langlands.HenselianValuation`. General-purpose, not specific to the Eisenstein argument.
+* `LocalField.isEisensteinAt_minpoly_of_isUniformizer` : for `ϖ : ↥(valuation K).valuationSubring`
+  irreducible (a uniformizer of `𝒪[K]`) and `π : L` with the exact "totally ramified of degree `n`"
+  hypothesis `‖(ϖ : K)‖ = spectralNorm K L π ^ (minpoly K π).natDegree` (`n := (minpoly K
+  π).natDegree`), `minpoly ↥(valuation K).valuationSubring π` is Eisenstein at `𝔪_{𝒪[K]}`.
 
-## What remains (the genuine gap, precisely — updated fifteenth pass)
+## The final hypothesis design (differs from the fourteenth/fifteenth pass's plan)
 
-**Gap 1 (connecting a concrete uniformizer to `spectralNorm K L π < 1`) is now CLOSED**, in
-`Langlands.HenselianValuation`: `LocalField.spectralNorm_lt_one_of_mem_nonunits`
-(`Langlands/HenselianValuation.lean`, in the `LocalField.NormedFieldBridge` section, right before
-`valuationSubring_eq_of_comap_eq`) takes `A : ValuationSubring L`, `hA : A.comap (algebraMap K L) =
-(valuation K).valuationSubring`, `π ∈ A.nonunits`, `π ≠ 0`, and concludes `spectralNorm K L π < 1`,
-under the same `[NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K]
-[(NormedField.valuation).Compatible] [CompleteSpace K]` bundle `exists_rankOne_absoluteValue_extends`
-already uses. Proved via the absolute value `f` from `exists_rankOne_absoluteValue_extends`
-(`f x ≤ 1 ↔ x ∈ A`), `spectralNorm_unique_field_norm_ext` (`f = spectralNorm K L` pointwise),
-`ValuationSubring.mem_nonunits_iff_or` (`π⁻¹ ∉ A`), and `map_inv₀` + `inv_lt_one_of_one_lt₀`.
-**No `_of_isNonarchimedeanLocalField` wrapper was added** (unlike this file's other paired
-theorems): `spectralNorm K L π`'s *type* itself needs a `NormedField K` instance, so a wrapper
-stating it under only `[IsNonarchimedeanLocalField K]` cannot even elaborate as a public signature —
-the `letI`/`haveI` instance-construction block (identical to the one already inlined twice in
-`HenselianValuation.lean`, lines ~715/737) must instead be inlined once inside the proof of any
-Henselian-hypothesis caller whose own *conclusion* doesn't mention `spectralNorm`/`NormedField`
-(e.g. the final Eisenstein theorem below, whose conclusion is `Polynomial.IsEisensteinAt`).
+Earlier passes' diagnosis (see prior `ROADMAP.md` entries) planned to phrase "totally ramified of
+degree `n`" as an exact equation `A.valuation (algebraMap K L ϖ) = A.valuation π ^ n` at the level
+of a `ValuationSubring A : ValuationSubring L` extending `𝒪[K]`, pushed forward to a real equation
+via a `RankOne A.valuation` instance's `hom'` (`Langlands.HenselianValuation`'s
+`exists_rankOne_compatible`/`exists_rankOne_absoluteValue_extends` machinery). Attempting this
+directly hit a genuine obstruction: the `RankOne A.valuation` instance's `.hom'` field, once
+resolved through Lean's dot notation, turned out to resolve to the *parent* `RankLeOne` structure's
+`hom'` (operating on the canonical `MonoidWithZeroHom.ValueGroup₀`-embedded value group), not
+directly on `A.ValueGroup` as the naive signature `A.valuation x : A.ValueGroup` would suggest — so
+`hR.hom' (A.valuation x)` does not typecheck as written; only `hR.hom' (A.valuation.restrict ...)`
+(via the `ValueGroup₀`-typed `restrict`) does, and generalizing `exists_rankOne_absoluteValue_extends`'s
+`f (algebraMap K L x) = ‖x‖` fact (proved only for `x` in the image of `algebraMap K L`) to *all*
+`y : L` was not straightforward from the section's existing lemmas.
 
-**Gap 2 (the real-number-to-ideal-power conversion) is still open**, but this pass narrowed it
-further and resolved two of the four sub-blockers the fourteenth pass's diagnosis implied,
-confirmed via loogle + a standalone typecheck (not yet wired into a full proof):
+**This entire detour is unnecessary.** `spectralNorm K L` is *already* the canonical, unique
+extension of `‖·‖` from `K` to `L` (given `L / K` algebraic and `K` complete, by
+`spectralNorm_unique_field_norm_ext`, applied to any `f : AbsoluteValue L ℝ` extending `‖·‖`, hence
+in particular to any `f` built from a `RankOne A.valuation` compatible instance). So the classical
+"totally ramified of degree `n`" condition `v_L(π) = v_L(ϖ)/n` — after normalizing `v_L` to extend
+`‖·‖_K` — is *exactly* `spectralNorm K L π ^ n = ‖ϖ‖`, with no reference to a specific
+`A : ValuationSubring L` or `RankOne` instance needed at all. This is both a strictly simpler
+hypothesis to state and prove from, and (as a consequence) it lets
+`isEisensteinAt_minpoly_of_isUniformizer` drop the whole `A`/`hA`/`π ∈ A.nonunits`/`π ≠ 0` apparatus:
+`spectralNorm K L π < 1` is now a *derived* fact (from the hypothesis plus `‖ϖ‖ < 1`, since `ϖ`
+irreducible forces it into `𝔪_{𝒪[K]}`), not something that needs proving via `A` first. In
+particular `LocalField.spectralNorm_lt_one_of_mem_nonunits` (`Langlands.HenselianValuation`) and the
+whole `RankOne`/`exists_rankOne_absoluteValue_extends` machinery are **not used** by the theorem
+proved here — this file has no dependency on `Langlands.HenselianValuation` at all.
 
-* **Resolved: `IsIntegrallyClosed`/`IsFractionRing` for `𝒪[K]`.** The fourteenth pass worried about
-  transporting these across the `Valuation.integer`/`ValuationSubring` defeq gap. Unnecessary:
-  `Mathlib/RingTheory/Valuation/LocalSubring.lean:35,38` gives `IsIntegrallyClosed V` as a **direct**
-  instance for *any* `V : ValuationSubring K` (via `V.integer_valuation` internally, already solved
-  in Mathlib), and `ValuationSubring.instIsFractionRingSubtypeMem` gives `IsFractionRing ↥V K`
-  directly too. Both apply to `𝒪[K] := (valuation K).valuationSubring` with zero transport code
-  needed on this project's side.
-* **Resolved: the DVR pow-ideal lemma's `Valuation.integer` mismatch.** The fourteenth pass flagged
-  `Irreducible.maximalIdeal_pow_eq_setOf_le_v_coe_pow` (stated for `v.integer`, a plain `Subring`) as
-  needing defeq transport to `(valuation K).valuationSubring` (a bundled `ValuationSubring`). This is
-  avoidable: `ValuationSubring.lean:468`'s `valuationSubring.integers : v.Integers v.valuationSubring`
-  gives the `Valuation.Integers` instance **directly at the `ValuationSubring` level**, so
-  `Valuation.Integers.maximalIdeal_pow_eq_setOf_le_v_algebraMap_pow`
-  (`Mathlib/RingTheory/DiscreteValuationRing/Basic.lean:672`) applies with `O := ↥(valuation
-  K).valuationSubring` directly — no `v.integer` detour at all. The needed
-  `[IsDiscreteValuationRing ↥(valuation K).valuationSubring]` instance is also available directly
-  (not via `v.integer`): `Valuation.valuationSubring_isDiscreteValuationRing`
-  (`Mathlib/RingTheory/Valuation/Discrete/Basic.lean`), given `[IsCyclic ...valueGroup] [Nontrivial
-  ...valueGroup]` (expected to hold for a discretely-valued local field, not separately checked this
-  pass).
-* **Sharper than anticipated: the real-to-`Γ₀` transport is an exact equality, not an inequality.**
-  The fourteenth pass's writeup flagged `RankOne.hom`'s `StrictMono.le_iff_le` as the tool for
-  bridging the real-number bound back to `Γ₀`. Since `RankOne.hom' : Γ₀ →*₀ ℝ≥0` is a
-  `MonoidWithZeroHom` (multiplicative, not merely order-preserving), an *exact* valuation-level
-  hypothesis for total ramification — e.g. `A.valuation (algebraMap K L ϖ) = A.valuation π ^ n` for
-  `ϖ` a uniformizer of `𝒪[K]` and `n := (minpoly K π).natDegree` — pushes forward under `hR.hom'`
-  to the *exact* real equation `‖ϖ‖ = f π ^ n = spectralNorm K L π ^ n = ‖(minpoly K π).coeff 0‖`
-  (the last step via `spectralNorm_eq_norm_coeff_zero_rpow`, `SpectralNorm.lean:988`), rather than
-  only an inequality. This is more useful than the fourteenth pass's plan: an exact match of `‖coeff
-  0‖` with `‖ϖ‖` (which is `> ‖ϖ‖²` since `‖ϖ‖ < 1`) gives `coeff 0 ∉ 𝔪_K ^ 2` directly, with no slack
-  to account for.
-* **Not yet attempted: assembling the pieces.** Confirmed by a standalone typecheck this pass (not
-  committed, scratch file) that `Algebra ↥(A : ValuationSubring K) L` derives automatically by
-  instance search given `[Algebra K L]` — so the `minpoly ↥𝒪[K] π`-level statement (as opposed to
-  `minpoly K π` mapped down) should be reachable via `minpoly.isIntegrallyClosed_eq_field_fractions'`
-  (`Mathlib/FieldTheory/Minpoly/IsIntegrallyClosed.lean`) without a manual `Algebra` instance, but
-  this was not tried end-to-end. What remains, none of it attempted in Lean this pass: (a) precisely
-  designing the "totally ramified" hypothesis (the `A.valuation`-level equation above, or an
-  equivalent `Associated`-based phrasing, applied to a chosen uniformizer `ϖ` of `𝒪[K]`); (b) the
-  `IsScalarTower`/`minpoly.isIntegrallyClosed_eq_field_fractions'` wiring to get `minpoly ↥𝒪[K] π`
-  and relate its coefficients to `minpoly K π`'s; (c) assembling `Polynomial.IsEisensteinAt`'s three
-  fields (`leading`, `mem`, `notMem`) from `spectralNorm_coeff_lt_one` (gap 1's output) plus the
-  exact-equality argument above; (d) checking `Valuation.valuationSubring_isDiscreteValuationRing`'s
-  `IsCyclic`/`Nontrivial` value-group hypotheses actually discharge for `IsNonarchimedeanLocalField
-  K`. None of (a)–(d) hit a wall — each has a named, real Mathlib lemma or an already-typechecked
-  instance to build on — but none was built or tested this pass, so none should be treated as
-  confirmed working until actually written and built.
+The remaining assembly (coefficients of `minpoly K π` lie in `𝒪[K]`, transported down to
+`minpoly ↥𝒪[K] π` via `minpoly.isIntegrallyClosed_eq_field_fractions'`, `IsIntegrallyClosed`/
+`IsFractionRing ↥𝒪[K] K` as direct instances from `Mathlib.RingTheory.Valuation.LocalSubring`, and
+the ideal-power membership from `Valuation.Integers.maximalIdeal_pow_eq_setOf_le_v_algebraMap_pow`)
+follows the fifteenth pass's diagnosis closely and did not hit further obstructions.
 
-No `LocalField.isEisensteinAt_minpoly_of_isUniformizer` statement is declared in this file: writing
-the full signature before gap 2's assembly (a)–(d) above is closed would either need `sorry`
-(forbidden) or hypotheses strong enough to trivialize the theorem, neither of which is acceptable per
-this project's conventions. The two lemmas below (plus gap 1's `spectralNorm_lt_one_of_mem_nonunits`
-in `Langlands.HenselianValuation`) are self-contained, real, and reusable regardless of how the
-remaining assembly proceeds.
+## Design note: `[IsDiscreteValuationRing ↥(valuation K).valuationSubring]` is a hypothesis
+
+As anticipated by the task brief, deriving this from `IsCyclic`/`Nontrivial` value-group conditions
+(`Valuation.valuationSubring_isDiscreteValuationRing`) was not attempted — it is orthogonal,
+structural content about `K` (not about the Eisenstein/ramification argument), so it is taken as an
+explicit hypothesis rather than derived.
 -/
 
 noncomputable section
@@ -157,3 +136,162 @@ theorem spectralNorm_coeff_lt_one {K : Type*} [NormedField K] {L : Type*} [Field
         pow_le_pow_of_le_one (spectralNorm_nonneg x) hx.le hexp
     _ = spectralNorm K L x := pow_one _
     _ < 1 := hx
+
+namespace LocalField
+
+variable (K : Type*) [NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K]
+  [(NormedField.valuation (K := K)).Compatible] [CompleteSpace K]
+  {L : Type*} [Field L] [Algebra K L] [Algebra.IsAlgebraic K L]
+
+omit [CompleteSpace K] in
+/-- Membership in `(valuation K).valuationSubring` is exactly `‖·‖ ≤ 1`. -/
+theorem mem_valuationSubring_iff_norm_le_one (x : K) :
+    x ∈ (ValuativeRel.valuation K).valuationSubring ↔ ‖x‖ ≤ 1 := by
+  rw [Valuation.mem_valuationSubring_iff]
+  have h1 := Valuation.Compatible.vle_iff_le (v := ValuativeRel.valuation K) x 1
+  have h2 := Valuation.Compatible.vle_iff_le (v := NormedField.valuation (K := K)) x 1
+  rw [map_one] at h1 h2
+  rw [← h1, h2, NormedField.valuation_apply]
+  norm_cast
+
+omit [CompleteSpace K] in
+/-- General `valuation K`-vs-norm bridging, beyond the `≤ 1` special case of
+`mem_valuationSubring_iff_norm_le_one`. -/
+theorem valuation_le_iff_norm_le (x y : K) :
+    ValuativeRel.valuation K x ≤ ValuativeRel.valuation K y ↔ ‖x‖ ≤ ‖y‖ := by
+  have h1 := Valuation.Compatible.vle_iff_le (v := ValuativeRel.valuation K) x y
+  have h2 := Valuation.Compatible.vle_iff_le (v := NormedField.valuation (K := K)) x y
+  rw [← h1, h2, NormedField.valuation_apply, NormedField.valuation_apply]
+  norm_cast
+
+omit [CompleteSpace K] in
+/-- Membership of `x : ↥(valuation K).valuationSubring` in the maximal ideal is exactly
+`‖(x : K)‖ < 1`: a nonunit of a valuation ring has norm strictly less than `1`, and conversely. -/
+theorem mem_maximalIdeal_iff_norm_lt_one (x : ↥(ValuativeRel.valuation K).valuationSubring) :
+    x ∈ IsLocalRing.maximalIdeal ↥(ValuativeRel.valuation K).valuationSubring ↔ ‖(x : K)‖ < 1 := by
+  rw [IsLocalRing.mem_maximalIdeal]
+  constructor
+  · intro hx
+    by_contra hge
+    push Not at hge
+    have hle : ‖(x : K)‖ ≤ 1 := (mem_valuationSubring_iff_norm_le_one K (x : K)).mp x.2
+    have heq1 : ‖(x : K)‖ = 1 := le_antisymm hle hge
+    have hxne : (x : K) ≠ 0 := by
+      intro h0; rw [h0] at heq1; simp at heq1
+    have hinv_le : ‖((x : K))⁻¹‖ ≤ 1 := by rw [norm_inv, heq1]; norm_num
+    have hinv_mem : ((x : K))⁻¹ ∈ (ValuativeRel.valuation K).valuationSubring :=
+      (mem_valuationSubring_iff_norm_le_one K _).mpr hinv_le
+    exact hx (IsUnit.of_mul_eq_one
+      (⟨(x : K)⁻¹, hinv_mem⟩ : ↥(ValuativeRel.valuation K).valuationSubring)
+      (Subtype.ext (by simp [hxne])))
+  · intro hlt hu
+    obtain ⟨y, hy⟩ := hu.exists_right_inv
+    have hxy : ‖(x : K)‖ * ‖(y : K)‖ = 1 := by
+      have h : (x : K) * (y : K) = 1 := by
+        have := congrArg (Subtype.val) hy
+        simpa using this
+      rw [← norm_mul, h, norm_one]
+    have hy_le : ‖(y : K)‖ ≤ 1 := (mem_valuationSubring_iff_norm_le_one K _).mp y.2
+    nlinarith [norm_nonneg (x : K), norm_nonneg (y : K)]
+
+/-- **Eisenstein-ness of the minimal polynomial of a uniformizer of a totally ramified
+extension** (Serre, *Local Fields*, Ch. III). `ϖ` a uniformizer of `𝒪[K] := (valuation
+K).valuationSubring` (`Irreducible ϖ`) and `π : L` satisfying the exact "totally ramified of degree
+`n := (minpoly K π).natDegree`" hypothesis `‖(ϖ : K)‖ = spectralNorm K L π ^ n` — the classical
+`v_L(π) = v_L(ϖ) / n` condition, normalized to extend `‖·‖` on `K` via the canonical extension
+`spectralNorm K L` (unique by `spectralNorm_unique_field_norm_ext`, given `L / K` algebraic and `K`
+complete) — together imply `minpoly ↥𝒪[K] π` is Eisenstein at `𝔪_{𝒪[K]}`.
+
+Proof outline: `hram` forces `spectralNorm K L π < 1` (since `‖ϖ‖ < 1`, `ϖ` being irreducible hence a
+nonunit of `𝒪[K]`), giving via `spectralNorm_coeff_lt_one` that every non-leading coefficient of
+`minpoly K π` has norm `< 1`; combined with the leading coefficient (norm `1`, monic), every
+coefficient of `minpoly K π` lies in `𝒪[K]`, so `Polynomial.toSubring` lifts `minpoly K π` to a monic
+polynomial over `𝒪[K].toSubring` witnessing `IsIntegral ↥𝒪[K] π`. Then
+`minpoly.isIntegrallyClosed_eq_field_fractions'` (using the direct `IsIntegrallyClosed`/
+`IsFractionRing ↥𝒪[K] K` instances from `Mathlib.RingTheory.Valuation.LocalSubring`) identifies
+`minpoly K π` with the base change of `minpoly ↥𝒪[K] π` along `algebraMap ↥𝒪[K] K`, transporting the
+coefficient bounds down. The `notMem` field (`coeff 0 ∉ 𝔪 ^ 2`) uses the *exact* equality
+`‖(minpoly K π).coeff 0‖ = ‖ϖ‖` (from `hram` via `spectralNorm.spectralNorm_eq_norm_coeff_zero_rpow`)
+together with `‖ϖ‖ > ‖ϖ‖ ^ 2` (as `0 < ‖ϖ‖ < 1`) and the ideal-power/valuation identification
+`Valuation.Integers.maximalIdeal_pow_eq_setOf_le_v_algebraMap_pow`. -/
+theorem isEisensteinAt_minpoly_of_isUniformizer
+    [IsDiscreteValuationRing ↥(ValuativeRel.valuation K).valuationSubring]
+    {ϖ : ↥(ValuativeRel.valuation K).valuationSubring} (hϖ : Irreducible ϖ) {π : L}
+    (hram : ‖(ϖ : K)‖ = spectralNorm K L π ^ (minpoly K π).natDegree) :
+    (minpoly ↥(ValuativeRel.valuation K).valuationSubring π).IsEisensteinAt
+      (IsLocalRing.maximalIdeal ↥(ValuativeRel.valuation K).valuationSubring) := by
+  let O : ValuationSubring K := (ValuativeRel.valuation K).valuationSubring
+  set n := (minpoly K π).natDegree with hn
+  have hnpos : 0 < n := minpoly.natDegree_pos (Algebra.IsIntegral.isIntegral π)
+  have hϖlt : ‖(ϖ : K)‖ < 1 :=
+    (mem_maximalIdeal_iff_norm_lt_one K ϖ).mp
+      ((IsLocalRing.mem_maximalIdeal _).mpr fun hu => hϖ.not_isUnit hu)
+  have hϖpos : 0 < ‖(ϖ : K)‖ := by
+    have hne0 : (ϖ : K) ≠ 0 := by
+      intro h0
+      exact hϖ.ne_zero (Subtype.ext (h0.trans (by simp)))
+    exact norm_pos_iff.mpr hne0
+  have hcoeff0 : ‖(minpoly K π).coeff 0‖ = ‖(ϖ : K)‖ := by
+    rw [hram, spectralNorm.spectralNorm_eq_norm_coeff_zero_rpow, one_div,
+      Real.rpow_inv_natCast_pow (norm_nonneg _) hnpos.ne']
+  have hspec : spectralNorm K L π < 1 := by
+    by_contra hge
+    push Not at hge
+    have h1 : (1 : ℝ) ≤ spectralNorm K L π ^ n := one_le_pow₀ hge
+    rw [← hram] at h1
+    linarith
+  have hmonic : (minpoly K π).Monic := minpoly.monic (Algebra.IsIntegral.isIntegral π)
+  -- All coefficients of `minpoly K π` lie in `O`.
+  have hcoeffs : ∀ i, (minpoly K π).coeff i ∈ O := by
+    intro i
+    rw [mem_valuationSubring_iff_norm_le_one]
+    rcases lt_trichotomy i n with hi | hi | hi
+    · exact (spectralNorm_coeff_lt_one hspec (n := i) hi).le
+    · rw [hi, hn, hmonic.coeff_natDegree]
+      simp
+    · rw [Polynomial.coeff_eq_zero_of_natDegree_lt (hn ▸ hi)]
+      simp
+  have hp : (↑((minpoly K π).coeffs) : Set K) ⊆ (O.toSubring : Set K) := by
+    intro c hc
+    rw [Finset.mem_coe, Polynomial.mem_coeffs_iff] at hc
+    obtain ⟨j, -, hcj⟩ := hc
+    rw [hcj, SetLike.mem_coe, ValuationSubring.mem_toSubring]
+    exact hcoeffs j
+  set q : Polynomial O.toSubring := (minpoly K π).toSubring O.toSubring hp with hq
+  have hqmonic : q.Monic := (Polynomial.monic_toSubring _ _ _).mpr hmonic
+  have hqmap : Polynomial.map O.toSubring.subtype q = minpoly K π :=
+    Polynomial.map_toSubring _ _ _
+  have hintO : IsIntegral (↥O.toSubring) π := by
+    refine ⟨q, hqmonic, ?_⟩
+    have h1 : (Polynomial.aeval π) (Polynomial.map (algebraMap O.toSubring K) q) = 0 := by
+      rw [show algebraMap O.toSubring K = O.toSubring.subtype from rfl, hqmap, minpoly.aeval]
+    rwa [Polynomial.aeval_map_algebraMap] at h1
+  have hintO' : IsIntegral (↥O) π := hintO
+  -- `minpoly K π` is the base change of `minpoly ↥O π` along `algebraMap ↥O K`.
+  have hminpolyeq : minpoly K π = Polynomial.map (algebraMap ↥O K) (minpoly ↥O π) :=
+    minpoly.isIntegrallyClosed_eq_field_fractions' K hintO'
+  have hinj : Function.Injective (algebraMap ↥O K) := IsFractionRing.injective ↥O K
+  have hdeg : (minpoly ↥O π).natDegree = n := by
+    rw [hn, hminpolyeq, Polynomial.natDegree_map_eq_of_injective hinj]
+  have hcoeff_eq : ∀ i, (minpoly K π).coeff i = ((minpoly ↥O π).coeff i : K) := by
+    intro i
+    rw [hminpolyeq, Polynomial.coeff_map, ValuationSubring.algebraMap_apply]
+  refine (minpoly.monic hintO').isEisensteinAt_of_mem_of_notMem
+    (IsLocalRing.maximalIdeal.isMaximal ↥O).ne_top ?_ ?_
+  · intro i hi
+    rw [hdeg] at hi
+    rw [mem_maximalIdeal_iff_norm_lt_one, ← hcoeff_eq]
+    exact spectralNorm_coeff_lt_one hspec hi
+  · have hpow := Valuation.Integers.maximalIdeal_pow_eq_setOf_le_v_algebraMap_pow
+      (Valuation.valuationSubring.integers (ValuativeRel.valuation K)) hϖ 2
+    have hmem_iff : (minpoly ↥O π).coeff 0 ∈ IsLocalRing.maximalIdeal ↥O ^ 2 ↔
+        ValuativeRel.valuation K (algebraMap ↥O K ((minpoly ↥O π).coeff 0)) ≤
+          ValuativeRel.valuation K (algebraMap ↥O K ϖ) ^ 2 := by
+      rw [← SetLike.mem_coe, hpow]; rfl
+    rw [hmem_iff, ValuationSubring.algebraMap_apply, ValuationSubring.algebraMap_apply,
+      ← hcoeff_eq, ← map_pow, valuation_le_iff_norm_le]
+    rw [hcoeff0, norm_pow]
+    push Not
+    nlinarith [sq_nonneg (‖(ϖ : K)‖ - 1)]
+
+end LocalField
