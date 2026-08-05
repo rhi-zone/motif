@@ -4,37 +4,27 @@ import Langlands.FiniteIndexNormalSubgroupMulEquiv
 /-!
 # The profinite completion commutes with universe lifting
 
-`ProfiniteGrp.ProfiniteCompletion.completion (ULift.{v} G) ≅ ULift.{v} (completion G)`, for `G :
-GrpCat.{0}` -- fixed at universe `0` since `ProfiniteGrp.uliftFunctor_preservesLimit`
-(`Langlands.ProfiniteGrpUlift`) only preserves limits of diagrams indexed by a category `J : Type`
-(literally universe `0`, confirmed by `#check`; the module docstring there overstates the
-generality achieved), and the index category here is `FiniteIndexNormalSubgroup G`, which lives in
-the same universe as `G` itself. This is exactly the case needed: comparing `Zhat` (hardwired to
-universe `0`, being the completion of `Multiplicative ℤ : Type`) against a `ProfiniteGrp` in an
-arbitrary universe `v` (such as `InfiniteGalois.profiniteGalGrp 𝓀[K] kbar` in
-`Langlands.WeilGroup`, for `K` of universe `v`) via `ProfiniteGrp.ProfiniteCompletion.completion
-(GrpCat.of (ULift.{v} (Multiplicative ℤ)))`, itself now identified with `ULift.{v} Zhat` here.
+For `G : GrpCat.{0}`, `ProfiniteGrp.ProfiniteCompletion.completion (ULift.{v} G)` is isomorphic to
+`ULift.{v} (completion G)`. The base group is fixed at universe `0` because
+`ProfiniteGrp.uliftFunctor_preservesLimit` (`Langlands.ProfiniteGrpUlift`) applies to diagrams
+indexed by `J : Type`, and the index category here is `FiniteIndexNormalSubgroup G`, which lives in
+the universe of `G`.
+
+This places the profinite completion of a group in `Type` inside `ProfiniteGrp.{v}` for an
+arbitrary universe `v`, where it can be compared with profinite groups arising there: the
+completion of `ULift.{v} G`, which lives in `ProfiniteGrp.{v}` by construction, is identified with
+the universe lift of the completion of `G`.
 
 ## Main definitions and results
 
-* `ProfiniteGrp.ProfiniteCompletion.diagramULiftNatIso` : the natural isomorphism between the two
-  `FiniteIndexNormalSubgroup (ULift.{v} G)`-indexed diagrams valued in `ProfiniteGrp` -- the
-  finite-quotient diagram of `ULift.{v} G` directly, versus the finite-quotient diagram of `G`
-  precomposed with the index-category equivalence and postcomposed with `ProfiniteGrp.uliftFunctor`.
-* `ProfiniteGrp.ProfiniteCompletion.completionULiftIso` : the resulting isomorphism `completion
-  (ULift.{v} G) ≅ ProfiniteGrp.uliftFunctor.obj (completion G)`, obtained by combining the natural
-  isomorphism above with `CategoryTheory.Limits.HasLimit.isoOfEquivalence` (invariance of the limit
-  under precomposition with an equivalence of the index category) and the fact that
-  `ProfiniteGrp.uliftFunctor` preserves limits of small diagrams
-  (`ProfiniteGrp.uliftFunctor_preservesLimit`).
-
-## Proof idea
-
-Both diagrams are indexed by `FiniteIndexNormalSubgroup (ULift.{v} G)`. At each index `H`, the
-degreewise group isomorphism is `QuotientGroup.congr` (transporting the quotient by `H.toSubgroup`
-along `MulEquiv.ulift : ULift.{v} G ≃* G`) composed with `MulEquiv.ulift.symm` on the resulting
-quotient of `G`, to land back in a `ULift`. Naturality against the diagrams' transition maps
-(`QuotientGroup.map` for the finite-quotient diagram) is checked by hand on representatives.
+* `ProfiniteGrp.ProfiniteCompletion.indexEquiv` : the equivalence of index categories
+  `FiniteIndexNormalSubgroup (ULift.{v} G) ≌ FiniteIndexNormalSubgroup G` induced by
+  `MulEquiv.ulift`.
+* `ProfiniteGrp.ProfiniteCompletion.diagramULiftNatIso` : the natural isomorphism between the
+  finite-quotient diagram of `ULift.{v} G` and the finite-quotient diagram of `G` precomposed with
+  `indexEquiv` and postcomposed with `ProfiniteGrp.uliftFunctor`.
+* `ProfiniteGrp.ProfiniteCompletion.completionULiftIso` : the resulting isomorphism
+  `completion (ULift.{v} G) ≅ ProfiniteGrp.uliftFunctor.obj (completion G)`.
 -/
 
 @[expose] public section
@@ -47,8 +37,9 @@ namespace ProfiniteGrp.ProfiniteCompletion
 
 variable (G : GrpCat.{0})
 
-/-- The index-category equivalence identifying finite-index normal subgroups of `ULift.{v} G`
-with those of `G`, transported along `MulEquiv.ulift`. -/
+/-- The equivalence of index categories identifying the finite-index normal subgroups of
+`ULift.{v} G` with those of `G`, induced by `MulEquiv.ulift` through
+`FiniteIndexNormalSubgroup.orderIsoMulEquiv`. -/
 noncomputable def indexEquiv :
     FiniteIndexNormalSubgroup (ULift.{v} G) ≌ FiniteIndexNormalSubgroup G :=
   (FiniteIndexNormalSubgroup.orderIsoMulEquiv (MulEquiv.ulift : ULift.{v} G ≃* G)).equivalence
@@ -58,9 +49,9 @@ theorem indexEquiv_functor_obj (H : FiniteIndexNormalSubgroup (ULift.{v} G)) :
     (indexEquiv G).functor.obj H =
       FiniteIndexNormalSubgroup.mapMulEquiv (MulEquiv.ulift : ULift.{v} G ≃* G) H := rfl
 
-/-- The degreewise group isomorphism underlying the natural isomorphism of diagrams: the quotient
-of `ULift.{v} G` by a finite-index normal subgroup `H` is (via `MulEquiv.ulift`) isomorphic to the
-`ULift` of the corresponding quotient of `G`. -/
+/-- The quotient of `ULift.{v} G` by a finite-index normal subgroup `H` is isomorphic to the
+universe lift of the quotient of `G` by the corresponding subgroup: `QuotientGroup.congr` along
+`MulEquiv.ulift`, followed by `MulEquiv.ulift.symm`. -/
 noncomputable def quotientULiftMulEquiv (H : FiniteIndexNormalSubgroup (ULift.{v} G)) :
     (ULift.{v} G) ⧸ H.toSubgroup ≃*
       ULift.{v} (G ⧸ (FiniteIndexNormalSubgroup.mapMulEquiv
@@ -68,9 +59,9 @@ noncomputable def quotientULiftMulEquiv (H : FiniteIndexNormalSubgroup (ULift.{v
   (QuotientGroup.congr H.toSubgroup _ (MulEquiv.ulift : ULift.{v} G ≃* G)
     (FiniteIndexNormalSubgroup.toSubgroup_mapMulEquiv _ H).symm).trans MulEquiv.ulift.symm
 
-/-- The degreewise component of the natural isomorphism, packaged as a `ProfiniteGrp` isomorphism
-(continuity is automatic in both directions since the finite quotients involved carry the discrete
-topology, via `ofFiniteGrp`). -/
+/-- The component of `diagramULiftNatIso` at `H`, namely `quotientULiftMulEquiv` packaged as an
+isomorphism of profinite groups. Continuity in both directions is automatic, the finite quotients
+involved carrying the discrete topology. -/
 noncomputable def diagramULiftIsoComponent (H : FiniteIndexNormalSubgroup (ULift.{v} G)) :
     (diagram (GrpCat.of (ULift.{v} G))).obj H ≅
       ProfiniteGrp.uliftFunctor.{v, 0}.obj ((diagram G).obj
@@ -83,9 +74,11 @@ noncomputable def diagramULiftIsoComponent (H : FiniteIndexNormalSubgroup (ULift
     ProfiniteGrp.uLift.discreteTopology
   ProfiniteGrp.isoOfMulEquiv (quotientULiftMulEquiv G H) continuous_bot continuous_of_discreteTopology
 
-/-- **The natural isomorphism between the two `ProfiniteGrp`-valued diagrams**: the finite-quotient
-diagram of `ULift.{v} G`, versus the finite-quotient diagram of `G` precomposed with the
-index-category equivalence `indexEquiv` and postcomposed with `ProfiniteGrp.uliftFunctor`. -/
+/-- **The natural isomorphism between the two `ProfiniteGrp`-valued diagrams** indexed by
+`FiniteIndexNormalSubgroup (ULift.{v} G)`: the finite-quotient diagram of `ULift.{v} G`, and the
+finite-quotient diagram of `G` precomposed with `indexEquiv` and postcomposed with
+`ProfiniteGrp.uliftFunctor`. Naturality against the transition maps `QuotientGroup.map` is checked
+on representatives. -/
 noncomputable def diagramULiftNatIso :
     diagram (GrpCat.of (ULift.{v} G)) ≅
       (indexEquiv G).functor ⋙ diagram G ⋙ ProfiniteGrp.uliftFunctor.{v, 0} :=
@@ -115,11 +108,10 @@ noncomputable def diagramULiftNatIso :
       rfl)
 
 /-- **The profinite completion commutes with universe lifting**: `completion (ULift.{v} G)` is
-isomorphic to `ProfiniteGrp.uliftFunctor.obj (completion G)`, i.e. to `ULift.{v} (completion G)`.
-Combines `diagramULiftNatIso` (the natural isomorphism of diagrams) with
-`CategoryTheory.Limits.HasLimit.isoOfEquivalence` (limit invariance under precomposing with an
-equivalence of the index category) and `CategoryTheory.preservesLimitIso` (since
-`ProfiniteGrp.uliftFunctor` preserves the limit of the small diagram `diagram G`). -/
+isomorphic to `ProfiniteGrp.uliftFunctor.obj (completion G)`, that is, to `ULift.{v} (completion
+G)`. Combines `diagramULiftNatIso` with `CategoryTheory.Limits.HasLimit.isoOfEquivalence`, the
+invariance of a limit under precomposition with an equivalence of the index category, and
+`CategoryTheory.preservesLimitIso` for `ProfiniteGrp.uliftFunctor` applied to `diagram G`. -/
 noncomputable def completionULiftIso :
     completion (GrpCat.of (ULift.{v} G)) ≅ ProfiniteGrp.uliftFunctor.{v, 0}.obj (completion G) := by
   unfold completion
