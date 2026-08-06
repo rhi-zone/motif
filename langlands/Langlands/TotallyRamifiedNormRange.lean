@@ -3,27 +3,55 @@ import Langlands.PrincipalUnitsFiltrationAdicCompletion
 import Langlands.UnramifiedNormRange
 
 /-!
-# The tame totally ramified norm group contains `⟨N(π_L)⟩ · U_K^{(1)}`
+# The totally ramified norm group: exact range, and a tame lower bound at `U_K^{(1)}`
 
 Let `L / K` be a finite extension of fraction fields of Dedekind domains `S / R`, let `v` be a
 place of `R` and `w` a place of `S` lying over `v`, and write `K₀ := v.adicCompletionIntegers K`,
-`L₀ := w.adicCompletionIntegers L`. This file combines the two halves of Phase 2b's totally
-ramified norm-group theorem into one containment of subgroups of `(v.adicCompletion K)ˣ`:
+`L₀ := w.adicCompletionIntegers L`. This file proves two statements about
+`MonoidHom.range (localNormMap K L v w)` as a subgroup of `(v.adicCompletion K)ˣ`:
 
-`Subgroup.zpowers (N(π_L)) ⊔ U_K^{(1)} ≤ MonoidHom.range (localNormMap K L v w)`
+1. **The exact range, unconditionally on tameness**
+   (`localNormMap_range_eq_of_isTotallyRamified`):
+   `MonoidHom.range (localNormMap K L v w) = Subgroup.zpowers (N(π_L)) ⊔ N_{L/K}(U_L)`,
+   where `N_{L/K}(U_L)` is *literally* the image of `(w.adicCompletionIntegers L).units` under
+   `localNormMap`, not a description of it. This needs `IsTotallyRamified` (only to know
+   `N(π_L)` is irreducible, hence a genuine `uniformizerUnit`) but *not* `IsTamelyRamified`.
+2. **A tame lower bound at the smaller, but explicit, subgroup `U_K^{(1)}`**
+   (`localNormMap_range_ge_of_isTotallyRamified`):
+   `Subgroup.zpowers (N(π_L)) ⊔ U_K^{(1)} ≤ MonoidHom.range (localNormMap K L v w)`,
+   under `IsTotallyRamified` and `IsTamelyRamified`, where `π_L` is any uniformizer of `L₀`.
 
-under `IsTotallyRamified` and `IsTamelyRamified`, where `π_L` is any uniformizer of `L₀`.
+## Why `N_{L/K}(U_L) ≠ U_K^{(1)}` in general, even under `IsTamelyRamified`
 
-## This is `⊇`, not `=`
+`N_{L/K}(U_L)` is the set of units whose residue is an `e`-th power of `𝓀[K]ˣ`
+(`Langlands.TotallyRamifiedNormResidue`'s
+`residue_norm_eq_residue_pow_ramificationIdx_of_isTotallyRamified` proves the `⊆` half of that
+description; the matching surjectivity at level `0` is not formalized here). On the finite cyclic
+group `𝓀[K]ˣ` of order `q - 1`, the `e`-th power map has image of index `gcd(e, q-1)`, a *proper*
+subgroup whenever `gcd(e, q-1) > 1`.
 
-Only the containment is proved. `N_{L/K}(U_L)` is strictly larger than `U_K^{(1)}` in general (it
-is the set of units whose residue is an `e`-th power of `𝓀[K]ˣ` — see
-`Langlands.TotallyRamifiedNormResidue`'s
-`residue_norm_eq_residue_pow_ramificationIdx_of_isTotallyRamified`, which proves the `⊆` half of
-that description), and the *unit* half of the norm group is only known here to *contain*
-`U_K^{(1)}`: the matching surjectivity at level `0` is not formalized. So the `⊔` here is
-genuinely smaller than `MonoidHom.range (localNormMap K L v w)`, and nothing stronger is claimed. Contrast `Langlands.UnramifiedNormRange`'s `localNormMap_range_eq`, an equality,
-available there because the unramified unit half is all of `O_K^×`.
+**This can happen even under `IsTamelyRamified` as literally defined in this repo**
+(`IsUnit ((e : ℕ) : 𝓀[K])`, i.e. `p ∤ e` for `p` the residue characteristic): `p ∤ e` does **not**
+imply `gcd(e, q-1) = 1`. Counterexample: `p = 2`, `q = 16` (so `q - 1 = 15 = 3 · 5`), `e = 3` —
+`p ∤ e` holds (`2 ∤ 3`) but `gcd(3, 15) = 3 ≠ 1`. Here the `e`-th power map on the cyclic group
+`𝓀[K]ˣ` of order `15` has image of index `3`, i.e. order `5` — a subgroup strictly between `{1}`
+and `𝓀[K]ˣ`. So a tame (`p ∤ e`), totally ramified extension of degree `3` over a residue field
+`𝔽₁₆` would have `N_{L/K}(U_L)` of index `3` in `U_K` (not index `15 = #𝓀[K]ˣ`, which is what
+`N_{L/K}(U_L) = U_K^{(1)}` would require) — strictly between `U_K^{(1)}` and `U_K`. `IsTamelyRamified`
+alone does not force `gcd(e,q-1) = 1`, so no general theorem `N_{L/K}(U_L) = U_K^{(1)}` under only
+`IsTamelyRamified` can be proved, and none is claimed here. Consequently
+`localNormMap_range_ge_of_isTotallyRamified`'s `⊔` is only a lower bound on the range in general,
+never claimed to be an equality — contrast `Langlands.UnramifiedNormRange`'s
+`localNormMap_range_eq`, an equality, available there because the unramified unit half is all of
+`O_K^×` with no level-`0` obstruction at all.
+
+The full level-`0` finite-field computation (image of `x ↦ x^e` on a finite cyclic group, and its
+relationship to the "tame" hypothesis) is **not formalized in Lean anywhere in this repo** — the
+paragraph above is a hand computation, recorded here to fix precisely what is and is not proved.
+Formalizing it would need the image of `x ↦ x^e` on `𝓀[K]ˣ`, identified with the subgroup of index
+`gcd(e, q-1)` — routine finite-cyclic-group theory (`orderOf`/`IsCyclic` machinery in Mathlib), but
+not attempted this pass, since `localNormMap_range_eq_of_isTotallyRamified` above gives the exact
+range without it.
 
 ## `N(π_L)` is a uniformizer of `K₀`: proved concretely, not by instantiating the abstract bundle
 
@@ -62,11 +90,22 @@ prerequisite for the result proved here.
 
 * `IsDedekindDomain.HeightOneSpectrum.associated_norm_uniformizer_of_isTotallyRamified`
 * `IsDedekindDomain.HeightOneSpectrum.irreducible_norm_of_isTotallyRamified`
+* `IsDedekindDomain.HeightOneSpectrum.exists_zpow_mul_unit_eq_of_irreducible` : every unit of
+  `w.adicCompletion L` is `π_L^k` times a unit of `L₀`, for `π_L` any irreducible element of `L₀`
+  — no ramification hypothesis needed. The totally-ramified-file counterpart of
+  `Langlands.UnramifiedNormRange`'s `exists_zpow_mul_unit_eq`, simplified because `π_L` is already
+  irreducible in `L₀` (unlike the image of a `K₀`-uniformizer, which is not once the extension
+  ramifies).
+* `IsDedekindDomain.HeightOneSpectrum.localNormMap_range_eq_of_isTotallyRamified` : **the exact
+  range**, `MonoidHom.range (localNormMap K L v w) = Subgroup.zpowers (N(π_L)) ⊔
+  (w.adicCompletionIntegers L).units.map (localNormMap K L v w)`, under `IsTotallyRamified` alone
+  (no tameness needed).
 * `IsDedekindDomain.HeightOneSpectrum.principalUnitsPowKField` : `U_K^{(i)}` pushed forward from
   `K₀ˣ` (where `Langlands.PrincipalUnitsFiltrationAdicCompletion` defines it) to
   `(v.adicCompletion K)ˣ`, along `Units.map (algebraMap K₀ K_v)` — the same embedding
   `Langlands.UnramifiedNormRange` uses for `(v.adicCompletionIntegers K).units`.
-* `IsDedekindDomain.HeightOneSpectrum.localNormMap_range_ge_of_isTotallyRamified`
+* `IsDedekindDomain.HeightOneSpectrum.localNormMap_range_ge_of_isTotallyRamified` : the tame lower
+  bound `Subgroup.zpowers (N(π_L)) ⊔ U_K^{(1)} ≤ MonoidHom.range (localNormMap K L v w)`.
 -/
 
 noncomputable section
@@ -145,11 +184,13 @@ omit [Algebra.IsIntegral R S] [Finite (ResidueField (w.adicCompletionIntegers L)
 corresponding to `π_L` itself: `localNormMap` of it is `Algebra.norm K_v (π_L : L_w)`, which
 `Langlands.NormMapResidueCompatibility`'s `algebraMap_norm_eq_norm_algebraMap` identifies with the
 image of the integers-level norm `Algebra.norm K₀ π_L`. -/
-theorem uniformizerUnit_norm_mem_range (h : IsTotallyRamified K L v w)
+theorem localNormMap_irreducibleUnit_eq (h : IsTotallyRamified K L v w)
     {πL : w.adicCompletionIntegers L} (hπL : Irreducible πL) :
-    uniformizerUnit K v (irreducible_norm_of_isTotallyRamified K L v w h hπL) ∈
-      MonoidHom.range (localNormMap K L v w) := by
-  refine ⟨(coe_ne_zero_of_irreducible L w hπL).isUnit.unit, ?_⟩
+    localNormMap K L v w (coe_ne_zero_of_irreducible L w hπL).isUnit.unit =
+      uniformizerUnit K v (irreducible_norm_of_isTotallyRamified K L v w h hπL) := by
+  -- (statement, not just membership: reused both by `uniformizerUnit_norm_mem_range` and by the
+  -- exact-equality theorem `localNormMap_range_eq_of_isTotallyRamified` below, which needs the
+  -- identity itself to push `zpow`s through.)
   apply Units.ext
   show Algebra.norm (v.adicCompletion K)
       (((coe_ne_zero_of_irreducible L w hπL).isUnit.unit : (w.adicCompletion L)ˣ) :
@@ -158,6 +199,118 @@ theorem uniformizerUnit_norm_mem_range (h : IsTotallyRamified K L v w)
       v.adicCompletion K)
   rw [IsUnit.unit_spec, coe_uniformizerUnit, algebraMap_norm_eq_norm_algebraMap K L v w πL]
   rfl
+
+omit [Algebra.IsIntegral R S] [Finite (ResidueField (w.adicCompletionIntegers L))] in
+theorem uniformizerUnit_norm_mem_range (h : IsTotallyRamified K L v w)
+    {πL : w.adicCompletionIntegers L} (hπL : Irreducible πL) :
+    uniformizerUnit K v (irreducible_norm_of_isTotallyRamified K L v w h hπL) ∈
+      MonoidHom.range (localNormMap K L v w) :=
+  ⟨(coe_ne_zero_of_irreducible L w hπL).isUnit.unit, localNormMap_irreducibleUnit_eq K L v w h hπL⟩
+
+/-! ### The uniformizer-power decomposition, directly in terms of `π_L` -/
+
+section Decomposition
+
+omit [Module.Finite K L] [Algebra.IsIntegral R S]
+  [Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)]
+  [Finite (ResidueField (w.adicCompletionIntegers L))] in
+/-- **Base case of the uniformizer-power decomposition, using `π_L` directly.** If a unit `a` of
+`w.adicCompletion L` has `Valued.v a ≤ 1` (i.e. `a` lies in `L₀`), it decomposes as `a = π_L^n * u`
+for some `n : ℕ` and unit `u` of `L₀`, for *any* irreducible `π_L : L₀` — no ramification
+hypothesis is needed. This is `Langlands.UnramifiedNormRange`'s
+`exists_pow_mul_unit_eq_of_valued_le_one` with the outer `algebraMap K₀ L₀` layer dropped: there
+`π` had to be lifted from `K₀` and irreducibility of the lift needed `IsUnramified`
+(`algebraMap_uniformizer_irreducible`), which is false once the extension ramifies; here `π_L` is
+already an element of `L₀`, so its irreducibility is simply the hypothesis. -/
+theorem exists_pow_mul_unit_eq_of_valued_le_one_of_irreducible
+    {πL : w.adicCompletionIntegers L} (hπL : Irreducible πL)
+    {a : (w.adicCompletion L)ˣ} (hle : Valued.v (a : w.adicCompletion L) ≤ 1) :
+    ∃ (n : ℕ) (u : (w.adicCompletionIntegers L)ˣ),
+      (a : w.adicCompletion L) =
+        ((πL : w.adicCompletionIntegers L) : w.adicCompletion L) ^ n * (u : w.adicCompletion L) := by
+  set x : w.adicCompletionIntegers L :=
+    ⟨(a : w.adicCompletion L), (mem_adicCompletionIntegers S L w).mpr hle⟩ with hxdef
+  have hx0 : x ≠ 0 := by
+    rw [Ne, ← ZeroMemClass.coe_eq_zero]
+    exact a.ne_zero
+  obtain ⟨n, u₀, hu₀⟩ := IsDiscreteValuationRing.associated_pow_irreducible hx0 hπL
+  refine ⟨n, u₀⁻¹, ?_⟩
+  have hval : x = πL ^ n * ((u₀⁻¹ : (w.adicCompletionIntegers L)ˣ) : w.adicCompletionIntegers L) :=
+    (Units.eq_mul_inv_iff_mul_eq u₀).mpr hu₀
+  have hcast := congrArg (algebraMap (w.adicCompletionIntegers L) (w.adicCompletion L)) hval
+  simp only [map_mul, map_pow] at hcast
+  rw [hxdef] at hcast
+  exact hcast
+
+omit [Module.Finite K L] [Algebra.IsIntegral R S]
+  [Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)]
+  [Finite (ResidueField (w.adicCompletionIntegers L))] in
+/-- **The uniformizer-power decomposition, using `π_L` directly.** Every unit `a` of
+`w.adicCompletion L` decomposes as `a = π_L^k * u` for some `k : ℤ` and some unit `u` of `L₀`, for
+any irreducible `π_L : L₀` — the totally-ramified-file counterpart of
+`Langlands.UnramifiedNormRange`'s `exists_zpow_mul_unit_eq`, again with no ramification
+hypothesis. -/
+theorem exists_zpow_mul_unit_eq_of_irreducible
+    {πL : w.adicCompletionIntegers L} (hπL : Irreducible πL) (a : (w.adicCompletion L)ˣ) :
+    ∃ (k : ℤ) (u : (w.adicCompletionIntegers L)ˣ),
+      (a : w.adicCompletion L) =
+        ((πL : w.adicCompletionIntegers L) : w.adicCompletion L) ^ k * (u : w.adicCompletion L) := by
+  rcases le_total (Valued.v (a : w.adicCompletion L)) 1 with hle | hge
+  · obtain ⟨n, u, hnu⟩ := exists_pow_mul_unit_eq_of_valued_le_one_of_irreducible L w hπL hle
+    exact ⟨(n : ℤ), u, by rw [hnu, zpow_natCast]⟩
+  · have hinv_le : Valued.v (((a⁻¹ : (w.adicCompletion L)ˣ) : w.adicCompletion L)) ≤ 1 := by
+      rw [Units.val_inv_eq_inv_val, map_inv₀]
+      exact inv_le_one_of_one_le₀ hge
+    obtain ⟨n, u, hnu⟩ :=
+      exists_pow_mul_unit_eq_of_valued_le_one_of_irreducible L w hπL hinv_le
+    refine ⟨-(n : ℤ), u⁻¹, ?_⟩
+    rw [Units.val_inv_eq_inv_val] at hnu
+    have ha : (a : w.adicCompletion L) = ((a : w.adicCompletion L)⁻¹)⁻¹ := (inv_inv _).symm
+    rw [ha, hnu, mul_inv, ← algebraMap_coe_inv_eq L w u, zpow_neg, zpow_natCast]
+
+end Decomposition
+
+/-! ### The exact norm-group range, in terms of `N(U_L)` -/
+
+omit [Algebra.IsIntegral R S] [Finite (ResidueField (w.adicCompletionIntegers L))] in
+/-- **The exact norm-group range: `N_{L/K}(L_w^×) = ⟨N(π_L)⟩ · N_{L/K}(U_L)`.** Unlike
+`localNormMap_range_ge_of_isTotallyRamified`, this is an *equality*, and it needs neither
+`IsTamelyRamified` nor any classification of `N_{L/K}(U_L)` as a residue condition: the reverse
+inclusion is a direct consequence of `exists_zpow_mul_unit_eq_of_irreducible` (every unit of `L_w`
+is `π_L^k` times a unit of `L₀`) pushed through `localNormMap`'s multiplicativity, exactly
+mirroring `Langlands.UnramifiedNormRange`'s `localNormMap_range_le`/`localNormMap_range_eq` but
+with `π_L` in place of the (here, generally non-irreducible) image of a `K₀`-uniformizer.
+
+`N_{L/K}(U_L)` itself is *not* replaced by `U_K^{(1)}` here — see the module docstring on why that
+would be false in general once `gcd(e, #𝓀[K]ˣ) > 1`, which `IsTamelyRamified` (`p ∤ e`) does not
+rule out. -/
+theorem localNormMap_range_eq_of_isTotallyRamified (h : IsTotallyRamified K L v w)
+    {πL : w.adicCompletionIntegers L} (hπL : Irreducible πL) :
+    MonoidHom.range (localNormMap K L v w) =
+      Subgroup.zpowers
+          (uniformizerUnit K v (irreducible_norm_of_isTotallyRamified K L v w h hπL)) ⊔
+        (w.adicCompletionIntegers L).units.map (localNormMap K L v w) := by
+  apply le_antisymm
+  · rintro _ ⟨a, rfl⟩
+    obtain ⟨k, u, hku⟩ := exists_zpow_mul_unit_eq_of_irreducible L w hπL a
+    set embed : (w.adicCompletionIntegers L)ˣ →* (w.adicCompletion L)ˣ :=
+      Units.map (algebraMap (w.adicCompletionIntegers L) (w.adicCompletion L)) with hembeddef
+    have ha : a = (coe_ne_zero_of_irreducible L w hπL).isUnit.unit ^ k * embed u := by
+      apply Units.ext
+      push_cast
+      rw [(coe_ne_zero_of_irreducible L w hπL).isUnit.unit_spec]
+      exact hku
+    have hu_mem : embed u ∈ (w.adicCompletionIntegers L).units :=
+      Submonoid.mem_units_of_val_mem_inv_val_mem _ (u : w.adicCompletionIntegers L).2
+        ((u⁻¹ : (w.adicCompletionIntegers L)ˣ) : w.adicCompletionIntegers L).2
+    rw [ha, map_mul, map_zpow, localNormMap_irreducibleUnit_eq K L v w h hπL]
+    exact Subgroup.mem_sup.mpr ⟨_, Subgroup.zpow_mem _ (Subgroup.mem_zpowers _) k, _,
+      Subgroup.mem_map.mpr ⟨embed u, hu_mem, rfl⟩, rfl⟩
+  · apply sup_le
+    · rw [Subgroup.zpowers_le]
+      exact uniformizerUnit_norm_mem_range K L v w h hπL
+    · rintro _ ⟨y, -, rfl⟩
+      exact ⟨y, rfl⟩
 
 /-! ### The principal units of `K₀` as a subgroup of `(v.adicCompletion K)ˣ` -/
 
