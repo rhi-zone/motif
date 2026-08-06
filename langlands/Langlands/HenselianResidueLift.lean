@@ -50,6 +50,25 @@ noncomputable section
 
 open Polynomial IsLocalRing
 
+/-! ### Evaluating a base polynomial in the residue field -/
+
+/-- With compatible residue maps (`hsq`), evaluating the image in `R[X]` of a base polynomial at a
+point of `ResidueField R` is the same as evaluating its image in `(ResidueField R₀)[X]`: the two
+routes `R₀ → R → ResidueField R` and `R₀ → ResidueField R₀ → ResidueField R` agree. -/
+theorem IsLocalRing.aeval_map_residue_eq {R₀ R : Type*} [CommRing R₀] [IsLocalRing R₀] [CommRing R]
+    [IsLocalRing R] [Algebra R₀ R] [Algebra (ResidueField R₀) (ResidueField R)]
+    (hsq : ∀ a : R₀, algebraMap (ResidueField R₀) (ResidueField R) (residue R₀ a)
+      = residue R (algebraMap R₀ R a))
+    (p : R₀[X]) (b : ResidueField R) :
+    aeval b (p.map (algebraMap R₀ R)) = aeval b (p.map (algebraMap R₀ (ResidueField R₀))) := by
+  have hcomp : (algebraMap (ResidueField R₀) (ResidueField R)).comp
+      (algebraMap R₀ (ResidueField R₀)) =
+      (algebraMap R (ResidueField R)).comp (algebraMap R₀ R) := by
+    refine RingHom.ext fun a => ?_
+    simpa only [RingHom.coe_comp, Function.comp_apply, ResidueField.algebraMap_eq] using hsq a
+  rw [aeval_def, aeval_def, ← Polynomial.eval_map, ← Polynomial.eval_map, Polynomial.map_map,
+    Polynomial.map_map, hcomp]
+
 namespace HenselianLocalRing
 
 /-! ### The lift -/
@@ -81,17 +100,9 @@ theorem exists_isRoot_residue_eq
       ∃ x : R, aeval x f = 0 ∧ residue R x = β₀ ∧ IsUnit (aeval x (derivative f)) := by
   obtain ⟨f, hfmonic, -, hfmap⟩ := HenselianLocalRing.exists_monic_lift_minpoly hβ₀
   refine ⟨f, hfmonic, hfmap, ?_⟩
-  -- The two routes `R₀ → R → ResidueField R` and `R₀ → ResidueField R₀ → ResidueField R` agree.
-  have hcomp : (algebraMap (ResidueField R₀) (ResidueField R)).comp
-      (algebraMap R₀ (ResidueField R₀)) =
-      (algebraMap R (ResidueField R)).comp (algebraMap R₀ R) := by
-    refine RingHom.ext fun a => ?_
-    simpa only [RingHom.coe_comp, Function.comp_apply, ResidueField.algebraMap_eq] using hsq a
-  -- Hence evaluating at `β₀` may be done on either side.
   have key : ∀ p : R₀[X], aeval β₀ (p.map (algebraMap R₀ R))
-      = aeval β₀ (p.map (algebraMap R₀ (ResidueField R₀))) := fun p => by
-    rw [aeval_def, aeval_def, ← Polynomial.eval_map, ← Polynomial.eval_map, Polynomial.map_map,
-      Polynomial.map_map, hcomp]
+      = aeval β₀ (p.map (algebraMap R₀ (ResidueField R₀))) := fun p =>
+    IsLocalRing.aeval_map_residue_eq hsq p β₀
   set g : R[X] := f.map (algebraMap R₀ R) with hg
   have hgmonic : g.Monic := hfmonic.map _
   have h1 : aeval β₀ g = 0 := by rw [hg, key f, hfmap]; exact minpoly.aeval _ _
@@ -119,13 +130,15 @@ element `β₀` over `ResidueField R₀` (`Field.exists_primitive_element_of_fin
 and separability of whose minimal polynomial are automatic — `ResidueField R₀` is finite, hence
 perfect (`PerfectField.ofFinite`), so every irreducible polynomial over it is separable.
 
-The generation statement is recorded as `IntermediateField.adjoin (ResidueField R₀) {β₀} = ⊤`; it
-is what makes the subring `R₀[x] ⊆ R` surject onto `ResidueField R`, the input to the Nakayama
-argument in `Langlands.RamificationFiltrationAdicCompletion`. -/
+The generation statement is recorded in `Subalgebra` form, `Algebra.adjoin (ResidueField R₀) {β₀} =
+⊤` (`IntermediateField.adjoin_simple_toSubalgebra_of_isAlgebraic` converts), because that is the form
+in which it makes the subring `R₀[x] ⊆ R` surject onto `ResidueField R` — the input to the Nakayama
+argument of `Langlands.TwoGeneratorMonogenic`. -/
 theorem exists_isRoot_residue_eq_of_finite [Finite (ResidueField R)]
     (hsq : ∀ a : R₀, algebraMap (ResidueField R₀) (ResidueField R) (residue R₀ a)
       = residue R (algebraMap R₀ R a)) :
-    ∃ (β₀ : ResidueField R), IntermediateField.adjoin (ResidueField R₀) {β₀} = ⊤ ∧
+    ∃ (β₀ : ResidueField R),
+      Algebra.adjoin (ResidueField R₀) ({β₀} : Set (ResidueField R)) = ⊤ ∧
       ∃ f : R₀[X], f.Monic ∧
         f.map (algebraMap R₀ (ResidueField R₀)) = minpoly (ResidueField R₀) β₀ ∧
         ∃ x : R, aeval x f = 0 ∧ residue R x = β₀ ∧ IsUnit (aeval x (derivative f)) := by
@@ -139,7 +152,10 @@ theorem exists_isRoot_residue_eq_of_finite [Finite (ResidueField R)]
   have hβ₀ : IsIntegral (ResidueField R₀) β₀ := Algebra.IsIntegral.isIntegral β₀
   have hsep : (minpoly (ResidueField R₀) β₀).Separable :=
     PerfectField.separable_of_irreducible (minpoly.irreducible hβ₀)
-  exact ⟨β₀, hβ₀top, exists_isRoot_residue_eq hsq hβ₀ hsep⟩
+  have hadj : Algebra.adjoin (ResidueField R₀) ({β₀} : Set (ResidueField R)) = ⊤ := by
+    rw [← IntermediateField.adjoin_simple_toSubalgebra_of_isAlgebraic hβ₀.isAlgebraic, hβ₀top,
+      IntermediateField.top_toSubalgebra]
+  exact ⟨β₀, hadj, exists_isRoot_residue_eq hsq hβ₀ hsep⟩
 
 end HenselianLocalRing
 

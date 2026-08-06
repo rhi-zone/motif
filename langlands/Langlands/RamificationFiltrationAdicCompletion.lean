@@ -1,7 +1,9 @@
 import Langlands.RamificationFiltration
 import Langlands.AdicCompletionIntegralClosure
+import Langlands.HenselianResidueLift
 import Langlands.NormMap
 import Langlands.TowerBundle
+import Langlands.TwoGeneratorMonogenic
 
 /-!
 # Ramification filtration for adic completions
@@ -27,13 +29,21 @@ already in scope via `Langlands.AdicCompletionIntegralClosure`).
   of `w.adicCompletionIntegers L` in `(w.adicCompletion L) ≃ₐ[v.adicCompletion K] (w.adicCompletion L)`
   is everything — no Galois/normality hypothesis on `w.adicCompletion L / v.adicCompletion K`
   is needed, only completeness of the base field `v.adicCompletion K`. See its docstring.
+* `IsDedekindDomain.HeightOneSpectrum.henselianLocalRing_adicCompletionIntegers` :
+  `w.adicCompletionIntegers L` is a Henselian local ring.
+* `IsDedekindDomain.HeightOneSpectrum.exists_adjoin_pair_eq_top` : `𝒪_L = 𝒪_K[x, π]` for `π` a
+  given uniformizer and `x` a Hensel-lifted simple root.
+* `IsDedekindDomain.HeightOneSpectrum.mem_ramificationGroup_succ_iff` : Serre's uniformizer
+  criterion, `σ ∈ G_{i+1} ↔ σ • π - π ∈ 𝔪 ^ (i + 2)` for `σ` in the inertia group.
 
 ## Scope
 
-The associated-graded embeddings for `Langlands.RamificationFiltration`'s filtration
-(`ramificationGroup i / ramificationGroup (i+1) ↪ residue-field data`) are not attempted here or in
-the general file: see `Langlands.RamificationFiltration`'s docstring for the precise blocker
-(monogenicity of the ring of integers over the inertia-fixed subfield, absent from Mathlib).
+`mem_ramificationGroup_succ_iff` is the kernel computation that
+`Langlands.RamificationFiltration`'s "Scope" docstring records as the blocker for the
+associated-graded embeddings. The embeddings themselves — the maps `G_0 →* 𝓀[L]ˣ` and
+`G_i / G_{i+1} →+ 𝓀[L]` and their injectivity, and the resulting "the filtration is eventually
+trivial" statement — are still not constructed, here or in the general file. What is closed is the
+step those constructions were blocked on, not the constructions.
 -/
 
 noncomputable section
@@ -122,6 +132,144 @@ theorem henselianLocalRing_adicCompletionIntegers (K : Type*) [Field K] [Algebra
     (w.adicCompletionIntegers L) hbase
   exact LocalField.henselianLocalRing_of_comap_eq (v.adicCompletion K)
     (w.adicCompletionIntegers L) hbase hR ‹_›
+
+/-! ### `𝒪_L = 𝒪_K[x, π]`, and the kernel of the associated-graded map
+
+This is what `Langlands.RamificationFiltration`'s "Scope" docstring has recorded as blocked since
+`ROADMAP.md`'s Phase 2b twelfth pass. The route below is *not* the classical one: no maximal
+unramified subextension `L_0` is constructed as a subfield, no Eisenstein polynomial appears, and
+`𝒪_L` is not shown to be monogenic over anything. Instead
+
+1. `HenselianLocalRing.exists_isRoot_residue_eq_of_finite` (`Langlands.HenselianResidueLift`)
+   lifts a primitive element `β₀` of the residue extension to a *simple* root `x` of a monic
+   polynomial `f` over `𝒪_K`, inside `𝒪_L` itself — Hensel's lemma applied to
+   `henselianLocalRing_adicCompletionIntegers` above, with no auxiliary algebraically closed field;
+2. `LocalField.adjoin_pair_eq_top` (`Langlands.TwoGeneratorMonogenic`) shows the *pair* `{x, π}`
+   generates `𝒪_L` over `𝒪_K`, by Nakayama;
+3. `ValuationSubring.smul_eq_of_isRoot_of_mem_ramificationGroup_zero` shows any `σ ∈ G_0` fixes `x`
+   exactly (simple roots are rigid), and
+   `ValuationSubring.mem_ramificationGroup_succ_of_adjoin` then propagates the condition at `π`
+   to all of `𝒪_L`.
+-/
+
+section KernelDirection
+
+variable [Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)]
+  [Finite (IsLocalRing.ResidueField (w.adicCompletionIntegers L))]
+
+omit [Algebra.IsIntegral R S] in
+/-- **`𝒪_L` is generated over `𝒪_K` by a uniformizer together with a simple root.**
+
+For `π` a uniformizer of `w.adicCompletionIntegers L`, there are a monic `f` over
+`v.adicCompletionIntegers K` and a root `x` of `f` in `w.adicCompletionIntegers L`, simple
+(`IsUnit (aeval x f.derivative)`), with `𝒪_K[x, π] = 𝒪_L`.
+
+`x` is the Hensel lift of a primitive element of the residue extension, produced inside
+`w.adicCompletionIntegers L` itself by `HenselianLocalRing.exists_isRoot_residue_eq_of_finite`
+(the `HenselianLocalRing` instance is `henselianLocalRing_adicCompletionIntegers`, the residue-map
+compatibility is `algebraMap_residueField_residue`). That `𝒪_K[x]` surjects onto the residue field
+is exactly the primitive-element statement transported along `residue x = β₀`, and
+`LocalField.adjoin_pair_eq_top` then gives generation by Nakayama. -/
+theorem exists_adjoin_pair_eq_top {π : w.adicCompletionIntegers L}
+    (hπ : IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) = Ideal.span {π}) :
+    ∃ (f : Polynomial (v.adicCompletionIntegers K)) (x : w.adicCompletionIntegers L),
+      Polynomial.aeval x f = 0 ∧ IsUnit (Polynomial.aeval x f.derivative) ∧
+        Algebra.adjoin (v.adicCompletionIntegers K)
+          ({x, π} : Set (w.adicCompletionIntegers L)) = ⊤ := by
+  haveI : HenselianLocalRing (w.adicCompletionIntegers L) :=
+    henselianLocalRing_adicCompletionIntegers L w K v
+  obtain ⟨β₀, hβ₀top, f, -, -, x, hxroot, hxres, hxunit⟩ :=
+    HenselianLocalRing.exists_isRoot_residue_eq_of_finite
+      (R₀ := v.adicCompletionIntegers K) (R := w.adicCompletionIntegers L)
+      (algebraMap_residueField_residue K L v w)
+  refine ⟨f, x, hxroot, hxunit, ?_⟩
+  have hinj : Function.Injective
+      (algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L)) := by
+    intro a b hab
+    have h : ((algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) a :
+          w.adicCompletionIntegers L) : w.adicCompletion L)
+        = ((algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) b :
+          w.adicCompletionIntegers L) : w.adicCompletion L) := congrArg _ hab
+    rw [coe_algebraMap_adicCompletionIntegers, coe_algebraMap_adicCompletionIntegers] at h
+    exact Subtype.ext ((adicCompletionComap K L v w).injective h)
+  refine LocalField.adjoin_pair_eq_top hinj hπ ?_
+  intro z
+  have hz : IsLocalRing.residue (w.adicCompletionIntegers L) z ∈
+      Algebra.adjoin (IsLocalRing.ResidueField (v.adicCompletionIntegers K))
+        ({β₀} : Set (IsLocalRing.ResidueField (w.adicCompletionIntegers L))) := by
+    rw [hβ₀top]; trivial
+  rw [Algebra.adjoin_singleton_eq_range_aeval] at hz
+  obtain ⟨p, hp⟩ := hz
+  obtain ⟨q, rfl⟩ := Polynomial.map_surjective
+    (algebraMap (v.adicCompletionIntegers K)
+      (IsLocalRing.ResidueField (v.adicCompletionIntegers K)))
+    (by
+      rw [IsLocalRing.ResidueField.algebraMap_eq]
+      exact IsLocalRing.residue_surjective) p
+  have hkey : IsLocalRing.residue (w.adicCompletionIntegers L) (Polynomial.aeval x q)
+      = IsLocalRing.residue (w.adicCompletionIntegers L) z := by
+    have h1 : Polynomial.aeval x q
+        = (q.map (algebraMap (v.adicCompletionIntegers K)
+            (w.adicCompletionIntegers L))).eval x := by
+      rw [Polynomial.aeval_def, ← Polynomial.eval_map]
+    rw [h1, IsLocalRing.residue_eval, hxres,
+      IsLocalRing.aeval_map_residue_eq (algebraMap_residueField_residue K L v w) q β₀]
+    exact hp
+  refine ⟨Polynomial.aeval x q, ?_, ?_⟩
+  · rw [Algebra.adjoin_singleton_eq_range_aeval]; exact ⟨q, rfl⟩
+  · rw [← IsLocalRing.residue_eq_zero_iff, map_sub, hkey, sub_self]
+
+omit [Algebra.IsIntegral R S] in
+/-- **The kernel of the associated-graded map, in the adic-completion setting.**
+
+For `π` a uniformizer of `w.adicCompletionIntegers L` and `σ` in the inertia group
+(`ramificationGroup K L v w 0`), the single condition `σ • π - π ∈ 𝔪 ^ (i + 2)` — which is what
+the associated-graded map `G_i / G_{i+1} → 𝓀[L]` measures — already forces `σ ∈ G_{i+1}`, i.e.
+`σ • y - y ∈ 𝔪 ^ (i + 2)` for *every* `y : 𝒪_L`.
+
+Together with the reverse inclusion (immediate: test the defining property of `G_{i+1}` at `y =
+π`), this is the equivalence between Serre's `i_G(σ) = v_L(σ(π_L) - π_L)`-based definition of the
+filtration and the "acts trivially on `𝒪_L / 𝔪^{i+1}`" definition used by
+`ValuationSubring.ramificationGroup`, in the concrete setting of this file. -/
+theorem mem_ramificationGroup_succ_of_smul_sub_mem (i : ℕ) {π : w.adicCompletionIntegers L}
+    (hπ : IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) = Ideal.span {π})
+    {σ : (w.adicCompletionIntegers L).decompositionSubgroup (v.adicCompletion K)}
+    (hσ : σ ∈ ramificationGroup K L v w 0)
+    (hπσ : σ • π - π ∈ IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) ^ (i + 2)) :
+    σ ∈ ramificationGroup K L v w (i + 1) := by
+  obtain ⟨f, x, hxroot, hxunit, hgen⟩ := exists_adjoin_pair_eq_top K L v w hπ
+  have hfix : ∀ r : v.adicCompletionIntegers K,
+      σ • (algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) r)
+        = algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) r := by
+    intro r
+    refine Subtype.ext ?_
+    show (σ : w.adicCompletion L ≃ₐ[v.adicCompletion K] w.adicCompletion L)
+        ((algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) r :
+          w.adicCompletionIntegers L) : w.adicCompletion L) = _
+    rw [coe_algebraMap_adicCompletionIntegers]
+    exact (σ : w.adicCompletion L ≃ₐ[v.adicCompletion K] w.adicCompletion L).commutes _
+  have hx : σ • x = x :=
+    ValuationSubring.smul_eq_of_isRoot_of_mem_ramificationGroup_zero hxroot hxunit hσ hfix
+  exact ValuationSubring.mem_ramificationGroup_succ_of_adjoin i hgen hfix hx hπσ
+
+omit [Algebra.IsIntegral R S] in
+/-- **Serre's uniformizer criterion for the ramification filtration.** For `σ` in the inertia group
+and `π` a uniformizer, `σ ∈ G_{i+1}` iff `σ • π - π ∈ 𝔪 ^ (i + 2)`.
+
+The `→` direction is the defining property of `G_{i+1}` tested at the single point `π`; the `←`
+direction is `mem_ramificationGroup_succ_of_smul_sub_mem`. This is the identification of Serre's
+`i_G`-based definition of the filtration (*Local Fields*, Ch. IV) with the "acts trivially on
+`𝒪_L / 𝔪 ^ (i + 1)`" definition of `ValuationSubring.ramificationGroup`, and hence the statement
+that `G_{i+1}` is exactly the kernel of the associated-graded map on `G_i`. -/
+theorem mem_ramificationGroup_succ_iff (i : ℕ) {π : w.adicCompletionIntegers L}
+    (hπ : IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) = Ideal.span {π})
+    {σ : (w.adicCompletionIntegers L).decompositionSubgroup (v.adicCompletion K)}
+    (hσ : σ ∈ ramificationGroup K L v w 0) :
+    σ ∈ ramificationGroup K L v w (i + 1) ↔
+      σ • π - π ∈ IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) ^ (i + 2) :=
+  ⟨fun h => h π, mem_ramificationGroup_succ_of_smul_sub_mem K L v w i hπ hσ⟩
+
+end KernelDirection
 
 end IsDedekindDomain.HeightOneSpectrum
 
