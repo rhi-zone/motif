@@ -2437,6 +2437,116 @@ mathematical gap. Nothing forced; the one scratch file used to verify all of thi
   group can diverge from a cyclic group of the same rank — this is the actual remaining
   mathematical content, not a lookup.
 
+#### Status 2026-08-06 (twenty-second pass) — the `IsDiscreteValuationRing` gap is CLOSED; the
+totally-ramified half of monogenicity now applies over an intermediate extension. Two commits,
+zero `sorry`. The remaining obstacle to full tower monogenicity is the "two generators into one"
+step, which is a distinct classical argument, not a leftover of the instance plumbing.
+
+- **`hDVR` closed** — commit `59f53e9`, new file `langlands/Langlands/ValueGroupCyclic.lean`:
+  ```
+  theorem ValuationSubring.isCyclic_valueGroup_units_of_comap_eq [FiniteDimensional K L]
+      {𝒪 : ValuationSubring K} [IsDiscreteValuationRing 𝒪]
+      (A : ValuationSubring L) (hA : A.comap (algebraMap K L) = 𝒪) :
+      IsCyclic (A.ValueGroup)ˣ
+
+  theorem ValuationSubring.isDiscreteValuationRing_of_comap_eq [FiniteDimensional K L]
+      {𝒪 : ValuationSubring K} [IsDiscreteValuationRing 𝒪]
+      (A : ValuationSubring L) (hA : A.comap (algebraMap K L) = 𝒪) :
+      IsDiscreteValuationRing A
+  ```
+  **Substantially more general than the twenty-first pass scoped it.** That pass framed the
+  question as "is `A_M.ValueGroup` cyclic and nontrivial" for one specific `A_M` built from
+  `valuationSubringExtension K`; the statement that actually closes needs **no** `A_M`, no
+  completeness, no henselianity, no separability and no normed/`ValuativeRel` bundle — only
+  `[Field K] [Field L] [Algebra K L] [FiniteDimensional K L]`, `IsDiscreteValuationRing 𝒪`, and
+  `hA`. This makes it a self-contained Mathlib-upstreamable lemma rather than a step of this
+  repo's tower argument (recorded as upstreaming candidate (7) in the repo-root `TODO.md`).
+- **The proof route the twenty-first pass suggested (a bounded-index argument via
+  `Valuation.exists_pow_eq_of_isAlgebraic`) is the one that works, but the group theory is
+  simpler than "index in the divisible hull" suggests and needs no order structure at all.**
+  With `ϖ` a uniformizer of `𝒪`, `γ := A.valuation (algebraMap K L ϖ)` and `d := [L : K]`:
+  1. Every value of a nonzero `c : K` is an integer power of `γ`. Case split on
+     `ValuationSubring.mem_or_inv_mem`; on `𝒪` itself,
+     `IsDiscreteValuationRing.eq_unit_mul_pow_irreducible` writes `c = u * ϖ ^ n`, and units of
+     `𝒪` have value `1` (from `ValuationSubring.valuation_le_one_iff` applied to both `u` and its
+     inverse, plus `v u * v u⁻¹ = 1`).
+  2. `A.valuation` is *surjective* (`ValuationSubring.valuation_surjective`, `Quot.mk_surjective`),
+     so every `u : (A.ValueGroup)ˣ` is `A.valuation x` for some `x : L`; the twenty-first pass's
+     framing in terms of `MonoidWithZeroHom.valueGroup` was an unnecessary detour.
+     `Valuation.exists_pow_eq_of_isAlgebraic` (already in `HenselianValuation.lean`) then gives
+     `1 ≤ m ≤ (minpoly K x).natDegree` with `(A.valuation x) ^ m` a `K`-value, and
+     `minpoly.natDegree_le` + `Nat.dvd_factorial` make the exponent uniform: `m ∣ d !`, hence
+     `u ^ d ! ∈ Subgroup.zpowers (Units.mk0 γ _)` for **every** `u`.
+  3. `A.ValueGroup` is a `LinearOrderedCommGroupWithZero`, hence `IsMulTorsionFree`
+     (`LinearOrderedCommMonoidWithZero.toIsMulTorsionFree`), so `u ↦ u ^ d !` is injective; an
+     injective hom into a cyclic group has cyclic domain (`isCyclic_of_injective`,
+     `Subgroup.isCyclic_zpowers`). No divisible hull, no ordered-group index argument.
+  4. Nontriviality of `MonoidWithZeroHom.valueGroup (.ofClass A.valuation)`: `γ ≠ 1`, since
+     `γ = 1` would put `(ϖ : K)⁻¹` in `𝒪` and make `ϖ` a unit. Then
+     `Valuation.valuationSubring_isDiscreteValuationRing` plus
+     `ValuationSubring.valuationSubring_valuation` (`A.valuation.valuationSubring = A`) concludes.
+- **Twenty-first pass claims 1–4 and `hvalM`: reproduced, with one correction.** All were
+  re-verified by a fresh build (scratch file, deleted; the surviving permanent forms are in
+  `Langlands/TowerBundle.lean`), not taken on trust:
+  - Claims 1–3 (`hA_M_comap`, `hCompleteM` via `exists_completeSpace_of_finiteDimensional`, the
+    `Valued.mk'`/`Valued.toNontriviallyNormedField`/`IsUltrametricDist` bundle) hold exactly as
+    stated, zero new content.
+  - `hvalM` holds, and the sketched route is right in outline but the stated ingredients are
+    incomplete: chaining `Valuation.Compatible.vle_iff_le` **twice** (once for
+    `ValuativeRel.valuation M`, once for `NormedField.valuation`) is what reduces the goal to a
+    norm inequality, and `NormedField.valuation_apply` (`valuation x = ‖x‖₊`) is needed to cross
+    from `ℝ≥0` to `ℝ` before `Valued.toNormedField.norm_le_one_iff` and
+    `ValuationSubring.valuation_le_one_iff` apply. No `ValuativeRel.isEquiv` needed, as predicted.
+  - **Claim 4 is corrected, in the direction of being easier.** The `hnorm` /
+    `NormedField.valuation_compatible_of_eq_rankOne_hom_comp_restrict` /
+    `Valued.coe_valuation_eq_rankOne_hom_comp_valuation` argument the twenty-first pass said
+    "closes verbatim" is not needed and does **not** apply as written: that theorem requires
+    `[v.Compatible]` for `v := Valued.v (R := M)`, which is not available on `M` (on `K` it came
+    from the ambient `IsNonarchimedeanLocalField` setup). Mathlib's
+    `Valuation.Compatible.ofValuation` gives `(NormedField.valuation (K := M)).Compatible`
+    *definitionally* from `ValuativeRel.ofValuation`, in one line.
+- **Landed the composition** — commit `a0222c0`, new file `langlands/Langlands/TowerBundle.lean`,
+  three theorems, all in `letI`-in-the-statement form (the idiom Mathlib's own
+  `Valuation.Compatible.ofValuation` uses), because the bundle is constructed rather than canonical
+  on a bare `Field M` and the conclusions mention it:
+  1. `LocalField.valuationSubring_valuation_ofValuation_eq` — the `ValuativeRel`-canonical
+     valuation subring of the bundle attached to `A` is `A`. Needs only
+     `[Valuation.RankOne A.valuation]`; no base field appears.
+  2. `LocalField.isDiscreteValuationRing_valuation_valuationSubring_of_finiteDimensional` — that
+     subring is a DVR. Notably `[CompleteSpace K]`, `[IsUltrametricDist K]` and `K`'s `Compatible`
+     instance are all `omit`ted: the DVR fact needs none of them (they remain necessary for the
+     *caller*, to build the other five bundle instances).
+  3. `LocalField.adjoin_eq_integralClosure_of_isUniformizer_of_valuationSubring` — the seventeenth
+     pass's `adjoin_eq_integralClosure_of_isUniformizer` with base field `M` in place of `K`,
+     i.e. `𝒪_N = 𝒪_M[π]` for `N / M` finite separable and `π` a uniformizer generating `N`. This
+     is a real proof term, not a shape check.
+  The seventeenth pass's worry that "the two halves are proved in visibly different settings ...
+  reconciling those two settings is real, unscoped work" is now resolved on the side that was
+  actually blocking: the totally-ramified half no longer demands that its base field arrive with a
+  norm, and accepts a bare `IntermediateField` plus a valuation subring over `𝒪[K]`.
+- **What remains open for full tower monogenicity, precisely.**
+  1. **"Two generators into one" — the genuine remainder.** `𝒪_N = 𝒪_M[π]` and (from
+     `UnramifiedExtension.lean:715`) `𝒪_M = 𝒪_K[x]` give `𝒪_N = 𝒪_K[x, π]`, not `𝒪_K[a]` for a
+     single `a`. Serre's argument (*Local Fields* III §6 Prop. 12) takes `a := x + π` for `x` a
+     lift of a residue-field generator and argues via residues plus the uniformizer property. This
+     was flagged as unscoped by the seventeenth and eighteenth passes and remains so — it is a
+     distinct classical argument, not instance plumbing, and no attempt was made this pass. It was
+     **not** checked whether Mathlib has anything usable here (e.g. around `PowerBasis`,
+     `Algebra.adjoin` of two elements, or `IsLocalRing.ResidueField` generators); that check is the
+     natural first step for whoever picks this up.
+  2. **`hram` is still extrinsic.** Theorem 3 above states the ramification hypothesis as
+     `‖(ϖ : M)‖ = spectralNorm M N π ^ (minpoly M π).natDegree`, i.e. in terms of the *constructed*
+     norm on `M`, not in terms of `A.valuation`. A caller who knows `π` is a uniformizer of a
+     valuation subring `A_N` of `N` over `A` has to bridge from `A_N.valuation` to `spectralNorm`
+     to use it. This is the same "phrasing `hram` in terms of `A`'s own valuation" item the
+     seventeenth pass listed as blocking the `RamificationFiltration.lean` wiring; it is
+     unattempted and unchecked for obstructions.
+  3. `RamificationFiltration.lean`'s associated-graded-embedding kernel argument (blocked since the
+     twelfth pass) still needs both of the above.
+- **Build state at end of pass:** `lake build Langlands` clean, 8678 jobs (up from 8676 —
+  two new modules); `grep -rn sorry langlands/Langlands/` matches only prose occurrences in
+  `RamificationFiltration.lean:89` and `TotallyRamifiedEisenstein.lean:19`, no `sorry` term.
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
