@@ -2230,6 +2230,105 @@ that avoids stalling on (a).
 > index correspondence `i_L = e · i_K`) — genuinely new mathematical content for this thread, but
 > not yet Lean code. The gap list above is the precise scope for whoever continues this.
 
+> **Update (2026-08-07, fortieth pass) — TAME TOTALLY RAMIFIED NORM-SURJECTIVITY ON THE PRINCIPAL
+> UNITS IS CLOSED: `N_{L/K}(U_L) ⊇ U_K^{(1)}`, sorry-free. Gaps 1, 2, 4, 5 of the thirty-ninth
+> pass closed; gap 3 (the Eisenstein threading) *avoided*, not closed.**
+>
+> **The target statement in the thirty-ninth pass's brief was wrong, and this is a mathematical
+> correction, not a scoping decision.** `N_{L/K}(U_L) = U_K` is **false** for a totally ramified
+> extension of degree `e > 1`. The level-`0` induced map is `ū ↦ ū ^ e` on `𝓀[K]ˣ = 𝓀[L]ˣ` (the
+> residue extension being trivial), whose image is the subgroup of `e`-th powers — proper as soon
+> as `e > 1` divides `#𝓀[K]ˣ`. This is exactly why `K^× / N_{L/K}(L^×)` is nontrivial of order `e`
+> in local CFT, so a proof of `N(U_L) = U_K` would have contradicted the theorem the whole phase is
+> aiming at. The correct target, and what is proved, is `N_{L/K}(U_L) ⊇ U_K^{(1)} = 1 + 𝔪_K`. The
+> level-`0` computation itself is *not* formalized — it appears only as prose in
+> `TotallyRamifiedNormSurjective.lean`'s module docstring, explaining the shape of the theorem.
+>
+> **What got built (four commits, `lake build Langlands` green at 8696 jobs, `grep -rn sorry
+> langlands/Langlands/` unchanged — the one prose-only hit at `TotallyRamifiedEisenstein.lean:19`).**
+>
+> 1. **`Langlands/TotallyRamifiedValuationExtension.lean`** (commit `5e3c37a`) — closes gap 1.
+>    `IsDedekindDomain.HeightOneSpectrum.IsTotallyRamified`, a three-field `Prop`-structure:
+>    `map_maximalIdeal_eq` (`𝔪_K·O_L = 𝔪_L^e`, with `e := v.asIdeal.ramificationIdx' w.asIdeal`,
+>    the `e` `NormMap.adicCompletionIntegers_comap_eq` already computes), `finrank_eq`
+>    (`[L₀:K₀] = e`), and `exists_sub_algebraMap_mem_maximalIdeal` (residue extension trivial, in
+>    the elementary form "every `y : L₀` is `≡ r (mod 𝔪_L)` for some `r : K₀`"). The third is
+>    classically implied by the first two via `e·f = n`, which is not available in this repo for
+>    `K₀ → L₀`; recorded as a field with the derivation documented rather than weakening the
+>    predicate. Plus `IsTotallyRamified.pow_finrank_le` (the `≤` form actually consumed) and
+>    `isUnramified_of_isTotallyRamified_of_finrank_eq_one` (agreement with `IsUnramified` at
+>    `e = 1`).
+> 2. **`Langlands/TotallyRamifiedTrace.lean`** (commit `52663c6`) — closes gap 4, **avoids gap 3.**
+>    `IsLocalRing.residue_trace_eq_finrank_nsmul_residue`: `residue (Tr_{S/R} x) = finrank R S •
+>    residue r` whenever `x ≡ algebraMap r (mod 𝔪_S)` and `𝔪_S ^ finrank R S ≤ 𝔪_R·S`. General; no
+>    valuation or adic content. Plus its `IsTotallyRamified` specialization and
+>    `exists_norm_one_add_uniformizer_pow_smul_eq_finrank_nsmul`, the graded-piece formula
+>    `N(1 + π^{n+1}•x) = 1 + π^{n+1}·y` with `ȳ = [L₀:K₀]·r̄` — the exact analogue of
+>    `NormTraceLinearization.exists_norm_one_add_uniformizer_pow_smul_eq_trace_add`, with the
+>    residue-field trace replaced by multiplication by the degree. `Algebra.exists_norm_one_add_
+>    smul_eq` was reused verbatim, exactly as the thirty-ninth pass predicted.
+>
+>    **Neither proposed route was used, and no Eisenstein presentation was needed.** Both the
+>    Newton's-identities and the reduced-companion-matrix routes compute `Tr(π_L^k)` for each `k`
+>    individually, which is *why* they want the power basis `1, …, π_L^{e-1}`, i.e. monogenicity —
+>    and hence why gap 3 (threading `TotallyRamifiedEisenstein.lean`'s abstract `ValuativeRel`/
+>    `spectralNorm` bundle into the `HeightOneSpectrum` setting, flagged as the riskiest unknown)
+>    looked load-bearing. It is not. Working in `A := L₀ ⧸ 𝔪_K·L₀` directly: *every* element of
+>    `𝔪_L` reduces to a nilpotent of `A` at once (from `pow_finrank_le`), so multiplication by it
+>    is a nilpotent `κ`-endomorphism and has trace `0` (`LinearMap.isNilpotent_trace_of_isNilpotent`
+>    + `IsNilpotent.eq_zero`, `κ` a field hence reduced); the `κ`-part contributes `finrank κ A • r̄`
+>    by `Algebra.trace_algebraMap`, identified with `[L₀:K₀]` by Mathlib's
+>    `IsLocalRing.finrank_quotient_map`. Basis-free — no power basis, no companion matrix, no
+>    generator of `A` over `κ` is ever constructed. **Gap 3 remains open as stated; it is simply not
+>    a prerequisite for this result.** What it would still buy, and this route does not give: the
+>    individual values `Tr(π_L^k) ∈ 𝔪_K` for `1 ≤ k ≤ e-1`, and the graded structure
+>    `A ≅ κ[T]/(T^e)`.
+> 3. **`Langlands/PrincipalUnitsSuccessiveApproximation.lean`** (commit `4b49761`) — a refactor, not
+>    new mathematics. `UnramifiedNormSurjective.lean`'s recursion (`approxData`), Cauchy-sequence
+>    bound and limit argument never used `IsUnramified` except through two inputs; they were
+>    extracted verbatim into a ramification-free file taking those as hypotheses
+>    (`OneStepCorrection` and a level-`0` base case), rather than duplicated ~200 lines for the
+>    tame case. `UnramifiedNormSurjective.exists_isUnit_algebraMap_norm_eq_of_isUnramified` keeps
+>    its statement and now derives from the generic theorem; `UnramifiedNormRange.lean`, its only
+>    consumer, builds unchanged.
+> 4. **`Langlands/TotallyRamifiedNormSurjective.lean`** (commit `9f6e3df`) — closes gaps 2 and 5.
+>    `IsTamelyRamified` (gap 2), defined as `IsUnit (([L₀:K₀] : ℕ) : ResidueField K₀)` — the task
+>    brief's proposed shape, now checked and used. Tameness enters in exactly one lemma,
+>    `exists_finrank_nsmul_residue_eq` (multiplication by the degree is surjective on `𝓀[K]`).
+>    `exists_one_add_uniformizer_pow_smul_norm_sub_mem_of_isTotallyRamified` is the one-step
+>    correction, structurally identical to `PrincipalUnitsCauchySequence.lean`'s unramified version;
+>    note the correction witness can be taken in the image of `K₀` (`z := algebraMap r`), precisely
+>    because the graded map is multiplication by a scalar rather than a residue-field trace.
+>    `exists_isUnit_norm_eq_of_isTotallyRamified` is the main result (gap 5). Its base case is free
+>    (`y = N(1)·(1 + π·t)` for `y ∈ 1 + 𝔪_K`), unlike the unramified case where the base case is the
+>    residue-field norm surjectivity.
+>
+> **On the `i_L = e·j` index shift.** The thirty-ninth pass's derivation of it is correct — under
+> `IsTotallyRamified.map_maximalIdeal_eq`, `1 + π_K^j • L₀` is exactly `U_{L₀}^{(e·j)}`. But it is
+> never needed: every statement quantifies over `z : L₀` directly, and only the `K`-side index
+> appears. `PrincipalUnitsFiltrationAdicCompletion.lean` (the thirty-ninth pass's step 1) is
+> therefore **not** used by any of the above — it remains available for a future pass that wants the
+> filtration-subgroup phrasing rather than the element-level one.
+>
+> **What remains for the full Phase 2b totally-ramified norm-group theorem.**
+> 1. **Combining with `TotallyRamifiedEisenstein.lean`'s `norm_isUniformizer_eq_of_isUniformizer`**
+>    (`‖N(π_L)‖ = ‖ϖ‖`, i.e. `N(π_L)` is a uniformizer of `K`) to get `N_{L/K}(L^×) = ⟨N(π_L)⟩ ·
+>    N_{L/K}(U_L)`. **This is exactly where gap 3 becomes load-bearing after all**: that theorem
+>    lives in the abstract `ValuativeRel`/`spectralNorm` bundle, and joining it to this pass's
+>    `HeightOneSpectrum` result needs the threading the thirty-ninth pass flagged (see the
+>    thirty-eighth pass's tradeoff at line ~2015 and `TowerBundle.lean`'s open item at lines
+>    3324–3330). Not attempted this pass.
+> 2. **The level-`0` computation** `N(u) ≡ ū^e (mod 𝔪_K)` for `u ∈ U_L`, which would upgrade
+>    `⊇ U_K^{(1)}` to the exact description `N(U_L) = {u : ū ∈ (𝓀[K]ˣ)^e}` and supply the order-`e`
+>    cyclic quotient. Not attempted; stated only as prose.
+> 3. **The wild case (`e` not a unit in `𝓀[K]`) is explicitly out of scope** and untouched. The
+>    argument above breaks at exactly one point — `exists_finrank_nsmul_residue_eq` — and the
+>    classical replacement (a Hensel/Lubin–Tate argument, or the ramification-filtration jump
+>    analysis) is genuinely different machinery, not a repair of this one.
+> 4. `IsTotallyRamified.exists_sub_algebraMap_mem_maximalIdeal` could be demoted from a field to a
+>    theorem by proving `e·f = n` for `K₀ → L₀`; and `IsTotallyRamified`/`IsTamelyRamified` have no
+>    nontrivial *instances* yet — no concrete extension in this repo is shown to satisfy them.
+
 - **Why this exists.** Phase 2a closed the "easy half" of local CFT (unramified norm-group
   surjectivity) in full, across ten passes. This section applies the same before-you-build
   discipline to Phase 2's actual hard content — the ramified case and the reciprocity map itself —
