@@ -2689,6 +2689,93 @@ files changed, no commit (documentation-only pass).
   theorem is itself an integration step, not yet attempted, distinct from (b)'s genuinely new
   mathematical content.
 
+#### Status 2026-08-06 (twenty-fifth pass) — item (b) reframed: the discriminant/`differentIdeal`
+route abandoned in favor of a direct Nakayama-lemma argument, which needs no resultant identity and
+no Eisenstein-ness of `minpoly K a`; one general, reusable lemma landed, sorry-free; the tower's own
+residue-algebra computation not attempted. General tower monogenicity remains open.
+
+- **Task.** Re-investigate whether item (b) (the discriminant-tower bound) has a more direct route
+  than translating through `differentIdeal_eq_differentIdeal_mul_differentIdeal`, per the task
+  brief's explicit instruction; decide a route; attempt to close it; assemble the full tower theorem
+  if it closes.
+- **The `differentIdeal`/discriminant-tower route is now concluded to be the wrong lever, not merely
+  unattempted.** Two independent negative findings this pass, both by direct inspection rather than
+  assumption:
+  1. `Mathlib/RingTheory/Polynomial/Resultant/Basic.lean` (`Polynomial.resultant`,
+     `Polynomial.discr`) has **zero** occurrences of `Algebra.discr` or `PowerBasis` (grepped
+     directly), and `Mathlib/RingTheory/Discriminant.lean` has no `resultant`/`Polynomial.discr`
+     reference either — confirming the twenty-third pass's suspicion that no bridge exists between
+     this repo's `Algebra.discr`-of-a-`PowerBasis` formalism and the resultant/different-ideal
+     formalism the classical tower-discriminant formula would need. Closing item (b) via that route
+     would require *constructing* the classical resultant identity for `disc_K(β + c•π)` from
+     scratch (the Sylvester-matrix change-of-basis determinant connecting the tensor basis
+     `{β^i π^j}` to the power basis of `a := β + c•π`) — a substantial new development, not a
+     translation exercise as the twenty-third/twenty-fourth passes' framing ("plumbing... not
+     attempted") suggested.
+  2. Re-derivation confirms the task brief's own flagged inference is correct:
+     `mem_adjoin_of_smul_prime_pow_smul_of_minpoly_isEisensteinAt`
+     (`Mathlib/RingTheory/Polynomial/Eisenstein/IsIntegral.lean:365`, read again this pass) takes
+     `hei : (minpoly R B.gen).IsEisensteinAt 𝓟` as a hypothesis it genuinely uses (via
+     `mem_adjoin_of_smul_prime_smul_of_minpoly_isEisensteinAt`'s `hei.notMem` at line 234) — so this
+     lemma, the one that closed both halves of the tower individually
+     (`TotallyRamifiedEisenstein.lean`), cannot be reused for the composite generator `a` in the
+     mixed-ramification case, where `minpoly K a` is not Eisenstein. Any route through this lemma for
+     the general case is a dead end, confirming (not merely repeating) the task brief's flag.
+- **A direct route found and landed: Nakayama's lemma, no discriminant needed at all.**
+  `Mathlib.RingTheory.LocalRing.Module` already has `IsLocalRing.map_mkQ_eq_top`: for `R` local with
+  maximal ideal `𝔪` and `M` a finite `R`-module, a submodule `N ≤ M` equals `⊤` iff its image in
+  `M ⧸ 𝔪 • ⊤` is `⊤`. Applied to `N := Subalgebra.toSubmodule (Algebra.adjoin R {a})` for `S := 𝒪_N`
+  a finite `𝒪_K`-algebra, this reduces `Algebra.adjoin 𝒪_K {a} = ⊤` (monogenicity) to a *residue-level*
+  question — do the images of the powers of `a` span `𝒪_N ⧸ 𝔪_K 𝒪_N`? — with no discriminant,
+  resultant, or Eisenstein-ness anywhere in the argument. Landed as
+  `LocalField.adjoin_eq_top_of_map_mkQ_eq_top` (`langlands/Langlands/NakayamaMonogenic.lean`, new
+  file, commit `53cbab5`, zero `sorry`, `lake build Langlands.NakayamaMonogenic` clean):
+  ```
+  theorem adjoin_eq_top_of_map_mkQ_eq_top {R S : Type*} [CommRing R] [IsLocalRing R] [CommRing S]
+      [Algebra R S] [Module.Finite R S] {a : S}
+      (h : (Subalgebra.toSubmodule (Algebra.adjoin R ({a} : Set S))).map
+          (Submodule.mkQ (IsLocalRing.maximalIdeal R • (⊤ : Submodule R S))) = ⊤) :
+      Algebra.adjoin R ({a} : Set S) = ⊤
+  ```
+  **A genuine bonus, not previously scoped**: this route makes the field-level primitive-element fact
+  (`Langlands.PrimitiveElementFusion.exists_scalar_add_smul_primitive`, the twenty-fourth pass's item
+  (a)) a *free corollary* rather than a separate needed input — if the powers of `a` already span the
+  free rank-`ef` `𝒪_K`-module `𝒪_N`, `a` cannot satisfy a shorter relation over `K`, so
+  `(minpoly K a).natDegree = ef` follows automatically once `Algebra.adjoin 𝒪_K {a} = ⊤` is known,
+  with no pigeonhole argument needed. Whether the tower assembly will still *use*
+  `PrimitiveElementFusion.lean` (e.g. to state `hgen` before proving it, for symmetry with the
+  individual halves' statements) or drop it as redundant is an open design choice, not resolved this
+  pass.
+- **Validated by an exact, unprompted precedent already in Mathlib.** `Mathlib.RingTheory.
+  LocalRing.Etale`'s `exists_adjoin_eq_top` — the theorem this repo's *unramified* half
+  (`UnramifiedExtension.lean:715`) already builds on — proves monogenicity of an étale extension by
+  exactly this pattern; its own docstring (`LocalRing/Etale.lean:92`) states "the proof lifts a
+  primitive element of the residue field extension via Nakayama's lemma." This confirms the pattern
+  is the established one for exactly this class of theorem, not a repo-specific improvisation —
+  though that theorem's residue quotient is a genuine *field* (étale ⟹ separable, unramified),
+  letting it invoke `Field.exists_primitive_element` directly; the mixed-ramification case here has a
+  non-reduced residue quotient (see below), so the analogous generation fact needs new content.
+- **Not attempted — the two sub-gaps needed to discharge the new lemma's hypothesis for the actual
+  tower, precisely scoped (documented in `NakayamaMonogenic.lean`'s module docstring):**
+  1. **Identify `𝒪_N ⧸ 𝔪_K 𝒪_N` concretely.** Using `𝒪_M = 𝒪_K[β]` (unramified, so `𝔪_K 𝒪_M = 𝔪_M`)
+     and `𝒪_N = 𝒪_M[π]` (Eisenstein of degree `e` over `𝒪_M`, from `TotallyRamifiedEisenstein.lean`),
+     the classical computation is `𝒪_N ⧸ 𝔪_K 𝒪_N ≅ κ_M[T] ⧸ (T ^ e)`, `κ_M := 𝒪_M ⧸ 𝔪_M` generated
+     over `κ_K` by the image of `β` — not yet built as an actual ring isomorphism in this repo.
+  2. **An "Artinian primitive element" fact.** In `κ_M[T] ⧸ (T ^ e)` (`κ_M / κ_K` a degree-`f` field
+     extension generated by `β̄`), do the powers of `β̄ + c̄ • T` span the whole `κ_K`-algebra
+     (dimension `ef`) for a suitable `c̄`? Checked this pass and confirmed absent:
+     `Mathlib.FieldTheory.PrimitiveElement` is field-only and does not apply to the non-reduced ring
+     `κ_M[T] ⧸ (T ^ e)`; `grep -rn "primitive" Mathlib/RingTheory/` turns up nothing about generation
+     of Artinian local algebras by a single element. This is genuinely new mathematical content, not
+     a lookup — the natural next step for whoever picks this up, since it is the piece that pins down
+     exactly which `c` (or which condition on `c`) works, before either of the identification-step
+     (1) or the final tower-theorem assembly can be attempted.
+- **Verification.** `lake build Langlands` clean, 8678 jobs; `grep -rn sorry langlands/Langlands/`
+  unchanged (prose-only, `RamificationFiltration.lean:89` and `TotallyRamifiedEisenstein.lean:19`).
+- **Net effect on `RamificationFiltration.lean`.** Not yet unblocked — general tower monogenicity is
+  still open, now via a different and, on the evidence above, more promising route than the
+  twenty-third/twenty-fourth passes' `differentIdeal` plan.
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
