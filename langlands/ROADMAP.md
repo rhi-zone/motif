@@ -1992,6 +1992,119 @@ that avoids stalling on (a).
 > ones already present before this pass. `grep -rn sorry langlands/Langlands/` unchanged: the single
 > prose-only hit at `TotallyRamifiedEisenstein.lean:19`. Commit: `48500fe`.
 
+> **Update (2026-08-07, thirty-eighth pass) — tame-case unit-norm surjectivity: step 1 (the
+> principal-units filtration) and the `i ≥ 1` half of step 2 (its graded pieces) are CLOSED,
+> sorry-free; steps 3 (norm on graded pieces, tame invertibility) and 4 (Cauchy assembly) are NOT
+> attempted.** New file `Langlands/PrincipalUnitsFiltration.lean`, commit `51c2462`. `lake build
+> Langlands`: clean, 8688 jobs. `#print axioms` on every new declaration (checked via scratch `lake
+> env lean`, not assumed from a clean build): only `propext, Classical.choice, Quot.sound`. `grep -rn
+> sorry langlands/Langlands/` unchanged: the single prose-only hit at
+> `TotallyRamifiedEisenstein.lean:19`.
+>
+> **Design choice made before writing any code: the filtration is built generic over an arbitrary
+> `A : ValuationSubring L`, with no ambient `K`/normed-field bundle at all — deliberately sidestepping
+> the "`ValuativeRel`/`spectralNorm` vs. `HeightOneSpectrum` adic-completion" choice the task brief
+> flagged, rather than picking one.** This is possible because steps 1–2 (the filtration and its
+> graded isomorphisms) are purely statements about a single valuation ring and its residue field —
+> no norm map, no second field `K`, no completeness is needed anywhere in their proofs. Deferring the
+> ambient-setup choice to steps 3–4 (where a norm map and a Cauchy-sequence limit *are* needed) means
+> this pass's file is reusable unconditionally by whichever setup a later pass picks, rather than
+> being tied to one. The choice for steps 3–4 is itself not made this pass (no code for them is
+> written), but the tradeoff is recorded below since the task brief asked for it to be reasoned
+> through explicitly:
+> * **Adic-completion route (recommended, not yet executed):** specialize
+>   `TotallyRamifiedEisenstein.lean`'s abstract-`K`/`L` results (`norm_isUniformizer_eq_of_isUniformizer`
+>   etc., stated for any `[NontriviallyNormedField K] [ValuativeRel K] [Compatible] [CompleteSpace K]`)
+>   at `K := v.adicCompletion K`, `L := w.adicCompletion L` — both of which already carry that exact
+>   bundle (`Langlands.NormMap`, confirmed present since the thirty-fourth/-fifth pass's
+>   `instNontriviallyNormedFieldAdicCompletion` and related instances) — and instantiate this pass's
+>   `principalUnitsPow` at `A := w.adicCompletionIntegers L`, already known to be
+>   `IsDiscreteValuationRing` (`instIsDiscreteValuationRingValuationSubringAdicCompletion`, thirty-
+>   fourth pass). This mirrors Phase 2a's `UnramifiedNormSurjective.lean` exactly (same file shape:
+>   base case, successive-approximation recursion, Cauchy sequence via `NormMapContinuity.lean`'s
+>   `continuous_norm_adicCompletion`, limit via `cauchySeq_tendsto_of_complete`) and gets `CompleteSpace
+>   (w.adicCompletion L)`, `Algebra.norm` restricting to `adicCompletionIntegers`, and the residue-field
+>   machinery for free — all of it pre-existing infrastructure, none of it built in the abstract
+>   `ValuativeRel`/`spectralNorm` setting.
+> * **Abstract `ValuativeRel`/`spectralNorm` route (not recommended, would need new infrastructure):**
+>   stay inside `TotallyRamifiedEisenstein.lean`'s own bundle throughout. This is a real option only if
+>   two gaps are closed first, neither of which exists in this repo today (checked by re-reading that
+>   file's docstring and signatures, not assumed): (a) `𝒪[K]`'s counterpart on the `L` side —
+>   `TotallyRamifiedEisenstein.lean` only produces `integralClosure ↥𝒪[K] L`, a `Subalgebra`, never
+>   shown to *be* a `ValuationSubring L` (no `RankOne`/valuation-subring structure on `L` is
+>   constructed anywhere in that file — its own "final hypothesis design" section explains this was a
+>   deliberate simplification, not an oversight); (b) a `CompleteSpace L` instance, needed for the
+>   Cauchy-sequence limit step, which nothing in `TotallyRamifiedEisenstein.lean`'s hypothesis list
+>   supplies (only `CompleteSpace K` is assumed). Both would need to be built from scratch before this
+>   route is even viable, whereas the adic-completion route gets both for free from existing files.
+> This is a genuine open call, not forced by this pass's code — `PrincipalUnitsFiltration.lean` itself
+> takes no position, since it never mentions `K`, a norm map, or completeness.
+>
+> **What closed, precisely (step 1 and the `i ≥ 1` half of step 2).**
+> * `ValuationSubring.principalUnitsPow (A : ValuationSubring L) (i : ℕ) : Subgroup Aˣ` —
+>   `{x : Aˣ | (x:A) - 1 ∈ 𝔪_A^i}`, `U_A^{(i)}` in the task brief's notation. Built at the level of
+>   `Aˣ` (the ring `A`'s own unit group), not `Kˣ` as Mathlib's `principalUnitGroup` is — the module
+>   docstring records why the naive generalization of Mathlib's `< 1`-valuation-based definition to
+>   `≤ γ^i` fails to stay inside `A.unitGroup` for `i = 0` (a concrete counterexample is worked out:
+>   `x = π⁻¹` satisfies `v(x-1) = v(x) = 1` by the ultrametric equality case, so `v(x-1) ≤ 1` holds,
+>   yet `π⁻¹ ∉ A.unitGroup`) — this is why the family is built at the `Aˣ` level from the start rather
+>   than attempted at `Kˣ` and patched.
+> * `principalUnitsPow_zero : principalUnitsPow A 0 = ⊤` and `principalUnitsPow_antitone`.
+> * `principalUnitsPow_one : principalUnitsPow A 1 = (Units.map (residue A).toMonoidHom).ker` — the
+>   task's "don't duplicate Mathlib's `principalUnitGroup`" requirement, discharged by identifying
+>   with the residue-map kernel directly (a two-line consequence of `IsLocalRing.residue_eq_zero_iff`)
+>   rather than by transporting through `A.unitGroupMulEquiv` to Mathlib's `Kˣ`-level object — the
+>   module docstring notes the latter transport is available too, via Mathlib's own
+>   `ker_unitGroupToResidueFieldUnits`, but was not needed for this pass's proof.
+> * `principalUnitsGradedHom`, `principalUnitsGradedHom_surjective`, `principalUnitsGradedHom_ker_eq`,
+>   `principalUnitsGradedEquiv` (all under `hπ : 𝔪_A = span {π}`, `hπ0 : π ≠ 0`): for every `i : ℕ`,
+>   `U_A^{(i+1)} ⧸ (U_A^{(i+2)}.subgroupOf U_A^{(i+1)}) ≃* Multiplicative (ResidueField A)` — **the
+>   task's step 2, `U_L^{(i)}/U_L^{(i+1)} ≅ (κ_L, +)` for `i ≥ 1`, fully closed as a genuine
+>   isomorphism (not merely an embedding)**. Built via exact coefficient extraction: for `x ∈
+>   U_A^{(i+1)}`, the unique `c : A` (uniqueness from `A` a domain and `π ≠ 0`) with `(x:A) - 1 =
+>   π^{i+1}·c` (`principalUnitsCoeff`), and `residue ∘ principalUnitsCoeff` is *exactly* additive under
+>   multiplication in `U_A^{(i+1)}` — `(xy:A) - 1 = π^{i+1}(c_x + c_y) + π^{2(i+1)}c_x c_y`, and the
+>   error term `π^{2(i+1)}c_xc_y` vanishes under `residue` unconditionally in `i` (it lies in `𝔪_A`,
+>   in fact `𝔪_A^{i+2}`, since `π^{i+1} ∈ 𝔪_A`) — **with no error-term estimate needed at all, in
+>   contrast to `RamificationFiltration.lean`'s `gradedSuccHom`**, whose analogous construction needed
+>   the `geomSum₂_mem_pow_maximalIdeal` two-variable factorization specifically to handle the
+>   `σ(π)` vs. `π` discrepancy introduced by the ambient Galois action. There is no group action here
+>   (elements of `U_A^{(i+1)}` are being multiplied together, not twisted by an automorphism), so plain
+>   binomial expansion of `(1+a)(1+b) - 1` suffices — a genuine simplification the task brief did not
+>   anticipate (it suggested reusing the `geomSum₂` technique), confirmed by writing the proof, not
+>   assumed in advance. Surjectivity uses that `1 + 𝔪_A`-elements are always units in a local ring
+>   (`IsLocalRing.isUnit_one_sub_self_of_mem_nonunits`), and the isomorphism itself is
+>   `QuotientGroup.quotientKerEquivOfSurjective` applied to the resulting `MonoidHom`.
+> * The `i = 0` half of step 2 (`U_L^{(0)}/U_L^{(1)} ≅ κ_L^×`) is **not re-proved** — as the task
+>   brief anticipated, it is exactly Mathlib's pre-existing
+>   `ValuationSubring.unitsModPrincipalUnitsEquivResidueFieldUnits`, reachable via
+>   `principalUnitsPow_zero`/`principalUnitsPow_one`'s reindexing; no new Lean was written for it this
+>   pass since there was nothing to add beyond the reindexing already in hand.
+>
+> **What is still open, precisely (steps 3 and 4, and the adic-completion instantiation of steps
+> 1–2).** None of the following exists yet, and none was attempted this pass beyond the design-tradeoff
+> analysis above:
+> 1. Instantiating `principalUnitsPow`/`principalUnitsGradedHom` at `A := w.adicCompletionIntegers L`
+>    (or whichever concrete setting is chosen) — this pass's file is fully generic and untested against
+>    any concrete `ValuationSubring`, though nothing in its proofs is specific to the abstract setting
+>    (only `IsDiscreteValuationRing`-shaped uniformizer data, which `w.adicCompletionIntegers L`
+>    already has).
+> 2. **The crux, step 3, entirely unattempted:** showing `Algebra.norm` restricts to a map
+>    `U_L^{(i)} → U_K^{(i)}` (the exact index relationship for a totally ramified extension of degree
+>    `e` is asserted in the task brief as "expect norm to respect the filtration index directly" but
+>    this has not been checked or derived here), and that the induced map on graded pieces
+>    `κ_L = κ_K → κ_K` (using that the totally ramified case has *equal* residue fields, itself not
+>    re-verified in this pass) is multiplication by (a unit related to) `e`, invertible exactly under
+>    the tame hypothesis `gcd(e, char κ_K) = 1`. Nothing about `Algebra.norm`'s interaction with this
+>    pass's `principalUnitsPow`/`principalUnitsGradedHom` is proved.
+> 3. **Step 4, the Cauchy-sequence assembly, entirely unattempted** — no analogue of
+>    `UnramifiedNormSurjective.lean`'s `approxData`/`cauchySeq_approxUnit`/final `Tendsto` argument
+>    exists for the tame ramified case; it cannot be started before step 3 supplies the per-level
+>    correction it would drive.
+> **`N_{L/K}(U_L) ⊇ U_K` (tame case) is NOT closed.** This pass's contribution is prerequisite
+> machinery (the filtration itself, and its graded pieces for `i ≥ 1`) that step 3/4 will need, not
+> progress on the norm computation itself.
+
 - **Why this exists.** Phase 2a closed the "easy half" of local CFT (unramified norm-group
   surjectivity) in full, across ten passes. This section applies the same before-you-build
   discipline to Phase 2's actual hard content — the ramified case and the reciprocity map itself —
