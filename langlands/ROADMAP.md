@@ -1609,6 +1609,65 @@ that avoids stalling on (a).
 > already supplies instead of at a uniformizer, if that reformulation is mathematically valid
 > (unchecked). Left open rather than forced.
 
+> **Update (2026-08-06, thirty-third pass) — checked whether `TowerMonogenicConcrete.lean`
+> (the modular tower theorem, `M`/`π` supplied by the caller, as opposed to the thirty-second
+> pass's hypothesis-free `MonogenicIntegralClosure.lean` corollary already ruled out) fares any
+> better. It does not, for a reason sharper than and independent of the thirty-second pass's
+> finding — no code changed this pass.** Read
+> `exists_adjoin_eq_top_of_tower_of_isEisensteinAt_of_valuationSubring`
+> (`TowerMonogenicConcrete.lean:265`) and its abstract source
+> `exists_adjoin_eq_top_of_tower_of_isEisensteinAt` (`TowerMonogenic.lean:152`) hypothesis-by-hypothesis
+> against `RamificationFiltration.lean`'s blocked step (docstring, `:47-94`, unchanged since pass
+> twelve, re-read this pass) and `RamificationFiltrationAdicCompletion.lean`'s concrete instantiation
+> (`A := w.adicCompletionIntegers L : ValuationSubring (w.adicCompletion L)` over base
+> `v.adicCompletion K`, `decompositionSubgroup_eq_top` proved unconditionally there).
+>
+> **The mismatch: `hgen` — `Algebra.adjoin OM {π} = ⊤`, i.e. exactly `𝒪_N = 𝒪_M[π]` — is an
+> explicit *hypothesis* of the theorem (`TowerMonogenic.lean:158`, carried through unchanged into
+> `TowerMonogenicConcrete.lean:295-297`), not part of what the theorem proves.** This is precisely
+> the fact `RamificationFiltration.lean`'s kernel argument is missing (`𝒪_L = 𝒪_{L_0}[π]` for `π`
+> the fixed uniformizer). The theorem cannot supply it — it consumes it. What the theorem's
+> conclusion actually adds, given `hgen` already in hand, is a *different* fact: `∃ γ : ON,
+> Algebra.adjoin R {γ} = ⊤` — monogenicity of `𝒪_N` over the **base field `R = 𝒪[K]`** (Serre's
+> combined-tower generator), not over the intermediate unramified subring `OM`. Even granting a
+> way to supply `hgen`, this existentially-bound `γ` is not known to equal, or relate to, `π` — it
+> is useless to the kernel argument, which specifically tests `σ(π) − π` at the *already-fixed*
+> uniformizer, not at some other generator of `𝒪_L` over `𝒪_K`.
+>
+> **A second, independent mismatch, the same root issue the thirty-second pass diagnosed for
+> `MonogenicIntegralClosure.lean`.** `TowerMonogenicConcrete.lean`'s `M` is not "a real subfield" of
+> anything already fixed — it is an abstract `Type*` with `[Field M] [Algebra K M]`, supplied by the
+> caller from scratch. `UnramifiedExtension.lean`'s existence theorem (the only constructor of such
+> an `M` with the needed `e`/`he`/`hunram` data in this repo, confirmed by re-reading
+> `HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv`,
+> `UnramifiedExtension.lean:801-852`) builds `M := K⟮x⟯` as an `IntermediateField` of an *auxiliary*
+> algebraically closed `L ⊇ K` introduced solely for that construction — not inside
+> `RamificationFiltration.lean`'s already-fixed target field (`w.adicCompletion L` in the
+> adic-completion instantiation). Nothing in this repo identifies `UnramifiedExtension`'s `M` with
+> an actual intermediate subfield of that specific `L`, so there is no way to even supply `M` in the
+> first place, independent of the `hgen`-is-a-hypothesis problem above.
+>
+> **Conclusion: `TowerMonogenicConcrete.lean` does not unblock `RamificationFiltration.lean`, on two
+> independent grounds, both confirmed by direct hypothesis/conclusion comparison rather than surface
+> type-matching:** (1) the fact needed is exactly what the theorem takes as an input (`hgen`), not
+> what it derives — its actual conclusion is a different, base-field-level monogenicity statement
+> that doesn't constrain `π`; (2) `UnramifiedExtension.lean` cannot supply `M` as an actual subfield
+> of the fixed target `L` in the first place. Neither MonogenicIntegralClosure.lean's route (pass
+> thirty-two) nor TowerMonogenicConcrete.lean's route (this pass) closes the gap; the two failures
+> are for different reasons (the former loses uniformizer control by construction; the latter
+> presupposes the exact fact needed and, even so, proves the wrong statement). **Next step, not yet
+> attempted:** what `RamificationFiltration.lean` needs is a *direct* fact — for `L/K` a finite
+> extension of complete discretely-valued fields with `A : ValuationSubring L`, `π` a uniformizer of
+> `A`, `L_0` a maximal-unramified-subextension *subfield of `L` itself* (not of an auxiliary
+> algebraically closed field) — that `𝒪_L = 𝒪_{L_0}[π]`, i.e. an `hgen`-shaped fact proved from
+> scratch in this concrete setting, together with a construction of `L_0` as an actual
+> `IntermediateField K L` (not `K⟮x⟯` in an unrelated ambient field). Neither exists in this repo;
+> both would need to be built, and it is not yet checked whether the Eisenstein-generator half
+> (`𝒪_L = 𝒪_{L_0}[π]` given `L_0` and `π`) is itself easy (classically near-immediate from the
+> Eisenstein criterion, once `L_0` and `π` are in hand as actual objects in `L`) or whether producing
+> `L_0` as a genuine subfield of a fixed `L` — the same obstruction pass thirty-two hit — is the real
+> remaining wall.
+
 - **Why this exists.** Phase 2a closed the "easy half" of local CFT (unramified norm-group
   surjectivity) in full, across ten passes. This section applies the same before-you-build
   discipline to Phase 2's actual hard content — the ramified case and the reciprocity map itself —
