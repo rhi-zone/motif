@@ -4,6 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Langlands.TotallyRamifiedEisenstein
 import Langlands.ValueGroupCyclic
+import Langlands.UnramifiedExtension
+import Mathlib.RingTheory.Henselian
 
 /-!
 # The complete-discretely-valued bundle on a finite extension
@@ -177,5 +179,40 @@ theorem adjoin_eq_integralClosure_of_isUniformizer_of_valuationSubring
     isDiscreteValuationRing_valuation_valuationSubring_of_finiteDimensional K A hA hR
   exact fun _ϖ hϖ _π hram hgen =>
     adjoin_eq_integralClosure_of_isUniformizer (K := M) (L := N) hϖ hram hgen
+
+/-- **`↥A` itself is Henselian, for `A : ValuationSubring M` lying over a complete discretely
+valued `𝒪[K]` with finite residue field, `M / K` finite.**
+
+This is the missing piece `ROADMAP.md`'s Phase 2b thirty-second/thirty-third-pass entries identify:
+a route to Hensel's lemma *inside the actual field `M`* (in particular, inside a fixed `L` when
+`M = L`), rather than inside an auxiliary algebraically closed field disconnected from `L`. It
+reuses exactly the `letI` bundle `isDiscreteValuationRing_valuation_valuationSubring_of_finiteDimensional`
+builds, plus `henselianLocalRing_of_valuationSubring` (`Langlands.UnramifiedExtension`) applied to
+that bundle, transported from `↥(ValuativeRel.valuation M).valuationSubring` to `↥A` along
+`valuationSubring_valuation_ofValuation_eq`. -/
+theorem henselianLocalRing_of_comap_eq
+    (A : ValuationSubring M)
+    (hA : A.comap (algebraMap K M) = (ValuativeRel.valuation K).valuationSubring)
+    (hR : Valuation.RankOne A.valuation)
+    (hfin : Finite (IsLocalRing.ResidueField A)) :
+    letI := hR
+    letI : Valued M A.ValueGroup := Valued.mk' A.valuation
+    letI : NontriviallyNormedField M := Valued.toNontriviallyNormedField M A.ValueGroup
+    letI : ValuativeRel M := ValuativeRel.ofValuation (NormedField.valuation (K := M))
+    HenselianLocalRing ↥A := by
+  letI := hR
+  letI : Valued M A.ValueGroup := Valued.mk' A.valuation
+  letI : NontriviallyNormedField M := Valued.toNontriviallyNormedField M A.ValueGroup
+  haveI : IsUltrametricDist M := inferInstance
+  haveI : CompleteSpace M := exists_completeSpace_of_finiteDimensional K A hA
+  letI : ValuativeRel M := ValuativeRel.ofValuation (NormedField.valuation (K := M))
+  haveI : (NormedField.valuation (K := M)).Compatible :=
+    Valuation.Compatible.ofValuation (NormedField.valuation (K := M))
+  haveI : IsDiscreteValuationRing ↥(ValuativeRel.valuation M).valuationSubring :=
+    isDiscreteValuationRing_valuation_valuationSubring_of_finiteDimensional K A hA hR
+  haveI : Finite (IsLocalRing.ResidueField ↥(ValuativeRel.valuation M).valuationSubring) := by
+    rw [valuationSubring_valuation_ofValuation_eq A]; exact hfin
+  have h := henselianLocalRing_of_valuationSubring M
+  rwa [valuationSubring_valuation_ofValuation_eq A] at h
 
 end LocalField

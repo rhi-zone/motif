@@ -127,6 +127,28 @@ instance : (NormedField.valuation (K := v.adicCompletion F)).Compatible :=
     (fun x => congrFun
       (Valued.coe_valuation_eq_rankOne_hom_comp_valuation (v.adicCompletion F) ℤᵐ⁰) x)
 
+/-- `v.adicCompletion F` is discretely valued: `Valued.v` is `Valuation.IsRankOneDiscrete`
+(Mathlib, `NumberTheory.NumberField.Completion.FinitePlace`, for any Dedekind domain), hence its
+value group is cyclic and nontrivial, and `Valuation.valuationSubring_isDiscreteValuationRing`
+(Serre, *Local Fields* I §1 Prop. 1) converts this into `IsDiscreteValuationRing` of the
+valuation subring. -/
+instance instIsDiscreteValuationRingValuationSubringAdicCompletion :
+    IsDiscreteValuationRing ↥(ValuativeRel.valuation (v.adicCompletion F)).valuationSubring := by
+  have heq : (ValuativeRel.valuation (v.adicCompletion F)).valuationSubring
+      = (Valued.v : Valuation (v.adicCompletion F) ℤᵐ⁰).valuationSubring := by
+    refine ValuationSubring.ext _ _ fun x => ?_
+    rw [Valuation.mem_valuationSubring_iff, Valuation.mem_valuationSubring_iff]
+    have h1 : (ValuativeRel.valuation (v.adicCompletion F)) x ≤ 1 ↔ x ≤ᵥ (1 : v.adicCompletion F) := by
+      rw [Valuation.Compatible.vle_iff_le (v := ValuativeRel.valuation (v.adicCompletion F)), map_one]
+    have h2 : x ≤ᵥ (1 : v.adicCompletion F) ↔
+        (Valued.v : Valuation (v.adicCompletion F) ℤᵐ⁰) x ≤ 1 := by
+      rw [Valuation.Compatible.vle_iff_le (v := (Valued.v : Valuation (v.adicCompletion F) ℤᵐ⁰)),
+        map_one]
+    rw [h1, h2]
+  rw [heq]
+  exact Valuation.valuationSubring_isDiscreteValuationRing
+    (Valued.v : Valuation (v.adicCompletion F) ℤᵐ⁰)
+
 end RankOne
 
 section IntegralClosure

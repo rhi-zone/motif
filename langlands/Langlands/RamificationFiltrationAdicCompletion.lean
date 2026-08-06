@@ -1,6 +1,7 @@
 import Langlands.RamificationFiltration
 import Langlands.AdicCompletionIntegralClosure
 import Langlands.NormMap
+import Langlands.TowerBundle
 
 /-!
 # Ramification filtration for adic completions
@@ -90,6 +91,37 @@ theorem decompositionSubgroup_eq_top :
   · rw [ValuationSubring.comap_smul_eq]
     exact hbase
   · exact hbase
+
+/-! ### `w.adicCompletionIntegers L` is Henselian
+
+This is the piece `Langlands.RamificationFiltration`'s docstring flags as missing: Hensel's lemma
+applied *inside the actual field `w.adicCompletion L`* (rather than an auxiliary algebraically
+closed field), the prerequisite for lifting a residue-field generator to a genuine subfield
+`L_0 ⊆ w.adicCompletion L`. -/
+
+omit [Algebra.IsIntegral R S] in
+/-- **`w.adicCompletionIntegers L` is a Henselian local ring.**
+
+Combines `decompositionSubgroup_eq_top`'s comap identity (`w.adicCompletionIntegers L` restricts
+to `v.adicCompletionIntegers K` under `algebraMap`) with
+`LocalField.exists_rankOne_compatible` (`Langlands.HenselianValuation`, giving `RankOne` of the
+valuation, since `v.adicCompletion K` is complete and `w.adicCompletion L / v.adicCompletion K` is
+algebraic) and `LocalField.henselianLocalRing_of_comap_eq` (`Langlands.TowerBundle`, the `letI`
+bundle assembled from those two facts plus finiteness of the residue field). -/
+theorem henselianLocalRing_adicCompletionIntegers (K : Type*) [Field K] [Algebra R K]
+    [IsFractionRing R K] [Algebra K L] [IsScalarTower R K L] [Module.Finite K L]
+    (v : HeightOneSpectrum R) [w.asIdeal.LiesOver v.asIdeal]
+    [Finite (IsLocalRing.ResidueField (w.adicCompletionIntegers L))] :
+    HenselianLocalRing ↥(w.adicCompletionIntegers L) := by
+  have hbase : (w.adicCompletionIntegers L).comap
+      (algebraMap (v.adicCompletion K) (w.adicCompletion L))
+      = (ValuativeRel.valuation (v.adicCompletion K)).valuationSubring := by
+    rw [valuation_valuationSubring_eq_adicCompletionIntegers]
+    exact adicCompletionIntegers_comap_eq K L v w
+  obtain ⟨hR, -⟩ := LocalField.exists_rankOne_compatible (v.adicCompletion K)
+    (w.adicCompletionIntegers L) hbase
+  exact LocalField.henselianLocalRing_of_comap_eq (v.adicCompletion K)
+    (w.adicCompletionIntegers L) hbase hR ‹_›
 
 end IsDedekindDomain.HeightOneSpectrum
 
