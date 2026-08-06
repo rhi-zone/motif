@@ -2444,6 +2444,77 @@ that avoids stalling on (a).
 >    the individual values `Tr(π_L^k) ∈ 𝔪_K` for `1 ≤ k ≤ e-1`, and the graded structure
 >    `A ≅ κ[T]/(T^e)`. No current open item is known to require it.
 
+> **Update (2026-08-07, forty-second pass) — the reverse inclusion IS CLOSED, as an exact equality
+> `MonoidHom.range (localNormMap K L v w) = ⟨N(π_L)⟩ · N_{L/K}(U_L)`, unconditionally on tameness.
+> One commit: `78d52fe`. `nix develop -c lake build Langlands`: clean, 8704 jobs (unchanged file
+> count). `grep -rn sorry langlands/Langlands/` unchanged (the single prose-only hit at
+> `TotallyRamifiedEisenstein.lean:19`). `#print axioms` (scratch `lake env lean`) on all four new
+> declarations: only `propext, Classical.choice, Quot.sound`.**
+>
+> **Piece 2 (the finite-field level-0 analysis), done first as the task brief required, changed
+> the target — and the change made piece 1 easier, not harder.** The task brief's own worked
+> example (`p=2, q=4, e=3`) was checked and confirmed: **`IsTamelyRamified` as literally defined in
+> this repo (`IsUnit ((e:ℕ) : 𝓀[K])`, i.e. `p ∤ e`) does NOT imply `gcd(e, #𝓀[K]ˣ) = 1`.** A
+> corrected, verified counterexample is recorded in `TotallyRamifiedNormRange.lean`'s module
+> docstring: `p=2`, `q=16` (`q-1=15=3·5`), `e=3` — `2∤3` (tame) but `gcd(3,15)=3≠1`, giving a
+> level-`0` image (the `e`-th-power subgroup of the cyclic group `𝓀[K]ˣ`, of index
+> `gcd(e,q-1)` by standard finite-cyclic-group theory) of index `3`, strictly between `{1}` and
+> `𝓀[K]ˣ`. (The task brief's own `p=2,q=4,e=3` example was checked too and found to be a
+> degenerate case where `gcd(3,3)=3=q-1`, forcing the level-0 image to be trivial and coincidentally
+> making `N(U_L) = U_K^{(1)}` hold *in that instance* — not a counterexample to the general claim,
+> which is why the write-up above uses `q=16` instead.) **Conclusion: no general theorem
+> `N_{L/K}(U_L) = U_K^{(1)}` is provable from `IsTamelyRamified` alone**, confirming the fortieth/
+> forty-first passes' suspicion and ruling out the fortieth pass's speculative target
+> `range = ⟨N(π_L)⟩ · U_K^{(1)}` as a general theorem (it remains true as a *lower bound*, which is
+> exactly what `localNormMap_range_ge_of_isTotallyRamified`, unchanged this pass, states). The
+> classical fact itself (image of `x ↦ x^e` on a finite cyclic group has index `gcd(e, |group|)`,
+> and is the unique subgroup of that index) is recorded in the docstring as a hand computation, not
+> formalized — Mathlib has the generic finite-cyclic-group machinery (`IsCyclic`, `orderOf`) to do
+> so, but it turned out unnecessary for closing the range.
+>
+> **Piece 1: the reverse inclusion closes without any finite-field theory at all, because the
+> correct target uses `N_{L/K}(U_L)` — literally the image submonoid, not a residue-condition
+> description of it.** `IsDedekindDomain.HeightOneSpectrum.localNormMap_range_eq_of_isTotallyRamified`
+> (`TotallyRamifiedNormRange.lean`):
+> ```
+> theorem localNormMap_range_eq_of_isTotallyRamified (h : IsTotallyRamified K L v w)
+>     {πL : w.adicCompletionIntegers L} (hπL : Irreducible πL) :
+>     MonoidHom.range (localNormMap K L v w) =
+>       Subgroup.zpowers
+>           (uniformizerUnit K v (irreducible_norm_of_isTotallyRamified K L v w h hπL)) ⊔
+>         (w.adicCompletionIntegers L).units.map (localNormMap K L v w)
+> ```
+> No `IsTamelyRamified` hypothesis. The proof: `exists_zpow_mul_unit_eq_of_irreducible` (new) is
+> `UnramifiedNormRange.lean`'s `exists_zpow_mul_unit_eq` with the outer `algebraMap K₀ L₀` layer
+> dropped — there, decomposing a unit `a` of `L_w` as `ϖ^k·u` needed the *image* of a `K₀`-uniformizer
+> to be irreducible in `L₀`, which is `algebraMap_uniformizer_irreducible`'s content and is false
+> once the extension ramifies (`e > 1`); here `π_L` is already an element of `L₀`, so its
+> irreducibility is simply the hypothesis, and `IsDiscreteValuationRing.associated_pow_irreducible`
+> applies directly, with no `IsUnramified`/`IsTotallyRamified` needed for the decomposition itself.
+> Composing the decomposition with `localNormMap`'s multiplicativity and
+> `localNormMap_irreducibleUnit_eq` (new; factored out of the existing
+> `uniformizerUnit_norm_mem_range`'s proof, which now calls it) gives `≤`; `≥` is `sup_le` on the two
+> trivial memberships (`uniformizerUnit_norm_mem_range` for the cyclic part, `⟨y, rfl⟩` for the
+> image part). Confirms the forty-first pass's estimate ("mechanical transfer... not new
+> mathematics") was correct, and — because the target changed from `U_K^{(1)}` to the literal image
+> `N_{L/K}(U_L)` — the transfer needed *less* than that estimate anticipated: no tameness, no
+> residue-level reasoning, at all.
+>
+> **What remains for the full Phase 2b totally-ramified norm-group theorem.**
+> 1. The exact range is now known (`localNormMap_range_eq_of_isTotallyRamified`), but only in terms
+>    of the *literal image* `(w.adicCompletionIntegers L).units.map (localNormMap K L v w)`, not a
+>    residue-condition description of it. Turning that into the classical statement
+>    `N_{L/K}(U_L) = {u ∈ U_K : ū ∈ (𝓀[K]ˣ)^e}` — and hence the classical order-`e` cyclic quotient
+>    `K^× / N_{L/K}(L^×)` when `gcd(e, q-1) = e` (i.e. `e | q - 1`, the case actually needed for the
+>    cyclic-quotient statement of local CFT) — needs exactly the finite-cyclic-group-image
+>    computation flagged above as unformalized, plus the `⊇` half (surjectivity: every unit whose
+>    residue is an `e`-th power is a norm) that the fortieth/forty-first passes already identified
+>    as open and unattempted. Neither is attempted this pass, since the exact-range theorem above
+>    does not need them.
+> 2. Items 3–4 of the fortieth pass's list are untouched: the wild case (`e` not a unit in `𝓀[K]`)
+>    is still explicitly out of scope, and `IsTotallyRamified`/`IsTamelyRamified` still have no
+>    nontrivial instances.
+
 - **Why this exists.** Phase 2a closed the "easy half" of local CFT (unramified norm-group
   surjectivity) in full, across ten passes. This section applies the same before-you-build
   discipline to Phase 2's actual hard content — the ramified case and the reciprocity map itself —
