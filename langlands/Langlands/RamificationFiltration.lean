@@ -1,6 +1,8 @@
 import Langlands.SimpleRootRigidity
 import Mathlib.RingTheory.Valuation.RamificationGroup
 import Mathlib.RingTheory.LocalRing.ResidueField.Basic
+import Mathlib.RingTheory.Ideal.BigOperators
+import Mathlib.Algebra.Ring.GeomSum
 
 /-!
 # Higher ramification groups in lower numbering
@@ -352,5 +354,315 @@ theorem mem_ramificationGroup_succ_of_adjoin {A : ValuationSubring L} (i : ℕ) 
     · exact hπ
   intro y
   exact (hgen ▸ hsub : (⊤ : Subalgebra R₀ A) ≤ S) Algebra.mem_top
+
+/-! ### The ramification filtration is antitone -/
+
+/-- The ramification filtration is antitone in `i`: `G_j ≤ G_i` for `i ≤ j`. Follows from
+`ramificationGroup_succ_le` by induction. -/
+theorem ramificationGroup_antitone (A : ValuationSubring L) :
+    Antitone (fun i => ramificationGroup K A i) :=
+  antitone_nat_of_succ_le (ramificationGroup_succ_le A)
+
+/-- Every ramification group is contained in `G_0`. -/
+theorem ramificationGroup_le_zero (A : ValuationSubring L) (i : ℕ) :
+    ramificationGroup K A i ≤ ramificationGroup K A 0 :=
+  ramificationGroup_antitone A (Nat.zero_le i)
+
+/-! ### The associated-graded pieces, as bundled homomorphisms
+
+This section builds the two maps `Langlands.RamificationFiltration`'s "Scope" docstring records as
+not yet constructed: `σ ↦ σ(π)/π mod 𝔪` (a `MonoidHom` on `G_0`, valued in `(ResidueField A)ˣ`) and,
+for each `i : ℕ`, `σ ↦ (σ(π) - π)/π^(i+2) mod 𝔪` (a `MonoidHom` on `G_{i+1}`, valued in
+`Multiplicative (ResidueField A)`, i.e. additive once unwrapped). What is proved here is the
+homomorphism property and its kernel as a *point-test condition at `π`* — content genuinely not
+present in `mem_ramificationGroup_succ_iff`'s kernel characterization, which this file (imported by
+the file that proves that characterization) cannot itself state. `Langlands.
+RamificationFiltrationAdicCompletion` composes the two: the point-test kernel proved here, with
+`mem_ramificationGroup_succ_iff` translating the point-test condition into genuine `ramificationGroup`
+membership, to get the full `G_i ⧸ G_{i+1} ↪ 𝓀` statements.
+
+The additive case's homomorphism property needs a degree estimate on the "error term" of
+`σ(π) ^ (i+2) - π ^ (i+2)`: writing `σ(π) - π = c_σ · π^(i+2)` for `σ ∈ ramificationGroup K A (i+1)`,
+the two-variable geometric-sum factorization `x^n - y^n = (∑ x^k y^(n-1-k)) · (x - y)` gives an error
+term lying in `𝔪_A^(i+2) · 𝔪_A^(i+1) = 𝔪_A^(2i+3)`, comfortably inside the target precision
+`𝔪_A^(i+3)` for every `i : ℕ` — no extra hypothesis on `i` is needed, unlike the `i = 0` multiplicative
+case, which needs a separate (simpler, no error term) argument. -/
+
+section AssociatedGraded
+
+variable {A : ValuationSubring L} {π : A}
+
+/-- Every term of the geometric-sum expansion of `x^(n+1) - y^(n+1)` lies in `𝔪_A^n`, provided both
+`x` and `y` lie in `𝔪_A`. -/
+theorem geomSum₂_mem_pow_maximalIdeal {x y : A} (hx : x ∈ IsLocalRing.maximalIdeal A)
+    (hy : y ∈ IsLocalRing.maximalIdeal A) (n : ℕ) :
+    (∑ k ∈ Finset.range (n + 1), x ^ k * y ^ (n - k)) ∈ IsLocalRing.maximalIdeal A ^ n := by
+  refine Ideal.sum_mem _ fun k hk => ?_
+  have hle : k ≤ n := Nat.lt_succ_iff.mp (Finset.mem_range.mp hk)
+  have hmem : x ^ k * y ^ (n - k) ∈
+      IsLocalRing.maximalIdeal A ^ k * IsLocalRing.maximalIdeal A ^ (n - k) :=
+    Ideal.mul_mem_mul (Ideal.pow_mem_pow hx k) (Ideal.pow_mem_pow hy (n - k))
+  rwa [← pow_add, Nat.add_sub_cancel' hle] at hmem
+
+variable (hπ : IsLocalRing.maximalIdeal A = Ideal.span ({(π : A)} : Set A)) (hπ0 : (π : A) ≠ 0)
+
+include hπ hπ0
+
+omit hπ0 in
+/-- `π` lies in `𝔪_A` (it generates it). -/
+theorem mem_maximalIdeal_of_uniformizer : (π : A) ∈ IsLocalRing.maximalIdeal A :=
+  hπ ▸ Ideal.mem_span_singleton_self _
+
+/-! #### The `i = 0` case: `σ ↦ σ(π)/π mod 𝔪`, a `MonoidHom` on `G_0` -/
+
+/-- **Any `σ` in the decomposition subgroup scales `π` by a unit of `A`.** `σ` fixes `𝔪_A` setwise
+(hence `Ideal.map`s `span {π}` to itself), so `σ • π` and `π` generate the same ideal; extracting
+both containments via `Ideal.mem_span_singleton'` and cancelling `π` (nonzero, `A` a domain) shows
+the two witnessing coefficients are mutually inverse. -/
+theorem exists_isUnit_smul_eq_mul (σ : A.decompositionSubgroup K) :
+    ∃ c : A, IsUnit c ∧ σ • π = c * π := by
+  set e := MulSemiringAction.toRingEquiv (A.decompositionSubgroup K) A σ with hedef
+  have hmapEq : (IsLocalRing.maximalIdeal A).map e = IsLocalRing.maximalIdeal A :=
+    IsLocalRing.map_ringEquiv_maximalIdeal e
+  have hex : e π = σ • π := MulSemiringAction.toRingEquiv_apply_apply _ _ σ π
+  have himg : e '' ({(π : A)} : Set A) = ({(σ • π : A)} : Set A) := by
+    rw [Set.image_singleton, hex]
+  have hspan : Ideal.span ({(σ • π : A)} : Set A) = Ideal.span ({(π : A)} : Set A) := by
+    rw [← himg, ← Ideal.map_span, ← hπ, hmapEq]
+  have h1 : (σ • π : A) ∈ Ideal.span ({(π : A)} : Set A) := by
+    rw [← hspan]; exact Ideal.mem_span_singleton_self _
+  have h2 : (π : A) ∈ Ideal.span ({(σ • π : A)} : Set A) := by
+    rw [hspan]; exact Ideal.mem_span_singleton_self _
+  obtain ⟨c1, hc1⟩ := Ideal.mem_span_singleton'.mp h1
+  obtain ⟨c2, hc2⟩ := Ideal.mem_span_singleton'.mp h2
+  have heq : c2 * c1 * π = π := by rw [mul_assoc, hc1]; exact hc2
+  have heq1 : c2 * c1 = 1 := mul_right_cancel₀ hπ0 (heq.trans (one_mul π).symm)
+  exact ⟨c1, IsUnit.of_mul_eq_one c2 (by rw [mul_comm]; exact heq1), hc1.symm⟩
+
+/-- The unit coefficient `c_σ` of `exists_isUnit_smul_eq_mul`, chosen once and for all. -/
+noncomputable def gradedZeroCoeff (σ : A.decompositionSubgroup K) : A :=
+  (exists_isUnit_smul_eq_mul hπ hπ0 σ).choose
+
+theorem gradedZeroCoeff_isUnit (σ : A.decompositionSubgroup K) :
+    IsUnit (gradedZeroCoeff hπ hπ0 σ) :=
+  (exists_isUnit_smul_eq_mul hπ hπ0 σ).choose_spec.1
+
+theorem gradedZeroCoeff_spec (σ : A.decompositionSubgroup K) :
+    σ • π = gradedZeroCoeff hπ hπ0 σ * π :=
+  (exists_isUnit_smul_eq_mul hπ hπ0 σ).choose_spec.2
+
+theorem gradedZeroCoeff_ne_zero (σ : A.decompositionSubgroup K) :
+    IsLocalRing.residue A (gradedZeroCoeff hπ hπ0 σ) ≠ 0 := by
+  rw [Ne, IsLocalRing.residue_eq_zero_iff]
+  exact IsLocalRing.notMem_maximalIdeal.mpr (gradedZeroCoeff_isUnit hπ hπ0 σ)
+
+/-- The coefficient is multiplicative: `c_{στ} = σ(c_τ) · c_σ`, by cancelling `π` in
+`(στ) • π = σ • (τ • π) = σ(c_τ) · σ(π) = σ(c_τ) · c_σ · π`. -/
+theorem gradedZeroCoeff_mul (σ τ : A.decompositionSubgroup K) :
+    gradedZeroCoeff hπ hπ0 (σ * τ)
+      = σ • gradedZeroCoeff hπ hπ0 τ * gradedZeroCoeff hπ hπ0 σ := by
+  have hlhs : gradedZeroCoeff hπ hπ0 (σ * τ) * π = (σ * τ) • π :=
+    (gradedZeroCoeff_spec hπ hπ0 (σ * τ)).symm
+  have hrhs : (σ • gradedZeroCoeff hπ hπ0 τ * gradedZeroCoeff hπ hπ0 σ) * π = (σ * τ) • π := by
+    rw [mul_smul, gradedZeroCoeff_spec hπ hπ0 τ, smul_mul', gradedZeroCoeff_spec hπ hπ0 σ]; ring
+  exact mul_right_cancel₀ hπ0 (hlhs.trans hrhs.symm)
+
+/-- **The `i = 0` associated-graded map, as a `MonoidHom`.** `σ ↦ σ(π)/π mod 𝔪`, valued in
+`(ResidueField A)ˣ`, defined on `G_0 = ramificationGroup K A 0`: for `σ ∈ G_0`, `σ` fixes the
+residue field pointwise, so `residue (σ • c_τ) = residue c_τ`, which is exactly what makes
+`residue ∘ gradedZeroCoeff` multiplicative on `G_0` (`gradedZeroCoeff_mul` plus commutativity of the
+residue field). -/
+noncomputable def gradedZeroHom :
+    (ramificationGroup K A 0) →* (IsLocalRing.ResidueField A)ˣ where
+  toFun σ := Units.mk0 (IsLocalRing.residue A (gradedZeroCoeff hπ hπ0 (σ : A.decompositionSubgroup K)))
+    (gradedZeroCoeff_ne_zero hπ hπ0 (σ : A.decompositionSubgroup K))
+  map_one' := by
+    refine Units.ext ?_
+    rw [Units.val_mk0, Units.val_one, (ramificationGroup K A 0).coe_one]
+    have h1 : gradedZeroCoeff hπ hπ0 (1 : A.decompositionSubgroup K) * π
+        = (1 : A.decompositionSubgroup K) • π := (gradedZeroCoeff_spec hπ hπ0 1).symm
+    rw [one_smul] at h1
+    rw [mul_right_cancel₀ hπ0 (h1.trans (one_mul π).symm), map_one]
+  map_mul' σ τ := by
+    refine Units.ext ?_
+    rw [Units.val_mk0, Units.val_mul, Units.val_mk0, Units.val_mk0,
+      (ramificationGroup K A 0).coe_mul, gradedZeroCoeff_mul]
+    have hσ0 : (σ : A.decompositionSubgroup K) ∈ ramificationGroup K A 0 := σ.2
+    have hres : IsLocalRing.residue A
+        ((σ : A.decompositionSubgroup K) • gradedZeroCoeff hπ hπ0 (τ : A.decompositionSubgroup K))
+        = IsLocalRing.residue A (gradedZeroCoeff hπ hπ0 (τ : A.decompositionSubgroup K)) := by
+      have hσπ := hσ0 (gradedZeroCoeff hπ hπ0 (τ : A.decompositionSubgroup K))
+      rw [zero_add, pow_one] at hσπ
+      rw [← sub_eq_zero, ← map_sub, IsLocalRing.residue_eq_zero_iff]
+      exact hσπ
+    rw [map_mul, hres, mul_comm]
+
+theorem gradedZeroHom_coe (σ : ramificationGroup K A 0) :
+    (gradedZeroHom hπ hπ0 σ : IsLocalRing.ResidueField A)
+      = IsLocalRing.residue A (gradedZeroCoeff hπ hπ0 (σ : A.decompositionSubgroup K)) :=
+  rfl
+
+/-- **The kernel of `gradedZeroHom`, as a point-test condition at `π`.** `σ ↦ 1` under
+`gradedZeroHom` unwinds (via `Units.mk0`/`IsLocalRing.residue`) to `c_σ ≡ 1 mod 𝔪`, which is exactly
+`σ • π - π ∈ 𝔪_A ^ 2`. This is stated as a point-test condition, not as `σ ∈ ramificationGroup K A 1`
+directly, because turning the point test into full `ramificationGroup` membership needs
+`mem_ramificationGroup_succ_iff`, proved downstream of this file (it needs a generating pair `{x, π}`
+not available at this level of generality); see `Langlands.RamificationFiltrationAdicCompletion` for
+the composed statement. -/
+theorem gradedZeroHom_apply_eq_one_iff (σ : ramificationGroup K A 0) :
+    gradedZeroHom hπ hπ0 σ = 1 ↔
+      (σ : A.decompositionSubgroup K) • π - π ∈ IsLocalRing.maximalIdeal A ^ 2 := by
+  set c := gradedZeroCoeff hπ hπ0 (σ : A.decompositionSubgroup K) with hc
+  have hval : (σ : A.decompositionSubgroup K) • π - π = (c - 1) * π := by
+    rw [hc, gradedZeroCoeff_spec hπ hπ0 (σ : A.decompositionSubgroup K)]; ring
+  have hspan2 : IsLocalRing.maximalIdeal A ^ 2 = Ideal.span ({π ^ 2} : Set A) := by
+    rw [hπ, Ideal.span_singleton_pow]
+  have hB : (σ : A.decompositionSubgroup K) • π - π ∈ IsLocalRing.maximalIdeal A ^ 2
+      ↔ IsLocalRing.residue A c = 1 := by
+    rw [hval, hspan2, Ideal.mem_span_singleton, sq π, mul_comm (c - 1) π,
+      mul_dvd_mul_iff_left hπ0, ← Ideal.mem_span_singleton, ← hπ,
+      ← IsLocalRing.residue_eq_zero_iff, map_sub, map_one, sub_eq_zero]
+  have hA : gradedZeroHom hπ hπ0 σ = 1 ↔ IsLocalRing.residue A c = 1 := by
+    rw [Units.ext_iff, gradedZeroHom_coe, Units.val_one, ← hc]
+  rw [hA, hB]
+
+/-! #### The `i ≥ 1` case: `σ ↦ (σ(π) - π)/π^(i+2) mod 𝔪`, a `MonoidHom` on `G_{i+1}` -/
+
+omit hπ0 in
+/-- `𝔪_A ^ n = span {π ^ n}`, for any `n`. -/
+theorem maximalIdeal_pow_eq (n : ℕ) :
+    IsLocalRing.maximalIdeal A ^ n = Ideal.span ({π ^ n} : Set A) := by
+  rw [hπ, Ideal.span_singleton_pow]
+
+variable (i : ℕ)
+
+/-- The coefficient `c_σ` with `σ • π - π = c_σ · π^(i+2)`, for `σ ∈ ramificationGroup K A (i+1)`
+(the `(i+1)+1 = i+2`-power membership is exactly the defining property of `ramificationGroup K A
+(i+1)`, tested at `π`). -/
+theorem exists_smul_sub_eq_mul_pow (σ : ramificationGroup K A (i + 1)) :
+    ∃ c : A, (σ : A.decompositionSubgroup K) • π - π = c * π ^ (i + 2) := by
+  have hmem : (σ : A.decompositionSubgroup K) • π - π ∈ IsLocalRing.maximalIdeal A ^ (i + 1 + 1) :=
+    σ.2 π
+  rw [maximalIdeal_pow_eq hπ (i + 2)] at hmem
+  obtain ⟨c, hc⟩ := Ideal.mem_span_singleton'.mp hmem
+  exact ⟨c, hc.symm⟩
+
+/-- The coefficient of `exists_smul_sub_eq_mul_pow`, chosen once and for all. -/
+noncomputable def succCoeff (σ : ramificationGroup K A (i + 1)) : A :=
+  (exists_smul_sub_eq_mul_pow hπ hπ0 i σ).choose
+
+theorem succCoeff_spec (σ : ramificationGroup K A (i + 1)) :
+    (σ : A.decompositionSubgroup K) • π - π = succCoeff hπ hπ0 i σ * π ^ (i + 2) :=
+  (exists_smul_sub_eq_mul_pow hπ hπ0 i σ).choose_spec
+
+/-- **The coefficient is additive modulo `𝔪`.** The exact identity is
+`c_{στ} = c_σ + σ(c_τ) + σ(c_τ) · S · c_σ`, where `S` is the geometric-sum factor of
+`σ(π)^(i+2) - π^(i+2)`; since `S ∈ 𝔪_A` (it is a sum of terms each visibly in `𝔪_A^(i+1) ⊆ 𝔪_A`,
+`geomSum₂_mem_pow_maximalIdeal`), the error term vanishes after taking residues. -/
+theorem succCoeff_residue_add (σ τ : ramificationGroup K A (i + 1)) :
+    IsLocalRing.residue A (succCoeff hπ hπ0 i (σ * τ))
+      = IsLocalRing.residue A (succCoeff hπ hπ0 i σ) + IsLocalRing.residue A (succCoeff hπ hπ0 i τ) := by
+  have hSσ := succCoeff_spec hπ hπ0 i σ
+  have hSτ := succCoeff_spec hπ hπ0 i τ
+  have hSστ := succCoeff_spec hπ hπ0 i (σ * τ)
+  rw [(ramificationGroup K A (i + 1)).coe_mul, mul_smul] at hSστ
+  have hτeq : (τ : A.decompositionSubgroup K) • π = π + succCoeff hπ hπ0 i τ * π ^ (i + 2) := by
+    rw [← hSτ]; ring
+  have hσeq : (σ : A.decompositionSubgroup K) • π = π + succCoeff hπ hπ0 i σ * π ^ (i + 2) := by
+    rw [← hSσ]; ring
+  have step1 : (σ : A.decompositionSubgroup K) • ((τ : A.decompositionSubgroup K) • π)
+      = (σ : A.decompositionSubgroup K) • π
+        + (σ : A.decompositionSubgroup K) • succCoeff hπ hπ0 i τ
+          * ((σ : A.decompositionSubgroup K) • π) ^ (i + 2) := by
+    rw [hτeq, smul_add, smul_mul', smul_pow']
+  have hxmem : (σ : A.decompositionSubgroup K) • π ∈ IsLocalRing.maximalIdeal A := by
+    have h1 : π ∈ IsLocalRing.maximalIdeal A ^ 1 := by
+      rw [pow_one]; exact mem_maximalIdeal_of_uniformizer hπ
+    have h2 := smul_mem_pow_maximalIdeal K (σ : A.decompositionSubgroup K) 1 h1
+    rwa [pow_one] at h2
+  have hymem : (π : A) ∈ IsLocalRing.maximalIdeal A := mem_maximalIdeal_of_uniformizer hπ
+  have hSmem : (∑ k ∈ Finset.range (i + 2),
+      ((σ : A.decompositionSubgroup K) • π) ^ k * π ^ (i + 1 - k)) ∈ IsLocalRing.maximalIdeal A := by
+    have h := Ideal.pow_le_pow_right (Nat.le_add_left 1 i)
+      (geomSum₂_mem_pow_maximalIdeal hxmem hymem (i + 1))
+    rwa [pow_one] at h
+  have hgeom := geom_sum₂_mul ((σ : A.decompositionSubgroup K) • π) π (i + 2)
+  have hxy : ((σ : A.decompositionSubgroup K) • π) ^ (i + 2) - π ^ (i + 2)
+      = (∑ k ∈ Finset.range (i + 2), ((σ : A.decompositionSubgroup K) • π) ^ k * π ^ (i + 1 - k))
+        * ((σ : A.decompositionSubgroup K) • π - π) := hgeom.symm
+  have hxpow : ((σ : A.decompositionSubgroup K) • π) ^ (i + 2)
+      = π ^ (i + 2)
+        + (∑ k ∈ Finset.range (i + 2), ((σ : A.decompositionSubgroup K) • π) ^ k * π ^ (i + 1 - k))
+          * (succCoeff hπ hπ0 i σ * π ^ (i + 2)) := by
+    rw [hSσ] at hxy; linear_combination hxy
+  have key : succCoeff hπ hπ0 i (σ * τ) * π ^ (i + 2)
+      = (succCoeff hπ hπ0 i σ + (σ : A.decompositionSubgroup K) • succCoeff hπ hπ0 i τ
+          + (σ : A.decompositionSubgroup K) • succCoeff hπ hπ0 i τ
+            * (∑ k ∈ Finset.range (i + 2),
+                ((σ : A.decompositionSubgroup K) • π) ^ k * π ^ (i + 1 - k))
+            * succCoeff hπ hπ0 i σ) * π ^ (i + 2) := by
+    rw [← hSστ, step1, hxpow, hσeq]; ring
+  have hcancel : succCoeff hπ hπ0 i (σ * τ)
+      = succCoeff hπ hπ0 i σ + (σ : A.decompositionSubgroup K) • succCoeff hπ hπ0 i τ
+        + (σ : A.decompositionSubgroup K) • succCoeff hπ hπ0 i τ
+          * (∑ k ∈ Finset.range (i + 2), ((σ : A.decompositionSubgroup K) • π) ^ k * π ^ (i + 1 - k))
+          * succCoeff hπ hπ0 i σ :=
+    mul_right_cancel₀ (pow_ne_zero (i + 2) hπ0) key
+  have hσfix : IsLocalRing.residue A ((σ : A.decompositionSubgroup K) • succCoeff hπ hπ0 i τ)
+      = IsLocalRing.residue A (succCoeff hπ hπ0 i τ) := by
+    have hσ0 : (σ : A.decompositionSubgroup K) ∈ ramificationGroup K A 0 :=
+      ramificationGroup_le_zero A (i + 1) σ.2
+    have h := hσ0 (succCoeff hπ hπ0 i τ)
+    rw [zero_add, pow_one] at h
+    rw [← sub_eq_zero, ← map_sub, IsLocalRing.residue_eq_zero_iff]
+    exact h
+  rw [hcancel, map_add, map_add, map_mul, map_mul, hσfix,
+    (IsLocalRing.residue_eq_zero_iff _).mpr hSmem, mul_zero, zero_mul, add_zero]
+
+/-- **The `i ≥ 1` associated-graded map, as a `MonoidHom`.** `σ ↦ (σ(π) - π)/π^(i+2) mod 𝔪`,
+defined on `G_{i+1} = ramificationGroup K A (i + 1)`, valued in `Multiplicative (ResidueField A)`
+(i.e. additive once unwrapped): `succCoeff_residue_add` is exactly its `map_mul'`. -/
+noncomputable def gradedSuccHom :
+    (ramificationGroup K A (i + 1)) →* Multiplicative (IsLocalRing.ResidueField A) where
+  toFun σ := Multiplicative.ofAdd (IsLocalRing.residue A (succCoeff hπ hπ0 i σ))
+  map_one' := by
+    apply Multiplicative.toAdd.injective
+    show IsLocalRing.residue A (succCoeff hπ hπ0 i (1 : ramificationGroup K A (i + 1))) = 0
+    have hspec := succCoeff_spec hπ hπ0 i (1 : ramificationGroup K A (i + 1))
+    rw [(ramificationGroup K A (i + 1)).coe_one, one_smul, sub_self] at hspec
+    have hz : succCoeff hπ hπ0 i (1 : ramificationGroup K A (i + 1)) = 0 :=
+      mul_right_cancel₀ (pow_ne_zero (i + 2) hπ0) (hspec.symm.trans (zero_mul _).symm)
+    rw [hz, map_zero]
+  map_mul' σ τ := by
+    apply Multiplicative.toAdd.injective
+    exact succCoeff_residue_add hπ hπ0 i σ τ
+
+theorem gradedSuccHom_coe (σ : ramificationGroup K A (i + 1)) :
+    Multiplicative.toAdd (gradedSuccHom hπ hπ0 i σ)
+      = IsLocalRing.residue A (succCoeff hπ hπ0 i σ) :=
+  rfl
+
+/-- **The kernel of `gradedSuccHom`, as a point-test condition at `π`.** Mirrors
+`gradedZeroHom_apply_eq_one_iff`: `σ ↦ 1` unwinds to `c_σ ≡ 0 mod 𝔪`, i.e. `σ • π - π ∈ 𝔪_A^(i+3)`.
+Stated as a point-test condition for the same reason: turning it into full `ramificationGroup`
+membership needs `mem_ramificationGroup_succ_iff`, downstream of this file. -/
+theorem gradedSuccHom_apply_eq_one_iff (σ : ramificationGroup K A (i + 1)) :
+    gradedSuccHom hπ hπ0 i σ = 1 ↔
+      (σ : A.decompositionSubgroup K) • π - π ∈ IsLocalRing.maximalIdeal A ^ (i + 3) := by
+  set c := succCoeff hπ hπ0 i σ with hc
+  have hval : (σ : A.decompositionSubgroup K) • π - π = c * π ^ (i + 2) := succCoeff_spec hπ hπ0 i σ
+  have hspan3 : IsLocalRing.maximalIdeal A ^ (i + 3) = Ideal.span ({π ^ (i + 3)} : Set A) :=
+    maximalIdeal_pow_eq hπ (i + 3)
+  have hB : (σ : A.decompositionSubgroup K) • π - π ∈ IsLocalRing.maximalIdeal A ^ (i + 3)
+      ↔ IsLocalRing.residue A c = 0 := by
+    rw [hval, hspan3, Ideal.mem_span_singleton,
+      show π ^ (i + 3) = π ^ (i + 2) * π from by ring, mul_comm c (π ^ (i + 2)),
+      mul_dvd_mul_iff_left (pow_ne_zero (i + 2) hπ0), ← Ideal.mem_span_singleton, ← hπ,
+      IsLocalRing.residue_eq_zero_iff]
+  have hA : gradedSuccHom hπ hπ0 i σ = 1 ↔ IsLocalRing.residue A c = 0 := by
+    rw [← toAdd_eq_zero, gradedSuccHom_coe, ← hc]
+  rw [hA, hB]
+
+end AssociatedGraded
 
 end ValuationSubring
