@@ -16,13 +16,13 @@ under `IsTotallyRamified` and `IsTamelyRamified`, where `π_L` is any uniformize
 
 ## This is `⊇`, not `=`
 
-Only the containment is proved. The reverse inclusion would need the level-`0` computation
-`N(u) ≡ ū^e (mod 𝔪_K)` (see `Langlands.TotallyRamifiedNormSurjective`'s module docstring and
-`ROADMAP.md` Phase 2b's fortieth-pass entry), which is not formalized anywhere in this repo: the
-unit half of the norm group is only known to *contain* `U_K^{(1)}`, and `N_{L/K}(U_L)` is strictly
-larger than `U_K^{(1)}` in general (it is the preimage of the `e`-th powers of `𝓀[K]ˣ`). So the
-`⊔` here is genuinely smaller than `MonoidHom.range (localNormMap K L v w)`, and nothing stronger
-is claimed. Contrast `Langlands.UnramifiedNormRange`'s `localNormMap_range_eq`, an equality,
+Only the containment is proved. `N_{L/K}(U_L)` is strictly larger than `U_K^{(1)}` in general (it
+is the set of units whose residue is an `e`-th power of `𝓀[K]ˣ` — see
+`Langlands.TotallyRamifiedNormResidue`'s
+`residue_norm_eq_residue_pow_ramificationIdx_of_isTotallyRamified`, which proves the `⊆` half of
+that description), and the *unit* half of the norm group is only known here to *contain*
+`U_K^{(1)}`: the matching surjectivity at level `0` is not formalized. So the `⊔` here is
+genuinely smaller than `MonoidHom.range (localNormMap K L v w)`, and nothing stronger is claimed. Contrast `Langlands.UnramifiedNormRange`'s `localNormMap_range_eq`, an equality,
 available there because the unramified unit half is all of `O_K^×`.
 
 ## `N(π_L)` is a uniformizer of `K₀`: proved concretely, not by instantiating the abstract bundle

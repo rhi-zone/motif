@@ -19,9 +19,11 @@ residue-field norm `𝓀[L] → 𝓀[K]` is surjective for an extension of finit
 level `0` is instead `ū ↦ ū ^ e`, whose image is the subgroup of `e`-th powers of `𝓀[K]ˣ` — a
 *proper* subgroup as soon as `e > 1` and `e ∣ #𝓀[K]ˣ`. So `N_{L/K}(U_L) = U_K` is **false** for a
 totally ramified extension of degree `e > 1`, and `U_K^{(1)}` (equivalently: exactly the units
-whose residue is an `e`-th power) is the correct target. That level-`0` computation is a classical
-fact stated here only to explain the shape of the theorem; it is **not** formalized in this file,
-and neither is the sharper `N_{L/K}(U_L) = {u : ū ∈ (𝓀[K]ˣ)^e}`.
+whose residue is an `e`-th power) is the correct target. The level-`0` computation itself is not
+in this file; it is `Langlands.TotallyRamifiedNormResidue`'s
+`residue_norm_eq_residue_pow_ramificationIdx_of_isTotallyRamified`, which gives the `⊆` half of
+the sharper `N_{L/K}(U_L) = {u : ū ∈ (𝓀[K]ˣ)^e}`. The `⊇` half — surjectivity at level `0` — is
+not formalized anywhere in this repo.
 
 ## Route
 
