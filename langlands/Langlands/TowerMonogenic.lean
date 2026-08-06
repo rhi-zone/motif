@@ -3,6 +3,7 @@ Copyright (c) 2026 rhizone. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Langlands.ArtinianPrimitiveElement
+import Mathlib.RingTheory.Polynomial.Eisenstein.Basic
 
 /-!
 # Serre's tower step for monogenicity
@@ -107,5 +108,44 @@ theorem exists_adjoin_eq_top_of_tower
     obtain ⟨c, y, hcy⟩ := hsurj x
     refine ⟨residue OM c, Ideal.Quotient.mk J y, ?_⟩
     rw [halg, ← map_mul, ← map_add, hcy]
+
+/-! ### Discharging the upper step's two hypotheses from an Eisenstein generator
+
+`exists_adjoin_eq_top_of_tower`'s `hsurj` and `hnil` are, for the totally ramified upper step,
+consequences of `𝒪_N = 𝒪_M[π]` and Eisenstein-ness of `minpoly 𝒪_M π` respectively. Both are
+general facts about algebras, stated here without any valuation-theoretic hypotheses. -/
+
+/-- **`hsurj` from monogenicity.** If `S = A[π]` then every `x : S` is `c + π * y` with `c` in the
+image of `A`. Immediate from `Algebra.adjoin_singleton_eq_range_aeval` and the polynomial
+decomposition `p = X * p.divX + C (p.coeff 0)`. -/
+theorem exists_add_mul_of_adjoin_eq_top {A S : Type*} [CommRing A] [CommRing S] [Algebra A S]
+    {π : S} (h : Algebra.adjoin A ({π} : Set S) = ⊤) (x : S) :
+    ∃ (c : A) (y : S), x = algebraMap A S c + π * y := by
+  have hx : x ∈ Algebra.adjoin A ({π} : Set S) := h ▸ Algebra.mem_top
+  rw [Algebra.adjoin_singleton_eq_range_aeval] at hx
+  obtain ⟨p, rfl⟩ := hx
+  refine ⟨p.coeff 0, Polynomial.aeval π p.divX, ?_⟩
+  conv_lhs => rw [← Polynomial.X_mul_divX_add p]
+  simp [-Polynomial.X_mul_divX_add, add_comm]
+
+/-- **`hnil` from Eisenstein-ness.** If `minpoly A π` is Eisenstein at `𝔪_A` then
+`π ^ deg ∈ 𝔪_A · S`. This is `Polynomial.IsWeaklyEisensteinAt.
+pow_natDegree_le_of_aeval_zero_of_monic_mem_map` specialised to the minimal polynomial. -/
+theorem pow_natDegree_minpoly_mem_map {A S : Type*} [CommRing A] [IsLocalRing A] [CommRing S]
+    [Algebra A S] {π : S} (hint : IsIntegral A π)
+    (hEis : (minpoly A π).IsEisensteinAt (maximalIdeal A)) :
+    π ^ (minpoly A π).natDegree ∈ Ideal.map (algebraMap A S) (maximalIdeal A) :=
+  hEis.isWeaklyEisensteinAt.pow_natDegree_le_of_aeval_zero_of_monic_mem_map
+    (minpoly.aeval A π) (minpoly.monic hint) _ (Polynomial.natDegree_map_le)
+
+/-- **Passing a monogenicity statement from a subalgebra to its coercion to a type.** If
+`Algebra.adjoin A {x} = S` as subalgebras of `B`, then `⟨x, _⟩` generates the whole of `↥S`. -/
+theorem adjoin_singleton_eq_top_of_adjoin_eq {A B : Type*} [CommRing A] [CommRing B] [Algebra A B]
+    {S : Subalgebra A B} {x : B} (hx : x ∈ S) (h : Algebra.adjoin A ({x} : Set B) = S) :
+    Algebra.adjoin A ({(⟨x, hx⟩ : S)} : Set S) = ⊤ := by
+  apply Subalgebra.map_injective (f := S.val) Subtype.coe_injective
+  rw [AlgHom.map_adjoin, Algebra.map_top, Subalgebra.range_val,
+    show (S.val : S →ₐ[A] B) '' ({(⟨x, hx⟩ : S)} : Set S) = ({x} : Set B) by simp]
+  exact h
 
 end LocalField
