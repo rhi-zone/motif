@@ -1668,6 +1668,87 @@ that avoids stalling on (a).
 > `L_0` as a genuine subfield of a fixed `L` — the same obstruction pass thirty-two hit — is the real
 > remaining wall.
 
+> **Update (2026-08-06, thirty-fourth pass) — the specific sub-obstruction pass thirty-three left
+> open ("producing `L_0` as a genuine subfield of a fixed `L`") is attacked head-on via the
+> "most-promising unexplored angle" the task brief for this pass identified: Hensel's lemma applied
+> directly to `𝒪_L` itself, rather than to an auxiliary algebraically closed field. Real, checked
+> progress is landed — `HenselianLocalRing` is now available on the actual, already-fixed
+> `w.adicCompletionIntegers L` — but this pass does *not* reach `L_0` itself, `𝒪_L = 𝒪_{L_0}[π]`, or
+> `RamificationFiltration.lean`'s kernel argument; those remain open, for reasons below.**
+>
+> **What is landed, commit `43198e0`, `#print axioms` showing only `propext, Classical.choice,
+> Quot.sound` throughout, no `sorry`:**
+>
+> * `IsDedekindDomain.HeightOneSpectrum.instIsDiscreteValuationRingValuationSubringAdicCompletion`
+>   (`Langlands/NormMap.lean`): `IsDiscreteValuationRing ↥(ValuativeRel.valuation
+>   (v.adicCompletion F)).valuationSubring`, for *any* Dedekind domain `A` with fraction field `F`
+>   and `v : HeightOneSpectrum A` — a base-field fact that turned out to be needed but was not
+>   established anywhere in this repo before this pass (confirmed by grep: no
+>   `IsDiscreteValuationRing` instance keyed on `adicCompletion` existed). Built from Mathlib's
+>   `Valuation.IsRankOneDiscrete (Valued.v : Valuation (v.adicCompletion F) ℤᵐ⁰)` instance (any
+>   Dedekind domain, `Mathlib.NumberTheory.NumberField.Completion.FinitePlace`, already used in this
+>   repo via `instRankOneValuedAdicCompletion`) plus `Valuation.valuationSubring_isDiscreteValuationRing`
+>   (Serre, *Local Fields* I §1 Prop. 1), bridged from `Valued.v`'s valuation subring to
+>   `ValuativeRel.valuation`'s via the same `Valuation.Compatible.vle_iff_le`-chasing pattern
+>   `TowerBundle.lean`'s `valuationSubring_valuation_ofValuation_eq` already used for a different
+>   valuation pair.
+> * `LocalField.henselianLocalRing_of_comap_eq` (`Langlands/TowerBundle.lean`): for `A :
+>   ValuationSubring M` lying over a complete discretely-valued `𝒪[K]` with finite residue field and
+>   `M / K` finite, `HenselianLocalRing ↥A` — Henselian-ness of `A` *itself*, not of the
+>   `ValuativeRel`-canonical valuation subring the rest of `TowerBundle.lean`'s lemmas conclude
+>   about (which is only equal to `A` up to the `letI`-built bundle, via
+>   `valuationSubring_valuation_ofValuation_eq`). Proved by assembling the same `letI` chain
+>   `TowerBundle.lean`'s existing lemmas use (`exists_completeSpace_of_finiteDimensional`,
+>   `isDiscreteValuationRing_valuation_valuationSubring_of_finiteDimensional`) and applying
+>   `UnramifiedExtension.lean`'s `henselianLocalRing_of_valuationSubring` (the thirty-first-pass
+>   lighter-bundle Henselian instance), then transporting the conclusion from
+>   `↥(ValuativeRel.valuation M).valuationSubring` to `↥A` along
+>   `valuationSubring_valuation_ofValuation_eq`.
+> * `IsDedekindDomain.HeightOneSpectrum.henselianLocalRing_adicCompletionIntegers`
+>   (`Langlands/RamificationFiltrationAdicCompletion.lean`): the concrete instantiation, at `A :=
+>   w.adicCompletionIntegers L`, `K := v.adicCompletion K` — `HenselianLocalRing ↥(w.adicCompletionIntegers
+>   L)`, given `[Finite (IsLocalRing.ResidueField (w.adicCompletionIntegers L))]` (the same hypothesis
+>   pattern already used throughout this file's neighbors, e.g. `UnramifiedNormRange.lean`). The comap
+>   hypothesis reuses `decompositionSubgroup_eq_top`'s own `hbase` computation; the required
+>   `Valuation.RankOne` instance on `A.valuation` comes from `LocalField.exists_rankOne_compatible`
+>   (`Langlands.HenselianValuation`), already available since `v.adicCompletion K` carries the full
+>   normed-field bundle (`Langlands.NormMap`) and `w.adicCompletion L / v.adicCompletion K` is
+>   algebraic.
+>
+> **Why this does not yet reach `L_0`.** `HenselianLocalRing ↥(w.adicCompletionIntegers L)` is the
+> *prerequisite* Hensel's-lemma instance the task brief's proposed route needs — it is not yet the
+> lifted root. The remaining steps, none attempted this pass:
+>
+> 1. Produce a residue-field generator `β₀` of `IsLocalRing.ResidueField (w.adicCompletionIntegers
+>    L)` over `IsLocalRing.ResidueField (v.adicCompletionIntegers K)` (a primitive element of the
+>    finite residue-field extension) and a monic lift `f` of `minpoly β₀` to `v.adicCompletionIntegers
+>    K` — mechanical, via `HenselianLocalRing.exists_monic_lift_minpoly`
+>    (`Langlands.UnramifiedExtension`, already generic enough to apply to any `HenselianLocalRing`).
+> 2. Show `β₀` is a *simple* root of `f`'s reduction mod `𝔪_{w.adicCompletionIntegers L}` — not
+>    merely mod `𝔪_{v.adicCompletionIntegers K}` — i.e. that the residue extension
+>    `ResidueField (w.adicCompletionIntegers L) / ResidueField (v.adicCompletionIntegers K)` is
+>    separable (true for finite fields, but the derivation from `Finite (ResidueField
+>    (w.adicCompletionIntegers L))` to "simple root of the *lifted* polynomial's reduction" is not
+>    yet written down) — this is the step that actually needs the coprime-factor form of Hensel's
+>    lemma (`HenselianLocalRing`'s `is_henselian` field, factoring `f` as `g * h` with `g₀ := X -
+>    β₀`, `h₀` coprime), not merely the existence of *a* Henselian instance.
+> 3. Extract the linear factor to get `x ∈ w.adicCompletionIntegers L` with residue `β₀`, set `L_0 :=
+>    K⟮(x : w.adicCompletion L)⟯` as a genuine `IntermediateField (v.adicCompletion K)
+>    (w.adicCompletion L)`, and prove it is unramified (`𝔪_K · 𝒪_{L_0} = 𝔪_{L_0}`) and that its
+>    residue field is all of `ResidueField (w.adicCompletionIntegers L)` (not merely a subfield) —
+>    neither is automatic from `x`'s construction alone and both need checking.
+> 4. Only then does the Eisenstein/`TowerMonogenic.lean` machinery (pass thirty-three's assessed
+>    "classically near-immediate" half) become applicable to prove `𝒪_L = 𝒪_{L_0}[π]` for the
+>    already-fixed uniformizer `π`.
+> 5. Only after *that* does `RamificationFiltration.lean`'s kernel argument (blocked since pass
+>    twelve) become closeable.
+>
+> None of steps 1–5 is started this pass beyond the prerequisite instance in step 0. **The
+> ramification-group associated-graded embeddings and the resulting finiteness of the filtration
+> remain open** — this pass narrows the remaining gap (a Henselian instance now exists on the actual
+> `L`, closing the specific "auxiliary field" objection pass thirty-two/-three raised) but does not
+> close it. Left as the next scoped step rather than forced or papered over with an extra hypothesis.
+
 - **Why this exists.** Phase 2a closed the "easy half" of local CFT (unramified norm-group
   surjectivity) in full, across ten passes. This section applies the same before-you-build
   discipline to Phase 2's actual hard content — the ramified case and the reciprocity map itself —
