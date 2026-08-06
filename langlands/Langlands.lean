@@ -13,6 +13,7 @@ import Langlands.RamificationFiltration
 import Langlands.RamificationFiltrationAdicCompletion
 import Langlands.ResidueField
 import Langlands.TotallyRamifiedEisenstein
+import Langlands.TotallyRamifiedNormSurjective
 import Langlands.TowerBundle
 import Langlands.TwoGeneratorMonogenic
 import Langlands.ValueGroupCyclic
