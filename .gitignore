@@ -27,3 +27,10 @@ docs/.vitepress/dist/
 !.normalize/hotspots-allow
 !.normalize/large-files-allow
 !.normalize/memory/
+
+# normalize caches
+.normalize/diagnostics.json
+.normalize/findings-cache.sqlite
+.normalize/index.sqlite
+.normalize/.last-command
+langlands/.normalize/
