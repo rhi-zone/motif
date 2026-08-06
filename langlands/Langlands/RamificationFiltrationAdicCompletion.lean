@@ -35,15 +35,30 @@ already in scope via `Langlands.AdicCompletionIntegralClosure`).
   given uniformizer and `x` a Hensel-lifted simple root.
 * `IsDedekindDomain.HeightOneSpectrum.mem_ramificationGroup_succ_iff` : Serre's uniformizer
   criterion, `σ ∈ G_{i+1} ↔ σ • π - π ∈ 𝔪 ^ (i + 2)` for `σ` in the inertia group.
+* `IsDedekindDomain.HeightOneSpectrum.gradedZeroHom_ker_eq` /
+  `IsDedekindDomain.HeightOneSpectrum.gradedSuccHom_ker_eq` : the associated-graded maps' kernels
+  are exactly `G_1` (resp. `G_{i+2}`), composing `mem_ramificationGroup_succ_iff` with
+  `Langlands.RamificationFiltration`'s point-test kernel characterizations.
+* `IsDedekindDomain.HeightOneSpectrum.gradedZeroHom_kerLift_injective` /
+  `..._gradedSuccHom_kerLift_injective` : the resulting embeddings `G_0 ⧸ G_1 ↪ 𝓀[L]ˣ` and
+  `G_{i+1} ⧸ G_{i+2} ↪ 𝓀[L]` (additively).
+* `IsDedekindDomain.HeightOneSpectrum.exists_ramificationGroup_eq_bot` : the ramification filtration
+  is eventually trivial, `∃ N, ∀ i ≥ N, ramificationGroup K L v w i = ⊥`.
 
 ## Scope
 
-`mem_ramificationGroup_succ_iff` is the kernel computation that
-`Langlands.RamificationFiltration`'s "Scope" docstring records as the blocker for the
-associated-graded embeddings. The embeddings themselves — the maps `G_0 →* 𝓀[L]ˣ` and
-`G_i / G_{i+1} →+ 𝓀[L]` and their injectivity, and the resulting "the filtration is eventually
-trivial" statement — are still not constructed, here or in the general file. What is closed is the
-step those constructions were blocked on, not the constructions.
+**Update (2026-08-06) — closed.** `mem_ramificationGroup_succ_iff` was the kernel computation that
+`Langlands.RamificationFiltration`'s "Scope" docstring recorded as the blocker for the
+associated-graded embeddings; that file now builds the maps themselves
+(`ValuationSubring.gradedZeroHom`, `ValuationSubring.gradedSuccHom`) with kernels stated as
+point-test conditions at `π`. This file composes the two — `mem_ramificationGroup_succ_iff` turns
+the point test into genuine `ramificationGroup` membership — to get the embeddings
+(`gradedZeroHom_ker_eq`/`_kerLift_injective`, `gradedSuccHom_ker_eq`/`_kerLift_injective`) and,
+combined with finiteness of `L ≃ₐ[K] L` (automatic from `Module.Finite K L`) and a separatedness
+argument (`eq_one_of_forall_mem_ramificationGroup`, via the `𝔪`-adic `IsHausdorff` instance already
+in Mathlib for a local ring's own maximal ideal), the filtration-finiteness statement
+`exists_ramificationGroup_eq_bot`. This closes the ramification-group structure-theory thread; see
+`ROADMAP.md`, Phase 2b, for the full account and what comes next.
 -/
 
 noncomputable section

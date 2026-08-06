@@ -107,11 +107,25 @@ statement from `Langlands.TwoGeneratorMonogenic` — giving
 `IsDedekindDomain.HeightOneSpectrum.mem_ramificationGroup_succ_iff`, the kernel computation in
 concrete form.
 
-**Still not attempted.** The associated-graded maps themselves (`G_0 →* (ResidueField A)ˣ`,
-`G_i / G_{i+1} →+ ResidueField A`) are not constructed as bundled homomorphisms, and neither is
-their injectivity as a statement about those bundled objects; only the kernel *characterization*
-they were blocked on is proved. The classical "eventually trivial" finiteness fact (the filtration
-hits `⊥` past some `N`) is likewise untouched. See `ROADMAP.md`, Phase 2b.
+**Update (2026-08-06) — the associated-graded maps are now built as genuine bundled homomorphisms,
+in this file's "Associated-graded pieces" section below.** `gradedZeroHom : ramificationGroup K A 0
+→* (ResidueField A)ˣ` (`σ ↦ σ(π)/π mod 𝔪_A`, exact multiplicativity, no error term — the `i = 0` case
+sketched above) and `gradedSuccHom : ramificationGroup K A (i + 1) →* Multiplicative (ResidueField
+A)` for every `i : ℕ` (`σ ↦ (σ(π) - π)/π^{i+2} mod 𝔪_A`; the additivity argument is *not* the
+binomial-remainder sketch above — a cleaner route via the two-variable geometric-sum factorization
+`x^n - y^n = (Σ x^k y^{n-1-k})(x - y)` needs only that the sum lies in `𝔪_A^{i+1}` (both `x = σ(π)`
+and `y = π` lie in `𝔪_A`, no finer estimate needed), landing the error term in `𝔪_A^{2i+3} ⊆
+𝔪_A^{i+3}` unconditionally in `i`, not merely for `i ≥ 1`). Both maps' kernels are characterized as
+*point-test conditions at `π`* (`gradedZeroHom_apply_eq_one_iff`, `gradedSuccHom_apply_eq_one_iff`)
+— this file cannot state the kernels as literal `ramificationGroup` membership, since that
+identification needs `mem_ramificationGroup_succ_iff`, which lives downstream (it needs a generating
+pair `{x, π}`, not available at this level of generality).
+`Langlands.RamificationFiltrationAdicCompletion` composes the two to get the actual embeddings
+`G_0 ⧸ G_1 ↪ 𝓀[L]ˣ` and `G_{i+1} ⧸ G_{i+2} ↪ 𝓀[L]`, and — together with a generic finite-group
+pigeonhole lemma proved at the end of this file (`Subgroup.exists_eventually_eq_of_antitone`) and a
+separatedness argument — the classical "eventually trivial" finiteness fact
+(`IsDedekindDomain.HeightOneSpectrum.exists_ramificationGroup_eq_bot`). See `ROADMAP.md`, Phase 2b,
+for the full account.
 -/
 
 @[expose] public section
