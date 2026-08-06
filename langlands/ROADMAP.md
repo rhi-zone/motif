@@ -1506,6 +1506,48 @@ that avoids stalling on (a).
 > a lemma-name lookup, and is left as the next scoped step rather than forced. Full detail in
 > `TowerMonogenicConcrete.lean`'s headline-theorem docstring, "Status of hypothesis `he`" section.
 
+> **Update (2026-08-06, thirty-first pass) — the instance gap flagged above is closed; the
+> hypothesis-free corollary itself is not, for a reason confirmed to be a genuine design question
+> rather than the missing instance.** This pass landed
+> `Langlands.UnramifiedExtension.HenselianLocalRing.henselianLocalRing_of_valuationSubring`
+> (`Langlands/UnramifiedExtension.lean`, next to the existing `henselianLocalRing`): under this
+> file's *lighter* bundle (`NontriviallyNormedField`, `IsUltrametricDist`, `ValuativeRel`,
+> `Compatible`, `CompleteSpace`, `IsDiscreteValuationRing ↥(valuation K).valuationSubring`) plus
+> `Finite (ResidueField ↥(valuation K).valuationSubring)`, it derives `LocallyCompactSpace K` (via
+> `Valued.integer.properSpace_iff_completeSpace_and_isDiscreteValuationRing_integer_and_finite_
+> residueField` giving properness, then `locallyCompact_of_proper`), hence
+> `IsNonarchimedeanLocalField K`, and reuses the pre-existing `henselianLocalRing` instance. Built
+> clean, no `sorry`, first placement in the real file (one `lake build` cycle after fixing a
+> `docstring`-before-`open ... in` ordering issue — the doc comment has to follow the `open` line,
+> not precede it). This closes exactly the gap the thirtieth-pass entry named as "the next scoped
+> step": a caller under the lighter bundle with a finite residue field can now invoke
+> `HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv` themselves,
+> which they could not do before for lack of `HenselianLocalRing R`.
+>
+> **This does not, however, make
+> `exists_adjoin_eq_top_of_tower_of_isEisensteinAt_of_valuationSubring` itself unconditional, and
+> not for a lemma-lookup reason.** What the existence theorem hands back is data about an extension
+> it *constructs itself* — `M := K⟮x⟯` for `x` a root of a monic lift of `minpoly (ResidueField R)
+> β₀` — not about an arbitrary caller-supplied `M`. Wiring it in so `e`/`he`/`l`/`hunram` disappear
+> from the signature while `M` and `N` stay free, universally-quantified finite separable
+> extensions (as they are in the theorem today) is not achievable: `hunram` (`𝔪_R · OM = 𝔪_OM`, `M /
+> K` unramified) is a genuine constraint on `M`, false for a ramified example (`K = ℚ_p`, `M =
+> ℚ_p(p^{1/2})`: `𝔪_R · OM = (p) ≠ (p^{1/2}) = 𝔪_OM`) and load-bearing in the abstract theorem's
+> proof (`LocalField.map_maximalIdeal_eq_of_unramified`, `TowerMonogenic.lean`, which the rest of
+> `exists_adjoin_eq_top_of_tower` is built on) — so it cannot be derived for a free `M`, only
+> supplied or constructed. Eliminating it as a hypothesis would require restating the theorem with
+> the unramified half existentially bound and the totally-ramified half (`N`, `π`, `hint`, `hEis`,
+> `hgen`) universally quantified *inside* that existential (`∃ x, ∀ N, ...` rather than the current
+> `∀ M, ∀ N, (hypotheses on M) → ...`), since `N`'s type and its `Algebra` instance over `M` cannot
+> be declared before `x` (hence `M := K⟮x⟯`) is produced. That is a different theorem shape, not a
+> term this theorem's existing statement can be strengthened into — a design question about how to
+> state a fully unconditional corollary, confirmed this pass, not a proof-search or lemma-name gap.
+> Left open rather than forced; full detail in `TowerMonogenicConcrete.lean`'s headline-theorem
+> docstring. **`RamificationFiltration.lean`'s associated-graded embeddings remain blocked** — its
+> own docstring (unchanged, re-read this pass) needs exactly an unconditional "`𝒪_L` monogenic
+> given completeness + finite residue field" fact with no `e`/`he`/`M` to supply, which this pass
+> does not produce.
+
 - **Why this exists.** Phase 2a closed the "easy half" of local CFT (unramified norm-group
   surjectivity) in full, across ten passes. This section applies the same before-you-build
   discipline to Phase 2's actual hard content — the ramified case and the reciprocity map itself —

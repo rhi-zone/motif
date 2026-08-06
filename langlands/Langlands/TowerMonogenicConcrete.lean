@@ -225,25 +225,43 @@ caller with a concrete `K`, `β₀` in hand runs that existence theorem, obtains
 ready-made proof of `he`, and passes both straight into this theorem — no separate `he`
 verification step remains.
 
-**What is still open: fully removing `e`/`he` as explicit parameters of this theorem**, by
-internally invoking the existence theorem and instantiating `M` at its own `K' :=
-IntermediateField.adjoin K {x}` (using that `↥(integralClosureValuationSubring 𝒪[K] M)` and
-`↥(integralClosure 𝒪[K] M)` are the same type by `rfl`, per `TowerValuationSubring.lean`'s
-implementation notes, so the existence theorem's `IsDiscreteValuationRing`/`ValuationRing`/
-`IsFractionRing` output on `integralClosure 𝒪[K] K'` transports to this theorem's `OM` for free).
-This was investigated and does *not* close as a quick instance-transport: instantiating `R :=
-↥(valuation K).valuationSubring` in the existence theorem needs `HenselianLocalRing R`, and the
-only such instance in this codebase
-(`Langlands.UnramifiedExtension.HenselianLocalRing.henselianLocalRing`) is proved under the
-`IsNonarchimedeanLocalField K` bundle, which packages `LocallyCompactSpace K` — a hypothesis this
-theorem's bundle (`NontriviallyNormedField`, `IsUltrametricDist`, `ValuativeRel`, `Compatible`,
-`CompleteSpace`, `IsDiscreteValuationRing 𝒪[K]`) does not carry and no lemma in this codebase
-derives from it. Closing this would need either an independent proof of `HenselianLocalRing 𝒪[K]`
-from mere completeness (bypassing `IsAdicComplete.henselianRing`'s reliance on the
-`IsNonarchimedeanLocalField`-supplied valuative topology), or a proof that `CompleteSpace K` plus a
-finite residue field (needed anyway, for the existence theorem's `Finite (ResidueField R)`) implies
-`LocallyCompactSpace K` — genuine unformalised local-field content, not a lemma-name lookup, and
-not attempted here. -/
+**What is still open: fully removing `e`/`he`/`l`/`hunram` as explicit parameters of this
+theorem.**
+
+The instance gap that previously blocked this — `HenselianLocalRing R` for `R :=
+↥(valuation K).valuationSubring` under this file's lighter bundle — is now closed:
+`Langlands.UnramifiedExtension.HenselianLocalRing.henselianLocalRing_of_valuationSubring` derives it
+from `CompleteSpace K` plus `Finite (ResidueField R)` (via `LocallyCompactSpace K`, using the
+proper-space characterization of complete-DVR-valued fields with finite residue field, then
+`IsNonarchimedeanLocalField K`, then the pre-existing `henselianLocalRing` instance). So a caller
+under this file's lighter bundle, given `Finite (ResidueField R)`, a primitive element `β₀` of a
+separable extension `l / ResidueField R`, and its integrality/primitivity data, can now run
+`HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv` themselves —
+something they could not do before, for lack of `HenselianLocalRing R`.
+
+What that existence theorem hands back, though, is not data about an arbitrary caller-supplied `M`:
+it *constructs* its own unramified extension `M := K⟮x⟯` (for `x` a root, in an algebraically closed
+`L ⊇ K`, of a monic lift of `minpoly (ResidueField R) β₀`) and proves `e`/`he`/`hunram` for that
+specific `M`. Wiring this into the present theorem so that `e`/`he`/`l`/`hunram` disappear from the
+*signature* — while `M` and `N` remain free, caller-supplied finite separable extensions, exactly as
+they are now — is not achievable, and not for a proof-search reason: `hunram` (`𝔪_R · OM = 𝔪_OM`,
+i.e. `M / K` unramified) is a genuine mathematical constraint on `M`, not a derivable fact about
+finite separable extensions in general. It is false for a ramified example (e.g. `K = ℚ_p`, `M =
+ℚ_p(p^{1/2})`, where `𝔪_R · OM = (p) ≠ (p^{1/2}) = 𝔪_OM`), and it is load-bearing in the abstract
+theorem's proof (`LocalField.map_maximalIdeal_eq_of_unramified` in `TowerMonogenic.lean`, which
+identifies the two candidate `κ_OM`-algebra structures on `ON ⧸ 𝔪_R·ON` and is what the rest of
+`exists_adjoin_eq_top_of_tower` is built on) — so it cannot be dropped while `M` stays universally
+quantified.
+
+Eliminating it *would* require replacing this theorem's `M` with the internally-constructed `K⟮x⟯`
+outright — i.e. restating the whole theorem with the unramified half existentially bound (`∃ x, ...`)
+and the totally-ramified half (`N`, `π`, `hint`, `hEis`, `hgen`) universally quantified *inside* that
+existential, since `N`'s type and its `Algebra` instance over `M` cannot be declared in the signature
+before `x` (hence `M := K⟮x⟯`) is produced. That is a different theorem shape from the one below —
+`∃ M, ∀ N, ...` instead of `∀ M, ∀ N, (hypotheses on M including hunram) → ...` — not a term this
+theorem's existing statement can be strengthened into by filling in a proof. Investigated and left
+open here as a genuine design question (how to state a fully unconditional tower-monogenicity
+corollary in this shape), not a lemma-lookup or tactic gap. -/
 theorem exists_adjoin_eq_top_of_tower_of_isEisensteinAt_of_valuationSubring
     (K : Type*) [NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K]
     [(NormedField.valuation (K := K)).Compatible] [CompleteSpace K]
