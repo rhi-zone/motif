@@ -1947,6 +1947,51 @@ that avoids stalling on (a).
 > real prerequisite for both (conductor/different computations, and subfield-compatibility of local
 > CFT, respectively), not a step toward either one specifically.
 
+> **Update (2026-08-07, thirty-seventh pass) — candidate 2 (totally ramified norm-group
+> computation): `N(π)` itself is a uniformizer, CLOSED.** `LocalField.norm_isUniformizer_eq_of_isUniformizer`
+> (`TotallyRamifiedEisenstein.lean`), under the same `hram`/`hgen` hypotheses as
+> `adjoin_eq_integralClosure_of_isUniformizer` (`ϖ` a uniformizer of `𝒪[K]`, `π` a uniformizer of a
+> totally ramified `L/K` in the `hram` sense, `[FiniteDimensional K L]`, and `hgen : (minpoly K
+> π).natDegree = Module.finrank K L`, i.e. `π` also generates `L`):
+> ```
+> theorem norm_isUniformizer_eq_of_isUniformizer
+>     [IsDiscreteValuationRing ↥(ValuativeRel.valuation K).valuationSubring]
+>     [FiniteDimensional K L]
+>     {ϖ : ↥(ValuativeRel.valuation K).valuationSubring} (hϖ : Irreducible ϖ) {π : L}
+>     (hram : ‖(ϖ : K)‖ = spectralNorm K L π ^ (minpoly K π).natDegree)
+>     (hgen : (minpoly K π).natDegree = Module.finrank K L) :
+>     ‖Algebra.norm K π‖ = ‖(ϖ : K)‖
+> ```
+> **Proof.** Builds the same `PowerBasis K L` `B` with `B.gen = π` used by
+> `adjoin_eq_integralClosure_of_isUniformizer`'s proof (separability is *not* needed for this
+> construction — only `hgen` to promote `K⟮π⟯` to `⊤`, and `[FiniteDimensional K L]`). Mathlib's
+> `Algebra.PowerBasis.norm_gen_eq_coeff_zero_minpoly` gives `Algebra.norm K π = (-1) ^ B.dim *
+> (minpoly K π).coeff 0`; taking norms, `‖(-1 : K) ^ B.dim‖ = 1` and a newly-extracted
+> `LocalField.coeff_zero_norm_eq_of_isUniformizer` (`‖(minpoly K π).coeff 0‖ = ‖ϖ‖`, pulled out of
+> `isEisensteinAt_minpoly_of_isUniformizer`'s pre-existing `hcoeff0` derivation so both theorems share
+> it rather than duplicating the `spectralNorm.spectralNorm_eq_norm_coeff_zero_rpow` computation) close
+> it. No new Mathlib gap: `Algebra.PowerBasis.norm_gen_eq_coeff_zero_minpoly`
+> (`Mathlib.RingTheory.Norm.Basic`) was found in one loogle query on the pattern `Algebra.norm ?K ?x =
+> (-1) ^ ?n * Polynomial.coeff (minpoly ?K ?x) 0` and matched exactly — no roots-product
+> decomposition was needed.
+> **Why this matters.** This is one of the two facts the eventual totally-ramified norm-group theorem
+> `N_{L/K}(L^×) = ⟨N(π_L)⟩ · N_{L/K}(U_L)` needs: `N(π_L)` is now known to be a uniformizer of `K`
+> (hence a valid cyclic-quotient generator alongside `N_{L/K}(U_L)`), not merely conjectured to be
+> one. The other generator, `N_{L/K}(U_L)`, is untouched by this pass.
+> **Next milestone: tame-case unit-norm surjectivity, `N_{L/K}(U_L) ⊇ U_K` for tamely ramified `L/K`.**
+> Not attempted this pass. Size in Lean is unknown — unlike this pass's fact, it is not a short
+> corollary of infrastructure already in this file. It needs a principal-units filtration `U_L^{(i)}`
+> (the `1 + 𝔪_L^i` subgroups of `𝒪_L^×`) analogous to Phase 2a's filtration argument for the
+> unramified case, and **that filtration does not exist yet anywhere in this repo** — it is a real
+> prerequisite gap to be built, not something to assume is a quick follow-on.
+> **Verification.** `nix develop --command lake build Langlands.TotallyRamifiedEisenstein`: clean, one
+> pre-existing-style `linter.unusedSectionVars` warning (`[NormedField.valuation.Compatible]` unused
+> in `coeff_zero_norm_eq_of_isUniformizer` — the `omit` syntax Lean's own hint suggests does not
+> elaborate here, `ValuativeRel ?m` stuck on a metavariable, so the warning is left in place rather
+> than forced). `nix develop --command lake build Langlands`: clean, 8688 jobs, no new warnings beyond
+> ones already present before this pass. `grep -rn sorry langlands/Langlands/` unchanged: the single
+> prose-only hit at `TotallyRamifiedEisenstein.lean:19`. Commit: `48500fe`.
+
 - **Why this exists.** Phase 2a closed the "easy half" of local CFT (unramified norm-group
   surjectivity) in full, across ten passes. This section applies the same before-you-build
   discipline to Phase 2's actual hard content — the ramified case and the reciprocity map itself —
