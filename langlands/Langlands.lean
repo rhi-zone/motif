@@ -14,6 +14,7 @@ import Langlands.RamificationFiltrationAdicCompletion
 import Langlands.ResidueField
 import Langlands.TotallyRamifiedEisenstein
 import Langlands.TowerBundle
+import Langlands.TwoGeneratorMonogenic
 import Langlands.ValueGroupCyclic
 import Langlands.WeilDeligneRepresentation
 import Langlands.WeilGroup
