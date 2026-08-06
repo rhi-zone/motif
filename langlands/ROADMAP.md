@@ -2648,12 +2648,46 @@ files changed, no commit (documentation-only pass).
   `Finite (IntermediateField K E)` (needed for the pigeonhole) from
   `Field.exists_primitive_element_iff_finite_intermediateField` plus the unconditional
   `Field.exists_primitive_element`, rather than from the separate gcd-based route.
-- **Still open for full tower monogenicity:** items (b) (the discriminant-tower bound via
-  `differentIdeal_eq_differentIdeal_mul_differentIdeal` or an equivalent direct valuation computation)
-  and (c) (the `integralClosure`-vs-`ValuationSubring` bridge), both listed in the twenty-third pass
-  entry above, remain untouched; and the `TowerBundle.lean`-abstract-bundle identification noted above
-  is a new, small, but real prerequisite this pass surfaced for composing this result with the rest of
-  the tower argument.
+- **Correction (same day, after this entry was first written): item (c) is also closed, in a separate
+  commit landed alongside this one.** `langlands/Langlands/ValuationSubringIntegralClosure.lean`
+  (namespace `LocalField`, commit `30acd2c`, `lake build Langlands.ValuationSubringIntegralClosure`
+  clean, no `sorry`) proves, for `K` in the `NontriviallyNormedField`/`IsUltrametricDist`/
+  `ValuativeRel`/`Compatible`/`CompleteSpace` bundle, `M / K` finite, and `A : ValuationSubring M`
+  comapping to `𝒪[K]`: `LocalField.isIntegral_iff_mem_valuationSubring` (`x : M` integral over `𝒪[K]`
+  iff `x ∈ A`), `LocalField.coe_valuationSubring_eq_integralClosure` (`(A : Set M) = ↑(integralClosure
+  𝒪[K] M)`), and `LocalField.isIntegralClosure_valuationSubring` (`IsIntegralClosure ↥A 𝒪[K] M`). This
+  is exactly the bridge the twenty-third pass's item (c) and the "second, independent obstruction"
+  paragraph above asked for — built from `Langlands.NormMap.isIntegral_of_mem_of_comap_eq` (hard
+  direction) and `Valuation.isIntegral_imp_map_le_one` (`Langlands.AdicCompletionIntegralClosure`,
+  easy direction), following exactly the proof pattern `AdicCompletionIntegralClosure.lean` already
+  used for the `adicCompletionIntegers`/`adicCompletion` setting, one level of abstraction down for a
+  bare `ValuationSubring`/field. **Notably, neither direction needs `R := 𝒪[K]` to be Henselian,
+  Dedekind, or have finite residue field** — those richer instances are needed elsewhere, to
+  *construct* `M` via `UnramifiedExtension.lean`'s theorem in the first place, but not for this
+  identification once `M` and `A` exist. Deriving the `NontriviallyNormedField`/`Compatible`/
+  `CompleteSpace` bundle on `K` from a concrete `IsNonarchimedeanLocalField K` instance is a separate,
+  still-open, non-canonical `letI`-chain construction (confirmed by direct build test: `inferInstance`
+  fails) — this does not block the bridge itself, only its eventual instantiation.
+- **Still open for full tower monogenicity — now precisely one item: (b), the discriminant-tower
+  bound.** With items (a) (field-level primitive-element degree, `PrimitiveElementFusion.lean`) and
+  (c) (the `integralClosure`-vs-`ValuationSubring` bridge, `ValuationSubringIntegralClosure.lean`) both
+  closed this pass, the only remaining piece for Serre's composite-generator monogenicity argument is
+  (b): a valuation bound on `Algebra.discr K B.basis` for the power basis `B` with `B.gen := β + c•π`
+  (`c` the existentially-witnessed scalar from `PrimitiveElementFusion.lean`), tight enough to run the
+  same `discr • z ∈ adjoin` induction (`TotallyRamifiedEisenstein.lean`'s
+  `Algebra.discr_mul_isIntegral_mem_adjoin` route) that closed each half of the tower individually. The
+  concrete lever identified by the twenty-third pass — `differentIdeal_eq_differentIdeal_mul_differentIdeal`
+  (`Mathlib/RingTheory/DedekindDomain/Different.lean`), transitivity of the different ideal in a tower
+  `A ⊆ B ⊆ C` — is still the best candidate route, translated into this repo's norm/`ValuativeRel`
+  formalism; not attempted in code this pass. Two smaller, real prerequisites this pass additionally
+  surfaced, orthogonal to (b) itself: (i) `TowerBundle.lean`'s abstract `M`/`N` bundle (`[Algebra M N]`
+  only, no shared ambient field) needs to be identified with concrete `IntermediateField`s of a common
+  ambient field before `PrimitiveElementFusion.lean`'s result composes with it — standard
+  `AdjoinSimple`/algebra-equivalence transport, not attempted; (ii) similarly, wiring
+  `ValuationSubringIntegralClosure.lean`'s bridge together with `PrimitiveElementFusion.lean`'s
+  generator and `TotallyRamifiedEisenstein.lean`'s Eisenstein machinery into one assembled tower
+  theorem is itself an integration step, not yet attempted, distinct from (b)'s genuinely new
+  mathematical content.
 
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
