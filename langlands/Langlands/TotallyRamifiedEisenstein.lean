@@ -58,6 +58,17 @@ the integral closure of `𝒪[K]` in `L` is generated as an `𝒪[K]`-algebra by
   `mem_adjoin_of_smul_prime_pow_smul_of_minpoly_isEisensteinAt`
   (`Mathlib.RingTheory.Polynomial.Eisenstein.IsIntegral`), confirmed by the sixteenth pass to be the
   right general (non-`NumberField`-specific) levers for this step.
+* `LocalField.coeff_zero_norm_eq_of_isUniformizer` : `‖(minpoly K π).coeff 0‖ = ‖ϖ‖` under `hram`
+  alone (no `IsDiscreteValuationRing` needed). Extracted from `isEisensteinAt_minpoly_of_isUniformizer`'s
+  proof (as `hcoeff0`) so `norm_isUniformizer_eq_of_isUniformizer` can reuse it.
+* `LocalField.norm_isUniformizer_eq_of_isUniformizer` : the same `hram` hypothesis plus
+  `[FiniteDimensional K L]` and `hgen : (minpoly K π).natDegree = Module.finrank K L` (`π` also
+  generates `L`) give `‖Algebra.norm K π‖ = ‖ϖ‖` — the norm of a uniformizer-generator is again a
+  uniformizer of `K`. Built from `Algebra.PowerBasis.norm_gen_eq_coeff_zero_minpoly`
+  (`Mathlib.RingTheory.Norm.Basic`) applied to the same `PowerBasis K L` construction used in
+  `adjoin_eq_integralClosure_of_isUniformizer`'s proof, plus `coeff_zero_norm_eq_of_isUniformizer`.
+  Progress toward Phase 2b's totally-ramified norm-group theorem: establishes that `N(π)`, one of
+  the two generators on the RHS of `N_{L/K}(L^×) = ⟨N(π)⟩ · N_{L/K}(U_L)`, is indeed a uniformizer.
 
 ## The final hypothesis design (differs from the fourteenth/fifteenth pass's plan)
 
@@ -267,6 +278,20 @@ theorem isIntegral_of_isUniformizer
     rwa [Polynomial.aeval_map_algebraMap] at h1
   exact hintO
 
+/-- The constant coefficient of `minpoly K π`, for `π` a uniformizer of a totally ramified
+extension (in the sense of `hram`), has exactly the norm of the fixed uniformizer `ϖ` of `K`:
+`‖(minpoly K π).coeff 0‖ = ‖ϖ‖`. Extracted from the proof of `isEisensteinAt_minpoly_of_isUniformizer`
+(where it appears as `hcoeff0`) so `norm_isUniformizer_eq_of_isUniformizer` can reuse it without
+re-deriving from `hram` and `spectralNorm.spectralNorm_eq_norm_coeff_zero_rpow`. -/
+theorem coeff_zero_norm_eq_of_isUniformizer
+    {ϖ : ↥(ValuativeRel.valuation K).valuationSubring} {π : L}
+    (hram : ‖(ϖ : K)‖ = spectralNorm K L π ^ (minpoly K π).natDegree) :
+    ‖(minpoly K π).coeff 0‖ = ‖(ϖ : K)‖ := by
+  have hnpos : 0 < (minpoly K π).natDegree :=
+    minpoly.natDegree_pos (Algebra.IsIntegral.isIntegral π)
+  rw [hram, spectralNorm.spectralNorm_eq_norm_coeff_zero_rpow, one_div,
+    Real.rpow_inv_natCast_pow (norm_nonneg _) hnpos.ne']
+
 /-- **Eisenstein-ness of the minimal polynomial of a uniformizer of a totally ramified
 extension** (Serre, *Local Fields*, Ch. III). `ϖ` a uniformizer of `𝒪[K] := (valuation
 K).valuationSubring` (`Irreducible ϖ`) and `π : L` satisfying the exact "totally ramified of degree
@@ -304,9 +329,7 @@ theorem isEisensteinAt_minpoly_of_isUniformizer
       intro h0
       exact hϖ.ne_zero (Subtype.ext (h0.trans (by simp)))
     exact norm_pos_iff.mpr hne0
-  have hcoeff0 : ‖(minpoly K π).coeff 0‖ = ‖(ϖ : K)‖ := by
-    rw [hram, spectralNorm.spectralNorm_eq_norm_coeff_zero_rpow, one_div,
-      Real.rpow_inv_natCast_pow (norm_nonneg _) hnpos.ne']
+  have hcoeff0 : ‖(minpoly K π).coeff 0‖ = ‖(ϖ : K)‖ := coeff_zero_norm_eq_of_isUniformizer K hram
   have hspec : spectralNorm K L π < 1 := by
     by_contra hge
     push Not at hge
@@ -430,5 +453,61 @@ theorem adjoin_eq_integralClosure_of_isUniformizer
   rw [heq] at hmem2
   have := mem_adjoin_of_smul_prime_pow_smul_of_minpoly_isEisensteinAt hϖPrime hBint hzint hmem2 hEis
   rwa [hBgen] at this
+
+/-- **The norm of a uniformizer generating a totally ramified extension is again a uniformizer**
+(Serre, *Local Fields*, Ch. III). A uniformizer `π` of a totally ramified extension `L / K` (in the
+sense of `hram`, as in `isEisensteinAt_minpoly_of_isUniformizer`) that also generates `L` over `K`
+(`hgen : (minpoly K π).natDegree = Module.finrank K L`, i.e. `K⟮π⟯ = L`) has `Algebra.norm K π`
+exactly of the norm of the fixed uniformizer `ϖ`: `‖Algebra.norm K π‖ = ‖ϖ‖`.
+
+This is one of the two facts (the other being unit-norm surjectivity, see `ROADMAP.md` Phase 2b)
+needed for the totally-ramified norm-group theorem `N_{L/K}(L^×) = ⟨N(π)⟩ · N_{L/K}(U_L)`: it shows
+`N(π)` is itself a uniformizer of `K`, hence a valid generator of the cyclic quotient
+`K^× / N_{L/K}(L^×)` alongside `N_{L/K}(U_L)`.
+
+Proof outline: build a `PowerBasis K L` `B` with `B.gen = π`, exactly as in
+`adjoin_eq_integralClosure_of_isUniformizer` (using `hgen` to promote `K⟮π⟯` to `⊤`; separability is
+*not* needed for this construction, only `[FiniteDimensional K L]`). Mathlib's
+`Algebra.PowerBasis.norm_gen_eq_coeff_zero_minpoly` gives `Algebra.norm K π = (-1) ^ B.dim *
+(minpoly K π).coeff 0`. Taking norms, `‖(-1 : K) ^ B.dim‖ = 1` (norm of `±1` is `1`) and
+`coeff_zero_norm_eq_of_isUniformizer` gives `‖(minpoly K π).coeff 0‖ = ‖ϖ‖`, so `‖Algebra.norm K π‖ =
+1 * ‖ϖ‖ = ‖ϖ‖`. -/
+theorem norm_isUniformizer_eq_of_isUniformizer
+    [IsDiscreteValuationRing ↥(ValuativeRel.valuation K).valuationSubring]
+    [FiniteDimensional K L]
+    {ϖ : ↥(ValuativeRel.valuation K).valuationSubring} (hϖ : Irreducible ϖ) {π : L}
+    (hram : ‖(ϖ : K)‖ = spectralNorm K L π ^ (minpoly K π).natDegree)
+    (hgen : (minpoly K π).natDegree = Module.finrank K L) :
+    ‖Algebra.norm K π‖ = ‖(ϖ : K)‖ := by
+  have hπO : IsIntegral ↥(ValuativeRel.valuation K).valuationSubring π :=
+    isIntegral_of_isUniformizer K hϖ hram
+  have hxK : IsIntegral K π := hπO.tower_top
+  have hfr : Module.finrank K (IntermediateField.adjoin K ({π} : Set L)) = Module.finrank K L := by
+    rw [IntermediateField.adjoin.finrank hxK, hgen]
+  have htop : IntermediateField.adjoin K ({π} : Set L) = ⊤ := by
+    apply IntermediateField.toSubalgebra_injective
+    rw [IntermediateField.top_toSubalgebra]
+    apply Algebra.toSubmodule_eq_top.1
+    apply Submodule.eq_top_of_finrank_eq
+    rw [Subalgebra.finrank_toSubmodule]
+    exact hfr
+  have htopalg : Algebra.adjoin K ({π} : Set L) = ⊤ := by
+    rw [← IntermediateField.adjoin_simple_toSubalgebra_of_isAlgebraic hxK.isAlgebraic, htop,
+      IntermediateField.top_toSubalgebra]
+  let B0 : PowerBasis K ↥(Algebra.adjoin K ({π} : Set L)) := Algebra.adjoin.powerBasis hxK
+  let e : ↥(Algebra.adjoin K ({π} : Set L)) ≃ₐ[K] L :=
+    (Subalgebra.equivOfEq _ _ htopalg).trans Subalgebra.topEquiv
+  let B : PowerBasis K L := B0.map e
+  have hBgen : B.gen = π := by
+    show e B0.gen = π
+    rw [Algebra.adjoin.powerBasis_gen]
+    show ((Subalgebra.equivOfEq _ _ htopalg).trans Subalgebra.topEquiv)
+        (⟨π, Algebra.subset_adjoin rfl⟩ : ↥(Algebra.adjoin K ({π} : Set L))) = π
+    rw [AlgEquiv.trans_apply, Subalgebra.equivOfEq_apply, Subalgebra.topEquiv_apply]
+  have hnorm : Algebra.norm K π = (-1) ^ B.dim * (minpoly K π).coeff 0 := by
+    have := Algebra.PowerBasis.norm_gen_eq_coeff_zero_minpoly B
+    rwa [hBgen] at this
+  have hcoeff0 : ‖(minpoly K π).coeff 0‖ = ‖(ϖ : K)‖ := coeff_zero_norm_eq_of_isUniformizer K hram
+  rw [hnorm, norm_mul, norm_pow, norm_neg, norm_one, one_pow, one_mul, hcoeff0]
 
 end LocalField
