@@ -1443,6 +1443,17 @@ that avoids stalling on (a).
 
 ### Phase 2b — Ramified local reciprocity: landscape and scoped candidates (2026-08-05, research/scoping pass, no code)
 
+> **Current position (2026-08-06, twenty-seventh pass).** Serre's *Local Fields* Ch. III tower
+> argument for monogenicity of `𝒪_L / 𝒪_K` — the long pole of Phase 2b's candidate 2, worked
+> across passes thirteen to twenty-seven — is now formalised in full as an abstract theorem,
+> `LocalField.exists_adjoin_eq_top_of_tower_of_isEisensteinAt`
+> (`Langlands/TowerMonogenic.lean:152`), with every hypothesis separately proved by one of the two
+> halves. **It is not yet instantiated at the concrete objects `𝒪[K] ⊆ ↥A ⊆ 𝒪_N`**, so the
+> sentence "`𝒪_L` is monogenic over `𝒪_K`" is still not a theorem in this repo; what remains is
+> algebra/scalar-tower instance construction, itemised in the twenty-seventh-pass entry below.
+> `RamificationFiltration.lean`'s associated-graded embeddings (blocked since the twelfth pass)
+> are the natural milestone after that instantiation, not before it.
+
 - **Why this exists.** Phase 2a closed the "easy half" of local CFT (unramified norm-group
   surjectivity) in full, across ten passes. This section applies the same before-you-build
   discipline to Phase 2's actual hard content — the ramified case and the reciprocity map itself —
@@ -2882,6 +2893,137 @@ sorry-free, and the blocker is re-identified as *tower assembly*, not residue al
   entirely ramification theory and refactoring of existing proofs, with no unknown mathematics left
   in the residue-algebra step — which was, before this pass, the piece flagged as "genuinely new
   mathematical content, not a lookup".
+
+#### Status 2026-08-06 (twenty-seventh pass) — items (a) and (b) of the twenty-sixth pass's
+remaining-content list are CLOSED; item (c)'s mathematics is CLOSED as an abstract tower theorem;
+the concrete instantiation `𝒪[K] ⊆ 𝒪_M ⊆ 𝒪_N` does **not** close, and the residual gap is
+typeclass construction, precisely located below.
+
+- **Task.** Do (a) export `𝒪_M = 𝒪_K[β]` and `𝔪_K 𝒪_M = 𝔪_M` from the unramified half; (b) build
+  the `ValuationSubring` presentation of the same `𝒪_M` so the ramified half applies; (c) prove the
+  three ramification facts and assemble `𝒪_N` monogenic over `𝒪_K`.
+- **(a) CLOSED.** `HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv`
+  (`UnramifiedExtension.lean:725`) now returns two further conjuncts about
+  `C := integralClosure R ↥(IntermediateField.adjoin K {x})` itself (not about `AdjoinRoot f`):
+  ```
+  (∃ β : ↥C, Algebra.adjoin R ({β} : Set ↥C) = ⊤) ∧
+  Ideal.map (algebraMap R ↥C) (IsLocalRing.maximalIdeal R) = IsLocalRing.maximalIdeal ↥C
+  ```
+  (`:741` and `:744`). The first re-exports the already-internal `hCtop` (`:861`). The second is
+  new proof text (`hCmapmax`, `:919`): `isMaximal_map_of_lift_minpoly` gives
+  `Ideal.map (AdjoinRoot.of f) 𝔪_R = 𝔪_{AdjoinRoot f}`, then `Ideal.map_map` plus
+  `ψ.comp (AdjoinRoot.of f) = algebraMap R C` moves it across `ψ`, and
+  `Ideal.IsMaximal.map_bijective` + `IsLocalRing.eq_maximalIdeal` identify the image as `𝔪_C`.
+  Six added lines of proof; no caller existed to break (`grep` confirmed the theorem had no uses
+  outside its own file). **Correction to the twenty-sixth pass's own text:** it described `hCtop`
+  as being "about `AdjoinRoot f` rather than `integralClosure R ↥M`". That is right for the ideal
+  equality (`hM0eq` at `:517` of the old numbering) but wrong for `hCtop`, which was already
+  stated for `C`; only the export was missing.
+- **(b) CLOSED.** New file `Langlands/TowerValuationSubring.lean` (standalone, not in
+  `Langlands.lean`'s import list, matching `ValuationSubringIntegralClosure.lean`):
+  * `LocalField.integralClosureValuationSubring` (`:55`) — `integralClosure R M` packaged as a
+    `ValuationSubring M` via `ValuationSubring.ofSubring`, whenever that closure is a valuation
+    ring with fraction field `M` (which the unramified half's `IsDiscreteValuationRing` gives).
+    `ValuationRing.isInteger_or_isInteger` supplies `ofSubring`'s hypothesis. Membership is
+    `Iff.rfl` (`:64`), so `↥` of it and `↥(integralClosure R M)` have the same carrier by `rfl`.
+  * `LocalField.comap_integralClosureValuationSubring` (`:91`) — it lies over `𝒪[K]`.
+  * `LocalField.integralClosureValuationSubring_eq` (`:117`) — conversely *every*
+    `A : ValuationSubring M` over `𝒪[K]` equals it, via
+    `ValuationSubringIntegralClosure.isIntegral_iff_mem_valuationSubring`. So the tower object is
+    unique and the two halves' presentations of `𝒪_M` are the same term.
+  This is the direction `ValuationSubringIntegralClosure.lean` did not have (it went
+  `A ↦ integralClosure`; this goes back).
+- **(c) — the mathematics is CLOSED; the instantiation is not.** New file
+  `Langlands/TowerMonogenic.lean` (standalone), zero `sorry`:
+  * `LocalField.map_maximalIdeal_eq_of_unramified` (`:51`) — fact (1) of the twenty-sixth pass's
+    list: `𝔪_R · OM = 𝔪_OM ⟹ 𝔪_OM · ON = 𝔪_R · ON`. One line (`Ideal.map_map` +
+    `IsScalarTower.algebraMap_eq`). This is what makes `ON ⧸ 𝔪_R ON` a `κ_OM`-algebra.
+  * `LocalField.exists_adjoin_eq_top_of_tower` (`:64`) — Serre Ch. III's tower step, abstractly:
+    ```
+    theorem exists_adjoin_eq_top_of_tower
+        [CommRing R] [IsLocalRing R] [CommRing OM] [IsLocalRing OM] [CommRing ON]
+        [Algebra R OM] [Algebra OM ON] [Algebra R ON] [IsScalarTower R OM ON]
+        [IsLocalHom (algebraMap R OM)] [Module.Finite R OM] [Module.Finite R ON]
+        [Algebra.IsSeparable (ResidueField R) (ResidueField OM)]
+        (hunram : Ideal.map (algebraMap R OM) (maximalIdeal R) = maximalIdeal OM)
+        {π : ON} {e : ℕ} (hnil : π ^ e ∈ Ideal.map (algebraMap OM ON) (maximalIdeal OM))
+        (hsurj : ∀ x : ON, ∃ (c : OM) (y : ON), x = algebraMap OM ON c + π * y) :
+        ∃ γ : ON, Algebra.adjoin R ({γ} : Set ON) = ⊤
+    ```
+    It discharges all three structural hypotheses of
+    `ArtinianPrimitiveElement.exists_adjoin_eq_top_of_residue_nilpotent` — the ones the
+    twenty-sixth pass recorded as unproved. The `κ_OM`-algebra structure on `ON ⧸ 𝔪_R ON` is a
+    `letI` (`Ideal.Quotient.lift` of `ON ⧸ 𝔪_R ON`'s quotient map precomposed with
+    `algebraMap OM ON`), and the `IsScalarTower` over `ResidueField R` is checked by hand. One
+    friction point worth recording: `IsLocalRing.ResidueField R` is a `def` for
+    `R ⧸ maximalIdeal R` and instance search does not unfold it, so the `Algebra`,
+    `Algebra.IsSeparable` and `Module.Finite` instances have to be restated at the raw quotient by
+    `inferInstanceAs` before the composite criterion will accept them.
+  * `LocalField.exists_add_mul_of_adjoin_eq_top` (`:121`) — fact (3): `ON = OM[π] ⟹ ON = OM + π ON`.
+    Confirms the twenty-sixth pass's expectation that residue-degree-1 is not needed as a separate
+    input: monogenicity of the upper step already contains it.
+  * `LocalField.pow_natDegree_minpoly_mem_map` (`:134`) — fact (2): `minpoly OM π` Eisenstein at
+    `𝔪_OM` ⟹ `π ^ deg ∈ 𝔪_OM · ON`. This is Mathlib's
+    `Polynomial.IsWeaklyEisensteinAt.pow_natDegree_le_of_aeval_zero_of_monic_mem_map`
+    (`RingTheory/Polynomial/Eisenstein/Basic.lean:152`) specialised; no new content.
+  * `LocalField.exists_adjoin_eq_top_of_tower_of_isEisensteinAt` (`:152`) — **the tower theorem**,
+    the composite of the four above:
+    ```
+    (hunram : Ideal.map (algebraMap R OM) (maximalIdeal R) = maximalIdeal OM)
+    {π : ON} (hint : IsIntegral OM π)
+    (hEis : (minpoly OM π).IsEisensteinAt (maximalIdeal OM))
+    (hgen : Algebra.adjoin OM ({π} : Set ON) = ⊤) :
+    ∃ γ : ON, Algebra.adjoin R ({γ} : Set ON) = ⊤
+    ```
+    with the same instance bundle. `hEis` and `hgen` are exactly what
+    `TotallyRamifiedEisenstein.isEisensteinAt_minpoly_of_isUniformizer` and
+    `adjoin_eq_integralClosure_of_isUniformizer` prove for the ramified half, and `hunram` is
+    exactly what (a) now exports for the unramified half.
+  * `LocalField.adjoin_singleton_eq_top_of_adjoin_eq` (`:165`) — the subalgebra-to-type step
+    (`Algebra.adjoin A {x} = S` as subalgebras of `B` gives `Algebra.adjoin A {⟨x,_⟩} = ⊤` in `↥S`)
+    that the ramified half's conclusion needs in order to be read as `hgen`.
+- **What does NOT close, exactly.** No Lean theorem yet says "`𝒪_N` is monogenic over `𝒪_K`" for
+  the concrete objects `R := ↥𝒪[K]`, `OM := ↥A`, `ON := ↥(integralClosure ↥A N)`. What is missing
+  is not mathematics but the algebra/scalar-tower instances connecting the three, verified by
+  `#synth` this pass:
+  * `Algebra ↥(ValuativeRel.valuation K).valuationSubring ↥A` — **fails**, for
+    `A : ValuationSubring M`. (`Algebra ↥A M`, `Algebra ↥A N` and `IsLocalRing ↥A` all succeed;
+    the base-to-middle map does not, because nothing in typeclass search knows `𝒪[K] ⊆ A`; it has
+    to be built from `hA` by hand, together with `IsScalarTower ↥𝒪[K] ↥A M` and `Module.Finite`.)
+  * With the middle ring taken instead as `↥(integralClosure ↥𝒪[K] M)`, `Algebra` and
+    `IsScalarTower` to `M` and to `N` do succeed, but `Module.Finite ↥𝒪[K] ↥(integralClosure …)`
+    fails (needs an explicit `IsIntegralClosure.finite`), and for the double closure
+    `↥(integralClosure ↥(integralClosure ↥𝒪[K] M) N)` both `Algebra ↥𝒪[K] …` and
+    `Module.Finite` fail, and `SMul` search times out at the default 20000 heartbeats.
+  * Independently of the instances, `TowerBundle.adjoin_eq_integralClosure_of_isUniformizer_of_valuationSubring`
+    states its conclusion over `↥(ValuativeRel.valuation M).valuationSubring` under a `letI` chain.
+    Transporting it to either of the two candidate middle rings requires rewriting a type
+    (`ValuationSubring`-coercion versus `Subalgebra`-coercion, and the two different `Algebra`
+    instances they carry). The rewrite is propositionally available
+    (`valuationSubring_valuation_ofValuation_eq` plus this pass's `integralClosureValuationSubring_eq`)
+    but was not attempted, because it is the same class of instance-diamond problem that consumed
+    the eighteenth through twenty-second passes. **This is flagged as the honest remaining risk:
+    it is plumbing, but it is not obviously cheap plumbing.**
+- **Consequence for the headline question.** After twenty-seven passes, the *mathematical* content
+  of Serre's tower monogenicity theorem is fully formalised and `sorry`-free in this repo, in a
+  form whose hypotheses each half separately proves. The *concrete* statement "`𝒪_L` is monogenic
+  over `𝒪_K` for `L / K` a finite extension of complete discretely valued fields" is still not a
+  theorem here. Do not read the abstract theorem as the concrete one.
+- **Not attempted.** No non-vacuity witness was exhibited in Lean for
+  `exists_adjoin_eq_top_of_tower_of_isEisensteinAt`. Its hypotheses are mathematically satisfiable
+  (any Eisenstein extension of an unramified extension of a complete DVR), and the degenerate
+  `OM = R` case is consistent but content-free; a genuine `ℤ_p ⊆ ℤ_p ⊆ ℤ_p[√p]`-style instance was
+  not formalised. Also not attempted: `RamificationFiltration.lean`'s associated-graded embeddings.
+- **Net effect on `RamificationFiltration.lean`.** Not yet unblocked, and it should not be started
+  before the instantiation above lands — its associated-graded embeddings (blocked since the
+  twelfth pass) are the natural next milestone *after* the concrete tower statement, not before.
+- **Verification.** `lake build Langlands` clean (8683 jobs); `lake build
+  Langlands.TowerValuationSubring Langlands.TowerMonogenic Langlands.NakayamaMonogenic
+  Langlands.ArtinianPrimitiveElement Langlands.ValuationSubringIntegralClosure` clean.
+  `grep -rn sorry langlands/Langlands/` unchanged: two prose-only hits,
+  `TotallyRamifiedEisenstein.lean:19` and `RamificationFiltration.lean:89`.
+  Commits: `198df67` (a), `d44313d` (b), `737cfd7`/`6e494a4`/`a91092c` (c).
+
 
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
