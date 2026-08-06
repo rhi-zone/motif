@@ -1855,6 +1855,98 @@ that avoids stalling on (a).
 > now ordinary work with no known obstruction, which is a change in kind from the previous
 > twenty-three passes' status.
 
+> **Update (2026-08-06, thirty-sixth pass) — MILESTONE: the ramification-group structure-theory
+> thread that spanned every Phase 2b pass since the twelfth is CLOSED.** All three items the
+> thirty-fifth pass left as "ordinary work with no known obstruction" — bundle the associated-graded
+> maps as genuine homomorphisms, prove their injectivity, derive filtration finiteness — are done.
+> Six commits: `21ccdc9`, `296cd12`, `69194ef`, `80e6558` (plus the two module-docstring updates on
+> the last). `lake build Langlands` clean throughout (8688 jobs, unchanged count from the thirty-fifth
+> pass — pure content addition, no new files); `#print axioms` shows only `propext, Classical.choice,
+> Quot.sound` on every new declaration, checked explicitly via scratch `lake env lean` runs (not
+> assumed from a clean `lake build`).
+>
+> **Step 0 (task brief): does "no known obstruction" hold up?** Checked concretely before writing
+> any homomorphism code, per the task brief's explicit ask. The kernel characterization
+> (`mem_ramificationGroup_succ_iff`, closed last pass) is a fact about *individual* `σ`, not about
+> multiplicativity of the associated map on *pairs* `σ, τ` — these are genuinely different
+> statements, and multiplicativity does NOT fall out of the kernel fact for free. It needed real,
+> previously-unformalized computation. **The obstruction claim held up in the sense that mattered**:
+> the extra work was real but tractable, and turned out *simpler* than the twelfth-pass paper sketch
+> anticipated (see below) — "no known obstruction" meant "no blocking wall," not "no work," and that
+> reading is accurate in hindsight.
+>
+> **The `i = 0` case** (`ValuationSubring.gradedZeroHom`, `RamificationFiltration.lean`): `σ ↦
+> σ(π)/π mod 𝔪_A`, valued in `(ResidueField A)ˣ`. Multiplicativity is *exact* algebra with no error
+> term — `σ(π)` and `π` are always associates (both generate `𝔪_A`), so `σ(π) = c_σ · π` for a unique
+> unit `c_σ`, and `c_{στ} = σ(c_τ) · c_σ` on the nose (no residue-level approximation needed until the
+> very last step, where `σ ∈ G_0` gives `residue(σ(c_τ)) = residue(c_τ)`).
+>
+> **The `i ≥ 1` case** (`ValuationSubring.gradedSuccHom`): `σ ↦ (σ(π) - π)/π^{i+2} mod 𝔪_A`, valued in
+> `Multiplicative (ResidueField A)`, defined on `ramificationGroup K A (i + 1)` for every `i : ℕ`
+> (the `+1` shift is what makes "`i ≥ 1`" automatic — no separate hypothesis needed). This is where
+> the twelfth-pass paper sketch (a binomial-remainder argument tracking `(1+x)^{i+1} - 1 - (i+1)x`
+> divisible by `x²`, needing a genuine `2i+1 ≥ i+2` precision comparison) turned out to be more
+> complicated than necessary. The route actually taken: the two-variable geometric-sum factorization
+> `x^n - y^n = (Σ_{k<n} x^k y^{n-1-k})(x - y)` (Mathlib's `geom_sum₂_mul`), applied with `x = σ(π)`,
+> `y = π`, `n = i + 2`. The sum lies in `𝔪_A^{i+1}` for the trivial reason that *both* `x` and `y` lie
+> in `𝔪_A` (no leading-term/remainder split needed — every term of the sum is separately in
+> `𝔪_A^{i+1}` since it's a product of `i+1` factors each in `𝔪_A`, proved from scratch as
+> `geomSum₂_mem_pow_maximalIdeal`). Combined with `x - y = σ(π) - π ∈ 𝔪_A^{i+2}` (the group-membership
+> hypothesis), the error term lands in `𝔪_A^{2i+3}`, comfortably inside the target precision
+> `𝔪_A^{i+3}` for *every* `i : ℕ`, not merely `i ≥ 1` as the original sketch assumed it would need.
+> The final identity `c_{στ} = c_σ + σ(c_τ) + σ(c_τ) · S · c_σ` (exact, not merely mod `𝔪_A`) is
+> established via one cancellation of `π^{i+2}` and closed by `ring`/`linear_combination`, not by
+> hand-chaining `rw`s through the binomial theorem.
+>
+> **Kernels, as point-test conditions** (`gradedZeroHom_apply_eq_one_iff`,
+> `gradedSuccHom_apply_eq_one_iff`, `RamificationFiltration.lean`): `σ ↦ 1` unwinds to `σ(π) - π ∈
+> 𝔪_A^{2}` (resp. `𝔪_A^{i+3}`) — stated at this level of generality as a condition on `σ(π) - π`
+> alone, *not* as literal `ramificationGroup` membership, because turning the point test into full
+> membership needs `mem_ramificationGroup_succ_iff`, which lives downstream
+> (`RamificationFiltrationAdicCompletion.lean`, imports this file) and needs a generating pair `{x,
+> π}` not available at this level of generality. `RamificationFiltrationAdicCompletion.lean` composes
+> the two (`gradedZeroHom_ker_eq`, `gradedSuccHom_ker_eq`) to identify the kernels with the actual
+> subgroups `G_1`/`G_{i+2}`, then cites Mathlib's `QuotientGroup.kerLift_injective` — free once the
+> `MonoidHom` and its kernel are known, no further proof content — to get the embeddings
+> `gradedZeroHom_kerLift_injective : G_0 ⧸ G_1 ↪ 𝓀[L]ˣ` and `gradedSuccHom_kerLift_injective : G_{i+1}
+> ⧸ G_{i+2} ↪ 𝓀[L]` (additively).
+>
+> **Filtration finiteness** (`exists_ramificationGroup_eq_bot`,
+> `RamificationFiltrationAdicCompletion.lean`): `∃ N, ∀ i ≥ N, ramificationGroup K L v w i = ⊥`.
+> Surveyed first (a dedicated research pass, not guessed): does this need the associated-graded
+> embeddings at all, or is there a more direct route? Confirmed the embeddings alone are *not*
+> enough — they bound each *quotient* `G_i ⧸ G_{i+1}`, giving no bound on `|G_0|` itself, so
+> finiteness of `G_0` (equivalently of `L ≃ₐ[K] L`) has to come from elsewhere regardless. That
+> finiteness is free from Mathlib (`Finite.algEquiv` composed with `AlgHom.fintype`, needing only
+> `Module.Finite K L` — no separability/normality). The actual proof does **not** use the
+> associated-graded embeddings at all, using instead: (1) a from-scratch, fully generic pigeonhole
+> lemma (`Subgroup.exists_eventually_eq_of_antitone`, `RamificationFiltration.lean`, independent of
+> the valuation-ring setting — no existing Mathlib lemma of this "antitone `ℕ`-family into a finite
+> group is eventually constant" shape was found) giving that the filtration stabilizes at *some*
+> value; (2) a separatedness argument (`eq_one_of_forall_mem_ramificationGroup`) that the
+> stabilization value's intersection is trivial, using Mathlib's pre-existing `IsHausdorff` instance
+> for a local ring's own maximal ideal (`instance [IsLocalRing R] : IsHausdorff (maximalIdeal R) M`,
+> needing nothing beyond `IsDiscreteValuationRing ⟹ IsLocalRing` and `IsPrincipalIdealRing ⟹
+> IsNoetherianRing`, both automatic) plus `IsFractionRing.ringHom_ext` to lift "fixes `𝒪_L`
+> pointwise" to "fixes `L` pointwise." Sandwiching the stabilization value between `⨅ᵢ Gᵢ` (below) and
+> the value at any index `≤ N` (above) forces it to equal the intersection, hence `⊥`.
+>
+> **What comes next.** This was Phase 2b's "candidate 1" (higher ramification groups), scoped as the
+> smaller, more-certain-to-close, independently-upstream-worthy option against "candidate 2" (the
+> totally ramified norm-group computation) back in the ninth-pass landscape survey — see that
+> survey's "Scoped first-milestone candidates" above for the two options' tradeoffs, unchanged by this
+> pass. Candidate 1 is now fully closed, including the finiteness statement that survey did not even
+> require. **Candidate 2 remains the natural next chapter toward reciprocity in the classical proof
+> strategy** (totally ramified extensions, via an Eisenstein-polynomial presentation — flagged in that
+> survey as *not* structurally parallel to Phase 2a's residue-field-reduction technique, so likely a
+> different-shaped effort, size unknown) — a genuinely open call, not a recommendation, per this
+> project's standing practice of naming tradeoffs rather than picking for the next reader. Separately,
+> the Phase 2b overview above records that **full local reciprocity itself** needs either Lubin–Tate
+> formal groups (absent from Mathlib entirely) or the cohomological/class-formation route (also
+> absent, though generic group-cohomology scaffolding exists) — this pass's filtration machinery is a
+> real prerequisite for both (conductor/different computations, and subfield-compatibility of local
+> CFT, respectively), not a step toward either one specifically.
+
 - **Why this exists.** Phase 2a closed the "easy half" of local CFT (unramified norm-group
   surjectivity) in full, across ten passes. This section applies the same before-you-build
   discipline to Phase 2's actual hard content — the ramified case and the reciprocity map itself —
