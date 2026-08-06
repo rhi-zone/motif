@@ -1749,6 +1749,112 @@ that avoids stalling on (a).
 > `L`, closing the specific "auxiliary field" objection pass thirty-two/-three raised) but does not
 > close it. Left as the next scoped step rather than forced or papered over with an extra hypothesis.
 
+> **Update (2026-08-06, thirty-fifth pass) — the kernel argument blocking
+> `RamificationFiltration.lean` since pass twelve is CLOSED, sorry-free, by a route that discards
+> steps 3–5 of the thirty-fourth pass's plan rather than executing them.** Four commits: `2bc907b`,
+> `722fa1a`, `6898e1d`, `4936f79`. `lake build Langlands` clean (8688 jobs, up from 8685);
+> `#print axioms` shows only `propext, Classical.choice, Quot.sound` on every new declaration.
+>
+> **The headline.** `IsDedekindDomain.HeightOneSpectrum.mem_ramificationGroup_succ_iff`
+> (`Langlands/RamificationFiltrationAdicCompletion.lean`): for `σ` in the inertia group
+> `ramificationGroup K L v w 0` and `π` a uniformizer of `w.adicCompletionIntegers L`,
+> ```
+> σ ∈ ramificationGroup K L v w (i + 1) ↔ σ • π - π ∈ maximalIdeal (w.adicCompletionIntegers L) ^ (i + 2)
+> ```
+> under `[Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)]` and
+> `[Finite (IsLocalRing.ResidueField (w.adicCompletionIntegers L))]` — the same two hypotheses this
+> file's neighbours already use. This is exactly Serre's identification (*Local Fields*, Ch. IV) of
+> the `i_G(σ) = v_L(σ(π_L) − π_L)` definition of the filtration with the "acts trivially on
+> `𝒪_L / 𝔪^{i+1}`" definition `ValuationSubring.ramificationGroup` uses, i.e. the statement that
+> `G_{i+1}` is the kernel of the associated-graded map on `G_i`. The `→` direction is the trivial
+> one (test the defining property at `π`); the `←` direction is the twelve-pass blocker.
+>
+> **Steps 1 and 2 of the thirty-fourth pass's plan closed as scoped** (commit `2bc907b`,
+> `Langlands/HenselianResidueLift.lean`, `Langlands/SimpleRootRigidity.lean`):
+>
+> * `HenselianLocalRing.exists_isRoot_residue_eq` — for `R₀` local, `R` Henselian local over it with
+>   compatible residue maps (`hsq`, an explicit hypothesis, discharged concretely by
+>   `Langlands.ResidueFieldNorm.algebraMap_residueField_residue`), and `β₀ : ResidueField R` with
+>   separable minimal polynomial over `ResidueField R₀`: a monic lift `f : R₀[X]` of that minimal
+>   polynomial has a root `x` in `R` *itself* with `residue R x = β₀` and
+>   `IsUnit (aeval x f.derivative)`. Proved via `HenselianLocalRing.TFAE`'s second item (the
+>   simple-root form), not via the coprime-factorisation form the thirty-fourth pass's step 2
+>   anticipated needing — the derivative-nonvanishing hypothesis comes straight from
+>   `Polynomial.Separable.aeval_derivative_ne_zero`, so no factorisation is required at all.
+> * `HenselianLocalRing.exists_isRoot_residue_eq_of_finite` — the `[Finite (ResidueField R)]`
+>   specialization, where `Field.exists_primitive_element_of_finite_top` supplies `β₀` and
+>   `PerfectField.ofFinite` supplies separability, and the generation statement is returned in
+>   `Subalgebra` form (`Algebra.adjoin (ResidueField R₀) {β₀} = ⊤`).
+> * `IsLocalRing.eq_of_isRoot_of_residue_eq` — Mathlib's `eq_of_eval_eq_zero_of_not_isUnit_sub`
+>   (`stacks 06RR`) restated in residue-field terms, plus `IsLocalRing.residue_eval`,
+>   `IsLocalRing.isUnit_of_residue_ne_zero`, `IsLocalRing.aeval_map_residue_eq`.
+> * `HenselianLocalRing.exists_monic_lift_minpoly` (`UnramifiedExtension.lean`) has its
+>   `[HenselianLocalRing R]` hypothesis weakened to `[IsLocalRing R]` — its proof only uses
+>   surjectivity of the residue map, and here it is applied to the *base* ring
+>   `v.adicCompletionIntegers K`, for which Henselianity is not separately established.
+>
+> **Steps 3, 4 and 5 were NOT executed, and are no longer on the critical path.** No `L_0` is built,
+> as an `IntermediateField` or otherwise; nothing is proved unramified; `TotallyRamifiedEisenstein.
+> lean` and `TowerBundle.lean`'s `adjoin_eq_integralClosure_of_isUniformizer_of_valuationSubring`
+> are untouched and unused. The reason is a re-derivation of what the consumer actually needs, done
+> before writing any of step 3: `RamificationFiltration.lean`'s kernel argument needs
+> `Algebra.adjoin 𝒪_K {x, π} = ⊤` for a *pair* of generators, not `𝒪_L = 𝒪_{L_0}[π]` for a single
+> one over an intermediate ring. The pair statement is a direct Nakayama argument with no tower:
+>
+> * `LocalField.adjoin_pair_eq_top` (`Langlands/TwoGeneratorMonogenic.lean`, commit `6898e1d`) — for
+>   `R`, `S` discrete valuation rings, `S` finite over `R`, `algebraMap R S` injective, `π` a
+>   uniformizer of `S`, and `R[x]` surjecting onto `ResidueField S`: `Algebra.adjoin R {x, π} = ⊤`.
+>   Successive approximation (`exists_mem_adjoin_pair_sub_mem_pow`) gives `S = R[x, π] + 𝔪_S ^ k`
+>   for every `k`; `𝔪_R · S` is a nonzero ideal of the discrete valuation ring `S`, hence *some*
+>   `𝔪_S ^ n` (`IsDiscreteValuationRing.ideal_eq_span_pow_irreducible`) — **the ramification index is
+>   never computed**, which is what removes the need for step 4's unramifiedness statement;
+>   `Submodule.le_of_le_smul_of_le_jacobson_bot` closes. No Eisenstein criterion, no discriminant,
+>   no residue degree, no intermediate field.
+>
+> **And the role step 3's `L_0` played classically is played instead by rigidity of the single
+> element `x`** (commit `722fa1a`, `Langlands/RamificationFiltration.lean`):
+>
+> * `ValuationSubring.smul_eq_of_isRoot_of_mem_ramificationGroup_zero` — for any base ring `R₀` with
+>   `[Algebra R₀ ↥A]` whose image `σ` fixes pointwise, any `f : R₀[X]` and any `x : A` with
+>   `aeval x f = 0` and `IsUnit (aeval x f.derivative)`: `σ ∈ ramificationGroup K A 0` implies
+>   `σ • x = x` **exactly**, not merely modulo `𝔪_A`. `σ • x` is another root of `f` with the same
+>   residue as `x`, and simple roots are rigid. Classically one says "σ fixes `L_0` pointwise
+>   because inertia acts trivially on the unramified part"; this lemma is that fact with the field
+>   deleted and only the element retained.
+> * `ValuationSubring.mem_ramificationGroup_succ_of_adjoin` — given `Algebra.adjoin R₀ {x, π} = ⊤`,
+>   `σ` fixing `R₀` and `x`, and `σ • π - π ∈ 𝔪_A ^ (i + 2)`, conclude `σ ∈ ramificationGroup K A
+>   (i + 1)`. Proof: `{y : A | σ • y - y ∈ 𝔪_A ^ (i + 2)}` is an `R₀`-subalgebra of `A` (from
+>   `σ • (a * b) - a * b = σ • a * (σ • b - b) + (σ • a - a) * b`), so containing `{x, π}` makes it
+>   everything. Note `σ ∈ ramificationGroup K A i` is *not* a hypothesis — it is not needed.
+>
+> Both are stated over an arbitrary `A : ValuationSubring L`, so `RamificationFiltration.lean`
+> remains a general-theory file; its only new import is `Langlands.SimpleRootRigidity`, a
+> `Mathlib.RingTheory.Henselian`-only leaf split out for exactly that reason.
+>
+> **The concrete assembly** (commit `4936f79`,
+> `IsDedekindDomain.HeightOneSpectrum.exists_adjoin_pair_eq_top`): the `HenselianLocalRing`
+> instance is the thirty-fourth pass's `henselianLocalRing_adicCompletionIntegers`; `hsq` is
+> `algebraMap_residueField_residue`; `𝒪_K[x]` surjects onto `𝓀[L]` by transporting the
+> primitive-element statement along `residue x = β₀` (via `IsLocalRing.aeval_map_residue_eq` and
+> surjectivity of `Polynomial.map` along the residue map); `IsDiscreteValuationRing` on both
+> `v.adicCompletionIntegers K` and `w.adicCompletionIntegers L`, and `Module.Finite` between them,
+> are pre-existing instances (verified by `infer_instance` in a scratch file this pass; no new instance was needed); injectivity
+> of `algebraMap 𝒪_K 𝒪_L` is the same three-line argument `NormMapResidueCompatibility.lean`
+> already uses for torsion-freeness. `hfix` — that `σ` fixes the image of `𝒪_K` pointwise — is
+> `AlgEquiv.commutes` after unfolding the `ValuationSubring.decompositionSubgroupMulSemiringAction`
+> coercion.
+>
+> **What is still open, precisely.** The associated-graded *maps* are still not constructed as
+> bundled homomorphisms: there is no `G_0 →* (ResidueField A)ˣ`, no `G_i ⧸ G_{i+1} →+ ResidueField
+> A`, and no injectivity statement about such objects in this repo. What this pass proves is the
+> kernel *characterization* those constructions were blocked on, in the form
+> `mem_ramificationGroup_succ_iff`. The homomorphism property remains as the twelfth-pass entry left
+> it — computed on paper, recorded in `RamificationFiltration.lean`'s docstring, never written as
+> Lean. The classical "the filtration is eventually trivial" finiteness fact is untouched. Those
+> three items — bundle the maps, port the paper homomorphism computation, derive finiteness — are
+> now ordinary work with no known obstruction, which is a change in kind from the previous
+> twenty-three passes' status.
+
 - **Why this exists.** Phase 2a closed the "easy half" of local CFT (unramified norm-group
   surjectivity) in full, across ten passes. This section applies the same before-you-build
   discipline to Phase 2's actual hard content — the ramified case and the reciprocity map itself —
