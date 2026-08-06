@@ -28,12 +28,24 @@ a valuation ring with fraction field `M`.
 * `LocalField.integralClosureValuationSubring_eq` : conversely, *every* `A : ValuationSubring M`
   lying over `𝒪[K]` equals it — so the tower object is unique, and the two halves' presentations of
   `𝒪_M` are literally the same term.
+* `LocalField.algebra` : `Algebra R (integralClosureValuationSubring R M)`, closed by definitional
+  transport from `integralClosure R M`'s own `Subalgebra`-algebra structure. This is the instance
+  the tower theorem's concrete instantiation was missing — not a diamond between two independently
+  built structures, but a registered-instance gap on top of a term that was already definitionally
+  the right one.
+* `LocalField.isScalarTower` : the transported algebra is compatible with `Algebra R M`, by the
+  same transport.
+* `LocalField.finite` : `Module.Finite R (integralClosureValuationSubring R M)`, transported from
+  `IsIntegralClosure.finite` (needs `R` integrally closed and Noetherian, `M / K` finite separable
+  for `K` the fraction field of `R`).
 
 ## Implementation notes
 
 `ValuationSubring.ofSubring` keeps the underlying `Subring` definitionally, so
 `↥(integralClosureValuationSubring R M)` and `↥(integralClosure R M)` have the same carrier by
-`rfl` — which is what lets a monogenicity statement proved for one be read off for the other.
+`rfl` — which is what lets a monogenicity statement proved for one be read off for the other, and
+what lets the `Algebra`/`IsScalarTower`/`Module.Finite` instances above be produced by
+`inferInstanceAs` rather than by a coincidence-of-two-constructions transport lemma.
 -/
 
 open ValuativeRel
@@ -70,7 +82,44 @@ theorem coe_integralClosureValuationSubring :
     ((integralClosureValuationSubring R M : ValuationSubring M) : Set M) =
       ↑(integralClosure R M) := rfl
 
+/-- **The missing `Algebra` instance, closed by definitional transport, not by a diamond-style
+coincidence proof.** `↥(integralClosureValuationSubring R M)` unfolds to
+`↥(integralClosure R M).toSubring`, whose carrier is the same predicate as
+`↥(integralClosure R M)` (`mem_integralClosureValuationSubring` above is `Iff.rfl`) — so the two
+types are definitionally equal and the `Subalgebra`'s own `R`-algebra structure transports across
+by `inferInstanceAs`. No independent construction is being reconciled here: it is the same term,
+just missing a registered instance for the `ValuationSubring`-coercion spelling of it. -/
+noncomputable instance algebra : Algebra R (integralClosureValuationSubring R M) :=
+  inferInstanceAs (Algebra R (integralClosure R M))
+
+/-- The transported `Algebra` instance is compatible with the ambient `Algebra R M`, again by
+definitional transport from the `Subalgebra` case. -/
+instance isScalarTower : IsScalarTower R (integralClosureValuationSubring R M) M :=
+  inferInstanceAs (IsScalarTower R (integralClosure R M) M)
+
 end OfIntegralClosure
+
+section Finite
+
+variable {R : Type*} [CommRing R] [IsDomain R] [IsIntegrallyClosed R] [IsNoetherianRing R]
+  {M : Type*} [Field M] [Algebra R M]
+  [ValuationRing ↥(integralClosure R M)] [IsFractionRing ↥(integralClosure R M) M]
+
+/-- **Finiteness of the tower object, transported from `IsIntegralClosure.finite`.** For `R`
+integrally closed and Noetherian with fraction field `K`, and `M / K` finite separable, the integral
+closure of `R` in `M` is a finite `R`-module — hence so is its `ValuationSubring`-coerced
+presentation, by the same definitional transport as `algebra` above.
+
+Stated as a `theorem`, not an `instance`, since `K` (the fraction field of `R`) does not appear in
+the conclusion and so cannot be found by instance search — the caller supplies it explicitly, as
+`IsIntegralClosure.finite` itself requires. -/
+theorem finite (K : Type*) [Field K] [Algebra R K] [IsFractionRing R K] [Algebra K M]
+    [IsScalarTower R K M] [FiniteDimensional K M] [Algebra.IsSeparable K M] :
+    Module.Finite R (integralClosureValuationSubring R M) :=
+  haveI := IsIntegralClosure.finite R K M (integralClosure R M)
+  inferInstanceAs (Module.Finite R (integralClosure R M))
+
+end Finite
 
 section Tower
 
