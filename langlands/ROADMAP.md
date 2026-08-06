@@ -1443,21 +1443,29 @@ that avoids stalling on (a).
 
 ### Phase 2b — Ramified local reciprocity: landscape and scoped candidates (2026-08-05, research/scoping pass, no code)
 
-> **Current position (2026-08-06, twenty-eighth pass).** Serre's *Local Fields* Ch. III tower
-> argument for monogenicity of `𝒪_L / 𝒪_K` — the long pole of Phase 2b's candidate 2, worked
-> across passes thirteen to twenty-eight — is now formalised in full as an abstract theorem,
+> **Current position (2026-08-06, twenty-ninth pass) — the 28+ pass thread is resolved.** Serre's
+> *Local Fields* Ch. III tower argument for monogenicity of `𝒪_L / 𝒪_K` — the long pole of Phase
+> 2b's candidate 2, worked across passes thirteen to twenty-nine — is now a closed, `sorry`-free
+> theorem in this repo at the concrete objects, not only in the abstract:
+> `LocalField.exists_adjoin_eq_top_of_tower_of_isEisensteinAt_of_valuationSubring`
+> (`Langlands/TowerMonogenicConcrete.lean`), instantiating the abstract
 > `LocalField.exists_adjoin_eq_top_of_tower_of_isEisensteinAt`
-> (`Langlands/TowerMonogenic.lean:152`), with every hypothesis separately proved by one of the two
-> halves. The twenty-seventh pass's `Algebra ↥𝒪[K] ↥A` diamond is root-caused and closed this
-> pass (it was a missing instance on an already-definitionally-correct term, not a genuine
-> diamond between independent constructions — see the twenty-eighth-pass entry below) along with
-> the associated `Module.Finite` gap. **It is still not instantiated at the concrete objects
-> `𝒪[K] ⊆ ↥A ⊆ 𝒪_N`**, so the sentence "`𝒪_L` is monogenic over `𝒪_K`" is still not a theorem in
-> this repo; what remains is a narrower, precisely itemised list of five `ON`-side instances
-> (`Algebra R ON`, `IsScalarTower R OM ON`, `Module.Finite R ON`, `IsLocalHom (algebraMap R OM)`,
-> `Algebra.IsSeparable (ResidueField R) (ResidueField OM)`), see the twenty-eighth-pass entry.
-> `RamificationFiltration.lean`'s associated-graded embeddings (blocked since the twelfth pass)
-> are the natural milestone after that instantiation, not before it.
+> (`Langlands/TowerMonogenic.lean:152`) at `R := 𝒪[K]`, `OM := ↥(integralClosureValuationSubring
+> 𝒪[K] M)`, `ON := ↥(integralClosure OM N)`. The twenty-eighth pass's five itemised `ON`-side
+> instance gaps (`Algebra R ON`, `IsScalarTower R OM ON`, `Module.Finite R ON`, `IsLocalHom
+> (algebraMap R OM)`, `Algebra.IsSeparable (ResidueField R) (ResidueField OM)`) are all closed this
+> pass — see the twenty-ninth-pass entry below for which were easy composition-of-instances work
+> and which needed real proof content. One precise loose end remains, documented in
+> `TowerMonogenicConcrete.lean`'s own docstring rather than silently rounded away: the theorem
+> takes the residue-field isomorphism's compatibility with the two algebra maps from `ResidueField
+> 𝒪[K]` (`he`) as an explicit hypothesis, not derived internally from
+> `Langlands.UnramifiedExtension`'s existence theorem — connecting the two needs a further
+> generalisation of an existing lemma, confirmed feasible in a scratch file this pass but not
+> landed. This does not weaken the theorem (a caller with a bare `Algebra.IsSeparable` instance in
+> hand satisfies `he` trivially via `e := RingEquiv.refl`), only its convenience for a caller who
+> starts from `UnramifiedExtension`'s specific witness. `RamificationFiltration.lean`'s
+> associated-graded embeddings (blocked since the twelfth pass) can now proceed as the natural next
+> step.
 
 - **Why this exists.** Phase 2a closed the "easy half" of local CFT (unramified norm-group
   surjectivity) in full, across ten passes. This section applies the same before-you-build
@@ -3125,6 +3133,105 @@ does not close, and a precise, narrower remaining gap is recorded below.
   langlands/Langlands/` unchanged: the same two prose-only hits as the twenty-seventh pass,
   `TotallyRamifiedEisenstein.lean:19` and `RamificationFiltration.lean:89`.
   Commit: `0f2f310`.
+
+#### Status 2026-08-06 (twenty-ninth pass) — all five `ON`-side instance gaps closed; the concrete
+tower monogenicity theorem `𝒪[K] ⊆ 𝒪[M] ⊆ 𝒪[N]` is now a `sorry`-free theorem in this repo. The
+28+ pass thread is resolved as the headline result, modulo one precisely-scoped loose end.
+
+- **Task.** Attempt all five instances the twenty-eighth pass itemised for instantiating
+  `exists_adjoin_eq_top_of_tower_of_isEisensteinAt` on `𝒪[K] ⊆ 𝒪[M] ⊆ 𝒪[N]`
+  (`R := ↥𝒪[K]`, `OM := ↥(integralClosureValuationSubring 𝒪[K] M)`, `ON := ↥(integralClosure OM
+  N)`), diagnosing each on its own merits (missing-registration vs. genuine proof content vs.
+  diamond), close what can be closed, and — if all five close — write the concrete instantiation.
+- **Method.** Each instance was first checked in a scratch file
+  (`Langlands/Scratch/FiveInstances.lean`, deleted after use, not committed) against the exact
+  ambient context (`K` with the `NontriviallyNormedField`/`ValuativeRel`/`CompleteSpace`/
+  `IsDiscreteValuationRing` bundle from `TowerBundle.lean`, `M / K` finite separable with `𝒪_M`
+  presented via `integralClosureValuationSubring`, `N / M` finite separable) before any code was
+  written into a real file.
+- **Item 1, `Algebra R ON` — easy transport, real composition.** `ON := ↥(integralClosure OM N)`
+  is a `Subalgebra OM N`, so `Algebra OM ON` is automatic; `Algebra R ON` is `Algebra.compHom ON
+  (algebraMap R OM)`, composing that with the already-established `Algebra R OM`
+  (`LocalField.algebra`). Ordinary instance-composition work, not a diamond.
+- **Item 2, `IsScalarTower R OM ON` — easy transport, real composition.**
+  `IsScalarTower.of_algebraMap_eq`, fed exactly the equation `Algebra.compHom_algebraMap_eq`
+  supplies for `algebra_ON` above (`algebraMap R ON = (algebraMap OM ON).comp (algebraMap R
+  OM)`). One `RingHom.congr_fun` away from `algebra_ON`'s defining property.
+- **Item 3, `Module.Finite R ON` — real proof content, several steps, no diamond.**
+  `Module.Finite.trans` composes `Module.Finite R OM` (`LocalField.finite`, already available)
+  with `Module.Finite OM ON`; the latter is `IsIntegralClosure.finite OM M N (integralClosure OM
+  N)`, which needs `OM` domain, integrally closed, and Noetherian. `IsDomain OM` and
+  `IsIntegrallyClosed OM` are automatic instances (`OM` being an integral closure inside a field,
+  `integralClosure.isIntegrallyClosedOfFiniteExtension`); `IsNoetherianRing OM` needed one new
+  step, `IsNoetherianRing.of_finite R OM`, using that `R` itself is Noetherian
+  (`IsDiscreteValuationRing.toIsPrincipalIdealRing` is already a Mathlib instance field, and PIDs
+  are Noetherian) and `Module.Finite R OM`. Landed as `LocalField.isNoetherianRing_
+  integralClosureValuationSubring`, `LocalField.finite_ON`, `LocalField.finite_ON'` in
+  `TowerMonogenicConcrete.lean`.
+- **Item 4, `IsLocalHom (algebraMap R OM)` — one-line application of a located Mathlib lemma.**
+  `IsLocalRing.local_hom_TFAE` lists `(𝔪_R).map f ≤ 𝔪_S ↔ IsLocalHom f` (indices 2 and 0 of the
+  five-way TFAE); `hunram`'s equality gives the `≤` for free (`le_of_eq`). Not previously located
+  by name; found via loogle on the pattern `Ideal.map (algebraMap ?R ?S) (maximalIdeal ?R) =
+  maximalIdeal ?S`, which surfaced only the (irrelevant, requiring `IsLocalHom` as a *hypothesis*)
+  `Algebra.FormallyUnramified` lemmas, then a targeted grep of
+  `Mathlib/RingTheory/LocalRing/RingHom/Basic.lean` found `local_hom_TFAE` itself.
+- **Item 5, `Algebra.IsSeparable (ResidueField R) (ResidueField OM)` — real proof content, and the
+  one item with a precisely-scoped remaining gap.** Two parts:
+  1. **The transport lemma itself, closed.** Given a residue-field isomorphism `e : ResidueField
+     OM ≃+* l` compatible with the two algebra maps from `ResidueField R` (`he`) and `l` separable
+     over `ResidueField R`, package `e` as an `AlgEquiv` via `he` (`AlgEquiv.ofRingEquiv`) and
+     transport separability across its inverse (`AlgEquiv.Algebra.isSeparable`). Landed as
+     `LocalField.algebraMap_eq_of_ringEquiv`, plus a variant `algebraMap_eq_of_ringEquiv_of_forall`
+     phrasing `he` via elements of `R` rather than `ResidueField R` — needed because the
+     `Algebra (ResidueField R) (ResidueField OM)` instance itself requires `IsLocalHom (algebraMap
+     R OM)`, which is not yet in scope when `he`'s *type* is elaborated inside the concrete
+     theorem's signature (the `R`-level phrasing sidesteps that ordering problem; reduced to the
+     `ResidueField R`-level statement afterwards via `IsLocalRing.residue_surjective`).
+  2. **Connecting `he` to `Langlands.UnramifiedExtension`'s specific isomorphism — investigated,
+     confirmed feasible, not landed.** That module's
+     `HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv` returns
+     a residue-field isomorphism `e` whose only stated property is where it sends the residue class
+     of a lift of its chosen root `x` — not that it is a `ResidueField R`-algebra map. Establishing
+     `he` for that specific `e` needs a generalisation of the existing
+     `HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_root` lemma from
+     the single root generator to every point of `R`. This pass confirmed in a scratch file that
+     the natural generalisation of that lemma's proof — replacing the root generator `X` with an
+     arbitrary constant `C c`, `c : R`, throughout the same `simp`/`rw` chain — closes outright,
+     using that `AdjoinRoot.quotEquivQuotMap` (one link in the composite) is already an `AlgEquiv`
+     over the base ring `R` and that the other links (`quotEquivRaw`, `quotEquivOfEq`,
+     `quotientEquiv`, `quotSpanRingEquiv`) are transparent `id`-bridges. What was *not* done is
+     wiring that general lemma through to the theorem's specific `e`, because that `e`'s
+     construction (`ψ := AdjoinRoot.lift (algebraMap R C) xC hxCroot'`, `hψof : ψ.comp (AdjoinRoot.of
+     f) = algebraMap R C`) is local to the ~350-line proof and not part of the theorem's public
+     conclusion — extending that theorem's conclusion (or adding a wrapper that redoes the tail of
+     its proof) to also return `he` is comparable in size to a further, self-contained piece of
+     work, not a quick follow-on, and was not attempted this pass to keep the already-large,
+     previously-verified proof untouched.
+- **Consequence: the concrete theorem takes `he` (and `e`, `l`) as explicit hypotheses, not
+  derived internally.** This does not weaken what the theorem proves — mathematically, `he` +
+  `l` separable is exactly a witness of "the residue extension is separable", and a caller who
+  already has a bare `Algebra.IsSeparable (ResidueField R) (ResidueField OM)` instance in hand
+  (rather than `UnramifiedExtension`'s specific isomorphism) satisfies `he` trivially with `e :=
+  RingEquiv.refl (ResidueField OM)`, `l := ResidueField OM` — so the theorem is at least as
+  general as directly hypothesising separability. What is lost is only the convenience of feeding
+  `UnramifiedExtension`'s witness in directly without an intermediate step; that intermediate step
+  is the scoped remaining gap above.
+- **New file `Langlands/TowerMonogenicConcrete.lean`.** Assembles all five instances into
+  `LocalField.exists_adjoin_eq_top_of_tower_of_isEisensteinAt_of_valuationSubring`: for `K`
+  complete discretely valued, `M / K` finite separable (with `𝒪_M` presented as
+  `integralClosureValuationSubring 𝒪[K] M`), `N / M` finite separable, `𝒪_N := integralClosure
+  𝒪_M N` is monogenic over `𝒪[K]` given unramifiedness (`hunram`) and separable-residue-extension
+  witnesses (`e`, `he`, `l` separable) for the lower step, and an Eisenstein generator (`hint`,
+  `hEis`, `hgen`) for the upper step. This is the closed theorem: **general monogenicity of `𝒪_L`
+  over `𝒪_K` for finite extensions of complete DVRs with separable residue extension** — the
+  headline target of the 28+ pass thread.
+- **Verification.** `lake build Langlands.TowerMonogenicConcrete` clean, no warnings after fixing
+  three `linter.unusedSectionVars` hits with `omit ... in`. `lake build Langlands` clean (8678
+  jobs, the same single pre-existing `overlappingInstances` lint warning on
+  `UnramifiedExtension.lean:725` as the twenty-eighth pass, not touched this pass). `grep -rn
+  sorry langlands/Langlands/` unchanged: the same two prose-only hits,
+  `TotallyRamifiedEisenstein.lean:19` and `RamificationFiltration.lean:89`.
+  Commit: `9354eb3`.
 
 
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
