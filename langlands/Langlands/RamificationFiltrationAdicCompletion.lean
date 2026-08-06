@@ -336,6 +336,99 @@ theorem gradedSuccHom_kerLift_injective (i : ℕ) {π : w.adicCompletionIntegers
         ((IsDiscreteValuationRing.irreducible_iff_uniformizer π).mpr hπ).ne_zero i)) :=
   QuotientGroup.kerLift_injective _
 
+/-! ### Filtration finiteness
+
+Combines `Subgroup.exists_eventually_eq_of_antitone` (`Langlands.RamificationFiltration`, generic
+group theory: an antitone `ℕ`-indexed family of subgroups of a *finite* group is eventually
+constant) with `Finite (w.adicCompletion L ≃ₐ[v.adicCompletion K] w.adicCompletion L)` (automatic
+from `Module.Finite K L`, no separability/normality needed) and a separatedness argument (`σ` fixing
+`w.adicCompletionIntegers L` modulo every power of its maximal ideal fixes it exactly, by
+`IsHausdorff`, hence fixes all of `w.adicCompletion L` by `IsFractionRing`, hence is `1`) to show the
+ramification filtration's intersection is `⊥`, and so the eventual constant is `⊥`: the filtration
+is eventually trivial. -/
+
+omit [Algebra.IsIntegral R S] in
+/-- **An element fixing `w.adicCompletionIntegers L` modulo every power of its maximal ideal is the
+identity.** The `𝔪`-adic Hausdorff property of the discrete valuation ring `w.adicCompletionIntegers
+L` (`IsHausdorff.of_isDomain`, needing only that it is a domain with `𝔪 ≠ ⊤` — Noetherian-ness comes
+for free from `IsPrincipalIdealRing`) forces `σ • x - x = 0` for every `x`, i.e. `σ` fixes
+`w.adicCompletionIntegers L` pointwise; `IsFractionRing.ringHom_ext` lifts this to all of
+`w.adicCompletion L`, whence `σ = 1`. -/
+theorem eq_one_of_forall_mem_ramificationGroup
+    {σ : (w.adicCompletionIntegers L).decompositionSubgroup (v.adicCompletion K)}
+    (hσ : ∀ i, σ ∈ ramificationGroup K L v w i) : σ = 1 := by
+  have hfixA : ∀ x : w.adicCompletionIntegers L, σ • x = x := by
+    intro x
+    have hmod : ∀ n, (σ • x - x : w.adicCompletionIntegers L) ≡ 0
+        [SMOD (IsLocalRing.maximalIdeal (w.adicCompletionIntegers L)) ^ n •
+          (⊤ : Submodule (w.adicCompletionIntegers L) (w.adicCompletionIntegers L))] := by
+      intro n
+      rw [SModEq.zero, Ideal.smul_top_eq_map, Algebra.algebraMap_self, Ideal.map_id,
+        Submodule.restrictScalars_self]
+      cases n with
+      | zero => simp
+      | succ m => exact hσ m x
+    exact sub_eq_zero.mp (IsHausdorff.haus inferInstance _ hmod)
+  have hfixL : ∀ x : w.adicCompletionIntegers L,
+      (σ : w.adicCompletion L ≃ₐ[v.adicCompletion K] w.adicCompletion L) (x : w.adicCompletion L)
+        = (x : w.adicCompletion L) := by
+    intro x
+    have h := hfixA x
+    have heq : ((σ • x : w.adicCompletionIntegers L) : w.adicCompletion L)
+        = (x : w.adicCompletion L) := by rw [h]
+    rwa [show ((σ • x : w.adicCompletionIntegers L) : w.adicCompletion L)
+        = (σ : w.adicCompletion L ≃ₐ[v.adicCompletion K] w.adicCompletion L)
+          (x : w.adicCompletion L) from rfl] at heq
+  have hringHom : (σ : w.adicCompletion L ≃ₐ[v.adicCompletion K] w.adicCompletion L).toRingEquiv.toRingHom
+      = RingHom.id (w.adicCompletion L) :=
+    IsFractionRing.ringHom_ext (A := w.adicCompletionIntegers L) fun x => by
+      show (σ : w.adicCompletion L ≃ₐ[v.adicCompletion K] w.adicCompletion L)
+          (algebraMap (w.adicCompletionIntegers L) (w.adicCompletion L) x)
+        = algebraMap (w.adicCompletionIntegers L) (w.adicCompletion L) x
+      rw [show (algebraMap (w.adicCompletionIntegers L) (w.adicCompletion L) x)
+        = (x : w.adicCompletion L) from rfl]
+      exact hfixL x
+  have hfixL' : ∀ x : w.adicCompletion L,
+      (σ : w.adicCompletion L ≃ₐ[v.adicCompletion K] w.adicCompletion L) x = x :=
+    fun x => RingHom.congr_fun hringHom x
+  exact Subtype.ext (AlgEquiv.ext hfixL')
+
+omit [Algebra.IsIntegral R S] in
+/-- **The ramification filtration's intersection is trivial.** -/
+theorem ramificationGroup_inf_eq_bot :
+    (⨅ i, ramificationGroup K L v w i) = ⊥ := by
+  refine le_antisymm ?_ bot_le
+  intro σ hσ
+  rw [Subgroup.mem_iInf] at hσ
+  exact eq_one_of_forall_mem_ramificationGroup K L v w (σ := σ) hσ
+
+omit [Algebra.IsIntegral R S] in
+/-- **The ramification filtration is eventually trivial.** Combines the eventual-constancy of an
+antitone family of subgroups of a finite group (`Subgroup.exists_eventually_eq_of_antitone`,
+applied to `ramificationGroup K L v w`, finite since `L ≃ₐ[K] L` is finite from `Module.Finite K
+L`) with `ramificationGroup_inf_eq_bot`: the eventual constant equals the filtration's intersection
+(sandwiched between the value at the stabilization point and the value at any earlier index), hence
+is `⊥`. -/
+theorem exists_ramificationGroup_eq_bot :
+    ∃ N, ∀ i ≥ N, ramificationGroup K L v w i = ⊥ := by
+  haveI : Finite (w.adicCompletion L ≃ₐ[v.adicCompletion K] w.adicCompletion L) :=
+    Finite.algEquiv
+  haveI : Finite ((w.adicCompletionIntegers L).decompositionSubgroup (v.adicCompletion K)) :=
+    Subtype.finite
+  obtain ⟨N, hN⟩ := Subgroup.exists_eventually_eq_of_antitone (ramificationGroup K L v w)
+    (ValuationSubring.ramificationGroup_antitone
+      (K := v.adicCompletion K) (w.adicCompletionIntegers L))
+  refine ⟨N, fun i hi => ?_⟩
+  rw [hN i hi]
+  have hle : ramificationGroup K L v w N ≤ ⨅ j, ramificationGroup K L v w j := by
+    refine le_iInf fun j => ?_
+    rcases le_total j N with hj | hj
+    · exact ValuationSubring.ramificationGroup_antitone
+        (K := v.adicCompletion K) (w.adicCompletionIntegers L) hj
+    · rw [hN j hj]
+  rw [ramificationGroup_inf_eq_bot] at hle
+  exact le_antisymm hle bot_le
+
 end KernelDirection
 
 end IsDedekindDomain.HeightOneSpectrum

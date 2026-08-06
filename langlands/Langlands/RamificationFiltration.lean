@@ -666,3 +666,31 @@ theorem gradedSuccHom_apply_eq_one_iff (σ : ramificationGroup K A (i + 1)) :
 end AssociatedGraded
 
 end ValuationSubring
+
+/-! ### A decreasing filtration of subgroups of a finite group is eventually constant
+
+Pure group theory, independent of everything above: the combinatorial half of "the ramification
+filtration is eventually trivial." The other half — that the filtration's intersection is `⊥` — is
+specific to the valuation-ring setting and is supplied by the caller (see
+`Langlands.RamificationFiltrationAdicCompletion`). -/
+
+/-- **An antitone `ℕ`-indexed family of subgroups of a finite group is eventually constant.**
+Since `Subgroup G` is finite (`G` finite), the fiber of `f` over some value `v` is infinite
+(`Finite.exists_infinite_fiber`); picking `N` in that fiber and, for any `i ≥ N`, a later index `j`
+in the fiber with `j ≥ i` sandwiches `f i` between `f j = v` and `f N = v` via antitonicity. -/
+theorem Subgroup.exists_eventually_eq_of_antitone {G : Type*} [Group G] [Finite G]
+    (f : ℕ → Subgroup G) (hf : Antitone f) :
+    ∃ N, ∀ i ≥ N, f i = f N := by
+  haveI : Finite (Subgroup G) := Finite.of_injective (SetLike.coe : Subgroup G → Set G)
+    SetLike.coe_injective
+  obtain ⟨v, hv⟩ := Finite.exists_infinite_fiber f
+  rw [Set.infinite_coe_iff] at hv
+  obtain ⟨N, hN⟩ := hv.nonempty
+  have hiN : f N = v := hN
+  refine ⟨N, fun i hi => ?_⟩
+  obtain ⟨j, hj, hji⟩ := hv.exists_gt (max i N)
+  have hjv : f j = v := hj
+  have h1 : f j ≤ f i := hf (le_trans (le_max_left i N) hji.le)
+  have h3 : f i ≤ f N := hf hi
+  have hFN_le : f N ≤ f i := by rw [hiN, ← hjv]; exact h1
+  exact le_antisymm h3 hFN_le
