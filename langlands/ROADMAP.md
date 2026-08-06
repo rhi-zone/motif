@@ -2618,6 +2618,43 @@ files changed, no commit (documentation-only pass).
   scalar needed) determines the shape of everything downstream. Only after (a) is settled does the
   discriminant-bound work in (b) have a fixed target to compute.
 
+#### Status 2026-08-06 (twenty-fourth pass) — item (a), the field-level degree argument, closed
+- **Landed** — new file `langlands/Langlands/PrimitiveElementFusion.lean`,
+  `Langlands.exists_scalar_add_smul_primitive`: for `E / K` finite separable with `K` infinite and
+  `β π : E` such that `K⟮β⟯⟮π⟯.restrictScalars K = K⟮β, π⟯ = ⊤`, there is a scalar `c : K` with
+  `(minpoly K (β + c • π)).natDegree = Module.finrank K E`. `lake build Langlands.PrimitiveElementFusion`
+  clean, no `sorry`.
+- **A genuine nontrivial scalar is needed** — the open question the twenty-third pass flagged is
+  resolved: the proof does **not** establish `c = 1` (plain `a := x + π`) works; it only produces
+  *some* `c`, found by a finite pigeonhole argument over `K`, with no control over which value it is.
+  Whether `c = 1` suffices in general is a strictly stronger, unproven claim — this result should not
+  be read as evidence either way.
+- **Phrased concretely, not via `TowerBundle.lean`'s abstract bundle.** `TowerBundle.lean`'s `M`, `N`
+  are unrelated abstract `Type*`s connected only by `[Algebra M N]`, with no common ambient field — so
+  a statement about the *sum* `β + c • π` (which needs both to live in one field) cannot be phrased in
+  that vocabulary directly. This file instead takes a single ambient `E` with `β π : E` and hypothesis
+  `K⟮β⟯⟮π⟯.restrictScalars K = ⊤`, matching how `UnramifiedExtension.lean` actually produces `M` (as a
+  literal `IntermediateField.adjoin K {x}` inside an ambient algebraically-closed `L`). Identifying
+  `TowerBundle.lean`'s abstract `M`/`N` with concrete `IntermediateField`s of a common ambient field
+  (so this result can compose with it) is standard `AdjoinSimple`/algebra-equivalence transport, not
+  attempted here and orthogonal to the argument in this file.
+- **Mathlib's own primitive-element proof does not expose the scalar.** `Field.primitive_element_inf_aux`
+  produces `∃ γ, F⟮α,β⟯ = F⟮γ⟯` via a Euclidean-domain/gcd argument, without exposing that its witness
+  is internally `α + c • β`. `Field.primitive_element_inf_aux_of_finite_intermediateField` *does*
+  construct its witness as `α + x • β` for an explicit pigeonhole-found `x`, but is `private` (only
+  visible inside `Mathlib/FieldTheory/PrimitiveElement.lean`). Rather than reproving the general
+  primitive element theorem or patching the vendored Mathlib file, `PrimitiveElementFusion.lean`
+  inlines that short pigeonhole argument directly with `c` exposed in the statement, obtaining
+  `Finite (IntermediateField K E)` (needed for the pigeonhole) from
+  `Field.exists_primitive_element_iff_finite_intermediateField` plus the unconditional
+  `Field.exists_primitive_element`, rather than from the separate gcd-based route.
+- **Still open for full tower monogenicity:** items (b) (the discriminant-tower bound via
+  `differentIdeal_eq_differentIdeal_mul_differentIdeal` or an equivalent direct valuation computation)
+  and (c) (the `integralClosure`-vs-`ValuationSubring` bridge), both listed in the twenty-third pass
+  entry above, remain untouched; and the `TowerBundle.lean`-abstract-bundle identification noted above
+  is a new, small, but real prerequisite this pass surfaced for composing this result with the rest of
+  the tower argument.
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
