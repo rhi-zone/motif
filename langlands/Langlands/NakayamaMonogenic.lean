@@ -3,6 +3,8 @@ Copyright (c) 2026 rhizone. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Mathlib.RingTheory.LocalRing.Module
+import Mathlib.RingTheory.Ideal.Over
+import Mathlib.RingTheory.Adjoin.Polynomial.Basic
 
 /-!
 # A Nakayama-style criterion for monogenicity over a local ring
@@ -38,7 +40,21 @@ automatically once `Algebra.adjoin R {a} = ⊤` is known, with no separate pigeo
   if the image of `Algebra.adjoin R {a}` in `S ⧸ (maximalIdeal R • ⊤)` is all of that quotient,
   then `Algebra.adjoin R {a} = ⊤`.
 
-## What remains (not attempted in this file)
+## Status update (twenty-sixth pass)
+
+Items (1) and (2) below were the two gaps left open when this file was written. **Item (2) is now
+closed** — `Langlands.ArtinianPrimitiveElement`'s `LocalField.adjoin_add_nilpotent_eq_top` proves
+it, and with `c = 1`, so no scalar search is needed at the residue level. **Item (1) is no longer
+required in the form stated**: `adjoin_eq_top_of_adjoin_quotient_eq_top` (below) plus the Artinian
+primitive element theorem compose into
+`LocalField.exists_adjoin_eq_top_of_residue_nilpotent`, which needs only that the residue algebra
+`S ⧸ 𝔪_R S` contains a separable residue field `κ` and a nilpotent `π` with `S ⧸ 𝔪_R S = κ + π ·
+(S ⧸ 𝔪_R S)` — *not* an explicit isomorphism with `κ_M[T] ⧸ (T ^ e)`.
+
+What is still missing is the *ramification input* discharging those three hypotheses for the actual
+tower, and — logically prior to that — a tower object at all: see `ROADMAP.md`'s twenty-sixth pass.
+
+## What remains (as assessed when this file was written)
 
 The hypothesis this lemma needs — that the images of the powers of `a := β + c • π` span
 `S ⧸ 𝔪_K S` for `S := 𝒪_N` — is itself a nontrivial fact requiring:
@@ -85,5 +101,40 @@ theorem adjoin_eq_top_of_map_mkQ_eq_top {R S : Type*} [CommRing R] [IsLocalRing 
     Algebra.adjoin R ({a} : Set S) = ⊤ := by
   rw [← Algebra.toSubmodule_eq_top]
   exact IsLocalRing.map_mkQ_eq_top.mp h
+
+open Polynomial IsLocalRing in
+/-- **Monogenicity descends from the residue algebra.** If the image of `β` generates
+`S ⧸ 𝔪_R S` as an algebra over the residue field `R ⧸ 𝔪_R`, then `β` generates `S` over `R`.
+
+This is the usable form of `adjoin_eq_top_of_map_mkQ_eq_top`: it replaces the submodule-image
+hypothesis by an honest *algebra*-generation statement about the residue ring `S ⧸ 𝔪_R S`, which is
+what `Langlands.ArtinianPrimitiveElement` supplies.
+
+Mathlib's `IsLocalRing.adjoin_residue_eq_top_iff_adjoin_eq_top`
+(`Mathlib/RingTheory/LocalRing/Etale.lean:63`) is the same statement for the quotient by `𝔪_S`
+rather than `𝔪_R S`, and needs `[Algebra.FormallyUnramified R S]` precisely to identify the two
+(via `Algebra.FormallyUnramified.map_maximalIdeal`). In the ramified case `𝔪_R S ⊊ 𝔪_S`, so that
+lemma does not apply; the proof below is its forward direction with the unramifiedness step
+removed, quotienting by `𝔪_R S` throughout. -/
+theorem adjoin_eq_top_of_adjoin_quotient_eq_top {R S : Type*} [CommRing R] [IsLocalRing R]
+    [CommRing S] [Algebra R S] [Module.Finite R S] (β : S)
+    (h : Algebra.adjoin (R ⧸ maximalIdeal R)
+        ({Ideal.Quotient.mk (Ideal.map (algebraMap R S) (maximalIdeal R)) β} :
+          Set (S ⧸ Ideal.map (algebraMap R S) (maximalIdeal R))) = ⊤) :
+    Algebra.adjoin R ({β} : Set S) = ⊤ := by
+  refine eq_top_iff.mpr <| Submodule.le_of_le_smul_of_le_jacobson_bot
+    (Module.finite_def.mp inferInstance) (IsLocalRing.maximalIdeal_le_jacobson ⊥)
+    (?_ : ⊤ ≤ (Algebra.adjoin R ({β} : Set S)).toSubmodule ⊔ maximalIdeal R • ⊤)
+  intro s _
+  rw [Algebra.adjoin_singleton_eq_range_aeval, AlgHom.range_eq_top] at h
+  obtain ⟨p, hp⟩ := h (Ideal.Quotient.mk _ s)
+  obtain ⟨q, rfl⟩ := Polynomial.map_surjective _ Ideal.Quotient.mk_surjective p
+  rw [Ideal.smul_top_eq_map]
+  refine Submodule.mem_sup.mpr ⟨aeval β q, ?_, s - aeval β q, ?_, by ring⟩
+  · rw [Algebra.adjoin_singleton_eq_range_aeval]; exact ⟨q, rfl⟩
+  · rw [Submodule.restrictScalars_mem, ← Ideal.Quotient.eq]
+    rw [← map_aeval_eq_aeval_map (ψ := Ideal.Quotient.mk _)
+      (φ := Ideal.Quotient.mk (maximalIdeal R)) rfl] at hp
+    exact hp.symm
 
 end LocalField

@@ -6,6 +6,7 @@ import Mathlib.Algebra.Polynomial.Taylor
 import Mathlib.FieldTheory.PrimitiveElement
 import Mathlib.RingTheory.Adjoin.Polynomial.Basic
 import Mathlib.RingTheory.Nilpotent.Basic
+import Langlands.NakayamaMonogenic
 
 /-!
 # A primitive element theorem for nilpotent extensions of a field extension
@@ -193,5 +194,38 @@ theorem exists_adjoin_add_nilpotent_eq_top [Algebra.IsSeparable k κ] [FiniteDim
     rw [← this, IntermediateField.adjoin_simple_toSubalgebra_of_isAlgebraic
       (Algebra.IsIntegral.isIntegral β).isAlgebraic]
   · exact Algebra.IsSeparable.isSeparable k β
+
+section Composite
+
+open IsLocalRing
+
+/-- **The composite monogenicity criterion**, combining this file's Artinian primitive element
+theorem with `LocalField.adjoin_eq_top_of_adjoin_quotient_eq_top`.
+
+Let `R` be local, `S` a finite `R`-algebra, and write `A := S ⧸ 𝔪_R S` for the residue algebra.
+Suppose `A` contains a field `κ`, finite and separable over the residue field `R ⧸ 𝔪_R`, and an
+element `π` with `π ^ e = 0` such that `A = κ + π A`. Then `S` is monogenic over `R`.
+
+For the local-field tower `K ⊆ M ⊆ N` this is exactly the shape needed, with `κ := κ_M`, `π` the
+image of a uniformizer of `N`, and `e` the ramification index — and, crucially, *without* having to
+first exhibit `A` as `κ_M[T] ⧸ (T ^ e)`. -/
+theorem exists_adjoin_eq_top_of_residue_nilpotent {R S : Type*} [CommRing R] [IsLocalRing R]
+    [CommRing S] [Algebra R S] [Module.Finite R S]
+    {κ : Type*} [Field κ] [Algebra (R ⧸ maximalIdeal R) κ]
+    [Algebra κ (S ⧸ Ideal.map (algebraMap R S) (maximalIdeal R))]
+    [IsScalarTower (R ⧸ maximalIdeal R) κ (S ⧸ Ideal.map (algebraMap R S) (maximalIdeal R))]
+    [Algebra.IsSeparable (R ⧸ maximalIdeal R) κ] [Module.Finite (R ⧸ maximalIdeal R) κ]
+    {π : S ⧸ Ideal.map (algebraMap R S) (maximalIdeal R)} {e : ℕ} (hnil : π ^ e = 0)
+    (hsurj : ∀ x : S ⧸ Ideal.map (algebraMap R S) (maximalIdeal R),
+      ∃ (c : κ) (y : S ⧸ Ideal.map (algebraMap R S) (maximalIdeal R)),
+        x = algebraMap κ _ c + π * y) :
+    ∃ β : S, Algebra.adjoin R ({β} : Set S) = ⊤ := by
+  letI : Field (R ⧸ maximalIdeal R) := Ideal.Quotient.field _
+  obtain ⟨a, ha⟩ :=
+    exists_adjoin_add_nilpotent_eq_top (k := R ⧸ maximalIdeal R) (κ := κ) hnil hsurj
+  obtain ⟨β, rfl⟩ := Ideal.Quotient.mk_surjective a
+  exact ⟨β, adjoin_eq_top_of_adjoin_quotient_eq_top β ha⟩
+
+end Composite
 
 end LocalField
