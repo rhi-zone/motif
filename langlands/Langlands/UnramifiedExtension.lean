@@ -186,10 +186,13 @@ instance henselianLocalRing_of_valuationSubring
 /-- Let `R` be a Henselian local ring with residue field `k := IsLocalRing.ResidueField R`, and let
 `β₀` be an element of a `k`-algebra field `l`, integral over `k`. Then `minpoly k β₀` lifts to a
 monic polynomial over `R` of the same degree. Only surjectivity of the residue map is used
-(`Polynomial.mem_lifts_of_surjective`, `Polynomial.lifts_and_natDegree_eq_and_monic`); the Henselian
-hypothesis is carried because it is the one available at the intended call site. -/
+(`Polynomial.mem_lifts_of_surjective`, `Polynomial.lifts_and_natDegree_eq_and_monic`), so the
+hypothesis is `[IsLocalRing R]` rather than `[HenselianLocalRing R]`: the name is kept in the
+`HenselianLocalRing` namespace for continuity with its call sites, all of which do carry the
+Henselian instance, but `Langlands.HenselianResidueLift` applies it to a *base* ring for which only
+locality is available. -/
 theorem HenselianLocalRing.exists_monic_lift_minpoly {R : Type*} [CommRing R]
-    [HenselianLocalRing R] {l : Type*} [Field l] [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
+    [IsLocalRing R] {l : Type*} [Field l] [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
     (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) :
     ∃ f : R[X], f.Monic ∧ f.natDegree = (minpoly (IsLocalRing.ResidueField R) β₀).natDegree ∧
       f.map (algebraMap R (IsLocalRing.ResidueField R)) =

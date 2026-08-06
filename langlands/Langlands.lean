@@ -3,6 +3,7 @@ import Langlands.CyclicGaloisSubfields
 import Langlands.CyclicSubgroups
 import Langlands.FiniteIndexNormalSubgroupMulEquiv
 import Langlands.FiniteIndexSubgroupsZ
+import Langlands.HenselianResidueLift
 import Langlands.IdeleGroup
 import Langlands.MonogenicIntegralClosure
 import Langlands.MonogenicMaximalOrder
