@@ -1,3 +1,4 @@
+import Langlands.SimpleRootRigidity
 import Mathlib.RingTheory.Valuation.RamificationGroup
 import Mathlib.RingTheory.LocalRing.ResidueField.Basic
 
@@ -43,6 +44,11 @@ subgroup of itself), not by a new definition. So the correspondence is:
   matching Serre's `G_0 = I`.
 * `ValuationSubring.ramificationGroup_normal` : `ramificationGroup K A i` is a normal subgroup of
   the *full* decomposition group `A.decompositionSubgroup K`, not merely of the inertia subgroup.
+* `ValuationSubring.smul_eq_of_isRoot_of_mem_ramificationGroup_zero` : an element of `G_0` fixes
+  *exactly* (not merely modulo `𝔪_A`) any simple root, in `A`, of a polynomial over a base ring it
+  fixes pointwise.
+* `ValuationSubring.mem_ramificationGroup_succ_of_adjoin` : the `⊆` direction of the kernel
+  computation, from a two-element generating set `{x, π}` of `A` over such a base ring.
 
 ## Scope
 
@@ -97,6 +103,8 @@ Phase 2b, for the tracked gap.
 @[expose] public section
 
 noncomputable section
+
+open scoped Polynomial
 
 namespace ValuationSubring
 
@@ -215,5 +223,122 @@ theorem ramificationGroup_normal (A : ValuationSubring L) (i : ℕ) :
     have hsplit : (τ * σ * τ⁻¹) • x - x = τ • (σ • (τ⁻¹ • x) - τ⁻¹ • x) := by
       simp [mul_smul, smul_sub, smul_inv_smul]
     rwa [hsplit]
+
+/-! ### Rigidity of a simple root, and the kernel direction
+
+The two lemmas below are the general-theory half of the associated-graded kernel argument the
+module docstring's "Scope" section flags as blocked. They isolate exactly what the blocked step
+needs from the arithmetic input, and what it does *not*:
+
+* it does **not** need `A` to be monogenic over the ring of integers of a maximal unramified
+  subextension realized as a subfield, nor an Eisenstein polynomial, nor completeness;
+* it **does** need a *pair* of generators — a simple root `x` of a polynomial over the base
+  (which the inertia group then fixes exactly, by `IsLocalRing.eq_of_isRoot_of_residue_eq`) and
+  the uniformizer `π` — generating `A` as an algebra over the base.
+
+`Langlands.RamificationFiltrationAdicCompletion` discharges both inputs in the adic-completion
+setting: the root comes from `Langlands.HenselianResidueLift` and the generation statement from a
+Nakayama argument. -/
+
+/-- **An element of `G_0` fixes a simple root of a base-field polynomial exactly.**
+
+Let `R₀` be any base ring mapping into `A` whose image `σ` fixes pointwise (`hfix`), let `f : R₀[X]`
+and let `x : A` be a root of `f` at which `f`'s derivative is a unit. If `σ ∈ ramificationGroup K A
+0` — equivalently `σ` acts trivially on the residue field of `A`, by `ramificationGroup_zero` —
+then `σ • x = x` *exactly*, not merely modulo `𝔪_A`.
+
+The mechanism: `σ • x` is again a root of `f`, since `σ` fixes the coefficients; it has the same
+residue as `x`, since `σ` is in the inertia group; and a simple root is determined by its residue
+(`IsLocalRing.eq_of_isRoot_of_residue_eq`, Mathlib's `stacks 06RR` in residue-field form). This is
+the step that replaces "`L_0` is a subfield fixed by inertia" in the classical argument: no
+intermediate field is constructed, only the single element `x`. -/
+theorem smul_eq_of_isRoot_of_mem_ramificationGroup_zero {A : ValuationSubring L} {R₀ : Type*}
+    [CommRing R₀] [Algebra R₀ A] {f : R₀[X]} {x : A} (hx : Polynomial.aeval x f = 0)
+    (hd : IsUnit (Polynomial.aeval x (f.derivative)))
+    {σ : A.decompositionSubgroup K} (hσ : σ ∈ ramificationGroup K A 0)
+    (hfix : ∀ r : R₀, σ • (algebraMap R₀ A r) = algebraMap R₀ A r) :
+    σ • x = x := by
+  set e := MulSemiringAction.toRingEquiv (A.decompositionSubgroup K) A σ with he
+  have hex : ∀ y : A, e y = σ • y := fun y =>
+    MulSemiringAction.toRingEquiv_apply_apply _ _ σ y
+  set q : A[X] := f.map (algebraMap R₀ A) with hq
+  have hcoeff : (e : A →+* A).comp (algebraMap R₀ A) = algebraMap R₀ A :=
+    RingHom.ext fun r => by
+      simp only [RingHom.coe_comp, Function.comp_apply]
+      rw [show (e : A →+* A) (algebraMap R₀ A r) = e (algebraMap R₀ A r) from rfl, hex]
+      exact hfix r
+  have hqe : q.map (e : A →+* A) = q := by rw [hq, Polynomial.map_map, hcoeff]
+  have h1 : q.eval x = 0 := by rw [hq, Polynomial.eval_map, ← Polynomial.aeval_def]; exact hx
+  have h2 : q.eval (σ • x) = 0 := by
+    have hmap := Polynomial.eval_map_apply (f := (e : A →+* A)) (p := q) x
+    rw [hqe] at hmap
+    rw [show (σ • x : A) = (e : A →+* A) x from (hex x).symm, hmap, h1, map_zero]
+  have h3 : IsLocalRing.residue A x = IsLocalRing.residue A (σ • x) := by
+    have hm : σ • x - x ∈ IsLocalRing.maximalIdeal A := by simpa using hσ x
+    rw [eq_comm, ← sub_eq_zero, ← map_sub, IsLocalRing.residue_eq_zero_iff]
+    exact hm
+  have h4 : IsUnit ((q.derivative).eval x) := by
+    rw [hq, Polynomial.derivative_map, Polynomial.eval_map, ← Polynomial.aeval_def]
+    exact hd
+  exact (IsLocalRing.eq_of_isRoot_of_residue_eq h1 h2 h3 h4).symm
+
+/-- **The kernel direction of the associated-graded embedding, from a two-element generating set.**
+
+If `A` is generated as an `R₀`-algebra by `x` and `π`, `σ` fixes `R₀` and `x`, and moves `π` by an
+element of `𝔪_A ^ (i + 2)`, then `σ ∈ ramificationGroup K A (i + 1)` — i.e. `σ` moves *every*
+element of `A` by an element of `𝔪_A ^ (i + 2)`.
+
+This is the `⊆` inclusion the module docstring's "Scope" section records as the wall: the defining
+condition of `ramificationGroup K A (i + 1)` is a condition on all of `A`, whereas the
+associated-graded map only sees `σ (π) - π`. The proof is that
+`{y : A | σ • y - y ∈ 𝔪_A ^ (i + 2)}` is an `R₀`-subalgebra of `A` (a two-line computation from
+`σ • (a * b) - a * b = σ • a * (σ • b - b) + (σ • a - a) * b`), so containing the generating set
+`{x, π}` makes it everything.
+
+Note that `σ ∈ ramificationGroup K A i` is *not* among the hypotheses: it is not needed. What is
+needed is `σ • x = x`, which `smul_eq_of_isRoot_of_mem_ramificationGroup_zero` supplies from
+`σ ∈ ramificationGroup K A 0` alone (and `ramificationGroup K A i ≤ ramificationGroup K A 0` by
+`ramificationGroup_succ_le`). -/
+theorem mem_ramificationGroup_succ_of_adjoin {A : ValuationSubring L} (i : ℕ) {R₀ : Type*}
+    [CommRing R₀] [Algebra R₀ A] {x π : A}
+    (hgen : Algebra.adjoin R₀ ({x, π} : Set A) = ⊤) {σ : A.decompositionSubgroup K}
+    (hfix : ∀ r : R₀, σ • (algebraMap R₀ A r) = algebraMap R₀ A r) (hx : σ • x = x)
+    (hπ : σ • π - π ∈ IsLocalRing.maximalIdeal A ^ (i + 2)) :
+    σ ∈ ramificationGroup K A (i + 1) := by
+  set I : Ideal A := IsLocalRing.maximalIdeal A ^ (i + 2) with hI
+  let S : Subalgebra R₀ A :=
+    { carrier := {y : A | σ • y - y ∈ I}
+      mul_mem' := by
+        intro a b ha hb
+        have hsplit : σ • (a * b) - a * b = (σ • a) * (σ • b - b) + (σ • a - a) * b := by
+          rw [smul_mul']; ring
+        show σ • (a * b) - a * b ∈ I
+        rw [hsplit]
+        exact Ideal.add_mem _ (Ideal.mul_mem_left _ _ hb) (Ideal.mul_mem_right _ _ ha)
+      one_mem' := by show σ • (1 : A) - 1 ∈ I; simp
+      add_mem' := by
+        intro a b ha hb
+        have hsplit : σ • (a + b) - (a + b) = (σ • a - a) + (σ • b - b) := by
+          rw [smul_add]; ring
+        show σ • (a + b) - (a + b) ∈ I
+        rw [hsplit]
+        exact Ideal.add_mem _ ha hb
+      zero_mem' := by show σ • (0 : A) - 0 ∈ I; simp
+      algebraMap_mem' := by
+        intro r
+        show σ • algebraMap R₀ A r - algebraMap R₀ A r ∈ I
+        rw [hfix r, sub_self]
+        exact Ideal.zero_mem _ }
+  have hsub : Algebra.adjoin R₀ ({x, π} : Set A) ≤ S := by
+    refine Algebra.adjoin_le ?_
+    intro y hy
+    simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hy
+    rcases hy with rfl | rfl
+    · show σ • y - y ∈ I
+      rw [hx, sub_self]
+      exact Ideal.zero_mem _
+    · exact hπ
+  intro y
+  exact (hgen ▸ hsub : (⊤ : Subalgebra R₀ A) ≤ S) Algebra.mem_top
 
 end ValuationSubring

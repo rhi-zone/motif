@@ -2,6 +2,7 @@
 Copyright (c) 2026 rhizone. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
+import Langlands.SimpleRootRigidity
 import Langlands.UnramifiedExtension
 
 /-!
@@ -31,11 +32,6 @@ element of the given ring `R`, not of some newly built algebra.
   polynomial and an `x : R` with `aeval x f = 0`, `residue R x = β₀`, and `aeval x (derivative f)`
   a unit — i.e. `x` is a *simple* root, which is what makes it rigid (see
   `IsLocalRing.eq_of_isRoot_of_residue_eq`).
-* `IsLocalRing.eq_of_isRoot_of_residue_eq` : two roots of the same polynomial with the same residue,
-  one of them simple, are equal. This is `IsLocalRing.eq_of_eval_eq_zero_of_not_isUnit_sub`
-  (Mathlib, `stacks 06RR`) packaged in residue-field terms; it is what forces an automorphism
-  fixing the base and acting trivially on the residue field to fix the lifted root `x` *exactly*,
-  not merely modulo `𝔪`.
 * `HenselianLocalRing.exists_isRoot_residue_eq_of_finite` : the specialization to finite residue
   fields, where separability is automatic (`PerfectField.ofFinite`) and a generator `β₀` of
   `ResidueField R` over `ResidueField R₀` exists (`Field.exists_primitive_element_of_finite_top`).
@@ -53,36 +49,6 @@ explicitly avoids re-deriving — and possibly diverging from — that instance.
 noncomputable section
 
 open Polynomial IsLocalRing
-
-/-! ### Residues of polynomial evaluations -/
-
-/-- The residue of `q.eval x` is the evaluation of `q` at the residue of `x`, read in
-`ResidueField R` as an `R`-algebra. `Polynomial.eval_map_apply` plus the identification of
-`algebraMap R (ResidueField R)` with `residue R`. -/
-theorem IsLocalRing.residue_eval {R : Type*} [CommRing R] [IsLocalRing R] (q : R[X]) (x : R) :
-    residue R (q.eval x) = aeval (residue R x) q := by
-  rw [aeval_def, ResidueField.algebraMap_eq, ← Polynomial.eval_map, Polynomial.eval_map_apply]
-
-/-- In a local ring, an element whose residue is nonzero is a unit. -/
-theorem IsLocalRing.isUnit_of_residue_ne_zero {R : Type*} [CommRing R] [IsLocalRing R] {a : R}
-    (h : residue R a ≠ 0) : IsUnit a := by
-  by_contra hu
-  exact h ((residue_eq_zero_iff a).mpr (mem_maximalIdeal a |>.mpr (mem_nonunits_iff.mpr hu)))
-
-/-! ### Rigidity of simple roots -/
-
-/-- **Two roots with the same residue, one of them simple, coincide.** This is the rigidity that
-makes a Hensel-lifted root canonical: `IsLocalRing.eq_of_eval_eq_zero_of_not_isUnit_sub`
-(Mathlib, `stacks 06RR`) with its `¬ IsUnit (x - y)` hypothesis rewritten as equality of residues.
-
-The intended use is with `y := σ x` for `σ` a ring automorphism fixing the coefficients of `q` and
-acting trivially on the residue field: then `σ x` is again a root with the same residue as `x`, so
-`σ x = x` *on the nose*. -/
-theorem IsLocalRing.eq_of_isRoot_of_residue_eq {R : Type*} [CommRing R] [IsLocalRing R] {q : R[X]}
-    {x y : R} (hx : q.eval x = 0) (hy : q.eval y = 0) (hres : residue R x = residue R y)
-    (hd : IsUnit ((derivative q).eval x)) : x = y := by
-  refine IsLocalRing.eq_of_eval_eq_zero_of_not_isUnit_sub hx hy ?_ hd
-  rw [← mem_nonunits_iff, ← mem_maximalIdeal, ← residue_eq_zero_iff, map_sub, hres, sub_self]
 
 namespace HenselianLocalRing
 
