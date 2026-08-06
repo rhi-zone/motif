@@ -10,6 +10,7 @@ import Mathlib.RingTheory.Conductor
 import Mathlib.Algebra.Polynomial.Eval.Irreducible
 import Mathlib.RingTheory.Polynomial.GaussLemma
 import Mathlib.RingTheory.Polynomial.Resultant.Basic
+import Mathlib.Topology.Algebra.Valued.LocallyCompact
 import Langlands.MonogenicMaximalOrder
 import Langlands.HenselianValuation
 
@@ -130,6 +131,55 @@ instance henselianLocalRing : HenselianLocalRing ↥(𝒪[K]) := by
   haveI : HenselianRing ↥(𝒪[K]) 𝓂[K] := IsAdicComplete.henselianRing _ _
   refine HenselianLocalRing.mk fun f hf a₀ ha₀ hderiv => ?_
   exact HenselianRing.is_henselian f hf a₀ ha₀ (hderiv.map (Ideal.Quotient.mk 𝓂[K]))
+
+open scoped NormedField Valued in
+/-- The ring of integers of a *lighter-bundle* complete discretely-valued field is Henselian,
+provided its residue field is finite. `IsNonarchimedeanLocalField K` packages
+`LocallyCompactSpace K`, which is not part of the lighter bundle
+`[NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K] [_.Compatible]
+[CompleteSpace K] [IsDiscreteValuationRing 𝒪[K]]`; but a complete discretely-valued field with
+finite residue field *is* locally compact
+(`Valued.integer.properSpace_iff_completeSpace_and_isDiscreteValuationRing_integer_and_finite_residueField`
+gives properness, and proper metric spaces are locally compact), so `IsNonarchimedeanLocalField K`
+can be derived and the existing `henselianLocalRing` instance reused. -/
+instance henselianLocalRing_of_valuationSubring
+    (K : Type*) [NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K]
+    [(NormedField.valuation (K := K)).Compatible] [CompleteSpace K]
+    [IsDiscreteValuationRing ↥(valuation K).valuationSubring]
+    [Finite (IsLocalRing.ResidueField ↥(valuation K).valuationSubring)] :
+    HenselianLocalRing ↥(valuation K).valuationSubring := by
+  haveI hvt : IsValuativeTopology K :=
+    IsValuativeTopology.of_mem_nhds_zero_iff_vle (NormedField.valuation (K := K))
+      (fun {s} => (NormedField.toValued (K := K)).is_topological_valuation s)
+  haveI hnt : ValuativeRel.IsNontrivial K := by
+    rw [ValuativeRel.isNontrivial_iff_isNontrivial (ValuativeRel.valuation K)]
+    by_contra hn
+    have htop := (Valuation.valuationSubring_eq_top_iff (ValuativeRel.valuation K)).mpr hn
+    have hnf := IsDiscreteValuationRing.not_isField
+      (R := ↥(ValuativeRel.valuation K).valuationSubring)
+    apply hnf
+    rw [htop]
+    exact Field.toIsField _
+  haveI hlc : LocallyCompactSpace K := by
+    haveI : (Valued.v : Valuation K NNReal).RankOne :=
+      inferInstanceAs (Valuation.RankOne (NormedField.valuation (K := K)))
+    have hequiv : (NormedField.valuation (K := K)).IsEquiv (ValuativeRel.valuation K) :=
+      ValuativeRel.isEquiv (NormedField.valuation (K := K)) (ValuativeRel.valuation K)
+    have hsub : (NormedField.valuation (K := K)).valuationSubring
+        = (ValuativeRel.valuation K).valuationSubring :=
+      (Valuation.isEquiv_iff_valuationSubring _ _).mp hequiv
+    have hdvr : IsDiscreteValuationRing ↥(NormedField.valuation (K := K)).valuationSubring := by
+      rw [hsub]; infer_instance
+    have hfin : Finite (IsLocalRing.ResidueField ↥(NormedField.valuation (K := K)).valuationSubring) := by
+      rw [hsub]; infer_instance
+    have hproper :=
+      (Valued.integer.properSpace_iff_completeSpace_and_isDiscreteValuationRing_integer_and_finite_residueField
+          (K := K)).mpr ⟨inferInstance, hdvr, hfin⟩
+    have : LocallyCompactSpace K :=
+      @locallyCompact_of_proper K (Valued.toNormedField K NNReal).toPseudoMetricSpace hproper
+    exact this
+  haveI : IsNonarchimedeanLocalField K := ⟨⟩
+  exact (henselianLocalRing K : HenselianLocalRing ↥(valuation K).valuationSubring)
 
 /-! ### A monic lift of a minimal polynomial over a Henselian local ring -/
 
