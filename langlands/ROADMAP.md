@@ -1443,14 +1443,19 @@ that avoids stalling on (a).
 
 ### Phase 2b — Ramified local reciprocity: landscape and scoped candidates (2026-08-05, research/scoping pass, no code)
 
-> **Current position (2026-08-06, twenty-seventh pass).** Serre's *Local Fields* Ch. III tower
+> **Current position (2026-08-06, twenty-eighth pass).** Serre's *Local Fields* Ch. III tower
 > argument for monogenicity of `𝒪_L / 𝒪_K` — the long pole of Phase 2b's candidate 2, worked
-> across passes thirteen to twenty-seven — is now formalised in full as an abstract theorem,
+> across passes thirteen to twenty-eight — is now formalised in full as an abstract theorem,
 > `LocalField.exists_adjoin_eq_top_of_tower_of_isEisensteinAt`
 > (`Langlands/TowerMonogenic.lean:152`), with every hypothesis separately proved by one of the two
-> halves. **It is not yet instantiated at the concrete objects `𝒪[K] ⊆ ↥A ⊆ 𝒪_N`**, so the
-> sentence "`𝒪_L` is monogenic over `𝒪_K`" is still not a theorem in this repo; what remains is
-> algebra/scalar-tower instance construction, itemised in the twenty-seventh-pass entry below.
+> halves. The twenty-seventh pass's `Algebra ↥𝒪[K] ↥A` diamond is root-caused and closed this
+> pass (it was a missing instance on an already-definitionally-correct term, not a genuine
+> diamond between independent constructions — see the twenty-eighth-pass entry below) along with
+> the associated `Module.Finite` gap. **It is still not instantiated at the concrete objects
+> `𝒪[K] ⊆ ↥A ⊆ 𝒪_N`**, so the sentence "`𝒪_L` is monogenic over `𝒪_K`" is still not a theorem in
+> this repo; what remains is a narrower, precisely itemised list of five `ON`-side instances
+> (`Algebra R ON`, `IsScalarTower R OM ON`, `Module.Finite R ON`, `IsLocalHom (algebraMap R OM)`,
+> `Algebra.IsSeparable (ResidueField R) (ResidueField OM)`), see the twenty-eighth-pass entry.
 > `RamificationFiltration.lean`'s associated-graded embeddings (blocked since the twelfth pass)
 > are the natural milestone after that instantiation, not before it.
 
@@ -3023,6 +3028,103 @@ typeclass construction, precisely located below.
   `grep -rn sorry langlands/Langlands/` unchanged: two prose-only hits,
   `TotallyRamifiedEisenstein.lean:19` and `RamificationFiltration.lean:89`.
   Commits: `198df67` (a), `d44313d` (b), `737cfd7`/`6e494a4`/`a91092c` (c).
+
+#### Status 2026-08-06 (twenty-eighth pass) — the `Algebra ↥𝒪[K] ↥A` diamond flagged by the
+twenty-seventh pass is root-caused and closed; the full concrete tower-monogenicity theorem still
+does not close, and a precise, narrower remaining gap is recorded below.
+
+- **Task.** Verify the twenty-seventh pass's report (including the `TODO.md` provenance flag),
+  reproduce the `Algebra ↥𝒪[K] ↥A` synthesis failure first-hand with live `#synth`/build evidence,
+  diagnose whether it is the pass-18–22 class of diamond (two independently built structures that
+  are only propositionally equal) or something else, fix at the root, and — if the diagnosis
+  supports it — complete the concrete instantiation of `TowerMonogenic.lean`'s tower theorem on
+  `𝒪[K] ⊆ 𝒪[M] ⊆ 𝒪[L]`.
+- **`TODO.md` anomaly, resolved.** `langlands/TODO.md` was checked via `git log --all
+  --full-history -- langlands/TODO.md` (empty — no commit ever touched it) and `git status`/`ls`
+  (does not exist on disk). It never existed, matching the twenty-seventh pass's own report. The
+  ROADMAP text's several references to "the repo-root `TODO.md`" refer to a *different*,
+  genuinely-existing file, `/home/me/git/rhizone/motif/TODO.md` (tracked, 86KB, with its own commit
+  history under `motif`'s root, unrelated to `langlands/`) — there is no inconsistency once the two
+  files are told apart. No `langlands/TODO.md` was created this pass either, per the same reasoning
+  the twenty-seventh pass applied.
+- **Diamond reproduced live.** A scratch file (`Langlands/Scratch/DiamondRepro.lean`, deleted after
+  use, not committed) with `K` bundled as in `TowerValuationSubring.lean`'s `Tower` section and
+  `#synth Algebra ↥(ValuativeRel.valuation K).valuationSubring ↥(integralClosureValuationSubring
+  ↥(ValuativeRel.valuation K).valuationSubring M)` reproduced exactly the twenty-seventh pass's
+  reported failure: `failed to synthesize Algebra ↥(valuation K).valuationSubring
+  ↥(integralClosureValuationSubring (↥(valuation K).valuationSubring) M)`.
+- **Diagnosis: not a diamond between two independently built structures — a missing instance on
+  top of a term that was already the right one.** `integralClosureValuationSubring R M` is defined
+  in `TowerValuationSubring.lean` as `ValuationSubring.ofSubring (integralClosure R M).toSubring
+  _`, and `ofSubring` keeps the given `Subring` verbatim, so `↥(integralClosureValuationSubring R
+  M)` is *definitionally* the same type as `↥(integralClosure R M)` — confirmed by replacing the
+  failing `#synth` with `noncomputable example : Algebra ↥(valuation K).valuationSubring
+  ↥(integralClosureValuationSubring …) := inferInstanceAs (Algebra ↥(valuation K).valuationSubring
+  ↥(integralClosure …))`, which type-checked immediately (only needing a `noncomputable` marker,
+  no proof term, no `cast`/`HEq`). This is the opposite situation from the pass-18–22
+  `NontriviallyNormedField`/`CompleteSpace` diamond, where two constructions produced *genuinely
+  different* underlying data that first had to be *proved* equal (`PseudoMetricSpace.ext`-level
+  reasoning) before a transport lemma could move properties across. Here nothing needed proving —
+  `integralClosure R M` (a `Subalgebra R M`) already carries the right `Algebra R` structure; it
+  had simply never been registered as an `instance` under the `ValuationSubring`-coercion spelling
+  of the same term. The independent `Module.Finite`/`SMul` timeout the twenty-seventh pass flagged
+  as possibly-separate is confirmed separate and *not* encountered on this route: it arose only on
+  the alternate double-`integralClosure` route (`integralClosure (integralClosure 𝒪[K] M) N`) that
+  this pass does not use, having gone through the `ValuationSubring`-presentation route instead
+  (also confirmed independently: `IsIntegralClosure.finite` supplies `Module.Finite` on this route
+  without the timeout, see below).
+- **Fix (root cause, not a workaround): three definitions added to `TowerValuationSubring.lean`.**
+  All three are `inferInstanceAs`-only bodies — no new mathematics, no `cast`, no `sorry` — because
+  the underlying terms already coincide:
+  * `LocalField.algebra : Algebra R (integralClosureValuationSubring R M)` —
+    `inferInstanceAs (Algebra R (integralClosure R M))`.
+  * `LocalField.isScalarTower : IsScalarTower R (integralClosureValuationSubring R M) M` —
+    same transport.
+  * `LocalField.finite (K) [...] : Module.Finite R (integralClosureValuationSubring R M)` — a
+    `theorem`, not an `instance` (the fraction field `K` doesn't appear in the conclusion, so
+    instance search can never find it; `IsIntegralClosure.finite` itself takes it explicitly for
+    the same reason), proved by `haveI := IsIntegralClosure.finite R K M (integralClosure R M)`
+    then the same `inferInstanceAs` transport. Needs `[IsIntegrallyClosed R] [IsNoetherianRing R]`
+    on `R` and `[Algebra.IsSeparable K M]` — both available at the concrete instantiation site
+    (`𝒪[K]` is a DVR, hence both; the unramified half's `M` is separable over `K` by construction,
+    see `UnramifiedExtension.lean:786`, `Algebra.IsSeparable K ↥(IntermediateField.adjoin K {x})`
+    among its returned conjuncts).
+  This directly resolves the twenty-seventh pass's "`Algebra ↥𝒪[K] ↥A` fails to synthesize" gap and
+  additionally the `Module.Finite` gap on the same (`ValuationSubring`-presentation) route — the
+  timeout the twenty-seventh pass hit was on a different route this pass does not use.
+- **What does NOT close, exactly — the full concrete instantiation.** `TowerMonogenic.lean`'s
+  `exists_adjoin_eq_top_of_tower_of_isEisensteinAt` needs, for `R := ↥𝒪[K]`, `OM :=
+  ↥(integralClosureValuationSubring 𝒪[K] M)`, `ON := ↥(integralClosure OM N)`:
+  `Algebra R OM` ✓ (this pass), `Module.Finite R OM` ✓ (this pass), `Algebra OM ON` ✓ (automatic,
+  `ON` is a `Subalgebra OM N`), but still open: `Algebra R ON` and `IsScalarTower R OM ON` (need
+  `Subalgebra.restrictScalars`-style composition of the `R → OM` and `OM → N` algebra maps, not yet
+  written), `Module.Finite R ON` (needs `Module.Finite.trans` composing this pass's `Module.Finite
+  R OM` with `Module.Finite OM ON` from the Eisenstein generator — the latter not yet extracted as
+  its own instance), `IsLocalHom (algebraMap R OM)` (should follow from `hunram :
+  Ideal.map (algebraMap R OM) (maximalIdeal R) = maximalIdeal OM` via a standard
+  Mathlib local-ring-map-from-maximal-ideal-map lemma — not yet located/applied), and
+  `Algebra.IsSeparable (ResidueField R) (ResidueField OM)` (needs assembling from the unramified
+  half's residue-field isomorphism `ResidueField OM ≃+* l` together with `l`'s separable generator
+  `β₀` — `UnramifiedExtension.lean`'s `hsepbar`/`hprim` supply the ingredients but the composite
+  fact is not yet stated). None of these is expected to be a further diamond — each looks like
+  ordinary composition-of-instances work in the same style as this pass's three additions — but
+  none was attempted this pass, and the honest estimate, based on the size of each of the prior
+  twenty-seven passes' single-item scope, is that this is comparable in size to at least one more
+  full pass, not a quick follow-on.
+- **Consequence for the headline question.** The full concrete statement "`𝒪_L` is monogenic over
+  `𝒪_K` for `L / K` a finite extension of complete discretely valued fields with separable residue
+  extension" is **still not a theorem in this repo** after this pass. What changed is that the
+  *specific* obstruction flagged by the twenty-seventh pass (the `Algebra`/`Module.Finite`
+  diamond/gap on the `OM` side) is now closed, root-cause, and the remaining gap is narrower and
+  precisely itemised above (five instances on the `ON` side), rather than an unscoped diamond risk.
+  `RamificationFiltration.lean`'s associated-graded embeddings remain blocked on the full closure,
+  unchanged from the twenty-seventh pass's assessment.
+- **Verification.** `lake build Langlands` clean (8678 jobs, one pre-existing unrelated
+  `overlappingInstances` lint warning on `UnramifiedExtension.lean:725`, not touched this pass).
+  `lake build Langlands.TowerValuationSubring Langlands.TowerMonogenic` clean. `grep -rn sorry
+  langlands/Langlands/` unchanged: the same two prose-only hits as the twenty-seventh pass,
+  `TotallyRamifiedEisenstein.lean:19` and `RamificationFiltration.lean:89`.
+  Commit: `0f2f310`.
 
 
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
