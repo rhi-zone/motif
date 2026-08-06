@@ -1548,6 +1548,67 @@ that avoids stalling on (a).
 > given completeness + finite residue field" fact with no `e`/`he`/`M` to supply, which this pass
 > does not produce.
 
+> **Update (2026-08-06, thirty-second pass) — the unconditional existential corollary the
+> thirty-first pass called a "design question" is closed, by a route that sidesteps the question
+> rather than answering it.** New file `Langlands/MonogenicIntegralClosure.lean`, commit `75445c9`,
+> `#print axioms` showing only `propext, Classical.choice, Quot.sound` (no `sorry`, no `axiom`).
+> Headline statement:
+> ```
+> theorem LocalField.exists_adjoin_eq_top_integralClosure
+>     (K : Type*) [NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K]
+>     [(NormedField.valuation (K := K)).Compatible] [CompleteSpace K]
+>     [IsDiscreteValuationRing ↥(valuation K).valuationSubring]
+>     [Finite (ResidueField ↥(valuation K).valuationSubring)]
+>     (L : Type*) [Field L] [Algebra K L] [FiniteDimensional K L] [Algebra.IsSeparable K L] :
+>     ∃ β : ↥(integralClosure ↥(valuation K).valuationSubring L),
+>       Algebra.adjoin ↥(valuation K).valuationSubring
+>         ({β} : Set ↥(integralClosure ↥(valuation K).valuationSubring L)) = ⊤
+> ```
+> with an `L`-level restatement `exists_adjoin_eq_integralClosure : ∃ x : L, Algebra.adjoin 𝒪[K]
+> {x} = integralClosure 𝒪[K] L` alongside it. No `M`, `e`, `he`, `hunram`, `π`, or `l` anywhere in
+> the signature — `Finite (ResidueField 𝒪[K])` is the one hypothesis beyond the bare "complete DVR,
+> finite separable extension" shape, standing in for the residue-field perfection that
+> `TowerMonogenicConcrete.lean`'s theorem instead takes on faith via the caller-supplied `l`/`he`.
+> `TowerMonogenicConcrete.lean` itself is untouched, per the decision this corollary was scoped
+> against — the modular theorem stays as the general tower statement, this is a separate,
+> additive, self-contained specialization.
+>
+> **The route taken is neither of the two sketched when this pass was scoped, and it dissolves the
+> exact obstruction the prior 31 passes were stuck on rather than clearing it.** Passes thirty and
+> thirty-one both concluded the blocker was that `UnramifiedExtension.lean`'s existence theorem
+> only constructs the maximal unramified subextension `M := K⟮x⟯` inside an ambient
+> algebraically-closed field, not inside a given, already-fixed `L` — so there was no way to
+> recover `M` as an actual intermediate field of the target `L`. This pass's proof never
+> constructs `M` as a field at all, in `L` or anywhere else. Monogenicity of `𝒪_L` reduces (via the
+> pre-existing `LocalField.exists_adjoin_eq_top_of_residue_nilpotent`,
+> `ArtinianPrimitiveElement.lean`) to producing a *field* `κ` inside the Artinian local quotient `B
+> := 𝒪_L ⧸ 𝔪_K·𝒪_L` splitting `B ↠ B ⧸ 𝔪_B`; since `B ⧸ 𝔪_B` is separable over `κ_K` (perfection of
+> `κ_K` from `Finite (ResidueField 𝒪[K])`) and `𝔪_B` is nilpotent (`B` Artinian), formal étaleness
+> of separable field extensions (`Algebra.FormallyEtale.of_isSeparable`,
+> `Algebra.FormallySmooth.lift`) supplies the splitting directly. `κ` is the residual avatar of the
+> unramified subextension, produced without an intermediate field, an algebraic closure, or
+> Hensel's lemma anywhere in the argument. The abstract shape of this step is landed separately as
+> `LocalField.exists_adjoin_eq_top_of_span_maximalIdeal` (`R ⊆ S` local, `S` finite and local over
+> `R`, `𝔪_S` principal, residue field of `R` perfect ⟹ `S` monogenic over `R`) — a clean,
+> reusable, Serre-shaped lemma in its own right, not a one-off wiring hack.
+>
+> **This does *not* unblock `RamificationFiltration.lean`'s associated-graded embeddings, and for
+> a precise reason.** That file's blocked step (its own "Scope" docstring, unchanged since pass
+> twelve, re-read this pass) needs `𝒪_L = 𝒪_{L_0}[π]` for `π` a genuine *uniformizer* and `L_0` an
+> actual maximal-unramified-subextension *subfield of the specific `L` already in its
+> `A : ValuationSubring L` context* — its kernel argument tests `σ(π) − π` at that uniformizer
+> specifically. This pass's corollary supplies `𝒪[K][β] = 𝒪_L` for *some* generator `β`, with no
+> `L_0` and no uniformizer control: the unramified residual avatar `κ ⊆ B` this proof builds is
+> never lifted back through `𝒪_L ↠ B` to an actual subfield of `𝒪_L`, and nothing forces `β` to be
+> (or to be related to) a uniformizer. Two next steps are open, neither attempted or chosen yet — a
+> genuine design question, not a lemma-lookup gap: (a) lift `κ` back through `𝒪_L ↠ B` to a real
+> subfield `L_0 ⊆ L` (plausible in principle since `𝒪_L` is `𝔪`-adically complete, giving a
+> Hensel-type lifting route distinct from the one this pass avoided; not attempted), then separately
+> get the relative-uniformizer statement over `L_0`; or (b) reformulate
+> `RamificationFiltration.lean`'s kernel argument to test at the single generator this corollary
+> already supplies instead of at a uniformizer, if that reformulation is mathematically valid
+> (unchecked). Left open rather than forced.
+
 - **Why this exists.** Phase 2a closed the "easy half" of local CFT (unramified norm-group
   surjectivity) in full, across ten passes. This section applies the same before-you-build
   discipline to Phase 2's actual hard content — the ramified case and the reciprocity map itself —
