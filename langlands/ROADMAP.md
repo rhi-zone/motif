@@ -2329,6 +2329,121 @@ that avoids stalling on (a).
 >    theorem by proving `e·f = n` for `K₀ → L₀`; and `IsTotallyRamified`/`IsTamelyRamified` have no
 >    nontrivial *instances* yet — no concrete extension in this repo is shown to satisfy them.
 
+> **Update (2026-08-07, forty-first pass) — `⟨N(π_L)⟩ · U_K^{(1)} ≤ N_{L/K}(L_w^×)` IS CLOSED as a
+> subgroup containment in `(v.adicCompletion K)ˣ`, and the level-`0` congruence `N(x) ≡ x̄^e (mod
+> 𝔪_K)` IS CLOSED. Items 1 and (half of) 2 of the fortieth pass's "what remains" list. Sorry-free.
+> Two commits: `1d079a0`, `329b2f3`. `nix develop -c lake build Langlands`: clean, 8704 jobs.
+> `grep -rn sorry langlands/Langlands/` unchanged — the single prose-only hit at
+> `TotallyRamifiedEisenstein.lean:19`. `#print axioms` (checked via scratch `lake env lean`, not
+> inferred from a clean build) on all nine new declarations: only `propext, Classical.choice,
+> Quot.sound`.**
+>
+> **The fortieth pass's item 1 said gap 3 (the `ValuativeRel` ↔ `HeightOneSpectrum` threading)
+> "becomes load-bearing after all" for this step. That was wrong, and this is a mathematical
+> correction, not a scoping decision.** `N(π_L)` is a uniformizer of `K₀` is provable directly from
+> `IsTotallyRamified`'s own two ideal-theoretic fields, in six lines, and in a *stronger* form than
+> `TotallyRamifiedEisenstein.lean`'s `norm_isUniformizer_eq_of_isUniformizer` supplies:
+> `associated_norm_uniformizer_of_isTotallyRamified : Associated (Algebra.norm K₀ π_L) π_K` — an
+> exact statement about generators of `𝔪_K`, not an equality of real norms. Route:
+> `map_maximalIdeal_eq` (`𝔪_K·L₀ = 𝔪_L^e`) rewritten with `Irreducible.maximalIdeal_eq`,
+> `Ideal.map_span`, `Ideal.span_singleton_pow` and `Ideal.span_singleton_eq_span_singleton` gives
+> `Associated (algebraMap π_K) (π_L^e)` in `L₀`; `Algebra.norm K₀` is a `MonoidHom` so it preserves
+> `Associated` (`Associated.map`); `Algebra.norm_algebraMap` (available because
+> `AdicCompletionIntegralClosure.lean` gives `Module.Free K₀ L₀`) plus `finrank_eq` evaluate the
+> left-hand side as `π_K^e`; `Associated.pow_iff` (`K₀` an integrally closed domain) cancels the
+> exponent, nonzero by `Ideal.IsDedekindDomain.ramificationIdx'_ne_zero_of_liesOver`. `Eisenstein`
+> is not imported by the new file.
+>
+> **Where the cost of the instantiation route actually sits — checked, not assumed.** The
+> thirty-eighth pass's claim that `v.adicCompletion K` / `w.adicCompletion L` already carry the full
+> abstract bundle is **confirmed empirically**: all eight instances
+> `norm_isUniformizer_eq_of_isUniformizer` needs (`NontriviallyNormedField`, `IsUltrametricDist`,
+> `ValuativeRel`, `NormedField.valuation.Compatible`, `CompleteSpace`, `Algebra.IsAlgebraic`,
+> `FiniteDimensional`, and `IsDiscreteValuationRing ↥(ValuativeRel.valuation _).valuationSubring`)
+> resolve by `#synth` at `K := v.adicCompletion K`, `L := w.adicCompletion L` (scratch file, run
+> under `lake env lean`). So the instances are *not* the obstruction, and `TowerBundle.lean`'s
+> bridging machinery is indeed unnecessary here. The cost is entirely in the theorem's two
+> *hypotheses*, neither of which `IsTotallyRamified` supplies: (a) `hram : ‖(ϖ : K)‖ = spectralNorm
+> K L π ^ (minpoly K π).natDegree`, which needs `spectralNorm_unique_field_norm_ext` to identify
+> `spectralNorm` with the adic norm already on `w.adicCompletion L`, then a translation of
+> `IsTotallyRamified` into that real-valued equation; and (b) `hgen : (minpoly K π).natDegree =
+> Module.finrank K L`, i.e. `π_L` generates `L_w` over `K_v` — a monogenicity statement that is
+> *not* part of `IsTotallyRamified` and would have to be derived. **Neither was attempted**, since
+> the concrete route above makes both unnecessary; the estimate of their cost is a reading of the
+> signatures, not a measured result. Gap 3 therefore remains open exactly as the thirty-ninth pass
+> stated it, and is now known not to block item 1 either.
+>
+> **What got built.**
+> 1. **`Langlands/TotallyRamifiedNormRange.lean`** (commit `1d079a0`) — item 1.
+>    `associated_norm_uniformizer_of_isTotallyRamified` and `irreducible_norm_of_isTotallyRamified`
+>    (the latter obtaining the base uniformizer internally via
+>    `IsDiscreteValuationRing.exists_irreducible`, so no choice of `π_K` appears in its statement);
+>    `uniformizerUnit_norm_mem_range` (the generator is a norm — witnessed by `π_L` itself, via
+>    `NormMapResidueCompatibility`'s `algebraMap_norm_eq_norm_algebraMap`, the same bridge
+>    `UnramifiedNormRange.lean` uses); `principalUnitsPowKField`, which pushes the thirty-ninth
+>    pass's `principalUnitsPowK` forward from `K₀ˣ` to `(v.adicCompletion K)ˣ` along
+>    `Units.map (algebraMap K₀ K_v)` — this is where the thirty-ninth pass's
+>    `PrincipalUnitsFiltrationAdicCompletion.lean` finally gets used, having been unused by the
+>    fortieth pass; and the main theorem
+>    `localNormMap_range_ge_of_isTotallyRamified : Subgroup.zpowers (uniformizerUnit K v (N π_L)) ⊔
+>    principalUnitsPowKField K v 1 ≤ MonoidHom.range (localNormMap K L v w)`, under
+>    `IsTotallyRamified` and `IsTamelyRamified`. The proof is `sup_le` with `Subgroup.zpowers_le`
+>    for the cyclic generator and pointwise `exists_isUnit_norm_eq_of_isTotallyRamified` for the
+>    unit part — structurally the "reverse inclusion" half of `UnramifiedNormRange.lean`'s
+>    `localNormMap_range_eq`, as that file's shape suggested. `uniformizerUnit`,
+>    `coe_uniformizerUnit` and `algebraMap_uniformizer_ne_zero` were reused from
+>    `UnramifiedNormRange.lean` rather than duplicated — none of them mentions `IsUnramified`.
+> 2. **`Langlands/TotallyRamifiedNormResidue.lean`** (commit `329b2f3`) — the level-`0` congruence.
+>    `IsLocalRing.residue_norm_eq_residue_pow_finrank : residue R (Algebra.norm R x) = residue R r ^
+>    finrank R S` whenever `x ≡ algebraMap r (mod 𝔪_S)` and `𝔪_S ^ finrank R S ≤ 𝔪_R·S` — the exact
+>    multiplicative counterpart of the fortieth pass's
+>    `residue_trace_eq_finrank_nsmul_residue`, plus its `IsTotallyRamified` specializations (one
+>    with the exponent written as `e` via `finrank_eq`, one packaged existentially).
+>
+>    **The trace file's basis-free route transfers verbatim, with one input upgraded.** Working in
+>    `A := L₀ ⧸ 𝔪_K·L₀` over `κ := 𝓀[K]`, `x̄`'s multiplication endomorphism is
+>    `algebraMap κ (End κ A) r̄ + ν` with `ν` nilpotent; where the trace argument used "a nilpotent
+>    endomorphism has trace `0`", this uses "a nilpotent endomorphism has charpoly `X^d`"
+>    (`IsNilpotent.charpoly_eq_X_pow_finrank`, applicable since `κ` is a field hence a domain), and
+>    `LinearMap.eval_charpoly` (`eval t f.charpoly = det (algebraMap t - f)`) at `t := r̄` with
+>    `f := -ν` converts that into `det (algebraMap r̄ + ν) = r̄ ^ finrank κ A`;
+>    `IsLocalRing.finrank_quotient_map` fixes the exponent. Still basis-free — **no Eisenstein
+>    presentation, no power basis, no companion matrix**, so gap 3 is again neither used nor
+>    closed. One snag worth recording: `Module.Finite κ A` is *not* an instance in Mathlib and had
+>    to be supplied by hand (`Module.Finite.of_basis (IsLocalRing.basisQuotient
+>    (Module.Free.chooseBasis R S))`) before `charpoly` would elaborate; the failure surfaces as an
+>    unsolved instance side-goal from the `rw`, not as an error at the lemma name. Also:
+>    `Mathlib.LinearAlgebra.Charpoly.Basic` and `Mathlib.LinearAlgebra.Eigenspace.Zero` were not in
+>    this repo's transitive import closure and had to be imported explicitly.
+>
+> **What remains for the full Phase 2b totally-ramified norm-group theorem.**
+> 1. **The reverse inclusion, `MonoidHom.range (localNormMap K L v w) ≤ ⟨N(π_L)⟩ · N_{L/K}(U_L)`,
+>    is not proved.** `UnramifiedNormRange.lean`'s route (`exists_zpow_mul_unit_eq`: every unit of
+>    `w.adicCompletion L` is `ϖ^k · u` with `u` a unit of `L₀`) should transfer directly — it uses
+>    `IsUnramified` only through `algebraMap_uniformizer_irreducible`, which in the totally ramified
+>    case is *false* for `algebraMap π_K` but true for `π_L` itself, so the decomposition lemmas
+>    need restating around `π_L` rather than reusing them. Not attempted; this looks like
+>    mechanical transfer rather than new mathematics, but that is an estimate from reading the
+>    file, not a verified claim.
+> 2. **Level-`0` surjectivity is not proved**, so `N_{L/K}(U_L) = {u : ū ∈ (𝓀[K]ˣ)^e}` is only
+>    half-closed: the `⊆` half is `residue_norm_eq_residue_pow_ramificationIdx_of_isTotallyRamified`
+>    (this pass), the `⊇` half — every unit whose residue is an `e`-th power is a norm — is not.
+>    It should be a level-`0` base case fed to `PrincipalUnitsSuccessiveApproximation.lean`'s
+>    `exists_isUnit_norm_eq_of_correction`, exactly as the unramified case feeds it the
+>    residue-field norm surjectivity; the input needed is a lift of an `e`-th root of `ū`, i.e. the
+>    hypothesis `ū ∈ (𝓀[K]ˣ)^e` in usable form. Consequently the *equality*
+>    `N_{L/K}(L_w^×) = ⟨N(π_L)⟩ · N_{L/K}(U_L)` and the order-`e` cyclic quotient
+>    `K^× / N_{L/K}(L^×)` are both still open.
+> 3. Items 3 and 4 of the fortieth pass's list are untouched: the wild case (`e` not a unit in
+>    `𝓀[K]`) is still explicitly out of scope, and `IsTotallyRamified`/`IsTamelyRamified` still have
+>    no nontrivial instances — no concrete extension in this repo is shown to satisfy either, so
+>    everything in this Phase-2b chain remains conditional on hypotheses never yet discharged.
+> 4. Gap 3 (`ValuativeRel` ↔ `HeightOneSpectrum` threading) is now known to be unnecessary for
+>    *both* the trace formula (fortieth pass) and the uniformizer-norm fact (this pass) — the two
+>    places prior passes predicted it would be load-bearing. What it would still buy is unchanged:
+>    the individual values `Tr(π_L^k) ∈ 𝔪_K` for `1 ≤ k ≤ e-1`, and the graded structure
+>    `A ≅ κ[T]/(T^e)`. No current open item is known to require it.
+
 - **Why this exists.** Phase 2a closed the "easy half" of local CFT (unramified norm-group
   surjectivity) in full, across ten passes. This section applies the same before-you-build
   discipline to Phase 2's actual hard content — the ramified case and the reciprocity map itself —
