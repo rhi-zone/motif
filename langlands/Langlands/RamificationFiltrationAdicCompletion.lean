@@ -269,6 +269,73 @@ theorem mem_ramificationGroup_succ_iff (i : ℕ) {π : w.adicCompletionIntegers 
       σ • π - π ∈ IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) ^ (i + 2) :=
   ⟨fun h => h π, mem_ramificationGroup_succ_of_smul_sub_mem K L v w i hπ hσ⟩
 
+/-! ### The associated-graded pieces, concretely: kernels and embeddings
+
+Composes `Langlands.RamificationFiltration`'s `gradedZeroHom`/`gradedSuccHom` (bundled
+homomorphisms, with kernels identified only as a *point-test* condition at `π` there) with
+`mem_ramificationGroup_succ_iff` above (which turns that point test into genuine
+`ramificationGroup` membership) to identify the kernels with the actual ramification subgroups, and
+hence — via Mathlib's `QuotientGroup.kerLift_injective`, applied with no further work needed — get
+the associated-graded *embeddings* `G_0 ⧸ G_1 ↪ 𝓀[L]ˣ` and `G_{i+1} ⧸ G_{i+2} ↪ 𝓀[L]` (additively). -/
+
+omit [Algebra.IsIntegral R S] in
+/-- **The kernel of the `i = 0` associated-graded map is exactly `G_1`.** -/
+theorem gradedZeroHom_ker_eq {π : w.adicCompletionIntegers L}
+    (hπ : IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) = Ideal.span {π}) :
+    (ValuationSubring.gradedZeroHom hπ
+        ((IsDiscreteValuationRing.irreducible_iff_uniformizer π).mpr hπ).ne_zero).ker
+      = Subgroup.subgroupOf
+          (ValuationSubring.ramificationGroup (v.adicCompletion K) (w.adicCompletionIntegers L) 1)
+          (ValuationSubring.ramificationGroup (v.adicCompletion K) (w.adicCompletionIntegers L)
+            0) := by
+  ext σ
+  rw [MonoidHom.mem_ker, ValuationSubring.gradedZeroHom_apply_eq_one_iff, Subgroup.mem_subgroupOf,
+    show ValuationSubring.ramificationGroup (v.adicCompletion K) (w.adicCompletionIntegers L) 1
+        = ramificationGroup K L v w (0 + 1) from rfl,
+    mem_ramificationGroup_succ_iff K L v w 0 hπ σ.2]
+
+omit [Algebra.IsIntegral R S] in
+/-- **`G_0 ⧸ G_1` embeds into `𝓀[L]ˣ`.** Mathlib's `QuotientGroup.kerLift_injective` applied to
+`gradedZeroHom`; `gradedZeroHom_ker_eq` identifies the resulting kernel quotient with `G_0 ⧸ G_1` in
+the natural sense. -/
+theorem gradedZeroHom_kerLift_injective {π : w.adicCompletionIntegers L}
+    (hπ : IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) = Ideal.span {π}) :
+    Function.Injective (QuotientGroup.kerLift
+      (ValuationSubring.gradedZeroHom (K := v.adicCompletion K) hπ
+        ((IsDiscreteValuationRing.irreducible_iff_uniformizer π).mpr hπ).ne_zero)) :=
+  QuotientGroup.kerLift_injective _
+
+omit [Algebra.IsIntegral R S] in
+/-- **The kernel of the `i ≥ 1` associated-graded map (indexed as `G_{i+1}`) is exactly
+`G_{i+2}`.** -/
+theorem gradedSuccHom_ker_eq (i : ℕ) {π : w.adicCompletionIntegers L}
+    (hπ : IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) = Ideal.span {π}) :
+    (ValuationSubring.gradedSuccHom hπ
+        ((IsDiscreteValuationRing.irreducible_iff_uniformizer π).mpr hπ).ne_zero i).ker
+      = Subgroup.subgroupOf
+          (ValuationSubring.ramificationGroup (v.adicCompletion K) (w.adicCompletionIntegers L)
+            (i + 2))
+          (ValuationSubring.ramificationGroup (v.adicCompletion K) (w.adicCompletionIntegers L)
+            (i + 1)) := by
+  ext σ
+  rw [MonoidHom.mem_ker, ValuationSubring.gradedSuccHom_apply_eq_one_iff, Subgroup.mem_subgroupOf,
+    show ValuationSubring.ramificationGroup (v.adicCompletion K) (w.adicCompletionIntegers L)
+        (i + 2) = ramificationGroup K L v w ((i + 1) + 1) from rfl,
+    mem_ramificationGroup_succ_iff K L v w (i + 1) hπ
+      (ValuationSubring.ramificationGroup_le_zero (w.adicCompletionIntegers L) (i + 1) σ.2)]
+
+omit [Algebra.IsIntegral R S] in
+/-- **`G_{i+1} ⧸ G_{i+2}` embeds additively into `𝓀[L]`** (as `Multiplicative (ResidueField
+(w.adicCompletionIntegers L))`). Mathlib's `QuotientGroup.kerLift_injective` applied to
+`gradedSuccHom`; `gradedSuccHom_ker_eq` identifies the resulting kernel quotient with
+`G_{i+1} ⧸ G_{i+2}` in the natural sense. -/
+theorem gradedSuccHom_kerLift_injective (i : ℕ) {π : w.adicCompletionIntegers L}
+    (hπ : IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) = Ideal.span {π}) :
+    Function.Injective (QuotientGroup.kerLift
+      (ValuationSubring.gradedSuccHom (K := v.adicCompletion K) hπ
+        ((IsDiscreteValuationRing.irreducible_iff_uniformizer π).mpr hπ).ne_zero i)) :=
+  QuotientGroup.kerLift_injective _
+
 end KernelDirection
 
 end IsDedekindDomain.HeightOneSpectrum
