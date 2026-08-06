@@ -580,6 +580,48 @@ theorem HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly_apply_resi
     IntermediateField.equivOfEq_apply, IntermediateField.topEquiv_apply,
     IntermediateField.AdjoinSimple.coe_gen]
 
+/-- `residueField_equiv_adjoinRoot_lift_minpoly` is compatible with the structure maps from `R`: it
+sends the residue of `algebraMap R (AdjoinRoot f) c` to the image of `residue R c` under
+`algebraMap k l`. This is the `he`-shaped compatibility needed to instantiate
+`TowerMonogenicConcrete.algebraMap_eq_of_ringEquiv_of_forall` from the residue isomorphism this file
+constructs, without an extra hypothesis. Proved by the same unwinding as
+`residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_root`, with the constant `Polynomial.C c`
+in place of the generator `X`. -/
+theorem HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_algebraMap
+    {R : Type*} [CommRing R] [HenselianLocalRing R] {l : Type*} [Field l]
+    [Algebra (IsLocalRing.ResidueField R) l] {β₀ : l}
+    (hβ₀ : IsIntegral (IsLocalRing.ResidueField R) β₀) {f : R[X]} (hf : f.Monic)
+    (hfmap : f.map (algebraMap R (IsLocalRing.ResidueField R)) =
+      minpoly (IsLocalRing.ResidueField R) β₀)
+    (hprim : IntermediateField.adjoin (IsLocalRing.ResidueField R) {β₀} = ⊤)
+    [IsLocalRing (AdjoinRoot f)] (c : R) :
+    HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly hβ₀ hf hfmap hprim
+      (IsLocalRing.residue (AdjoinRoot f) (algebraMap R (AdjoinRoot f) c)) =
+      algebraMap (IsLocalRing.ResidueField R) l (IsLocalRing.residue R c) := by
+  unfold HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly
+  show _ = algebraMap (IsLocalRing.ResidueField R) l (IsLocalRing.residue R c)
+  have hac : algebraMap R (AdjoinRoot f) c = AdjoinRoot.mk f (Polynomial.C c) := rfl
+  rw [show IsLocalRing.residue (AdjoinRoot f) (algebraMap R (AdjoinRoot f) c) =
+      Ideal.Quotient.mk (IsLocalRing.maximalIdeal (AdjoinRoot f))
+        (algebraMap R (AdjoinRoot f) c) from rfl, hac]
+  simp only [RingEquiv.trans_apply, IsLocalRing.ResidueField.quotEquivRaw_apply,
+    Ideal.quotEquivOfEq_symm, Ideal.quotEquivOfEq_mk, AlgEquiv.coe_ringEquiv,
+    AdjoinRoot.quotEquivQuotMap_apply_mk, Polynomial.map_C, Ideal.quotientEquiv_mk,
+    IsLocalRing.ResidueField.polyQuotEquivRaw_apply, AdjoinRoot.quotSpanRingEquiv_apply]
+  show (((IntermediateField.adjoinRootEquivAdjoin (IsLocalRing.ResidueField R) hβ₀).trans
+        (IntermediateField.equivOfEq hprim)).trans IntermediateField.topEquiv)
+      (AdjoinRoot.mk (minpoly (IsLocalRing.ResidueField R) β₀)
+        (Polynomial.C (algebraMap R (IsLocalRing.ResidueField R) c))) =
+      algebraMap (IsLocalRing.ResidueField R) l (IsLocalRing.residue R c)
+  have hacc : AdjoinRoot.mk (minpoly (IsLocalRing.ResidueField R) β₀)
+      (Polynomial.C (algebraMap R (IsLocalRing.ResidueField R) c)) =
+      algebraMap (IsLocalRing.ResidueField R)
+        (AdjoinRoot (minpoly (IsLocalRing.ResidueField R) β₀))
+        (algebraMap R (IsLocalRing.ResidueField R) c) := rfl
+  rw [hacc]
+  simp only [AlgEquiv.commutes]
+  rfl
+
 /-! ### Embedding `AdjoinRoot (f.map (algebraMap R K))` into an algebraically closed extension -/
 
 /-- For `L / K` algebraically closed, the polynomial `p := f.map (algebraMap R K)` — irreducible by
@@ -693,10 +735,16 @@ integral over `R`, giving `x' : C`, and:
 * `C` is a Dedekind domain (`integralClosure.isDedekindDomain`, using separability), local, and not
   a field, hence a discrete valuation ring by `IsDiscreteValuationRing.TFAE`.
 
-The residue-field equivalence `e : ResidueField C ≃+* l` in the conclusion is accompanied by the
-fact that it carries the residue class of any `y : C` lying over `x` to `β₀`: such a `y` is forced
-to equal `x'`, and `e (residue C x')` unwinds to
-`residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_root`. -/
+The residue-field equivalence `e : ResidueField C ≃+* l` in the conclusion is accompanied by two
+facts: it carries the residue class of any `y : C` lying over `x` to `β₀` (such a `y` is forced to
+equal `x'`, and `e (residue C x')` unwinds to
+`residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_root`), and it is compatible with the two
+algebra maps from `ResidueField R`, i.e. `e (residue C (algebraMap R C c)) = algebraMap (ResidueField
+R) l (residue R c)` for every `c : R` (via `residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_
+algebraMap` and `hψof`, the same transport as the root case). This second fact is exactly the `he`
+hypothesis `LocalField.algebraMap_eq_of_ringEquiv_of_forall`
+(`Langlands/TowerMonogenicConcrete.lean`) needs, so callers no longer have to establish it
+separately. -/
 
 /-- **Existence of an unramified extension with prescribed residue extension.** Let `R` be a
 Henselian discrete valuation ring with fraction field `K` and finite residue field `k`, let `L / K`
@@ -745,11 +793,14 @@ theorem HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residu
             (IsLocalRing.maximalIdeal R) =
           @IsLocalRing.maximalIdeal _ _ hCloc ∧
         ∃ e : @IsLocalRing.ResidueField _ _ hCloc ≃+* l,
-          ∀ y : ↥(integralClosure R (IntermediateField.adjoin K {x})),
+          (∀ y : ↥(integralClosure R (IntermediateField.adjoin K {x})),
             algebraMap ↥(IntermediateField.adjoin K {x}) L
                 (algebraMap ↥(integralClosure R (IntermediateField.adjoin K {x}))
                   ↥(IntermediateField.adjoin K {x}) y) = x →
-              e (@IsLocalRing.residue _ _ hCloc y) = β₀ := by
+              e (@IsLocalRing.residue _ _ hCloc y) = β₀) ∧
+          ∀ c : R, e (@IsLocalRing.residue _ _ hCloc
+              (algebraMap R ↥(integralClosure R (IntermediateField.adjoin K {x})) c)) =
+            algebraMap (IsLocalRing.ResidueField R) l (IsLocalRing.residue R c) := by
   classical
   obtain ⟨x, φ, hφinj, hφroot, hφcomp⟩ :=
     HenselianLocalRing.exists_ringHom_adjoinRoot_map_of_isAlgClosed (R := R) (K := K) (L := L)
@@ -944,33 +995,55 @@ theorem HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residu
   refine ⟨x, hxint, hminpoly, hK'sep, hCisLocalRing', hCdvr, ⟨xC, hCtop⟩, hCmapmax,
     (RingEquiv.symm (IsLocalRing.ResidueField.mapEquiv e) : _).trans
       (HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly hβ₀ hfmonic hfmap hprim),
-    ?_⟩
+    ?_, ?_⟩
   -- `e (root f) = xC`, unwinding `e := RingEquiv.ofBijective ψ _` and `ψ := AdjoinRoot.lift ... xC _`.
   have heroot : (e : AdjoinRoot f →+* ↥C) (AdjoinRoot.root f) = xC := by
     show ψ (AdjoinRoot.root f) = xC
     rw [hψdef, AdjoinRoot.lift_root]
-  intro y hy
-  -- Any `y : C` mapping to `x` under `C → K' → L` is forced to equal the witness `xC`, since that
-  -- composite is injective (it factors as the injective `algebraMap C K'` followed by the
-  -- injective `algebraMap K' L`).
-  have hyxC : y = xC := by
-    apply hCK'_inj
-    apply hK'L_inj
-    rw [hy]
-    show x = algebraMap K' L (x' : K')
-    exact hxL.symm
-  show (RingEquiv.symm (IsLocalRing.ResidueField.mapEquiv e) : _).trans
-    (HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly hβ₀ hfmonic hfmap hprim)
-    (IsLocalRing.residue C y) = β₀
-  rw [hyxC, RingEquiv.trans_apply]
-  have hstep : (IsLocalRing.ResidueField.mapEquiv e).symm (IsLocalRing.residue C xC) =
-      IsLocalRing.residue (AdjoinRoot f) (AdjoinRoot.root f) := by
-    apply (IsLocalRing.ResidueField.mapEquiv e).injective
-    rw [RingEquiv.apply_symm_apply, IsLocalRing.ResidueField.mapEquiv_apply,
-      IsLocalRing.ResidueField.map_residue, heroot]
-  rw [hstep]
-  exact HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_root
-    hβ₀ hfmonic hfmap hprim
+  · intro y hy
+    -- Any `y : C` mapping to `x` under `C → K' → L` is forced to equal the witness `xC`, since that
+    -- composite is injective (it factors as the injective `algebraMap C K'` followed by the
+    -- injective `algebraMap K' L`).
+    have hyxC : y = xC := by
+      apply hCK'_inj
+      apply hK'L_inj
+      rw [hy]
+      show x = algebraMap K' L (x' : K')
+      exact hxL.symm
+    show (RingEquiv.symm (IsLocalRing.ResidueField.mapEquiv e) : _).trans
+      (HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly hβ₀ hfmonic hfmap hprim)
+      (IsLocalRing.residue C y) = β₀
+    rw [hyxC, RingEquiv.trans_apply]
+    have hstep : (IsLocalRing.ResidueField.mapEquiv e).symm (IsLocalRing.residue C xC) =
+        IsLocalRing.residue (AdjoinRoot f) (AdjoinRoot.root f) := by
+      apply (IsLocalRing.ResidueField.mapEquiv e).injective
+      rw [RingEquiv.apply_symm_apply, IsLocalRing.ResidueField.mapEquiv_apply,
+        IsLocalRing.ResidueField.map_residue, heroot]
+    rw [hstep]
+    exact HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_root
+      hβ₀ hfmonic hfmap hprim
+  · -- **Compatibility with the algebra maps from `R`.** `e (algebraMap R C c) = algebraMap R
+    -- (AdjoinRoot f) c` under `ψ`/`hψof`, so this reduces to the generalised residue lemma
+    -- (`..._apply_residue_algebraMap`) exactly as the root case above reduces to
+    -- `..._apply_residue_root`.
+    intro c
+    have hec : (e : AdjoinRoot f →+* ↥C) (algebraMap R (AdjoinRoot f) c) = algebraMap R C c := by
+      show ψ (algebraMap R (AdjoinRoot f) c) = algebraMap R C c
+      rw [AdjoinRoot.algebraMap_eq, ← RingHom.comp_apply, hψof]
+    show (RingEquiv.symm (IsLocalRing.ResidueField.mapEquiv e) : _).trans
+      (HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly hβ₀ hfmonic hfmap hprim)
+      (IsLocalRing.residue C (algebraMap R C c)) =
+      algebraMap (IsLocalRing.ResidueField R) l (IsLocalRing.residue R c)
+    rw [RingEquiv.trans_apply]
+    have hstep2 : (IsLocalRing.ResidueField.mapEquiv e).symm
+        (IsLocalRing.residue C (algebraMap R C c)) =
+        IsLocalRing.residue (AdjoinRoot f) (algebraMap R (AdjoinRoot f) c) := by
+      apply (IsLocalRing.ResidueField.mapEquiv e).injective
+      rw [RingEquiv.apply_symm_apply, IsLocalRing.ResidueField.mapEquiv_apply,
+        IsLocalRing.ResidueField.map_residue, hec]
+    rw [hstep2]
+    exact HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_algebraMap
+      hβ₀ hfmonic hfmap hprim c
 
 /-! ### Roots in a valuation subring with prescribed residue
 
