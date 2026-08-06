@@ -1,0 +1,111 @@
+/-
+Copyright (c) 2026 rhizone. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+-/
+import Langlands.ArtinianPrimitiveElement
+
+/-!
+# Serre's tower step for monogenicity
+
+`Langlands.ArtinianPrimitiveElement.LocalField.exists_adjoin_eq_top_of_residue_nilpotent` is the
+composite monogenicity criterion in residue-algebra form: for `R` local and `S` finite over `R`, if
+`S ⧸ 𝔪_R S` contains a finite separable residue field `κ` and a nilpotent `π` with
+`S ⧸ 𝔪_R S = κ + π · (S ⧸ 𝔪_R S)`, then `S` is monogenic over `R`.
+
+This file discharges those hypotheses for a *tower* `R ⊆ OM ⊆ ON` of local rings in which
+
+* `OM / R` is unramified — `𝔪_R · OM = 𝔪_OM` — with separable residue extension, and
+* `ON / OM` is generated over `OM` by a single element `π` (`ON = OM + π · ON`) some power of which
+  lies in `𝔪_OM · ON`.
+
+These are exactly the two halves of Serre's *Local Fields* Ch. III tower argument: the first is what
+`Langlands.UnramifiedExtension.HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv`
+now exports, the second is what an Eisenstein/totally-ramified extension supplies (see
+`Langlands.TotallyRamifiedEisensteinTower`).
+
+## Main results
+
+* `LocalField.map_maximalIdeal_eq_of_unramified` : `𝔪_OM · ON = 𝔪_R · ON` when `𝔪_R · OM = 𝔪_OM`.
+  This is the only place unramifiedness of the lower step is used, and it is what makes
+  `ON ⧸ 𝔪_R ON` a `κ_OM`-algebra at all.
+* `LocalField.exists_adjoin_eq_top_of_tower` : `∃ γ : ON, Algebra.adjoin R {γ} = ⊤`.
+
+## Implementation notes
+
+The `κ_OM`-algebra structure on `ON ⧸ 𝔪_R ON` is not an instance — it depends on the unramifiedness
+hypothesis — so it is introduced by `letI` inside the proof, as `Ideal.Quotient.lift` of
+`ON ⧸ 𝔪_R ON`'s quotient map precomposed with `algebraMap OM ON`. The `IsScalarTower` over
+`ResidueField R` then has to be checked by hand.
+-/
+
+open IsLocalRing
+
+namespace LocalField
+
+variable {R OM ON : Type*} [CommRing R] [IsLocalRing R] [CommRing OM] [IsLocalRing OM]
+  [CommRing ON] [Algebra R OM] [Algebra OM ON] [Algebra R ON] [IsScalarTower R OM ON]
+
+/-- **Unramifiedness of the lower step propagates to the top.** If `𝔪_R · OM = 𝔪_OM` then
+`𝔪_OM · ON = 𝔪_R · ON`, so the two candidate "residue algebras" of `ON` coincide. -/
+theorem map_maximalIdeal_eq_of_unramified
+    (hunram : Ideal.map (algebraMap R OM) (maximalIdeal R) = maximalIdeal OM) :
+    Ideal.map (algebraMap OM ON) (maximalIdeal OM) =
+      Ideal.map (algebraMap R ON) (maximalIdeal R) := by
+  rw [← hunram, Ideal.map_map, ← IsScalarTower.algebraMap_eq]
+
+/-- **Serre's tower step.** For a tower `R ⊆ OM ⊆ ON` of local rings with `ON` finite over `R`,
+`OM / R` unramified with separable residue extension, and `ON` generated over `OM` by an element
+`π` some power of which lies in `𝔪_OM · ON`, the ring `ON` is monogenic over `R`.
+
+The single generator is `β + π` for `β` a lift to `ON` of a primitive element of
+`κ_OM / κ_R` — see `LocalField.adjoin_add_nilpotent_eq_top`, which is where the choice is made; here
+only its existence form is used. -/
+theorem exists_adjoin_eq_top_of_tower
+    [IsLocalHom (algebraMap R OM)] [Module.Finite R OM] [Module.Finite R ON]
+    [Algebra.IsSeparable (ResidueField R) (ResidueField OM)]
+    (hunram : Ideal.map (algebraMap R OM) (maximalIdeal R) = maximalIdeal OM)
+    {π : ON} {e : ℕ}
+    (hnil : π ^ e ∈ Ideal.map (algebraMap OM ON) (maximalIdeal OM))
+    (hsurj : ∀ x : ON, ∃ (c : OM) (y : ON), x = algebraMap OM ON c + π * y) :
+    ∃ γ : ON, Algebra.adjoin R ({γ} : Set ON) = ⊤ := by
+  set J : Ideal ON := Ideal.map (algebraMap R ON) (maximalIdeal R) with hJdef
+  have hJ : Ideal.map (algebraMap OM ON) (maximalIdeal OM) = J :=
+    map_maximalIdeal_eq_of_unramified hunram
+  have hker : ∀ a ∈ maximalIdeal OM,
+      ((Ideal.Quotient.mk J).comp (algebraMap OM ON)) a = 0 := by
+    intro a ha
+    rw [RingHom.comp_apply, Ideal.Quotient.eq_zero_iff_mem, ← hJ]
+    exact Ideal.mem_map_of_mem _ ha
+  letI : Algebra (ResidueField OM) (ON ⧸ J) :=
+    RingHom.toAlgebra (Ideal.Quotient.lift (maximalIdeal OM)
+      ((Ideal.Quotient.mk J).comp (algebraMap OM ON)) hker)
+  have halg : ∀ c : OM,
+      algebraMap (ResidueField OM) (ON ⧸ J) (residue OM c) =
+        Ideal.Quotient.mk J (algebraMap OM ON c) := fun c =>
+    Ideal.Quotient.lift_mk _ _ _
+  -- `ResidueField R` is by definition `R ⧸ maximalIdeal R`, but instance search does not unfold
+  -- the abbreviation, so the three residue-field instances have to be restated at the raw
+  -- quotient — the form `exists_adjoin_eq_top_of_residue_nilpotent` takes them in.
+  letI : Algebra (R ⧸ maximalIdeal R) (ResidueField OM) :=
+    inferInstanceAs (Algebra (ResidueField R) (ResidueField OM))
+  haveI : Algebra.IsSeparable (R ⧸ maximalIdeal R) (ResidueField OM) :=
+    inferInstanceAs (Algebra.IsSeparable (ResidueField R) (ResidueField OM))
+  haveI : Module.Finite (R ⧸ maximalIdeal R) (ResidueField OM) :=
+    inferInstanceAs (Module.Finite (ResidueField R) (ResidueField OM))
+  haveI : IsScalarTower (R ⧸ maximalIdeal R) (ResidueField OM) (ON ⧸ J) := by
+    refine IsScalarTower.of_algebraMap_eq fun x => ?_
+    obtain ⟨x, rfl⟩ := Ideal.Quotient.mk_surjective x
+    show Ideal.Quotient.mk J (algebraMap R ON x) =
+      algebraMap (ResidueField OM) (ON ⧸ J) (residue OM (algebraMap R OM x))
+    rw [halg, ← IsScalarTower.algebraMap_apply]
+  refine exists_adjoin_eq_top_of_residue_nilpotent (R := R) (S := ON)
+    (κ := ResidueField OM) (π := Ideal.Quotient.mk J π) (e := e) ?_ ?_
+  · rw [← map_pow, Ideal.Quotient.eq_zero_iff_mem, ← hJ]
+    exact hnil
+  · intro x
+    obtain ⟨x, rfl⟩ := Ideal.Quotient.mk_surjective x
+    obtain ⟨c, y, hcy⟩ := hsurj x
+    refine ⟨residue OM c, Ideal.Quotient.mk J y, ?_⟩
+    rw [halg, ← map_mul, ← map_add, hcy]
+
+end LocalField
