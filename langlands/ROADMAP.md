@@ -2776,6 +2776,113 @@ residue-algebra computation not attempted. General tower monogenicity remains op
   still open, now via a different and, on the evidence above, more promising route than the
   twenty-third/twenty-fourth passes' `differentIdeal` plan.
 
+#### Status 2026-08-06 (twenty-sixth pass) — the twenty-fifth pass's gap (2) closed outright; gap
+(1) dissolved rather than solved; the residue-level half of tower monogenicity is now complete and
+sorry-free, and the blocker is re-identified as *tower assembly*, not residue algebra.
+
+- **Task.** Close the two gaps the twenty-fifth pass left in
+  `NakayamaMonogenic.lean`'s "what remains": (1) identify `𝒪_N ⧸ 𝔪_K 𝒪_N ≅ κ_M[T] ⧸ (T ^ e)`,
+  (2) the "Artinian primitive element" fact. Assemble the tower theorem if they close.
+- **Gap (2) is closed.** `LocalField.adjoin_add_nilpotent_eq_top`
+  (`langlands/Langlands/ArtinianPrimitiveElement.lean`, new file, commit `1400d83`, zero `sorry`,
+  `lake build Langlands.ArtinianPrimitiveElement` clean):
+  ```
+  theorem adjoin_add_nilpotent_eq_top {β : κ} (hgen : Algebra.adjoin k ({β} : Set κ) = ⊤)
+      (hsep : (minpoly k β).Separable) {π : A} {e : ℕ} (hnil : π ^ e = 0)
+      (hsurj : ∀ x : A, ∃ (c : κ) (y : A), x = algebraMap κ A c + π * y) :
+      Algebra.adjoin k ({algebraMap κ A β + π} : Set A) = ⊤
+  ```
+  for `k ⊆ κ` fields and `A` a `κ`-algebra (`[IsScalarTower k κ A]`), with the existence form
+  `exists_adjoin_add_nilpotent_eq_top` for `κ / k` finite separable.
+  **The "single element does double duty" angle the task brief asked to investigate does pan out,
+  and the mechanism is a Newton/Hensel step, not a re-run of the field-theoretic primitive element
+  theorem.** With `g := minpoly k β` and `a := β + π`, Taylor expansion of `g` at `β` gives
+  `g(a) = g(β) + g'(β) π + π ^ 2 (⋯) = π · w` where `w ≡ g'(β) mod π`; separability makes `g'(β)`
+  a unit, and unit-plus-nilpotent is a unit, so `t := g(a)` lies in `k[a]` *and* generates the same
+  ideal as `π`. Then `A = k[a] + π A` (because `a ≡ β` mod `π` and `β` generates `κ`), hence
+  `A = k[a] + t A`; substituting that into itself `e` times gives `A = k[a] + t ^ e A` and
+  `t ^ e = π ^ e w ^ e = 0`. So separability is what makes the obstruction `g(a)` to `a` being a
+  lift of `β` into a *generator* of the nilpotent direction — that is the whole content.
+  **Notable consequence: `c = 1` works.** No scalar search is needed at the residue level, so
+  `PrimitiveElementFusion.lean`'s `exists_scalar_add_smul_primitive` is not an input to this route
+  (its status as redundant-or-retained, flagged as an open design choice by the twenty-fifth pass,
+  is now settled on the "not needed" side for the residue-level step specifically).
+  Mathlib lemmas used, all verified present before use per the `lean-proof-writing` skill:
+  `Polynomial.taylor_eval`, `taylor_coeff_zero`, `taylor_coeff_one` (`Algebra/Polynomial/Taylor.lean`
+  :160/:79/:83), `Polynomial.X_mul_divX_add`, `coeff_divX` (`Algebra/Polynomial/Inductions.lean`
+  :51/:44), `Polynomial.sub_dvd_eval_sub` (`Algebra/Polynomial/Div.lean:623`),
+  `Polynomial.Separable.aeval_derivative_ne_zero` (`FieldTheory/Separable.lean:149`),
+  `IsNilpotent.isUnit_add_left_of_commute` (`RingTheory/Nilpotent/Basic.lean:75`).
+- **Gap (1) is not solved — it is dissolved.** The classical ring isomorphism
+  `𝒪_N ⧸ 𝔪_K 𝒪_N ≅ κ_M[T] ⧸ (T ^ e)` turns out not to be needed, because gap (2) can be stated
+  presentation-free. Two lemmas make the reduction usable directly (commit `7d43194`, zero `sorry`,
+  `lake build Langlands` clean, 8680 jobs):
+  1. `LocalField.adjoin_eq_top_of_adjoin_quotient_eq_top` (`NakayamaMonogenic.lean`) — if the image
+     of `β` generates `S ⧸ 𝔪_R S` as an algebra over `R ⧸ 𝔪_R`, then `Algebra.adjoin R {β} = ⊤`.
+     This upgrades `adjoin_eq_top_of_map_mkQ_eq_top`'s submodule-image hypothesis to an honest
+     algebra-generation statement. **It is Mathlib's `IsLocalRing.
+     adjoin_residue_eq_top_iff_adjoin_eq_top` (`Mathlib/RingTheory/LocalRing/Etale.lean:63`, read
+     in full this pass) with the unramifiedness step deleted**: that lemma quotients by `𝔪_S`, not
+     `𝔪_R S`, and needs `[Algebra.FormallyUnramified R S]` precisely to identify the two via
+     `Algebra.FormallyUnramified.map_maximalIdeal` — which is exactly what fails in the ramified
+     case (`𝔪_R S ⊊ 𝔪_S`). Quotienting by `𝔪_R S` throughout removes the need for that hypothesis.
+  2. `LocalField.exists_adjoin_eq_top_of_residue_nilpotent` (`ArtinianPrimitiveElement.lean`) — the
+     composite: `R` local, `S` finite over `R`; if `S ⧸ 𝔪_R S` contains a field `κ` finite separable
+     over `R ⧸ 𝔪_R` and an element `π` with `π ^ e = 0` and `S ⧸ 𝔪_R S = κ + π · (S ⧸ 𝔪_R S)`, then
+     `∃ β : S, Algebra.adjoin R {β} = ⊤`.
+  So the residue-level half of Serre's argument is now complete as actual Lean theorems, and the
+  `κ_M[T] ⧸ (T ^ e)` presentation is off the critical path.
+- **The full tower theorem does NOT close, and the reason has changed.** The remaining obstruction
+  is no longer the residue algebra; it is that **there is no tower object in this repo to apply any
+  of this to**, and the ramification facts feeding the composite are unproved. Precisely, three
+  structural hypotheses of `exists_adjoin_eq_top_of_residue_nilpotent` must be discharged for
+  `R := 𝒪_K`, `S := 𝒪_N`, `κ := κ_M`, `π :=` image of a uniformizer of `N`:
+  1. the `κ_M`-algebra structure on `𝒪_N ⧸ 𝔪_K 𝒪_N` — i.e. `𝔪_M ⊆ 𝔪_K 𝒪_N`, which is
+     `𝔪_K 𝒪_M = 𝔪_M` (unramifiedness of `M / K`) pushed up;
+  2. `π ^ e ∈ 𝔪_K 𝒪_N`;
+  3. `𝒪_N = 𝒪_M + 𝔪_N` (equality of the residue fields of `M` and `N`).
+  None is proved. The repo's `IsDedekindDomain.HeightOneSpectrum.IsUnramified`
+  (`UnramifiedValuationExtension.lean:74`) is a `def … : Prop`, not a theorem — only the trivial
+  containment `𝔪_K 𝒪_L ≤ 𝔪_L` is proved (`map_maximalIdeal_le`, :60) — and it is stated for adic
+  completions of a Dedekind domain, a *different* setting from the ambient-`L` construction the
+  unramified half actually uses. Verified this pass: **the task brief's premise that the composite
+  fact is "already available" in that file is false.**
+- **Prior blocker, now the top one: the two halves have incompatible shapes for `M`, and neither
+  exports the monogenicity fact the tower needs.** Confirmed by direct inspection this pass:
+  - unramified half: `HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv`
+    (`UnramifiedExtension.lean:715`) gives `M := IntermediateField.adjoin K {x}` inside an ambient
+    algebraically closed `L`, with `𝒪_M := integralClosure R ↥M`. **Its statement never mentions
+    `β` or `Algebra.adjoin R {β}`** — `𝒪_M = 𝒪_K[β]` exists only as an internal, discarded
+    `have hCtop : Algebra.adjoin R ({xC} : Set C) = ⊤` at `:845` (checked directly). Likewise the
+    ideal equality `Ideal.map (AdjoinRoot.of f) (maximalIdeal R) = maximalIdeal (AdjoinRoot f)` is
+    an internal `have hM0eq` at `:517`, about `AdjoinRoot f` rather than `integralClosure R ↥M`, and
+    is not exported.
+  - ramified half: `LocalField.adjoin_eq_integralClosure_of_isUniformizer_of_valuationSubring`
+    (`TowerBundle.lean:152`) wants `M : Type*` `[Field M]` with a `ValuationSubring`, built by a
+    `letI` chain in the statement, and takes "totally ramified" as a *norm equation* hypothesis
+    rather than `e = [N : M]`.
+  - `ValuationSubringIntegralClosure.lean` supplies the identification of the two presentations of
+    `𝒪_M` (`isIntegralClosure_valuationSubring`), and its own docstring (:15) already says composing
+    them "requires identifying these two rings for the same `M`" — built, but not yet used to
+    compose. No Lean theorem or structure anywhere in `langlands/` states `K ⊆ M ⊆ N` with both
+    halves.
+- **Exact remaining mathematical content, in order.** (a) Export `𝒪_M = 𝒪_K[β]` and
+  `𝔪_K 𝒪_M = 𝔪_M` from the unramified construction as named theorems about `integralClosure R ↥M`
+  (the proofs exist inside `UnramifiedExtension.lean` but only for the `AdjoinRoot f` model; the
+  transport `ψ : AdjoinRoot f ≃ C` at ~:849-880 is also internal). (b) Reconcile the two `M`
+  presentations into one tower object, using `ValuationSubringIntegralClosure.lean`'s bridge.
+  (c) Prove (1)-(3) above for that object. Only (c) is genuinely ramification theory; (a) and (b)
+  are export/plumbing of proofs that already exist, but they are a prerequisite and are not small.
+- **Verification.** `lake build Langlands` clean (8680 jobs); `lake build
+  Langlands.NakayamaMonogenic Langlands.ArtinianPrimitiveElement` clean (these two are standalone,
+  not reachable from `Langlands.lean`'s import list, matching the twenty-fifth pass's precedent);
+  `grep -rn sorry langlands/Langlands/` unchanged (prose-only, `RamificationFiltration.lean:89` and
+  `TotallyRamifiedEisenstein.lean:19`).
+- **Net effect on `RamificationFiltration.lean`.** Still not unblocked. But the open work is now
+  entirely ramification theory and refactoring of existing proofs, with no unknown mathematics left
+  in the residue-algebra step — which was, before this pass, the piece flagged as "genuinely new
+  mathematical content, not a lookup".
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
