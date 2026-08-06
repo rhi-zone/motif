@@ -43,16 +43,18 @@ for the caller to discharge.
    *provided* `e` is compatible with the two algebra maps from `ResidueField R`
    (`LocalField.algebraMap_eq_of_ringEquiv` below packages this compatibility as an `AlgEquiv` and
    `AlgEquiv.Algebra.isSeparable` transports separability across it). This is real proof content,
-   not a diamond — but the compatibility hypothesis `he` is *not* derived here from
+   not a diamond, and the compatibility hypothesis `he` still has to be supplied as a hypothesis of
+   the headline theorem below — but it is no longer independent proof burden for a caller using
    `Langlands.UnramifiedExtension.HenselianLocalRing.
-   exists_isDiscreteValuationRing_integralClosure_residueField_equiv`'s own residue-field
-   isomorphism; that theorem's conclusion states only where `e` sends the residue of a lift of the
-   root `x`, not that `e` is a `ResidueField R`-algebra map. Establishing `he` for that specific
-   `e` needs a fact of the same shape as
-   `HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_root` but at every
-   point of `R`, not only at the generator — not proved in this file (see the docstring of
-   `exists_adjoin_eq_top_of_tower_of_isEisensteinAt_of_valuationSubring` below for the precise
-   status).
+   exists_isDiscreteValuationRing_integralClosure_residueField_equiv`'s residue-field isomorphism:
+   that theorem's conclusion now *includes* the `he`-shaped compatibility for its own `e`
+   (`..._apply_residue_algebraMap`, proved by generalising
+   `HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_root` from the
+   generator alone to every point of `R`), so such a caller reads `he` straight off that theorem's
+   conclusion instead of proving it separately. See the docstring of
+   `exists_adjoin_eq_top_of_tower_of_isEisensteinAt_of_valuationSubring` below for what remains
+   open in *fully* internalizing the existence theorem's output (removing `e`/`he` as explicit
+   hypotheses of this file's headline theorem altogether).
 
 ## Main results
 
@@ -211,22 +213,37 @@ instantiated at `R := 𝒪[K]`, `OM := ↥(integralClosureValuationSubring 𝒪[
 `isScalarTower_ON`, `finite_ON'`, `LocalField.finite`, `isLocalHom_of_map_maximalIdeal_eq`, and
 `algebraMap_eq_of_ringEquiv`.
 
-**Status of hypothesis `he`.** This theorem takes the residue-field isomorphism's compatibility
-with the two algebra maps from `ResidueField 𝒪[K]` (`he`) as a *hypothesis*, not something derived
-from `Langlands.UnramifiedExtension`'s existence theorem internally. That theorem's own conclusion
-states only where its isomorphism sends the residue class of a lift of its root `x`, not that the
-isomorphism is a `ResidueField 𝒪[K]`-algebra map; establishing `he` for *that* isomorphism needs a
-version of `HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_root`
-generalised from the single generator to every point of `R` (verified feasible: this pass confirmed
-in a scratch file that the natural generalisation of that lemma's proof — replacing the root
-generator `X` with a constant `C c` throughout, `c : R` arbitrary — closes, using that
-`AdjoinRoot.quotEquivQuotMap` is already an `AlgEquiv` over the base ring and that the remaining
-steps of the composite are transparent `id`-bridges — but connecting it to the specific `e`
-constructed inside that theorem's proof was not carried out in this file, since that isomorphism's
-construction (`ψ`, `hψof`) is local to the proof and not part of the theorem's public conclusion).
-A caller with a concrete `K`, `M` in hand supplies `e`/`he`/`l` directly (e.g. residue fields of
-finite extensions of finite fields are always separable, so `he` is the only nontrivial witness
-needed in the number-field/local-field case). -/
+**Status of hypothesis `he`.** This theorem still takes the residue-field isomorphism's
+compatibility with the two algebra maps from `ResidueField 𝒪[K]` (`he`) as an explicit hypothesis,
+rather than deriving it internally — but the earlier gap in *proving* `he` for a concrete `e` is
+closed: `Langlands.UnramifiedExtension.HenselianLocalRing.
+exists_isDiscreteValuationRing_integralClosure_residueField_equiv`'s conclusion now states, for its
+own constructed `e`, exactly the `he`-shaped compatibility this theorem needs (added via
+`HenselianLocalRing.residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_algebraMap`, the
+generalisation of `..._apply_residue_root` from the single generator to every point of `R`). A
+caller with a concrete `K`, `β₀` in hand runs that existence theorem, obtains `e` together with a
+ready-made proof of `he`, and passes both straight into this theorem — no separate `he`
+verification step remains.
+
+**What is still open: fully removing `e`/`he` as explicit parameters of this theorem**, by
+internally invoking the existence theorem and instantiating `M` at its own `K' :=
+IntermediateField.adjoin K {x}` (using that `↥(integralClosureValuationSubring 𝒪[K] M)` and
+`↥(integralClosure 𝒪[K] M)` are the same type by `rfl`, per `TowerValuationSubring.lean`'s
+implementation notes, so the existence theorem's `IsDiscreteValuationRing`/`ValuationRing`/
+`IsFractionRing` output on `integralClosure 𝒪[K] K'` transports to this theorem's `OM` for free).
+This was investigated and does *not* close as a quick instance-transport: instantiating `R :=
+↥(valuation K).valuationSubring` in the existence theorem needs `HenselianLocalRing R`, and the
+only such instance in this codebase
+(`Langlands.UnramifiedExtension.HenselianLocalRing.henselianLocalRing`) is proved under the
+`IsNonarchimedeanLocalField K` bundle, which packages `LocallyCompactSpace K` — a hypothesis this
+theorem's bundle (`NontriviallyNormedField`, `IsUltrametricDist`, `ValuativeRel`, `Compatible`,
+`CompleteSpace`, `IsDiscreteValuationRing 𝒪[K]`) does not carry and no lemma in this codebase
+derives from it. Closing this would need either an independent proof of `HenselianLocalRing 𝒪[K]`
+from mere completeness (bypassing `IsAdicComplete.henselianRing`'s reliance on the
+`IsNonarchimedeanLocalField`-supplied valuative topology), or a proof that `CompleteSpace K` plus a
+finite residue field (needed anyway, for the existence theorem's `Finite (ResidueField R)`) implies
+`LocallyCompactSpace K` — genuine unformalised local-field content, not a lemma-name lookup, and
+not attempted here. -/
 theorem exists_adjoin_eq_top_of_tower_of_isEisensteinAt_of_valuationSubring
     (K : Type*) [NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K]
     [(NormedField.valuation (K := K)).Compatible] [CompleteSpace K]

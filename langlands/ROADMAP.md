@@ -1467,6 +1467,45 @@ that avoids stalling on (a).
 > associated-graded embeddings (blocked since the twelfth pass) can now proceed as the natural next
 > step.
 
+> **Update (2026-08-06, thirtieth pass) — the `he`-generalisation lemma flagged above is landed;
+> the "can now proceed" remark above about `RamificationFiltration.lean` was premature.** This pass
+> landed exactly the generalisation the twenty-ninth-pass entry called "confirmed feasible in a
+> scratch file": `HenselianLocalRing.
+> residueField_equiv_adjoinRoot_lift_minpoly_apply_residue_algebraMap`
+> (`Langlands/UnramifiedExtension.lean`), the same unwinding as
+> `..._apply_residue_root` with the generator `X` replaced by a constant `Polynomial.C c`, built
+> first try (one `lake build`, no `sorry`). `exists_isDiscreteValuationRing_integralClosure_
+> residueField_equiv`'s conclusion was then strengthened with this lemma plus the proof's own
+> already-in-scope `hψof` to add, alongside its existing residue-of-a-root-lift fact, `∀ c : R, e
+> (residue C (algebraMap R C c)) = algebraMap (ResidueField R) l (residue R c)` — exactly the
+> `he`-shape `LocalField.algebraMap_eq_of_ringEquiv_of_forall` needs — again first try. So a caller
+> starting from `UnramifiedExtension`'s witness now reads `he` straight off that theorem's
+> conclusion instead of proving it separately; `TowerMonogenicConcrete.lean`'s item-5 docstring and
+> the headline theorem's docstring are updated accordingly. **This still does not make
+> `exists_adjoin_eq_top_of_tower_of_isEisensteinAt_of_valuationSubring` itself unconditional**: `e`
+> and `he` remain explicit parameters of that theorem, so `RamificationFiltration.lean` (which needs
+> an *unconditional* "𝒪_L monogenic given completeness (+finite residue field)" fact, with no
+> `e`/`he` to supply — it has no such witness lying around in its generic `A : ValuationSubring L`
+> setting) is **not** unblocked by this pass, contrary to what the twenty-ninth-pass entry's closing
+> sentence suggested; confirmed by re-reading `RamificationFiltration.lean`'s docstring, unchanged
+> since the twelfth pass. Investigated and explicitly **not attempted**: internalising `e`/`he` by
+> having the concrete tower theorem invoke the existence theorem itself at `M := K' :=
+> IntermediateField.adjoin K {x}` (the carrier identification needed for this,
+> `↥(integralClosureValuationSubring 𝒪[K] M) = ↥(integralClosure 𝒪[K] M)` by `rfl`, is already
+> established in `TowerValuationSubring.lean`). The blocker is not that step itself but an upstream
+> instance gap: the existence theorem needs `HenselianLocalRing R` for `R := ↥(valuation
+> K).valuationSubring`, and the only such instance in this codebase
+> (`UnramifiedExtension.henselianLocalRing`) is proved under the `IsNonarchimedeanLocalField K`
+> bundle, which packages `LocallyCompactSpace K` — not a hypothesis of
+> `TowerMonogenicConcrete.lean`'s lighter bundle (`NontriviallyNormedField`, `IsUltrametricDist`,
+> `ValuativeRel`, `Compatible`, `CompleteSpace`, `IsDiscreteValuationRing 𝒪[K]`), and no lemma here
+> derives `LocallyCompactSpace K` from that bundle even together with a finite residue field
+> (needed anyway for the existence theorem's own `Finite (ResidueField R)`). Closing this needs
+> genuine unformalised local-field content — either `HenselianLocalRing 𝒪[K]` directly from
+> completeness alone, or `CompleteSpace + Finite (ResidueField 𝒪[K]) → LocallyCompactSpace K` — not
+> a lemma-name lookup, and is left as the next scoped step rather than forced. Full detail in
+> `TowerMonogenicConcrete.lean`'s headline-theorem docstring, "Status of hypothesis `he`" section.
+
 - **Why this exists.** Phase 2a closed the "easy half" of local CFT (unramified norm-group
   surjectivity) in full, across ten passes. This section applies the same before-you-build
   discipline to Phase 2's actual hard content — the ramified case and the reciprocity map itself —
