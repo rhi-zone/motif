@@ -4,6 +4,7 @@ import Langlands.CyclicSubgroups
 import Langlands.FiniteIndexNormalSubgroupMulEquiv
 import Langlands.FiniteIndexSubgroupsZ
 import Langlands.IdeleGroup
+import Langlands.MonogenicIntegralClosure
 import Langlands.MonogenicMaximalOrder
 import Langlands.ProfiniteCompletionUlift
 import Langlands.ProfiniteGrpUlift
