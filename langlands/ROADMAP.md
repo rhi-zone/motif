@@ -2105,6 +2105,131 @@ that avoids stalling on (a).
 > machinery (the filtration itself, and its graded pieces for `i ≥ 1`) that step 3/4 will need, not
 > progress on the norm computation itself.
 
+> **Update (2026-08-07, thirty-ninth pass) — step 1 (adic-completion instantiation of the
+> filtration) CLOSED; the induced-map formula for step 2 derived mathematically but NOT
+> formalized; steps 3–4 NOT attempted.**
+>
+> **Step 1, closed.** New file `Langlands/PrincipalUnitsFiltrationAdicCompletion.lean`, commit
+> `588e563`. Specializes `PrincipalUnitsFiltration.lean`'s `ValuationSubring.principalUnitsPow` /
+> `principalUnitsGradedEquiv` to `A := w.adicCompletionIntegers L` and `A :=
+> v.adicCompletionIntegers K`, exactly as the thirty-eighth pass anticipated — both are already
+> `ValuationSubring`s of `w.adicCompletion L` / `v.adicCompletion K`, so this needed no new
+> mathematical content, only correct instantiation (`principalUnitsPowL`, `principalUnitsPowK`,
+> `principalUnitsGradedEquiv_L`, `principalUnitsGradedEquiv_K`). `lake build Langlands`: clean, 8688
+> jobs. `grep -rn sorry langlands/Langlands/` unchanged (the one prose-only hit in
+> `TotallyRamifiedEisenstein.lean:19`). One real snag worth recording for future passes: Lean
+> silently drops a `variable`-block parameter from a `def`'s *actual* signature if the `def`'s body
+> never mentions it, even though the parameter was declared explicitly (not autobound) — e.g.
+> `principalUnitsPowL`, defined under `variable (K L) (v) (w)` but whose body only uses `L` and
+> `w`, ends up with signature `(L) (w) (i)`, silently omitting `K` and `v`. Calling it as
+> `principalUnitsPowL K L v w i` then fails with a confusing "argument has type `Type u_4` but
+> expected `HeightOneSpectrum`" error at the *second* argument (not the first, since `K` and `L`
+> are both `Type*` and unify positionally). Diagnosed via `#check @principalUnitsPowL` in a scratch
+> block to read the real elaborated signature, not by guessing at the call site.
+>
+> **Step 2's formula, derived (not yet formalized in Lean this pass).** Worked the algebra by hand,
+> not assumed, per the task brief's explicit request to derive rather than guess between the two
+> proposed routes. Setting: `L/K` totally ramified of degree `e` (residue fields `κ_L = κ_K =: κ`
+> canonically identified, `ef = [L:K]` with `f = 1`), tame (`e` a unit in `κ`, i.e. `p ∤ e` for `p =
+> char κ`), `π_L`/`π_K` uniformizers, `O_L = O_K[π_L]` monogenic with Eisenstein minimal polynomial
+> (available via `TotallyRamifiedEisenstein.lean`'s
+> `LocalField.adjoin_eq_integralClosure_of_isUniformizer`, in its abstract `ValuativeRel` bundle —
+> not yet threaded through to the adic-completion `HeightOneSpectrum` setting used by step 1, see
+> below).
+>
+> * **The right level to work at is `Algebra.norm K₀`/`Algebra.trace K₀` with `t ∈ K₀` (not `t ∈
+>   L₀`, and not the Galois-averaging route).** `Algebra.exists_norm_one_add_smul_eq`
+>   (`NormTraceLinearization.lean`) needs its scalar `t` in the *base* ring `R = K₀`; taking `t :=
+>   π_K^j` (not `π_L^i`) and `x : L₀` arbitrary gives `N_{L/K}(1 + π_K^j • x) = 1 + π_K^j ·
+>   Tr_{L/K}(x) + π_K^{2j} · c` for every `j ≥ 0`, with **no Galois hypothesis needed at all** —
+>   this is the same lemma the *unramified* file already uses, reused verbatim. The index
+>   correspondence falls out for free: in the totally ramified case `𝔪_K · O_L = 𝔪_L^e` exactly
+>   (the totally-ramified analogue of `IsUnramified`'s `𝔪_K·O_L = 𝔪_L`, not yet formalized as its
+>   own predicate in this repo — see gap list below), so `1 + π_K^j • O_L` is *exactly* the filtration
+>   subgroup `U_{L₀}^{(ej)}` from step 1, at index `ej`, not `j`. **So the index relationship is `i
+>   = e·j`: `N_{L/K}` restricted to `U_L^{(ej)}` lands in `U_K^{(j)}`, not `U_L^{(j)} → U_K^{(j)}`
+>   as one might guess by analogy with the unramified case.**
+> * **The trace formula: `Tr_{L/K}(x) ≡ e · x̄ (mod 𝔪_K)` for every `x ∈ O_L`**, where `x̄ ∈ κ_L =
+>   κ_K` is the residue of `x`. Derived two ways, agreeing:
+>   1. *Via the Eisenstein power basis.* Write `x = Σ_{k=0}^{e-1} c_k π_L^k`, `c_k ∈ O_K` (the
+>      monogenic presentation). `Tr(1) = e` (trivially, trace of `1` in a degree-`e` extension).
+>      For `1 ≤ k ≤ e-1`, `Tr(π_L^k) ∈ 𝔪_K`: the power sums `p_k := Tr(π_L^k)` of the roots of the
+>      Eisenstein `f(X) = X^e + a_{e-1}X^{e-1} + ⋯ + a_0` (`a_i ∈ 𝔪_K`) satisfy Newton's identities
+>      `p_k = -a_{e-1}p_{k-1} - a_{e-2}p_{k-2} - ⋯ - (k)a_{e-k}` (indices `1 ≤ k ≤ e-1`); by
+>      induction every term on the right is a product of some `a_i ∈ 𝔪_K` with an earlier `p_j`
+>      (itself `∈ 𝔪_K` by the inductive hypothesis, or `p_0 = e ∉ 𝔪_K` only appears multiplied by an
+>      `a_i`), so `p_k ∈ 𝔪_K` for every `1 ≤ k ≤ e - 1`. Hence `Tr(x) = Σ c_k Tr(π_L^k) ≡ c_0 · e
+>      (mod 𝔪_K)`, and `c_0 ≡ x̄` since `π_L ≡ 0 (mod 𝔪_L)` kills every `k ≥ 1` term of `x`'s own
+>      reduction. This matches `c_0 · e ≡ e · x̄`.
+>   2. *Via the reduced companion matrix (a cleaner Lean target, avoiding Newton's-identity
+>      induction).* `Algebra.trace K₀ = trace ∘ leftMulMatrix`, and reducing `leftMulMatrix` mod
+>      `𝔪_K` gives the companion matrix of `f̄(X) = X^e` (Eisenstein ⟹ every non-leading coefficient
+>      of `f` is in `𝔪_K`, so they vanish on reduction) — a single nilpotent shift matrix `N` with
+>      `N^e = 0`. `trace(N^0) = trace(I) = e`; `trace(N^k) = 0` for `1 ≤ k ≤ e-1` since `N^k` is
+>      itself an off-diagonal shift matrix (zero diagonal) for `k < e`. Since `Tr(π_L^k) mod 𝔪_K =
+>      trace((leftMulMatrix π_L)^k mod 𝔪_K) = trace(N^k)`, this reproduces the same formula without
+>      Newton's identities — likely the more Lean-tractable route, being pure linear algebra on an
+>      explicit companion matrix rather than an inductive combinatorial identity.
+>   *Sanity checks against the formula*, both confirming and not merely assumed: `x = 1` gives
+>   `Tr(1) = e ≡ e · 1̄`, exact equality (not just mod `𝔪_K`) since `Tr(1) = e` on the nose;
+>   `x = π_L` gives `x̄ = 0` and `Tr(π_L) = -a_{e-1} ∈ 𝔪_K ≡ e · 0`, consistent but non-discriminating.
+> * **The induced map on graded pieces `κ_L = κ_K → κ_K` is therefore exactly multiplication by
+>   `e`**, obtained by combining the two bullets above: `N(1 + π_K^j x) = 1 + π_K^j y` with `y ≡ e ·
+>   x̄ (mod 𝔪_K)` — literally the same shape as `NormTraceLinearization.lean`'s
+>   `exists_norm_one_add_uniformizer_pow_smul_eq_trace_add`, with `Algebra.trace κ[K] κ[L]` (a
+>   residue-field-extension trace, meaningless here since `κ_L = κ_K` are the *same* field) replaced
+>   by "multiplication by `e`" — a genuinely different formula from the unramified case, not a
+>   relabeling of it. **This confirms the task brief's route (a) (direct binomial/trace argument)
+>   over route (b) as stated** — though the derivation above shows route (b)'s suggested tool
+>   (`Algebra.exists_norm_one_add_smul_eq`, the *general* determinant-Taylor lemma with no
+>   unramified hypothesis) is in fact the right proof vehicle; what differs from the unramified case
+>   is not the tool but the *trace computation itself* (multiplication by `e` on `κ`, rather than
+>   `residue_trace_eq_trace_residue_of_isUnramified`'s abstract residue-field trace, since the
+>   `IsUnramified`-specific quotient-ring identification `S ⧸ 𝔪_R·S ≅ ResidueField S` that lemma
+>   relies on does **not** hold here — `𝔪_K · O_L = 𝔪_L^e ≠ 𝔪_L` for `e > 1`, so `O_L ⧸ 𝔪_K·O_L ≅
+>   κ[T]/(T^e)` (a length-`e` Artinian local ring, matching the reduced-companion-matrix picture
+>   above) rather than the residue field itself). Tameness (`e` a unit in `κ`) enters exactly here:
+>   it is what makes "multiplication by `e`" invertible on `κ`, the graded-piece surjectivity step
+>   3 needs.
+>
+> **Not attempted this pass, precisely what remains.**
+> 1. **No `IsTotallyRamified` predicate exists in this repo's adic-completion vocabulary**,
+>    analogous to `Langlands.UnramifiedValuationExtension.IsUnramified` (`𝔪_K·O_L = 𝔪_L`, the `e=1`
+>    case) but for general `e`: `𝔪_K · O_L = 𝔪_L ^ e` where `e := v.asIdeal.ramificationIdx'
+>    w.asIdeal` (`NormMap.lean` already computes and uses this `e` for
+>    `adicCompletionIntegers_comap_eq`, but never packages the ideal-power identity as a named
+>    predicate). This would need to be defined and, more importantly, proved equivalent to "`κ_L =
+>    κ_K` and `[L:K] = e`" (or however "totally ramified" is best characterized at this level) —
+>    not attempted, checked only that the raw ingredient (`e`) is already computed elsewhere.
+> 2. **The tame hypothesis has no formalization at the adic-completion level either.** The task
+>    brief's proposed `IsUnit (e : ResidueField K₀)` (via the algebra map `ℕ → K₀ →
+>    ResidueField K₀`) looks like the right shape given the derivation above (it is literally the
+>    invertibility condition the "multiplication by `e`" map needs), but was not written down as
+>    Lean code or checked against alternate phrasings this pass.
+> 3. **The Eisenstein monogenicity `O_L = O_K[π_L]` this derivation leans on
+>    (`TotallyRamifiedEisenstein.lean`'s `adjoin_eq_integralClosure_of_isUniformizer`) lives in an
+>    abstract `ValuativeRel`/`spectralNorm` bundle, not in the `HeightOneSpectrum` adic-completion
+>    setting `PrincipalUnitsFiltrationAdicCompletion.lean` (this pass's step 1) is built on.**
+>    `TowerBundle.lean` has machinery (`henselianLocalRing_of_comap_eq` and neighbors) for
+>    connecting a `ValuationSubring` in the concrete setting to that abstract bundle — the same
+>    connective tissue `RamificationFiltrationAdicCompletion.lean` already uses for its own
+>    Henselian-lifting argument — but threading it through to get `w.adicCompletionIntegers L =
+>    (v.adicCompletionIntegers K)[π_L]` concretely was not attempted.
+> 4. **None of the trace-formula derivation above (Newton's identities or the reduced companion
+>    matrix) has been written as Lean code.** This is a real, self-contained piece of linear
+>    algebra/commutative algebra (probably closer in size to `NormTraceLinearization.lean` itself
+>    than to a one-line corollary) — a plausible unit of work for a dedicated pass, not attempted
+>    here beyond the by-hand derivation above.
+> 5. **Steps 3 (the tame-invertibility argument turning the graded map into a section) and 4 (the
+>    Cauchy-sequence assembly mirroring `UnramifiedNormSurjective.lean`, adapted for the `e`-index
+>    shift) are entirely unattempted**, blocked on 1–4 above.
+>
+> **Tame-case unit-norm surjectivity `N_{L/K}(U_L) ⊇ U_K` is NOT closed.** This pass's contribution
+> is (a) the adic-completion instantiation of the filtration (step 1, fully closed, sorry-free) and
+> (b) a hand-derived, cross-checked formula for step 2's induced map (multiplication by `e`, at
+> index correspondence `i_L = e · i_K`) — genuinely new mathematical content for this thread, but
+> not yet Lean code. The gap list above is the precise scope for whoever continues this.
+
 - **Why this exists.** Phase 2a closed the "easy half" of local CFT (unramified norm-group
   surjectivity) in full, across ten passes. This section applies the same before-you-build
   discipline to Phase 2's actual hard content — the ramified case and the reciprocity map itself —
