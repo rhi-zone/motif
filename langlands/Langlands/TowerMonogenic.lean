@@ -138,6 +138,28 @@ theorem pow_natDegree_minpoly_mem_map {A S : Type*} [CommRing A] [IsLocalRing A]
   hEis.isWeaklyEisensteinAt.pow_natDegree_le_of_aeval_zero_of_monic_mem_map
     (minpoly.aeval A π) (minpoly.monic hint) _ (Polynomial.natDegree_map_le)
 
+/-- **Serre's tower theorem, in Eisenstein form.** For a tower `R ⊆ OM ⊆ ON` of local rings with
+`ON` finite over `R`, `OM / R` unramified with separable residue extension, and `ON = OM[π]` for a
+`π` whose minimal polynomial over `OM` is Eisenstein at `𝔪_OM` (i.e. `ON / OM` totally ramified),
+`ON` is monogenic over `R`.
+
+This is `exists_adjoin_eq_top_of_tower` with its two upper-step hypotheses replaced by the single
+statement an Eisenstein extension supplies; `Langlands.TotallyRamifiedEisenstein`'s
+`isEisensteinAt_minpoly_of_isUniformizer` and
+`adjoin_eq_integralClosure_of_isUniformizer` produce exactly `hEis` and `hgen`, modulo the
+`Algebra.adjoin`-of-a-subalgebra-versus-`⊤`-of-its-type step
+(`adjoin_singleton_eq_top_of_adjoin_eq`). -/
+theorem exists_adjoin_eq_top_of_tower_of_isEisensteinAt
+    [IsLocalHom (algebraMap R OM)] [Module.Finite R OM] [Module.Finite R ON]
+    [Algebra.IsSeparable (ResidueField R) (ResidueField OM)]
+    (hunram : Ideal.map (algebraMap R OM) (maximalIdeal R) = maximalIdeal OM)
+    {π : ON} (hint : IsIntegral OM π)
+    (hEis : (minpoly OM π).IsEisensteinAt (maximalIdeal OM))
+    (hgen : Algebra.adjoin OM ({π} : Set ON) = ⊤) :
+    ∃ γ : ON, Algebra.adjoin R ({γ} : Set ON) = ⊤ :=
+  exists_adjoin_eq_top_of_tower hunram (pow_natDegree_minpoly_mem_map hint hEis)
+    (exists_add_mul_of_adjoin_eq_top hgen)
+
 /-- **Passing a monogenicity statement from a subalgebra to its coercion to a type.** If
 `Algebra.adjoin A {x} = S` as subalgebras of `B`, then `⟨x, _⟩` generates the whole of `↥S`. -/
 theorem adjoin_singleton_eq_top_of_adjoin_eq {A B : Type*} [CommRing A] [CommRing B] [Algebra A B]
