@@ -2547,6 +2547,77 @@ step, which is a distinct classical argument, not a leftover of the instance plu
   two new modules); `grep -rn sorry langlands/Langlands/` matches only prose occurrences in
   `RamificationFiltration.lean:89` and `TotallyRamifiedEisenstein.lean:19`, no `sorry` term.
 
+#### Status 2026-08-06 (twenty-third pass) — "two generators into one" reconstructed and diagnosed as
+needing genuine new different/discriminant infrastructure, not attempted in code; no `sorry`, no
+files changed, no commit (documentation-only pass).
+
+- **Mathlib re-check for a generic tower-monogenicity lemma: still negative, and now for a second,
+  independent reason.** Beyond the twenty-second pass's finding (`Algebra.adjoin_union_eq_adjoin_adjoin`,
+  `IntermediateField.adjoin_adjoin_left`, `Field.exists_primitive_element` all insufficient), loogle
+  for `PowerBasis.map` and `Algebra.IsIntegral`/`IsIntegrallyClosed`/adjoin combinations returns
+  nothing that composes two ring-of-integers generators into one. There is no shortcut; the classical
+  argument has to be reconstructed and formalized.
+- **Reconstructed Serre's actual argument (*Local Fields* III §6, no physical copy available — derived
+  from the structure of the two already-proved halves, not recalled verbatim).** The candidate
+  generator is `a := x + π` (`x` the lift of the residue-field generator from
+  `UnramifiedExtension.lean:715`, `π` the uniformizer from `TowerBundle.lean`'s totally-ramified half).
+  Showing `𝒪_K[a] = 𝒪_N` by the same method already used for each half separately (Eisenstein/
+  discriminant-unit-power induction, `TotallyRamifiedEisenstein.lean`'s
+  `Algebra.discr_mul_isIntegral_mem_adjoin` route) requires two things neither half needed on its own:
+  1. `(minpoly K a).natDegree = [N:K] = ef` — i.e. `a` is a primitive element for the *whole* tower,
+     not just one step. This should follow from `x` and `π` generating independent data (residue class
+     vs. valuation), but the argument was not carried out.
+  2. A valuation bound on `Algebra.discr K B.basis` for the resulting power basis `B` with `B.gen = a`,
+     tight enough to run the same `discr • z ∈ adjoin` induction that closed each half individually.
+     This is the genuinely new content: computing (or bounding) the discriminant of the *composite*
+     generator needs the relationship between `disc(𝒪_N/𝒪_K)` and the two pieces `disc(𝒪_M/𝒪_K)`,
+     `disc(𝒪_N/𝒪_M)`, which is not automatic from the two separate monogenicity results alone — those
+     say `𝒪_M = 𝒪_K[x]` and `𝒪_N = 𝒪_M[π]` but not how `disc_K(x + π)` relates to `disc_K(x)` and
+     `disc_M(π)`.
+- **A concrete Mathlib lever for item 2, found but not wired up:** `differentIdeal_eq_differentIdeal_mul_differentIdeal`
+  (`Mathlib/RingTheory/DedekindDomain/Different.lean`) — transitivity of the different ideal in a
+  tower `A ⊆ B ⊆ C`: `differentIdeal A C = differentIdeal B C * (differentIdeal A B).map (algebraMap B C)`.
+  Combined with the standard different–discriminant relation (`coeIdeal_differentIdeal`, this file, via
+  `FractionalIdeal.dual`) this is the right general tool to get from the two known local discriminants
+  to a bound on the composite one — but translating between this repo's `ValuativeRel`/`spectralNorm`/
+  `Algebra.discr`-as-a-field-element formalism (used throughout `TotallyRamifiedEisenstein.lean` and
+  `UnramifiedExtension.lean`) and the ideal-valued `differentIdeal`/`FractionalIdeal` formalism this
+  lemma lives in is itself nontrivial plumbing that was not attempted. Not yet checked: whether the
+  `IsDedekindDomain`/`IsIntegralClosure` typeclass demands of `differentIdeal_eq_differentIdeal_mul_differentIdeal`
+  are even satisfiable by `𝒪_K, 𝒪_M, 𝒪_N` as they currently appear in this repo's bundle (piece 1's
+  `integralClosure R M` and piece 2's `↥A` for a `ValuationSubring A`, see next point).
+- **A second, independent obstruction (task item "verify the bridge"), also not attempted:** piece 1
+  (`UnramifiedExtension.lean:715`) produces `𝒪_M := integralClosure R M` as a plain subring; piece 2
+  (`TowerBundle.lean`) needs `𝒪_M` in the form `↥(ValuativeRel.valuation M).valuationSubring` for a
+  `ValuationSubring A` of `M` lying over `𝒪[K]`, which by `LocalField.valuationSubring_valuation_ofValuation_eq`
+  equals `↥A` itself — a different type from `integralClosure R M` a priori. These almost certainly
+  coincide as subrings of `M` (standard fact: the integral closure of a complete DVR's ring of integers
+  in a finite extension is the valuation ring of the unique extended valuation), and this repo already
+  has the relevant uniqueness-of-extension lemma (`LocalField.valuationSubring_eq_of_comap_eq`,
+  `Langlands.HenselianValuation`, used for exactly this purpose in
+  `RamificationFiltrationAdicCompletion.lean`'s `decompositionSubgroup_eq_top`) — but no lemma
+  currently states `integralClosure R M = ↥A` outright, and constructing the bridge (showing `A` can be
+  *taken* to be `A.valuation.valuationSubring` on the subring `integralClosure R M`, i.e. exhibiting a
+  `ValuationSubring` structure on that specific subring with a `RankOne` instance satisfying `hA`) was
+  not attempted this pass.
+- **Assessment, not a guess:** this is not a small remaining lemma. Closing it needs, at minimum, (a)
+  the primitive-element-degree argument for `a := x + π`, (b) the discriminant-tower bound via
+  `differentIdeal_eq_differentIdeal_mul_differentIdeal` (or an equivalent direct valuation computation
+  bypassing ideals entirely, not investigated), translated into this repo's norm/`ValuativeRel`
+  formalism, and (c) the `integralClosure`-vs-`ValuationSubring` bridge above. Each is independently
+  nontrivial; none was started in code this pass, per the task's explicit instruction not to force a
+  weaker or circular statement. **It remains open whether `a := x + π` suffices unconditionally or
+  needs a scalar `a := x + c·π`** (flagged by the task as a possible residue-field-size pigeonhole
+  issue) — this was not resolved either way; resolving it requires actually carrying out the
+  degree-of-primitive-element argument in (a), which was not attempted.
+- **No files changed, no `sorry` added.** `grep -rn sorry langlands/Langlands/` unchanged from the
+  twenty-second pass (prose only, in `RamificationFiltration.lean:89` and
+  `TotallyRamifiedEisenstein.lean:19`); `lake build Langlands` unchanged at 8678 jobs, clean.
+- **Next step for whoever picks this up:** start with (a), the degree argument for `a := x + π` — it
+  is the cheapest of the three to falsify or confirm, and its answer (does plain `x + π` work, or is a
+  scalar needed) determines the shape of everything downstream. Only after (a) is settled does the
+  discriminant-bound work in (b) have a fixed target to compute.
+
 ### Phase 2.5 — Satake isomorphism for unramified `GL_n` (new milestone, review addition)
 - **Build:** the unramified Hecke algebra `H(GL_n(K_v), GL_n(𝒪_v))` (the
   double-coset convolution algebra of `GL_n(K_v)` relative to the maximal
