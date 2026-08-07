@@ -2761,6 +2761,87 @@ that avoids stalling on (a).
 > clean. `grep -rn sorry langlands/Langlands/NonarchimedeanExponential.lean`: no hits. `#print axioms`
 > on the three main theorems (scratch `lake env lean`): only `propext, Classical.choice, Quot.sound`.
 
+> **Update (2026-08-07, fourth pass same day) — the logarithm's convergence is CLOSED, sorry-free;
+> the exp/log threshold is translated into filtration-level language for an abstract
+> `ValuationSubring`; the mutual-inverse relationship and the concrete `HeightOneSpectrum`
+> instantiation remain genuinely open, with the reasons pinned down precisely.** Continuing directly
+> from the previous update's "What remains" list (four items: log's convergence, the exp/log
+> isomorphism, the filtration-level translation, norm/trace compatibility). Two of the four items
+> now have real progress; norm/trace compatibility (the actual payoff) was not attempted this pass,
+> per the task's own priority ordering (it was scoped as the piece least likely to land this
+> session).
+>
+> 1. **The logarithm, convergence-only, CLOSED** (`Langlands/NonarchimedeanExponential.lean`, commit
+>    `1a35589`). `NonarchimedeanExponential.log`: the series `Σ_{n≥1} (-1)^{n+1} x^n/n`
+>    (`∑ k ∈ range n, (-1)^k * x^(k+1) / (k+1 : K)` in this file's `k = n-1` indexing), built by
+>    literally the same route as `exp` — geometric per-term bound → `cauchySeq_of_le_geometric` →
+>    `cauchySeq_tendsto_of_complete` (`[CompleteSpace K]`). New generic lemma `norm_natCast_eq`
+>    generalizes `norm_factorial_eq` from `n!` to any nonzero `n` (same proof: split off the
+>    `p`-coprime part via `Nat.pow_padicValNat_mul_divMaxPow`/`Nat.not_dvd_divMaxPow`, apply
+>    `norm_natCast_eq_one_of_not_dvd`). **The convergence threshold used, `logConvergenceRadius K p
+>    := ‖p‖`, is deliberately more conservative than the classical sharp radius `‖x‖ < 1`**: reaching
+>    the sharp radius needs a genuinely different polynomial-vs-geometric comparison argument, because
+>    `padicValNat p n` (the exponent controlling `‖n‖`) grows only like `log_p n`, not linearly in `n`
+>    the way `padicValNat p n!` does — so the crude bound actually used here, `padicValNat p n < n`
+>    (`padicValNat_lt_self_of_ne_zero`, via `Nat.lt_pow_self`/`Nat.le_of_dvd`/`pow_padicValNat_dvd`),
+>    only buys the much narrower radius `‖p‖`. This is honestly narrower than the classical statement
+>    but is a genuine, fully rigorous convergence proof at that narrower radius, in the same
+>    `cauchySeq_of_le_geometric` style as `exp` (task brief explicitly permits "the same or an
+>    adjusted convergence threshold"). Since `‖p‖ ≤ ‖p‖^(1/(p-1))` for `p ≥ 2`, `log`'s domain sits
+>    inside `exp`'s, so the two share a common domain — the prerequisite for the (unproved) inverse
+>    relationship to even be statable.
+> 2. **The mutual-inverse relationship (`exp (log (1+x)) = 1+x` etc.), genuinely attempted and NOT
+>    landed.** Checked Mathlib's `Mathlib.RingTheory.PowerSeries.Exp`/`.Log` (formal power series
+>    `PowerSeries.exp`/`PowerSeries.log` over any `Algebra ℚ A`, available here since `CharZero K`
+>    gives `K` a canonical `ℚ`-algebra structure) for a ready-made formal `exp_log`/`log_exp` identity
+>    to transport to the convergent case: as vendored in this repo's `.lake/packages/mathlib`,
+>    `Log.lean` has only `order_log`/`deriv_log`/`constantCoeff_log` — no mutual-inverse identity at
+>    all. So there is no formal statement to transport, and the formal-to-convergent bridging argument
+>    (matching coefficient indexing, justifying that termwise convergence commutes with formal
+>    substitution) would be substantial even if one existed. Left genuinely unattempted, not `sorry`'d;
+>    documented in the module docstring's "What remains" list with this exact finding.
+> 3. **The threshold-to-filtration translation, PARTIALLY closed, at the abstract level**
+>    (`Langlands/NonarchimedeanExponentialFiltration.lean`, new file, commit `4660897`). For an
+>    abstract `ValuationSubring A` of a `NormedField K` whose membership matches the norm's closed
+>    unit ball (hypothesis `hA : ∀ x, x ∈ A ↔ ‖x‖ ≤ 1`) and a uniformizer `π`:
+>    `norm_le_pow_of_mem_maximalIdeal_pow` shows `x ∈ 𝔪_A^i → ‖x‖ ≤ ‖π‖^i` (via `𝔪_A^i = span{π^i}`,
+>    `Ideal.span_singleton_pow`/`Ideal.mem_span_singleton`), and
+>    `exists_forall_mem_maximalIdeal_pow_norm_lt_(log)ConvergenceRadius` combines this with
+>    `exists_pow_lt_of_lt_one` (`‖π‖ < 1` gives `‖π‖^i → 0`) to produce an explicit threshold `i₀`
+>    above which all of `𝔪_A^i` lies inside `exp`'s (resp. `log`'s) convergence domain. **This is
+>    genuinely short of the task's target in two ways, both documented precisely in the new file's
+>    docstring:** (a) it shows `exp`/`log` are *defined* on `𝔪_A^i` for `i ≥ i₀`, not that `exp` lands
+>    in the principal-units subgroup `U_A^{(i)}` — that needs a new tail estimate
+>    (`‖exp x - 1 - x‖ ≤` something small, via the nonarchimedean triangle inequality on the already-
+>    built geometric term bounds, passed through the limit) that was not attempted; (b) it is stated
+>    for an *abstract* `ValuationSubring`, not the concrete `w.adicCompletionIntegers L` setting the
+>    task asked for — that concrete instantiation needs `CharZero (w.adicCompletion L)` and a
+>    residue-characteristic-`p` instance for `IsLocalRing.ResidueField (w.adicCompletionIntegers L)`,
+>    and **neither exists anywhere in this repo**: `IsTotallyRamified`/`IsTamelyRamified` still have
+>    no nontrivial instances (flagged since the fortieth pass, confirmed still true this pass), and
+>    the one concrete field example in this repo (`Langlands.TotallyRamifiedConcreteExample`) is
+>    deliberately *equal*-characteristic (`CharP K p`), the opposite of what `exp`/`log` require.
+>    Building a genuine mixed-characteristic concrete instance is itself substantial, unattempted, and
+>    is now the single largest concrete blocker on this whole thread.
+> 4. **Norm/trace compatibility**: not attempted this pass, per the task's own priority ordering.
+>
+> `nix develop -c lake build Langlands.NonarchimedeanExponential`,
+> `Langlands.NonarchimedeanExponentialFiltration`, and `lake build Langlands`: all clean (only
+> pre-existing `unusedSectionVars` linter warnings elsewhere in the repo, unrelated to this pass).
+> `grep -rn sorry langlands/Langlands/`: unchanged, still only the single prose-only hit at
+> `TotallyRamifiedEisenstein.lean:19`. `#print axioms` on the new theorems (scratch `lake env lean`):
+> only `propext, Classical.choice, Quot.sound`.
+>
+> **Net effect on the wild-case picture.** Of the four pieces the classical fix needs (convergence,
+> log/inverse, filtration-level translation, norm-compatibility), convergence is now fully closed for
+> both `exp` and `log`; the filtration-level translation is closed at the abstract-`ValuationSubring`,
+> domain-only level; the mutual-inverse relationship and the concrete instantiation are the two
+> hardest remaining blockers, and — newly clear after this pass — the concrete-instantiation blocker
+> (a mixed-characteristic `HeightOneSpectrum` example with known residue characteristic) is now
+> plausibly the *actual* bottleneck for this entire thread, more fundamental than any single lemma:
+> without it, no result phrased over `w.adicCompletionIntegers L` can ever be applied to anything.
+> Norm/trace compatibility, the actual wild-case payoff, remains entirely unattempted.
+
 - **Why this exists.** Phase 2a closed the "easy half" of local CFT (unramified norm-group
   surjectivity) in full, across ten passes. This section applies the same before-you-build
   discipline to Phase 2's actual hard content — the ramified case and the reciprocity map itself —
