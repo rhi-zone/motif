@@ -12,6 +12,7 @@ import Langlands.MonogenicMaximalOrder
 import Langlands.NonarchimedeanCauchyProduct
 import Langlands.NonarchimedeanExpLogDegreeMatch
 import Langlands.NonarchimedeanExponential
+import Langlands.NonarchimedeanExponentialAdd
 import Langlands.NonarchimedeanExponentialFiltration
 import Langlands.NonarchimedeanExponentialHasSum
 import Langlands.NonarchimedeanExponentialUnitsFiltration
