@@ -13,7 +13,6 @@ import Langlands.ProfiniteGrpUlift
 import Langlands.RamificationFiltration
 import Langlands.RamificationFiltrationAdicCompletion
 import Langlands.ResidueField
-import Langlands.TotallyRamifiedConcreteExample
 import Langlands.TotallyRamifiedEisenstein
 import Langlands.TotallyRamifiedNormIndex
 import Langlands.TotallyRamifiedNormRange
