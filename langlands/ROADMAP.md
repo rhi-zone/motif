@@ -2515,6 +2515,100 @@ that avoids stalling on (a).
 >    is still explicitly out of scope, and `IsTotallyRamified`/`IsTamelyRamified` still have no
 >    nontrivial instances.
 
+> **Update (2026-08-07, forty-third pass) — the level-`0` image, the classical norm-group
+> description, and the index formula all close, at the `K₀ˣ` level.** New file
+> `TotallyRamifiedNormResidueImage.lean`, three commits (`914e66c`, `39391b3`, plus this
+> documentation commit). All three of the forty-second pass's flagged gaps close, but at the level
+> of `K₀ˣ`/`(ResidueField K₀)ˣ` directly — **not** pushed forward into the
+> `(v.adicCompletion K)ˣ` / `localNormMap` picture that `TotallyRamifiedNormRange.lean`'s exact-range
+> theorem uses. See "What is still open" below for exactly what that gap costs.
+>
+> **1. Level-`0` surjectivity closes, unconditionally on tameness.**
+> `residueNormUnits : (w.adicCompletionIntegers L)ˣ →* (ResidueField K₀)ˣ` is `x ↦ residue
+> (Algebra.norm K₀ x)`. `range_residueNormUnits_eq_of_isTotallyRamified` proves, under
+> `IsTotallyRamified` alone:
+> ```
+> MonoidHom.range (residueNormUnits K L v w) =
+>   MonoidHom.range (powMonoidHom e : (ResidueField K₀)ˣ →* (ResidueField K₀)ˣ)
+> ```
+> The `⊆` half re-derives what `TotallyRamifiedNormResidue`'s
+> `residue_norm_eq_residue_pow_ramificationIdx_of_isTotallyRamified` already gave, packaged as a
+> subgroup inclusion (using that a unit's norm is a unit, hence has nonzero residue, forcing the
+> `IsTotallyRamified` representative `r` to itself have nonzero — i.e. unit — residue). The `⊇` half
+> is the new content, and closes exactly as the task brief's analysis anticipated: for `s : κˣ`,
+> `Langlands.UnitGroupModPrincipalUnitsSurjective`'s `surjective_units_map_residue` (applied to `K₀`,
+> not `L₀`) lifts `s` to some `r₀ : K₀ˣ`, and `x := algebraMap K₀ L₀ r₀` is a unit of `L₀` with
+> `x - algebraMap r₀ = 0 ∈ 𝔪_L` trivially, so
+> `residue_norm_eq_residue_pow_ramificationIdx_of_isTotallyRamified` applies directly. No
+> `IsTamelyRamified`, and no `𝓀[L] = 𝓀[K]` isomorphism, needed — confirming the brief's shortcut.
+>
+> **2. The classical description closes as an exact equality, under `IsTotallyRamified` +
+> `IsTamelyRamified`, at the `K₀ˣ` level.** `normUnitsK₀ : L₀ˣ →* K₀ˣ` is `Units.map (Algebra.norm
+> K₀)` — `N_{L/K}(U_L)` literally, before any residue reduction. `normUnitsK₀_range_eq_of_isTotallyRamified`:
+> ```
+> MonoidHom.range (normUnitsK₀ K L v w) =
+>   Subgroup.comap (Units.map (residue K₀).toMonoidHom) (MonoidHom.range (powMonoidHom e))
+> ```
+> i.e. `N_{L/K}(U_L) = {u ∈ K₀ˣ : residue u ∈ (κˣ)^e}`, an equality of subgroups of `K₀ˣ`, not two
+> separate inclusions. The proof does **not** follow the task brief's sketched route (lifting a
+> target unit `u` by dividing out `N(algebraMap r)` and invoking tame `U_K^{(1)}`-surjectivity by
+> hand) — a cleaner argument via pure subgroup algebra was found instead: writing `φ := Units.map
+> (residue K₀).toMonoidHom` and `N_L := range normUnitsK₀`, `residueNormUnits = φ.comp normUnitsK₀`
+> gives `N_L.map φ = range (powMonoidHom e)` (`MonoidHom.range_comp` plus part 1 above). Separately,
+> `ker φ ≤ N_L`: `ker φ` is exactly the principal units, and
+> `TotallyRamifiedNormSurjective.exists_isUnit_norm_eq_of_isTotallyRamified` — the *only* place
+> `IsTamelyRamified` enters this theorem — makes every principal unit a norm. Mathlib's
+> `Subgroup.comap_map_eq_self (h : f.ker ≤ H) : comap f (map f H) = H` then gives `comap φ (range
+> (powMonoidHom e)) = N_L` directly, with no need to construct an explicit preimage witness by hand.
+> The task brief's sketch was correct in substance (tameness enters only via `U_K^{(1)}`
+> surjectivity) but the group-theoretic packaging made the explicit-witness construction
+> unnecessary.
+>
+> **3. The index formula closes, at the `K₀ˣ` level.**
+> `index_normUnitsK₀_range_eq_of_isTotallyRamified`:
+> ```
+> (MonoidHom.range (normUnitsK₀ K L v w)).index =
+>   Nat.gcd e (Nat.card (ResidueField K₀)ˣ)
+> ```
+> i.e. `[K₀ˣ : N_{L/K}(U_L)] = gcd(e, #κ[K]ˣ)`. Proof: `Subgroup.index_comap_of_surjective`
+> (`φ` surjective, `surjective_units_map_residue`) turns `N_L.index` (via part 2's equality,
+> `N_L = comap φ (range (powMonoidHom e))`) into `(range (powMonoidHom e)).index`, and
+> `IsCyclic.index_powMonoidHom_range` (Mathlib, `GroupTheory.SpecificGroups.Cyclic`) computes that as
+> `gcd(e, Nat.card κˣ)` — using the generic instance `[Finite Rˣ] : IsCyclic Rˣ`
+> (`Mathlib.RingTheory.IntegralDomain`, valid since `ResidueField K₀` is a field) together with
+> `finite_residueField_base` (new; `𝓀[K]` is finite because it injects into the already-finite
+> `𝓀[L]`, the same argument `PrincipalUnitsCauchySequence.lean` already used) and `Finite.of_injective
+> Units.val Units.val_injective` for `Finite (ResidueField K₀)ˣ`. This is exactly the classical
+> finite-cyclic-group computation the forty-second pass's module docstring flagged as "not
+> formalized in Lean anywhere in this repo" — now formalized, with no hand computation left in prose.
+>
+> **What is still open: closing the gap to the full `(v.adicCompletion K)ˣ` / `K^×` picture.** All
+> three results above are stated for `K₀ˣ` (equivalently `(v.adicCompletionIntegers K)ˣ`) and
+> `L₀ˣ`, using the ring norm `Algebra.norm K₀ : L₀ → K₀` directly — **not** for
+> `(v.adicCompletion K)ˣ` using `localNormMap` and `(w.adicCompletionIntegers L).units.map
+> (localNormMap K L v w)`, the objects `TotallyRamifiedNormRange.lean`'s exact-range theorem
+> `localNormMap_range_eq_of_isTotallyRamified` is phrased in terms of. Bridging the two would need
+> `NormMapResidueCompatibility.lean`'s `algebraMap_norm_eq_norm_algebraMap` (already available,
+> already used to connect the two norm levels elsewhere in this repo) to show the image of `N_L`
+> under `Units.map (algebraMap K₀ (v.adicCompletion K))` coincides with `(w.adicCompletionIntegers
+> L).units.map (localNormMap K L v w)` as subgroups of `(v.adicCompletion K)ˣ`, then transporting
+> both the classical description and the index formula across that identification (the latter
+> trivially, via `algebraMap K₀ (v.adicCompletion K)` being injective, hence an order isomorphism
+> onto its image). This bridging step is **not attempted this pass** — the task brief that opened it
+> explicitly sanctioned stopping at the `K₀ˣ`-level statements as an acceptable outcome rather than
+> forcing the full ambient-field picture, and this pass takes that option. Combining the index
+> formula here with `localNormMap_range_eq_of_isTotallyRamified`'s `⟨N(π_L)⟩ ⊔ N_{L/K}(U_L)`
+> decomposition to get the full `[K^× : N_{L/K}(L^×)]` (as opposed to `[U_K : N_{L/K}(U_L)]`) is a
+> further, separate step (relating the infinite-index cyclic-subgroup part to the finite-index
+> unit-group part) not attempted here either.
+>
+> `nix develop -c lake build Langlands`: clean, 8705 jobs (three new declarations plus their
+> supporting lemmas, one new file). `grep -rn sorry langlands/Langlands/` unchanged: the single
+> prose-only hit at `TotallyRamifiedEisenstein.lean:19`. `#print axioms` (scratch `lake env lean`) on
+> all three headline theorems (`range_residueNormUnits_eq_of_isTotallyRamified`,
+> `normUnitsK₀_range_eq_of_isTotallyRamified`, `index_normUnitsK₀_range_eq_of_isTotallyRamified`):
+> only `propext, Classical.choice, Quot.sound`.
+
 - **Why this exists.** Phase 2a closed the "easy half" of local CFT (unramified norm-group
   surjectivity) in full, across ten passes. This section applies the same before-you-build
   discipline to Phase 2's actual hard content — the ramified case and the reciprocity map itself —
