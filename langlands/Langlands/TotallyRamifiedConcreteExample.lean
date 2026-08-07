@@ -296,6 +296,46 @@ instance : w.asIdeal.LiesOver v.asIdeal := by
   rw [← Ideal.map_le_iff_le_comap, algebraMap_R_S_eq, map_v_eq]
   exact Ideal.pow_le_self e_pos.ne'
 
+/-! ### `Algebra.IsSeparable K L`
+
+`T ^ e - C x` (the integral witness for `yL`, `isIntegral_yL`) is separable over `K`: `CharP K p`
+transports from `CharP k p` through `R = k[X]` (`Polynomial.charP`) and `K = Frac(R)`
+(`IsFractionRing.charP`), giving `(e : K) ≠ 0` since `p ∤ e` (`coprime_e_p`); `x ≠ 0` since
+`algebraMap R K` is injective and `X ≠ 0`. `Polynomial.separable_X_pow_sub_C` then applies.
+Since `minpoly K yL` divides this separable polynomial (`minpoly.dvd`, using the same witness),
+it is itself separable (`Polynomial.Separable.of_dvd`), i.e. `IsSeparable K yL`. As `K⟮yL⟯ = ⊤`
+(`adjoin_yL_eq_top`), `IntermediateField.isSeparable_adjoin_simple_iff_isSeparable` upgrades this to
+`Algebra.IsSeparable K ↥(⊤ : IntermediateField K L)`, transported to `Algebra.IsSeparable K L` across
+`IntermediateField.topEquiv` (`AlgEquiv.Algebra.isSeparable`). -/
+
+instance charP_K : CharP K p :=
+  haveI : CharP R p := Polynomial.charP
+  IsFractionRing.charP R p
+
+theorem e_cast_ne_zero : ((e : ℕ) : K) ≠ 0 := by
+  rw [Ne, CharP.cast_eq_zero_iff K p]
+  exact (Nat.Prime.coprime_iff_not_dvd (Fact.out)).mp coprime_e_p.symm
+
+theorem x_ne_zero : algebraMap R K (Polynomial.X : R) ≠ 0 :=
+  fun h => Polynomial.X_ne_zero
+    (IsFractionRing.injective R K (h.trans (map_zero (algebraMap R K)).symm))
+
+theorem separable_X_pow_sub_C_x :
+    (Polynomial.X ^ e - Polynomial.C (algebraMap R K (Polynomial.X : R)) : Polynomial K).Separable :=
+  Polynomial.separable_X_pow_sub_C _ e_cast_ne_zero x_ne_zero
+
+theorem isSeparable_yL : IsSeparable K yL := by
+  have haeval : Polynomial.aeval yL
+      (Polynomial.X ^ e - Polynomial.C (algebraMap R K (Polynomial.X : R)) : Polynomial K) = 0 := by
+    rw [Polynomial.aeval_sub, Polynomial.aeval_X_pow, Polynomial.aeval_C, yL_pow_eq, sub_self]
+  exact separable_X_pow_sub_C_x.of_dvd (minpoly.dvd K yL haeval)
+
+instance : Algebra.IsSeparable K L := by
+  haveI htop : Algebra.IsSeparable K ↥(⊤ : IntermediateField K L) :=
+    adjoin_yL_eq_top ▸
+      (IntermediateField.isSeparable_adjoin_simple_iff_isSeparable K L).mpr isSeparable_yL
+  exact AlgEquiv.Algebra.isSeparable (IntermediateField.topEquiv (F := K) (E := L))
+
 /- **Sanity check**: `IsTotallyRamified K L v w` now typechecks against this concrete instance —
 every ambient hypothesis in its `variable` block (`Module.Finite K L`, `Algebra.IsIntegral R S`,
 `Module.IsTorsionFree R S`, `IsScalarTower R K L`, etc.) is satisfied. This is a regression check,
