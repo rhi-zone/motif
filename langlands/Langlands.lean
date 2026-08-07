@@ -1,3 +1,4 @@
+import Langlands.AdicCompletionIntegersResidue
 import Langlands.Basic
 import Langlands.CyclicGaloisSubfields
 import Langlands.CyclicSubgroups
