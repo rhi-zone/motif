@@ -127,6 +127,111 @@ theorem range_residueNormUnits_eq_of_isTotallyRamified (h : IsTotallyRamified K 
     have hcast := congrArg Units.val hr0
     simpa [Units.coe_map] using hcast
 
+/-! ### The classical norm-group description and the index formula, at the `K₀ˣ` level -/
+
+section ClassicalDescription
+
+variable [Finite (ResidueField (w.adicCompletionIntegers L))]
+
+omit [Algebra.IsIntegral R S] in
+/-- **`N_{L/K}(U_L)`, literally, at the `K₀ˣ` level.** The ring norm `Algebra.norm K₀ : L₀ → K₀`
+as a map on unit groups — the same construction `residueNormUnits` composes with `residue`, kept
+separate here because the classical description below targets its range directly, before any
+residue-field reduction. -/
+def normUnitsK₀ : (w.adicCompletionIntegers L)ˣ →* (v.adicCompletionIntegers K)ˣ :=
+  Units.map (Algebra.norm (v.adicCompletionIntegers K))
+
+omit [Algebra.IsIntegral R S] [Finite (ResidueField (w.adicCompletionIntegers L))] in
+/-- **The classical norm-group description, at the `K₀ˣ` level.** Under `IsTotallyRamified` and
+`IsTamelyRamified`,
+
+`N_{L/K}(U_L) = {u ∈ K₀ˣ : residue u ∈ (κˣ)^e}`,
+
+phrased as `MonoidHom.range normUnitsK₀ = Subgroup.comap (Units.map (residue K₀).toMonoidHom)
+(MonoidHom.range (powMonoidHom e))`.
+
+Proof: write `φ := Units.map (residue K₀).toMonoidHom` and `N_L := range normUnitsK₀`.
+`residueNormUnits = φ.comp normUnitsK₀`, so `MonoidHom.range_comp` turns
+`range_residueNormUnits_eq_of_isTotallyRamified` into `N_L.map φ = range (powMonoidHom e)`.
+Separately, `ker φ ≤ N_L`: `ker φ` is exactly the principal units (`u ≡ 1 (mod 𝔪_K)`), and
+`Langlands.TotallyRamifiedNormSurjective.exists_isUnit_norm_eq_of_isTotallyRamified` — the *only*
+place `IsTamelyRamified` is used in this theorem — makes every principal unit a norm.
+`Subgroup.comap_map_eq_self` then gives `comap φ (N_L.map φ) = N_L`, i.e.
+`comap φ (range (powMonoidHom e)) = N_L`. -/
+theorem normUnitsK₀_range_eq_of_isTotallyRamified (h : IsTotallyRamified K L v w)
+    (htame : IsTamelyRamified K L v w) :
+    MonoidHom.range (normUnitsK₀ K L v w) =
+      Subgroup.comap (Units.map (residue (v.adicCompletionIntegers K)).toMonoidHom)
+        (MonoidHom.range (powMonoidHom (v.asIdeal.ramificationIdx' w.asIdeal) :
+          (ResidueField (v.adicCompletionIntegers K))ˣ →*
+            (ResidueField (v.adicCompletionIntegers K))ˣ)) := by
+  set φ := Units.map (residue (v.adicCompletionIntegers K)).toMonoidHom with hφdef
+  set NL := MonoidHom.range (normUnitsK₀ K L v w) with hNLdef
+  have hmap : NL.map φ =
+      MonoidHom.range (powMonoidHom (v.asIdeal.ramificationIdx' w.asIdeal) :
+        (ResidueField (v.adicCompletionIntegers K))ˣ →*
+          (ResidueField (v.adicCompletionIntegers K))ˣ) := by
+    rw [hNLdef, ← MonoidHom.range_comp]
+    exact range_residueNormUnits_eq_of_isTotallyRamified K L v w h
+  have hker : φ.ker ≤ NL := by
+    intro u hu
+    have hu1 : φ u = 1 := MonoidHom.mem_ker.mp hu
+    have hcast : residue (v.adicCompletionIntegers K) (u : v.adicCompletionIntegers K) = 1 := by
+      have hu1' := congrArg Units.val hu1
+      simpa [hφdef, Units.coe_map] using hu1'
+    have heq1 : residue (v.adicCompletionIntegers K) (u : v.adicCompletionIntegers K) =
+        residue (v.adicCompletionIntegers K) (1 : v.adicCompletionIntegers K) := by
+      rw [hcast, map_one]
+    have hy : (u : v.adicCompletionIntegers K) - 1 ∈ maximalIdeal (v.adicCompletionIntegers K) :=
+      (Ideal.Quotient.eq).mp heq1
+    obtain ⟨π, hπ⟩ := IsDiscreteValuationRing.exists_irreducible (v.adicCompletionIntegers K)
+    obtain ⟨x, hx, hxy⟩ := exists_isUnit_norm_eq_of_isTotallyRamified K L v w h htame hπ hy
+    refine ⟨hx.unit, ?_⟩
+    apply Units.ext
+    show (Units.map (Algebra.norm (v.adicCompletionIntegers K)) hx.unit :
+        v.adicCompletionIntegers K) = (u : v.adicCompletionIntegers K)
+    rw [Units.coe_map, hx.unit_spec, hxy]
+  rw [hNLdef] at hker ⊢
+  rw [← hmap]
+  exact (Subgroup.comap_map_eq_self hker).symm
+
+omit [Algebra.IsIntegral R S] [Module.Finite K L]
+  [Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)] in
+include L w in
+/-- `𝓀[K]` is finite, given `𝓀[L]` is: it injects into it via the (functorial) `algebraMap`. -/
+theorem finite_residueField_base : Finite (ResidueField (v.adicCompletionIntegers K)) :=
+  Finite.of_injective
+    (algebraMap (ResidueField (v.adicCompletionIntegers K))
+      (ResidueField (w.adicCompletionIntegers L)))
+    (algebraMap (ResidueField (v.adicCompletionIntegers K))
+      (ResidueField (w.adicCompletionIntegers L))).injective
+
+omit [Algebra.IsIntegral R S] in
+/-- **The index formula, at the `K₀ˣ` level.** Under `IsTotallyRamified` and `IsTamelyRamified`,
+`[K₀ˣ : N_{L/K}(U_L)] = gcd(e, #κˣ)` — the classical index computation for the finite cyclic group
+`κˣ`, transported across the norm-group description via `Subgroup.index_comap_of_surjective`
+(`φ` is surjective, `Langlands.UnitGroupModPrincipalUnitsSurjective.surjective_units_map_residue`)
+and `IsCyclic.index_powMonoidHom_range` (the `e`-th-power image in a finite cyclic group has index
+`gcd(e, |group|)`). -/
+theorem index_normUnitsK₀_range_eq_of_isTotallyRamified (h : IsTotallyRamified K L v w)
+    (htame : IsTamelyRamified K L v w) :
+    (MonoidHom.range (normUnitsK₀ K L v w)).index =
+      Nat.gcd (v.asIdeal.ramificationIdx' w.asIdeal)
+        (Nat.card (ResidueField (v.adicCompletionIntegers K))ˣ) := by
+  haveI hfinK : Finite (ResidueField (v.adicCompletionIntegers K)) :=
+    finite_residueField_base K L v w
+  haveI hfinKu : Finite (ResidueField (v.adicCompletionIntegers K))ˣ :=
+    Finite.of_injective Units.val Units.val_injective
+  rw [normUnitsK₀_range_eq_of_isTotallyRamified K L v w h htame,
+    Subgroup.index_comap_of_surjective
+      (H := MonoidHom.range (powMonoidHom (v.asIdeal.ramificationIdx' w.asIdeal) :
+        (ResidueField (v.adicCompletionIntegers K))ˣ →*
+          (ResidueField (v.adicCompletionIntegers K))ˣ))
+      (surjective_units_map_residue (A := v.adicCompletionIntegers K)),
+    IsCyclic.index_powMonoidHom_range, Nat.gcd_comm]
+
+end ClassicalDescription
+
 end IsDedekindDomain.HeightOneSpectrum
 
 end
