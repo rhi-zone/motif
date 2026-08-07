@@ -46,6 +46,15 @@ namespace IsDedekindDomain.HeightOneSpectrum
 variable {A F : Type*} [CommRing A] [IsDedekindDomain A] [Field F] [Algebra A F]
   [IsFractionRing A F] (v : HeightOneSpectrum A)
 
+/-- An element of `v.adicCompletionIntegers F` whose valuation is strictly less than `1` lies in
+the maximal ideal: it is not a unit (`adicCompletionIntegers.isUnit_iff_valued_eq_one`), hence a
+nonunit, hence in the maximal ideal (`IsLocalRing.mem_maximalIdeal`). -/
+theorem mem_maximalIdeal_of_valued_lt_one {x : v.adicCompletionIntegers F}
+    (hx : Valued.v (x : v.adicCompletion F) < 1) :
+    x ∈ maximalIdeal (v.adicCompletionIntegers F) := by
+  rw [IsLocalRing.mem_maximalIdeal, mem_nonunits_iff]
+  exact fun hu => absurd (adicCompletionIntegers.isUnit_iff_valued_eq_one.mp hu) hx.ne
+
 /-- **Every `y : v.adicCompletionIntegers F` is congruent mod `maximalIdeal` to `algebraMap A r`
 for some `r : A`.** Equivalently, `algebraMap A (v.adicCompletionIntegers F)` composed with the
 residue map is surjective onto `ResidueField (v.adicCompletionIntegers F)`. See the module
@@ -91,21 +100,15 @@ theorem exists_algebraMap_sub_mem_maximalIdeal (y : v.adicCompletionIntegers F) 
     rw [hy'def]
     simp only [hAF]
     rfl
-  rw [IsLocalRing.mem_maximalIdeal, mem_nonunits_iff]
-  intro hu
-  have hone : Valued.v (((y : v.adicCompletionIntegers F) -
-      algebraMap A (v.adicCompletionIntegers F) r : v.adicCompletionIntegers F) :
-        v.adicCompletion F) = 1 := adicCompletionIntegers.isUnit_iff_valued_eq_one.mp hu
-  rw [hzcoe, hAF] at hone
+  apply mem_maximalIdeal_of_valued_lt_one
+  rw [hzcoe, hAF]
   have hsum : y' - algebraMap F (v.adicCompletion F) (algebraMap A F r) =
       (y' - algebraMap F (v.adicCompletion F) l) +
         (algebraMap F (v.adicCompletion F) l -
           algebraMap F (v.adicCompletion F) (algebraMap A F r)) := by ring
-  have hlt2 : Valued.v (y' - algebraMap F (v.adicCompletion F) (algebraMap A F r)) < 1 := by
-    rw [hsum]
-    refine lt_of_le_of_lt (Valuation.map_add _ _ _) (max_lt hlt ?_)
-    rwa [Valuation.map_sub_swap]
-  exact absurd hone hlt2.ne
+  rw [hsum]
+  refine lt_of_le_of_lt (Valuation.map_add _ _ _) (max_lt hlt ?_)
+  rwa [Valuation.map_sub_swap]
 
 end IsDedekindDomain.HeightOneSpectrum
 
