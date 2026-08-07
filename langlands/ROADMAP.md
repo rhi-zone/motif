@@ -6391,3 +6391,90 @@ most natural next target: it shares `exp_log_eq_one_add`'s convergence-domain ma
 (`expLogCompositionRadius`, `hasSum_coeff_exp_log`) but needs a genuinely different argument (a tail
 estimate on `‖exp x - 1 - x‖`, not a mutual-inverse identity) to show `exp` actually lands inside a
 specific principal-units filtration level.
+
+## 6l. Fourteenth pass (2026-08-07): item 3 CLOSED — `exp` maps `𝔪_A^i` into the principal-units
+filtration `U_A^{(i)}`, sorry-free, at a non-sharp but explicit threshold
+
+**Task was item 3** of the wild case's five-item list: show `exp` maps `𝔪_A^i` into `U_A^{(i)} = 1 +
+𝔪_A^i` (`ValuationSubring.principalUnitsPow A i`), not merely that it converges there
+(`NonarchimedeanExponentialFiltration`'s prior state). Item 4 (Serre's sharp closed-form threshold
+`i > e·v(p)/(p-1)`) was in scope only as a stretch goal, not to block item 3.
+
+**Route.** Rather than reason about the tail sum's norm and separately worry about ideal membership,
+the key simplification was proving a genuine converse lemma first:
+`NonarchimedeanExponentialFiltration.mem_maximalIdeal_pow_of_norm_le` — `‖x‖ ≤ ‖π‖^i → x ∈ 𝔪_A^i`,
+for `x : A`. That file's own docstring had previously flagged this converse as "not proved or needed
+here", on the assumption it would require `A` to be a discrete valuation ring (uniqueness of a
+`π`-adic valuation on `A`). It does not: dividing the hypothesis by `‖π‖^i > 0` shows the quotient has
+norm `≤ 1`, hence lies in `A` by `hA` directly (an iff, not just one direction); transporting the
+resulting `K`-equality `x = π^i · c` back into `A` via injectivity of the coercion gives ideal
+membership with no valuation-ring machinery at all. This one lemma is what let the rest of the file
+work purely with norm inequalities until the very last step.
+
+With that in hand, `Langlands/NonarchimedeanExponentialUnitsFiltration.lean` (new) builds:
+
+* `expUnitsThreshold K p := ‖p‖ ^ (2/(p-1))` — the working threshold, twice the exponent of Serre's
+  sharp `‖p‖^(1/(p-1))`. This is the file's one deliberate compromise: reaching Serre's sharp constant
+  needs the sharp Legendre bound `padicValNat p k! ≤ (k-1)/(p-1)` (dropping only the base-`p` digit
+  sum, itself `≥ 1` for nonzero `k`, rather than the whole `k - digitsum` term), which this repo does
+  not yet have — only the crude `padicValNat p k! ≤ k/(p-1)` (`NonarchimedeanExponential`, dropping
+  the digit sum entirely) is available. Using the crude bound forces the threshold `i` to be twice as
+  large. This was a scoping call made explicitly, not a discovered obstruction fought and abandoned:
+  the brief itself flagged this exact fallback as acceptable, and deriving the sharp bound was judged
+  not worth the additional `Nat.digits` digit-sum development this pass.
+* `norm_pow_div_factorial_le_of_mem_maximalIdeal_pow` : given `‖x‖ ≤ ‖π‖^i` and `i` above the
+  threshold, *every* term `x^k/k!` (`k ≥ 1`) has norm `≤ ‖π‖^i` — not merely `→ 0` as `k → ∞`, which
+  is all `NonarchimedeanExponential`'s existing per-term bound gives unconditionally. The `k = 1` case
+  is the hypothesis itself; for `k ≥ 2`, writing `ρ := ‖π‖^i / ‖p‖^(1/(p-1))`, the existing
+  `norm_pow_div_factorial_le` gives `‖x^k/k!‖ ≤ ρ^k`, and the threshold is exactly the algebraic
+  condition forcing both `ρ < 1` and `ρ^2 ≤ ‖π‖^i`, so `ρ^k ≤ ρ^2 ≤ ‖π‖^i` for `k ≥ 2`
+  (`pow_le_pow_of_le_one`).
+* `norm_exp_sub_one_le` : `‖exp hnorm x - 1‖ ≤ ‖π‖^i`, by splitting off the constant term via
+  `hasSum_nat_add_iff'` and bounding the shifted sum with `IsUltrametricDist.norm_tsum_le` — the exact
+  proof shape `NonarchimedeanExponential.norm_log_le` already established for `log`, reused here for
+  `exp`'s tail.
+* `exp_mem_principalUnitsPow` : **the headline theorem.** Combines the tail bound with
+  `mem_maximalIdeal_pow_of_norm_le` to get an actual `A`-element `y ∈ 𝔪_A^i` with
+  `(y:K) = exp hnorm (x:K) - 1`; then `1 + y` is a unit of `A` (`1 + 𝔪_A`-elements are units in a
+  local ring, `IsLocalRing.isUnit_one_sub_self_of_mem_nonunits` applied to `-y` — the identical trick
+  `ValuationSubring.principalUnitsGradedHom_surjective` already uses in `PrincipalUnitsFiltration`),
+  and that unit lies in `principalUnitsPow A i` by construction. Statement:
+  `∃ u : Aˣ, u ∈ ValuationSubring.principalUnitsPow A i ∧ ((u:A):K) = exp hnorm (x:K)`.
+
+**Build status.** `nix develop -c lake build Langlands.NonarchimedeanExponentialUnitsFiltration`:
+clean. Full `nix develop -c lake build Langlands`: clean, `8715` jobs, only the same pre-existing
+warnings elsewhere. `#print axioms` on `exp_mem_principalUnitsPow`, `norm_exp_sub_one_le`, and
+`mem_maximalIdeal_pow_of_norm_le`: `[propext, Classical.choice, Quot.sound]` only. No `sorry`
+anywhere. Commits: `e84e209` (the converse lemma, `NonarchimedeanExponentialFiltration.lean`) and
+`4e825de` (the new file plus docstring updates).
+
+**Updated "what remains" list:**
+
+1. **A genuine concrete mixed-characteristic example** — unchanged, still unbuilt.
+2. **The mutual-inverse relationship between `exp` and `log`** — unchanged from the thirteenth pass:
+   fully closed.
+3. **Landing in `U^{(i)}`, not just the convergence domain** — **CLOSED this pass**, at the abstract
+   `ValuationSubring` level of generality (`exp_mem_principalUnitsPow`).
+4. **An explicit closed-form threshold** (Serre's `i > e·v(p)/(p-1)`) — **partially reached**:
+   `expUnitsThreshold` is genuinely explicit (not existential), but (a) it is twice Serre's sharp
+   constant (crude vs. sharp Legendre bound, see above) and (b) it is phrased in `‖π‖`/`‖p‖` directly,
+   not the literal `e`-parametrized form — the abstract single-`ValuationSubring` setting has no
+   ramification index `e` to reference without the two-field concrete instance data
+   `NonarchimedeanExponentialExtension`'s docstring already flags as missing from this repo. Neither
+   gap was attempted this pass (the sharp-Legendre gap was a deliberate scoping call; the `e`-form gap
+   is blocked on item 1's absent concrete instance).
+5. **The norm/trace compatibility formula** `N_{L/K}(exp x) = exp(Tr_{L/K}(x))` — unchanged, still
+   entirely unstarted; out of scope this pass.
+* **Bonus (not attempted): the group-homomorphism law.** `exp (x + y) = exp x * exp y` on `𝔪_A^i`,
+  which would upgrade `exp_mem_principalUnitsPow`'s landing statement to an actual group homomorphism
+  `𝔪_A^i →+ U_A^{(i)}`. Flagged in `NonarchimedeanExponential`'s own docstring as unattempted anywhere
+  in this thread; separate, substantial work, correctly out of scope for this pass per the task brief.
+
+**Net effect on the wild-case picture.** Two of the wild case's five items are now fully closed
+(items 2 and 3); item 4 is partially reached (an explicit, if non-sharp and non-`e`-parametrized,
+threshold exists). Items 1 and 5 remain entirely open. The remaining path to actually closing the
+wild-case norm-group-index gap needs: a concrete mixed-characteristic instance (item 1, substantial
+and independent), the group-homomorphism law for `exp` (needed to turn `exp_mem_principalUnitsPow`'s
+pointwise landing statement into the isomorphism `U_L^{(i)} ≅ (𝔪_L^i, +)` the wild-case argument
+actually wants), and the norm/trace compatibility formula (item 5, the actual payoff, not attempted
+in any pass so far).
