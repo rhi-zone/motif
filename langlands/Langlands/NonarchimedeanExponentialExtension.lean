@@ -75,12 +75,12 @@ variable {R S K L : Type*} [CommRing R] [IsDedekindDomain R] [Field K] [Algebra 
 
 variable (K L) (v : HeightOneSpectrum R) (w : HeightOneSpectrum S) [w.asIdeal.LiesOver v.asIdeal]
 
+omit [IsDedekindDomain R] [IsDedekindDomain S] [Algebra.IsIntegral R S] [Module.IsTorsionFree R S] in
 /-- **The residue characteristic is shared across `w.asIdeal.LiesOver v.asIdeal`.** The quotient
 map `R ⧸ v.asIdeal →+* S ⧸ w.asIdeal` induced by `algebraMap R S` is injective — `v.asIdeal` *is*
 `w.asIdeal`'s comap along `algebraMap R S` (`Ideal.over_def`, unfolding `Ideal.under`), which is
 exactly the condition `Ideal.quotientMap_injective` needs — so `CharP` transfers forward
 (`charP_of_injective_ringHom`). -/
-omit [IsDedekindDomain R] [IsDedekindDomain S] [Algebra.IsIntegral R S] [Module.IsTorsionFree R S] in
 theorem charP_quotient_of_liesOver (p : ℕ) [CharP (R ⧸ v.asIdeal) p] :
     CharP (S ⧸ w.asIdeal) p := by
   have hv : v.asIdeal = Ideal.comap (algebraMap R S) w.asIdeal := Ideal.over_def w.asIdeal v.asIdeal
@@ -91,16 +91,18 @@ theorem charP_quotient_of_liesOver (p : ℕ) [CharP (R ⧸ v.asIdeal) p] :
       (Ideal.quotEquivOfEq hv).injective
   exact charP_of_injective_ringHom hinj p
 
+omit [Module.Finite K L] in
 /-- **`L` has characteristic zero whenever `K` does**, along the extension `[Algebra K L]`:
 `algebraMap K L` is injective (`K` is a field, hence `IsSimpleRing`, into the nontrivial ring `L`),
 and `CharZero` transfers forward along an injective ring hom
 (`charZero_of_injective_algebraMap`) — the same one-line argument
 `Langlands.AdicCompletionMixedCharacteristic.instCharZeroAdicCompletion` uses one level up, applied
 here at the level of `K`/`L` themselves rather than their completions. -/
-omit [Module.Finite K L] in
 theorem charZero_of_algebra [CharZero K] : CharZero L :=
   charZero_of_injective_algebraMap (RingHom.injective (algebraMap K L))
 
+omit [Algebra R L] [IsScalarTower R S L] [IsScalarTower R K L] [Module.Finite K L]
+  [Algebra.IsIntegral R S] [Module.IsTorsionFree R S] in
 /-- **Both `exp`'s convergence-domain existence statements, for `v` and for `w`, from a single
 hypothesis at the base.** Given `[CharZero K]` and `[CharP (R ⧸ v.asIdeal) p]`, both
 `v.adicCompletionIntegers K` and `w.adicCompletionIntegers L` get the residue-characteristic-`p`
@@ -108,7 +110,6 @@ and `CharZero` instances `NonarchimedeanExponentialAdicCompletion`'s machinery n
 (`charZero_of_algebra` and `AdicCompletionMixedCharacteristic`'s instances chain through
 automatically for `L`, using `charP_quotient_of_liesOver` for the shared `p`), so `exp`'s
 convergence-domain existence statement holds at both places simultaneously, for the same `p`. -/
-omit [Algebra R L] [IsScalarTower R S L] [IsScalarTower R K L] in
 theorem exists_maximalIdeal_pow_lt_convergenceRadius_of_liesOver
     (p : ℕ) [Fact p.Prime] [CharZero K] [CharP (R ⧸ v.asIdeal) p] :
     (∃ i₀ : ℕ, ∀ i ≥ i₀, ∀ x : v.adicCompletionIntegers K,
@@ -122,8 +123,9 @@ theorem exists_maximalIdeal_pow_lt_convergenceRadius_of_liesOver
   exact ⟨exists_maximalIdeal_pow_lt_convergenceRadius v p,
     exists_maximalIdeal_pow_lt_convergenceRadius w p⟩
 
+omit [Algebra R L] [IsScalarTower R S L] [IsScalarTower R K L] [Module.Finite K L]
+  [Algebra.IsIntegral R S] [Module.IsTorsionFree R S] in
 /-- The `log`-domain analogue of `exists_maximalIdeal_pow_lt_convergenceRadius_of_liesOver`. -/
-omit [Algebra R L] [IsScalarTower R S L] [IsScalarTower R K L] in
 theorem exists_maximalIdeal_pow_lt_logConvergenceRadius_of_liesOver
     (p : ℕ) [Fact p.Prime] [CharZero K] [CharP (R ⧸ v.asIdeal) p] :
     (∃ i₀ : ℕ, ∀ i ≥ i₀, ∀ x : v.adicCompletionIntegers K,
