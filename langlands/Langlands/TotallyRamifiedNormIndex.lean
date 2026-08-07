@@ -23,6 +23,8 @@ noncomputable section
 
 open IsDedekindDomain IsLocalRing
 
+open scoped WithZero
+
 namespace IsDedekindDomain.HeightOneSpectrum
 
 /-! ### Step 0: the embedding range lemma -/
@@ -149,6 +151,20 @@ def embedL : (w.adicCompletionIntegers L)ˣ →* (w.adicCompletion L)ˣ :=
   Units.map (algebraMap (w.adicCompletionIntegers L) (w.adicCompletion L)).toMonoidHom
 
 omit [Algebra.IsIntegral R S] in
+/-- `embedK`'s range is exactly `(v.adicCompletionIntegers K).units` (a restatement of
+`range_units_map_algebraMap_adicCompletionIntegers_eq` in terms of the `embedK` abbreviation, for
+`rw`-friendliness downstream). -/
+theorem range_embedK_eq : MonoidHom.range (embedK K v) = (v.adicCompletionIntegers K).units :=
+  range_units_map_algebraMap_adicCompletionIntegers_eq v
+
+omit [Algebra.IsIntegral R S] in
+/-- `embedL`'s range is exactly `(w.adicCompletionIntegers L).units` (a restatement of
+`range_units_map_algebraMap_adicCompletionIntegers_eq` in terms of the `embedL` abbreviation, for
+`rw`-friendliness downstream). -/
+theorem range_embedL_eq : MonoidHom.range (embedL L w) = (w.adicCompletionIntegers L).units :=
+  range_units_map_algebraMap_adicCompletionIntegers_eq w
+
+omit [Algebra.IsIntegral R S] in
 /-- **`localNormMap ∘ embedL = embedK ∘ normUnitsK₀`.** The square commutes: pushing a unit of
 `L₀` into `(w.adicCompletion L)ˣ` and then taking the local norm agrees with first taking the
 `K₀`-level norm and then pushing into `(v.adicCompletion K)ˣ`. This is exactly
@@ -176,9 +192,123 @@ pushing both sides of the commuting square (`localNormMap_comp_embedL_eq`) throu
 theorem units_map_localNormMap_eq_map_normUnitsK₀ :
     (w.adicCompletionIntegers L).units.map (localNormMap K L v w) =
       (MonoidHom.range (normUnitsK₀ K L v w)).map (embedK K v) := by
-  rw [show (w.adicCompletionIntegers L).units = MonoidHom.range (embedL L w) from
-      (range_units_map_algebraMap_adicCompletionIntegers_eq w).symm,
-    MonoidHom.map_range, MonoidHom.map_range, localNormMap_comp_embedL_eq K L v w]
+  rw [← range_embedL_eq L w, MonoidHom.map_range, MonoidHom.map_range,
+    localNormMap_comp_embedL_eq K L v w]
+
+/-! ### Task 3: assembling the index -/
+
+variable [Finite (ResidueField (w.adicCompletionIntegers L))]
+
+omit [Algebra.IsIntegral R S] in
+/-- `embedK` is injective: `algebraMap K₀ (v.adicCompletion K)` is the subtype inclusion, hence
+injective, and `Units.map` of an injective monoid hom is injective. -/
+theorem embedK_injective : Function.Injective (embedK K v) :=
+  Units.map_injective Subtype.coe_injective
+
+omit [Algebra.IsIntegral R S] in
+/-- A uniformizer of `K₀` has valuation strictly between `0` and `1` in `(v.adicCompletion K)ˣ`.
+-/
+theorem valued_coe_lt_one_of_irreducible {π : v.adicCompletionIntegers K} (hπ : Irreducible π) :
+    0 < Valued.v (π : v.adicCompletion K) ∧ Valued.v (π : v.adicCompletion K) < 1 := by
+  refine ⟨(zero_lt_iff).mpr ?_, ?_⟩
+  · rw [Ne, Valuation.zero_iff, ZeroMemClass.coe_eq_zero]
+    exact hπ.ne_zero
+  · have hmem : π ∈ IsLocalRing.maximalIdeal (v.adicCompletionIntegers K) :=
+      hπ.maximalIdeal_eq ▸ Ideal.mem_span_singleton_self π
+    exact Valuation.mem_maximalIdeal_iff (v.adicCompletion K) Valued.v |>.mp hmem
+
+omit [Algebra.IsIntegral R S] in
+/-- **Task 3, step 1: `G ⊔ U_K = ⊤`.** Every unit `a` of `(v.adicCompletion K)ˣ` decomposes
+(`exists_zpow_mul_unit_eq_of_irreducible_self`, applied to `π := N(π_L)`) as `a = π'^k * embedK u`
+for `π' := uniformizerUnit K v (irreducible_norm_of_isTotallyRamified ...)` — the same generator
+`localNormMap_range_eq_of_isTotallyRamified` uses for `G`'s cyclic part — so `a ∈ zpowers π' ⊔ U_K
+≤ G ⊔ U_K`, using `π' ∈ G` (`uniformizerUnit_norm_mem_range`). -/
+theorem sup_units_eq_top (h : IsTotallyRamified K L v w) {πL : w.adicCompletionIntegers L}
+    (hπL : Irreducible πL) :
+    MonoidHom.range (localNormMap K L v w) ⊔ (v.adicCompletionIntegers K).units = ⊤ := by
+  set hπ := irreducible_norm_of_isTotallyRamified K L v w h hπL with hπirr
+  set π' := uniformizerUnit K v hπ with hπ'def
+  rw [eq_top_iff]
+  rintro a -
+  obtain ⟨k, u, hku⟩ := exists_zpow_mul_unit_eq_of_irreducible_self v hπ a
+  have ha : a = π' ^ k * embedK K v u := by
+    apply Units.ext
+    push_cast
+    rw [coe_uniformizerUnit]
+    exact hku
+  rw [ha]
+  refine Subgroup.mul_mem_sup ?_ ?_
+  · exact Subgroup.zpow_mem _ (uniformizerUnit_norm_mem_range K L v w h hπL) k
+  · have hmem : embedK K v u ∈ MonoidHom.range (embedK K v) := ⟨u, rfl⟩
+    rwa [range_embedK_eq K v] at hmem
+
+omit [Algebra.IsIntegral R S] in
+/-- **Task 3, step 2: `G ⊓ U_K = U_K'`.** `⊇` is immediate from
+`localNormMap_range_eq_of_isTotallyRamified` (`U_K' ≤ G`) and `localNormMap_mem_units` (`U_K' ≤
+U_K`). `⊆`: writing `y = π'^k * u'` for `u' ∈ U_K'` (from `G`'s exact-range decomposition), `u' ∈
+U_K` forces `π'^k = y * u'⁻¹ ∈ U_K`, i.e. `Valued.v π' ^ k = 1`; since `0 < Valued.v π' < 1`
+(`valued_coe_lt_one_of_irreducible`), `zpow_right_strictAnti₀` is injective, forcing `k = 0`, so
+`y = u' ∈ U_K'`. -/
+theorem inf_units_eq_units_map (h : IsTotallyRamified K L v w) {πL : w.adicCompletionIntegers L}
+    (hπL : Irreducible πL) :
+    MonoidHom.range (localNormMap K L v w) ⊓ (v.adicCompletionIntegers K).units =
+      (w.adicCompletionIntegers L).units.map (localNormMap K L v w) := by
+  set hπ := irreducible_norm_of_isTotallyRamified K L v w h hπL with hπirr
+  set π' := uniformizerUnit K v hπ with hπ'def
+  apply le_antisymm
+  · rintro y ⟨hyG, hyU⟩
+    rw [localNormMap_range_eq_of_isTotallyRamified K L v w h hπL] at hyG
+    obtain ⟨a, ha, u', hu', hau⟩ := Subgroup.mem_sup.mp hyG
+    obtain ⟨k, hk⟩ := Subgroup.mem_zpowers_iff.mp ha
+    obtain ⟨x, hxmem, hxeq⟩ := hu'
+    have hu'U : u' ∈ (v.adicCompletionIntegers K).units := by
+      rw [← hxeq]
+      exact localNormMap_mem_units K L v w hxmem
+    have ha' : π' ^ k = y * u'⁻¹ := by
+      rw [hk]
+      exact eq_mul_inv_of_mul_eq hau
+    have hpk_mem : π' ^ k ∈ (v.adicCompletionIntegers K).units := by
+      rw [ha']
+      exact Subgroup.mul_mem _ hyU (Subgroup.inv_mem _ hu'U)
+    have hval1 : Valued.v ((π' ^ k : (v.adicCompletion K)ˣ) : v.adicCompletion K) = 1 :=
+      adicCompletionIntegers.mem_units_iff_valued_eq_one.mp hpk_mem
+    rw [Units.val_zpow_eq_zpow_val, map_zpow₀, hπ'def, coe_uniformizerUnit] at hval1
+    obtain ⟨hpos, hlt⟩ := valued_coe_lt_one_of_irreducible K v hπ
+    have hk0 : k = 0 := (zpow_right_strictAnti₀ hpos hlt).injective (by simpa using hval1)
+    have ha0 : a = 1 := by rw [← hk, hk0, zpow_zero]
+    refine ⟨x, hxmem, ?_⟩
+    have hyu' : y = u' := by rw [← hau, ha0, one_mul]
+    exact hxeq.trans hyu'.symm
+  · intro y hy
+    obtain ⟨x, hxmem, hxy⟩ := hy
+    refine ⟨⟨x, hxy⟩, ?_⟩
+    rw [← hxy]
+    exact localNormMap_mem_units K L v w hxmem
+
+omit [Algebra.IsIntegral R S] in
+/-- **Task 3: the totally ramified norm-group index.** `[(v.adicCompletion K)ˣ :
+MonoidHom.range (localNormMap K L v w)] = gcd(e, #κ[K]ˣ)`, the classical formula, transported from
+the `K₀ˣ`-level index formula `index_normUnitsK₀_range_eq_of_isTotallyRamified` via
+`Subgroup.relIndex` algebra (steps 1–2 above) and `Subgroup.relIndex_map_map_of_injective`
+(`embedK` injective). -/
+theorem index_localNormMap_range_eq_of_isTotallyRamified (h : IsTotallyRamified K L v w)
+    (htame : IsTamelyRamified K L v w) {πL : w.adicCompletionIntegers L} (hπL : Irreducible πL) :
+    (MonoidHom.range (localNormMap K L v w)).index =
+      Nat.gcd (v.asIdeal.ramificationIdx' w.asIdeal)
+        (Nat.card (ResidueField (v.adicCompletionIntegers K))ˣ) := by
+  set G := MonoidHom.range (localNormMap K L v w) with hGdef
+  set U_K := (v.adicCompletionIntegers K).units with hUKdef
+  haveI hGnormal : G.Normal := G.normal_of_isMulCommutative
+  have hstep1 : G ⊔ U_K = ⊤ := sup_units_eq_top K L v w h hπL
+  have hstep2 : G ⊓ U_K = (w.adicCompletionIntegers L).units.map (localNormMap K L v w) :=
+    inf_units_eq_units_map K L v w h hπL
+  have hidx : G.index = G.relIndex U_K := by
+    rw [← Subgroup.relIndex_top_right (H := G), ← hstep1, Subgroup.relIndex_sup_left]
+  rw [hidx, ← Subgroup.inf_relIndex_right, hstep2, units_map_localNormMap_eq_map_normUnitsK₀ K L v w,
+    show U_K = Subgroup.map (embedK K v) ⊤ from
+      (range_embedK_eq K v).symm.trans (MonoidHom.range_eq_map _),
+    Subgroup.relIndex_map_map_of_injective _ _ (embedK_injective K v),
+    Subgroup.relIndex_top_right, index_normUnitsK₀_range_eq_of_isTotallyRamified K L v w h htame]
 
 end IsDedekindDomain.HeightOneSpectrum
 
