@@ -116,6 +116,22 @@ theorem exists_uniformizer :
   refine ⟨⟨π, hπmem⟩, hπlt, ?_⟩
   exact hπ.is_generator (π := (⟨π, hπmem⟩ : v.adicCompletionIntegers F))
 
+/-- **Every positive accuracy is reached by a deep enough filtration level.** For any `ε > 0`, some
+`i₀` has `‖x‖ < ε` for every `x ∈ 𝔪^i` with `i ≥ i₀`: a uniformizer's powers tend to `0`
+(`exists_pow_lt_of_lt_one`) and bound the filtration levels
+(`norm_le_pow_of_mem_maximalIdeal_pow`). This is the accuracy-parametrized form of
+`exists_maximalIdeal_pow_lt_convergenceRadius` below, used wherever the target neighbourhood is
+produced by continuity of some map rather than fixed in advance. -/
+theorem exists_maximalIdeal_pow_norm_lt {ε : ℝ} (hε : 0 < ε) :
+    ∃ i₀ : ℕ, ∀ i ≥ i₀, ∀ x : v.adicCompletionIntegers F,
+      x ∈ maximalIdeal (v.adicCompletionIntegers F) ^ i → ‖(x : v.adicCompletion F)‖ < ε := by
+  obtain ⟨π, hπnorm, hπ⟩ := exists_uniformizer v (F := F)
+  obtain ⟨i₀, hi₀⟩ := exists_pow_lt_of_lt_one hε hπnorm
+  refine ⟨i₀, fun i hi x hx => ?_⟩
+  refine lt_of_le_of_lt (norm_le_pow_of_mem_maximalIdeal_pow (v.adicCompletionIntegers F)
+    (mem_adicCompletionIntegers_iff_norm_le_one v) hπ hx) ?_
+  exact lt_of_le_of_lt (pow_le_pow_of_le_one (norm_nonneg _) hπnorm.le hi) hi₀
+
 variable [CharZero F] (p : ℕ) [hp : Fact p.Prime] [CharP (ResidueField (v.adicCompletionIntegers F)) p]
 
 /-- **The concrete instantiation, for `exp`.** Some explicit `i₀` has every `x ∈ 𝔪^i` (`i ≥ i₀`) of

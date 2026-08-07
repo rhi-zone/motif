@@ -1,4 +1,5 @@
 import Langlands.AdicCompletionIntegersResidue
+import Langlands.AdicCompletionNormExpTrace
 import Langlands.AdicCompletionTraceBound
 import Langlands.Basic
 import Langlands.CyclicGaloisSubfields
@@ -15,6 +16,7 @@ import Langlands.NonarchimedeanExponential
 import Langlands.NonarchimedeanExponentialAdd
 import Langlands.NonarchimedeanExponentialFiltration
 import Langlands.NonarchimedeanExponentialHasSum
+import Langlands.NonarchimedeanExponentialRingHom
 import Langlands.NonarchimedeanExponentialUnitsFiltration
 import Langlands.NonarchimedeanSigmaSummability
 import Langlands.NonarchimedeanUnconditionalSummability

@@ -135,25 +135,23 @@ theorem norm_trace_le {a : v.adicCompletion K} {x : w.adicCompletion L}
   rw [hxeq, map_smul, smul_eq_mul, norm_mul]
   exact mul_le_of_le_one_right (norm_nonneg _) htrnorm
 
-variable [CharZero K] (p : ℕ) [hp : Fact p.Prime]
-
 omit [Algebra.IsIntegral R S] in
-/-- **The payoff: the trace maps a high-enough filtration level of `L_w` into `exp_{K_v}`'s
-convergence domain.** Choose a uniformizer `π_K` of `v.adicCompletionIntegers K` and an exponent
-`n` with `‖π_K‖ ^ n < convergenceRadius K_v p`; the image `b := algebraMap (π_K ^ n)` is a nonzero
-element of `L_w`, and a uniformizer `π_L` of `w.adicCompletionIntegers L` has `‖π_L‖ ^ i ≤ ‖b‖` for
-all large `i`. For such `i`, every `x ∈ 𝔪_{L_w}^i` has `‖x‖ ≤ ‖π_L‖ ^ i ≤ ‖b‖`, so `norm_trace_le`
-gives `‖Tr x‖ ≤ ‖π_K‖ ^ n < convergenceRadius K_v p`. -/
-theorem exists_maximalIdeal_pow_norm_trace_lt_convergenceRadius :
+/-- **The quantitative payoff, at an arbitrary target accuracy.** For any `ε > 0`, all sufficiently
+deep levels of `L_w`'s filtration have `‖Tr_{L_w/K_v}(x)‖ < ε`.
+
+Pick `c : K_v` with `0 < ‖c‖ < 1` (`NormedField.exists_norm_lt_one`) and `n` with `‖c‖ ^ n < ε`;
+then `b := algebraMap (cⁿ)` is a nonzero element of `L_w`, and a uniformizer `π_L` of
+`w.adicCompletionIntegers L` has `‖π_L‖ ^ i ≤ ‖b‖` for all large `i`. For such `i`, every
+`x ∈ 𝔪_{L_w}^i` has `‖x‖ ≤ ‖π_L‖ ^ i ≤ ‖b‖`, so `norm_trace_le` gives `‖Tr x‖ ≤ ‖c‖ ^ n < ε`.
+
+No residue-characteristic or characteristic-zero hypothesis is used: the bound is purely metric. -/
+theorem exists_maximalIdeal_pow_norm_trace_lt {ε : ℝ} (hε : 0 < ε) :
     ∃ i₀ : ℕ, ∀ i ≥ i₀, ∀ x : w.adicCompletionIntegers L,
       x ∈ maximalIdeal (w.adicCompletionIntegers L) ^ i →
-        ‖Algebra.trace (v.adicCompletion K) (w.adicCompletion L) (x : w.adicCompletion L)‖ <
-          convergenceRadius (v.adicCompletion K) p := by
+        ‖Algebra.trace (v.adicCompletion K) (w.adicCompletion L) (x : w.adicCompletion L)‖ < ε := by
   obtain ⟨c, hc0, hcnorm⟩ := NormedField.exists_norm_lt_one (v.adicCompletion K)
   obtain ⟨πL, hπLnorm, hπL⟩ := exists_uniformizer w (F := L)
-  have hcr0 : (0 : ℝ) < convergenceRadius (v.adicCompletion K) p :=
-    Real.rpow_pos_of_pos norm_natCast_pos _
-  obtain ⟨n, hn⟩ := exists_pow_lt_of_lt_one hcr0 hcnorm
+  obtain ⟨n, hn⟩ := exists_pow_lt_of_lt_one hε hcnorm
   set a : v.adicCompletion K := c ^ n with hadef
   have ha0 : a ≠ 0 := pow_ne_zero _ (norm_pos_iff.mp hc0)
   set b := algebraMap (v.adicCompletion K) (w.adicCompletion L) a with hbdef
@@ -169,6 +167,18 @@ theorem exists_maximalIdeal_pow_norm_trace_lt_convergenceRadius :
   refine lt_of_le_of_lt (norm_trace_le K L v w hxnorm) ?_
   rw [hadef, norm_pow]
   exact hn
+
+variable [CharZero K] (p : ℕ) [hp : Fact p.Prime]
+
+omit [Algebra.IsIntegral R S] in
+/-- The trace maps a high-enough filtration level of `L_w` into `exp_{K_v}`'s convergence domain —
+`exists_maximalIdeal_pow_norm_trace_lt` at `ε := convergenceRadius K_v p`. -/
+theorem exists_maximalIdeal_pow_norm_trace_lt_convergenceRadius :
+    ∃ i₀ : ℕ, ∀ i ≥ i₀, ∀ x : w.adicCompletionIntegers L,
+      x ∈ maximalIdeal (w.adicCompletionIntegers L) ^ i →
+        ‖Algebra.trace (v.adicCompletion K) (w.adicCompletion L) (x : w.adicCompletion L)‖ <
+          convergenceRadius (v.adicCompletion K) p :=
+  exists_maximalIdeal_pow_norm_trace_lt K L v w (Real.rpow_pos_of_pos norm_natCast_pos _)
 
 omit [Algebra.IsIntegral R S] in
 /-- The `log`-domain analogue of
@@ -178,26 +188,8 @@ theorem exists_maximalIdeal_pow_norm_trace_lt_logConvergenceRadius :
     ∃ i₀ : ℕ, ∀ i ≥ i₀, ∀ x : w.adicCompletionIntegers L,
       x ∈ maximalIdeal (w.adicCompletionIntegers L) ^ i →
         ‖Algebra.trace (v.adicCompletion K) (w.adicCompletion L) (x : w.adicCompletion L)‖ <
-          logConvergenceRadius (v.adicCompletion K) p := by
-  obtain ⟨c, hc0, hcnorm⟩ := NormedField.exists_norm_lt_one (v.adicCompletion K)
-  obtain ⟨πL, hπLnorm, hπL⟩ := exists_uniformizer w (F := L)
-  have hcr0 : (0 : ℝ) < logConvergenceRadius (v.adicCompletion K) p := norm_natCast_pos
-  obtain ⟨n, hn⟩ := exists_pow_lt_of_lt_one hcr0 hcnorm
-  set a : v.adicCompletion K := c ^ n with hadef
-  have ha0 : a ≠ 0 := pow_ne_zero _ (norm_pos_iff.mp hc0)
-  set b := algebraMap (v.adicCompletion K) (w.adicCompletion L) a with hbdef
-  have hb0 : (0 : ℝ) < ‖b‖ :=
-    norm_pos_iff.mpr ((map_ne_zero_iff (algebraMap (v.adicCompletion K) (w.adicCompletion L))
-      (RingHom.injective (algebraMap (v.adicCompletion K) (w.adicCompletion L)))).mpr ha0)
-  obtain ⟨i₀, hi₀⟩ := exists_pow_lt_of_lt_one hb0 hπLnorm
-  refine ⟨i₀, fun i hi x hx => ?_⟩
-  have hxnorm : ‖(x : w.adicCompletion L)‖ ≤ ‖b‖ := by
-    refine le_trans (norm_le_pow_of_mem_maximalIdeal_pow (w.adicCompletionIntegers L)
-      (mem_adicCompletionIntegers_iff_norm_le_one w) hπL hx) ?_
-    exact le_trans (pow_le_pow_of_le_one (norm_nonneg _) hπLnorm.le hi) hi₀.le
-  refine lt_of_le_of_lt (norm_trace_le K L v w hxnorm) ?_
-  rw [hadef, norm_pow]
-  exact hn
+          logConvergenceRadius (v.adicCompletion K) p :=
+  exists_maximalIdeal_pow_norm_trace_lt K L v w norm_natCast_pos
 
 end IsDedekindDomain.HeightOneSpectrum
 
