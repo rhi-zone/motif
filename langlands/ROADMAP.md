@@ -5488,3 +5488,134 @@ entry's classical-formula expectation `gcd(3,6) = 3` — now an actual Lean theo
 concrete totally, tamely ramified extension of function fields, with `IsTamelyRamified`,
 `IsTotallyRamified`, and a genuine local-class-field-theory norm-index computation all available as
 `sorry`-free Lean terms, end-to-end.
+
+## 6d. Sixth pass (2026-08-07): the mixed-characteristic instances closed — cheap, not the
+feared blocker; `exp`/`log`'s convergence machinery instantiated for `v.adicCompletionIntegers F`
+
+**Continuing the `exp`/`log` wild-case thread from §"Update (2026-08-07, fourth pass same day)"
+above.** That pass identified the concrete `HeightOneSpectrum` instantiation of
+`NonarchimedeanExponentialFiltration.lean`'s abstract machinery as blocked on two missing
+instances — `CharZero (w.adicCompletion L)` and a residue-characteristic-`p` instance for
+`IsLocalRing.ResidueField (w.adicCompletionIntegers L)` — and, having just watched the concrete
+`IsTotallyRamified` example turn out to be *equal*-characteristic (the opposite of what's needed),
+flagged building a genuine mixed-characteristic concrete instance as "now plausibly the actual
+bottleneck for this entire thread". **This pass found that fear overstated**: the task was to
+prove the instances at the *general* `HeightOneSpectrum`/`adicCompletion` level (parametrized by an
+arbitrary place `v`, not a specific concrete number/function field), and at that level of
+generality both instances were cheap — one-line transfers along facts already sitting in this repo,
+not new mathematical content. A genuine *concrete* mixed-characteristic example (a specific `v, F`
+with `CharZero F` and known residue characteristic, playing the role
+`Langlands.TotallyRamifiedConcreteExample` plays for the tame/equal-characteristic side) remains
+unbuilt and is a separate, still-open task — see "What remains" below.
+
+**`Langlands/AdicCompletionMixedCharacteristic.lean` (new, commit `a6faa16`).** For `v` a place of
+a Dedekind domain `A` with fraction field `F`:
+
+* `instCharZeroAdicCompletion : [CharZero F] → CharZero (v.adicCompletion F)`. `algebraMap F
+  (v.adicCompletion F)` is injective for free: `F` is a field, hence `IsSimpleRing` (Mathlib's
+  `DivisionRing.isSimpleRing`, a global instance), and `v.adicCompletion F` is itself a field
+  (Mathlib, `adicCompletion` always carries a `Field` instance), hence `Nontrivial` — so
+  `RingHom.injective` applies with no side conditions. `CharZero` then transfers forward along that
+  injection (`charZero_of_injective_algebraMap`, already in Mathlib). Total proof: one line.
+* `instCharPResidueFieldAdicCompletionIntegers (p : ℕ) : [CharP (A ⧸ v.asIdeal) p] → CharP
+  (ResidueField (v.adicCompletionIntegers F)) p`. Completing at `v` does not change the residue
+  field — this is exactly `residueFieldQuotientRingEquiv` from
+  `Langlands.AdicCompletionIntegersResidue` (closed in the fifth pass, §6c), a ring equivalence `A
+  ⧸ v.asIdeal ≃+* ResidueField (v.adicCompletionIntegers F)`. `CharP` transfers along the injective
+  ring hom underlying that equivalence (`charP_of_injective_ringHom`, already in Mathlib). Total
+  proof: one line (plus a `.toRingHom` disambiguation the elaborator needed once).
+
+Confirms the task brief's suspicion precisely: `CharZero F` is not automatic and is not an ambient
+hypothesis this repo has been implicitly assuming (`Langlands.TotallyRamifiedConcreteExample` is a
+counterexample — deliberately `CharP K p`) — it must be supplied at each use site, which the
+instances above do (`[CharZero F]` and `[CharP (A ⧸ v.asIdeal) p]` are both explicit hypotheses, not
+manufactured). What made the two instances cheap was that all the hard work — the `Field
+(v.adicCompletion F)` instance chain and `residueFieldQuotientRingEquiv` itself — was already done
+by earlier passes (`Langlands.NormMap`, `Langlands.AdicCompletionIntegersResidue`); this pass only
+needed to notice the transfer lemmas (`RingHom.injective`, `charZero_of_injective_algebraMap`,
+`charP_of_injective_ringHom`) already existed in Mathlib and apply them.
+
+**`Langlands/NonarchimedeanExponentialAdicCompletion.lean` (new, commit `83db997`).** Instantiates
+`NonarchimedeanExponentialFiltration.lean`'s abstract `ValuationSubring A` machinery at `A :=
+v.adicCompletionIntegers F` for a general place `v`:
+
+* `v.adicCompletionIntegers F` *is*, definitionally, `Valued.v.valuationSubring` (Mathlib's own
+  definition of `adicCompletionIntegers`) — so no new subring construction is needed, only
+  connecting its membership predicate to the norm.
+* `mem_adicCompletionIntegers_iff_norm_le_one` : the `hA : ∀ x, x ∈ A ↔ ‖x‖ ≤ 1` hypothesis
+  `NonarchimedeanExponentialFiltration`'s theorems take, proved by chaining
+  `mem_adicCompletionIntegers` with `Valued.toNormedField.norm_le_one_iff` (Mathlib) — the norm on
+  `v.adicCompletion F` built in `Langlands.NormMap`'s `instNontriviallyNormedFieldAdicCompletion` is
+  compatible with `Valued.v` by construction.
+* `exists_isUniformizer_valued` / `exists_uniformizer` : a uniformizer of `v.adicCompletionIntegers
+  F` exists **unconditionally**, for any place of any Dedekind domain. `Valued.v` is
+  `Valuation.IsRankOneDiscrete` for any Dedekind domain (Mathlib, already invoked generally in
+  `Langlands.NormMap`'s `instRankOneValuedAdicCompletion`), so
+  `Valuation.IsRankOneDiscrete.generator_mem_range` produces an element realizing the generator,
+  i.e. a `Valuation.IsUniformizer`; `IsUniformizer.is_generator` (Mathlib) then gives `maximalIdeal
+  (v.adicCompletionIntegers F) = Ideal.span {π}` and `val_lt_one` gives `‖π‖ < 1`.
+* `norm_natCast_lt_one_of_charP_residueField` : the threshold hypothesis `exp`/`log` need
+  (`‖(p : v.adicCompletion F)‖ < 1`), derived — not separately assumed — from
+  `CharP (ResidueField (v.adicCompletionIntegers F)) p`: unwinding `CharP` gives `(p :
+  ResidueField _) = 0`; naturality of the cast through the residue map turns this into `(p :
+  v.adicCompletionIntegers F) ∈ maximalIdeal`; `valued_lt_one_of_mem_maximalIdeal`
+  (`Langlands.AdicCompletionIntegersResidue`) then gives the valuation bound, and the norm/valuation
+  compatibility already used above converts it to the norm bound.
+* `exists_maximalIdeal_pow_lt_convergenceRadius` / `..._lt_logConvergenceRadius` : assembling all of
+  the above with `NonarchimedeanExponential.exists_forall_mem_maximalIdeal_pow_norm_lt_(log)ConvergenceRadius`
+  (`Langlands.NonarchimedeanExponentialFiltration`) gives the concrete statement: for `v` a place of
+  a Dedekind domain `A`, fraction field `F` with `[CharZero F]`, and `p` the residue characteristic
+  of `v` (witnessed by `[CharP (A ⧸ v.asIdeal) p]`, transferred via the previous file), some
+  explicit `i₀ : ℕ` has `exp` (resp. `log`) defined on all of `𝔪(v.adicCompletionIntegers F)^i` for
+  every `i ≥ i₀`.
+
+This is exactly the task's item 4 — the concrete instantiation `Langlands/
+NonarchimedeanExponentialFiltration.lean`'s own docstring flagged as its second "genuinely short of
+the task's target" item (b) — closed for a **general** place `v` of a **general** Dedekind domain,
+not a one-off. No `sorry`; `#print axioms` on all four new theorems and both new instances:
+`[propext, Classical.choice, Quot.sound]` only. `nix develop -c lake build Langlands`: clean, whole
+project (`8710` jobs; only pre-existing `unusedSectionVars` linter warnings elsewhere, unrelated to
+this pass).
+
+**What remains, precisely, toward the wild-case norm-group index theorem** (unchanged in kind from
+the fourth pass's list, now with one fewer item and the concrete-instantiation item genuinely
+closed at the general level):
+
+1. **A genuine concrete mixed-characteristic example.** Every result in this pass is proved for an
+   *arbitrary* place `v` given the right hypotheses (`[CharZero F]`, `[CharP (A ⧸ v.asIdeal) p]`) —
+   no example populating those hypotheses with an actual number field or `p`-adic-style construction
+   exists in this repo yet. `Langlands.TotallyRamifiedConcreteExample` cannot serve this role (it is
+   deliberately equal-characteristic); a mixed-characteristic analogue (e.g. an actual finite
+   extension of `ℚ_p`, or `ℤ`/`ℚ` itself as the base) is unbuilt. Without one, the results in this
+   pass, while general and reusable, cannot yet be *applied* to a witness the way the tame side's
+   concrete example lets `index_localNormMap_range_eq_three` be applied.
+2. **The mutual-inverse relationship between `exp` and `log`** (`exp(log(1+x)) = 1+x`,
+   `log(1+(exp x - 1)) = x`) — flagged unattempted since the fourth pass; Mathlib's
+   `PowerSeries.exp`/`.Log` have no ready-made formal identity to transport, confirmed absent again
+   this pass (no new search conducted, no change from the fourth pass's finding).
+3. **Landing in `U^{(i)}`, not just the convergence domain.** This pass's
+   `exists_maximalIdeal_pow_lt_convergenceRadius` shows `exp`/`log` are *defined* on `𝔪^i` for `i`
+   above a threshold; it does not show `exp x` lands in the principal-units subgroup
+   `ValuationSubring.principalUnitsPow` — that needs the tail estimate
+   `‖exp x - 1 - x‖ ≤ (something small)` flagged as unattempted since
+   `NonarchimedeanExponentialFiltration.lean`'s original docstring. Not attempted this pass either
+   (out of scope — the task asked specifically for the mixed-characteristic instances and the
+   convergence-domain instantiation, not this).
+4. **An explicit closed-form `i`** (Serre's `i > e·v(p)/(p-1)`), rather than the existential `∃ i₀`
+   this pass's theorems produce — needs `‖π_{v.adicCompletionIntegers F}‖` expressed via a
+   ramification-index-th root of a base valuation, which in turn needs an actual extension `L/K`
+   (this pass worked at a single place, no extension data) and the concrete example from item 1.
+5. **The norm/trace compatibility formula** `N_{L/K}(exp x) = exp(Tr_{L/K}(x))` — the actual
+   wild-case payoff — remains entirely unattempted, unchanged since every prior pass on this thread
+   flagged it as the highest-priority remaining item and the piece most likely to determine whether
+   this whole route closes the wild case at all.
+
+**Net effect on the wild-case picture.** Of the (now five, previously four) pieces needed —
+convergence, log/inverse, filtration-level translation at the abstract level, the concrete
+instantiation, norm-compatibility — convergence, the abstract filtration translation, *and* the
+concrete instantiation (at the general, not-yet-populated-with-an-example level) are now closed.
+The mutual-inverse relationship and norm/trace compatibility remain the two hardest, genuinely
+unstarted pieces; a concrete mixed-characteristic example is a new, separate, comparatively
+mechanical gap (analogous in shape and difficulty to
+`Langlands.TotallyRamifiedConcreteExample`, which took five passes) that would need to exist before
+any of this pass's results apply to an actual witness.
