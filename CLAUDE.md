@@ -95,6 +95,12 @@ Types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`. Scope is optional but
   specifically, cargo/rustc's incremental-compilation cache bakes in the checkout path, so
   identical code built from two different worktrees can never share that cache: a
   structural, unfixable cost, not an inconvenience.
+- In `langlands/` (or any Lean subproject here), when a general-purpose lemma/definition/
+  instance is found missing from Mathlib — not something narrowly specific to this
+  project's own constructions — implement it at Mathlib quality: general hypotheses, not
+  narrowed to this repo's setup unless genuinely necessary; docstrings matching Mathlib
+  conventions; named and structured the way it would need to be to actually go into
+  Mathlib. Not a narrow one-off shim that only serves the immediate proof obligation.
 
 ## Disposition
 
