@@ -58,6 +58,58 @@ theorem range_units_map_algebraMap_adicCompletionIntegers_eq (v : HeightOneSpect
     rw [hy₀u.unit_spec, hy₀def]
     rfl
 
+/-! ### Task 1: the bridging lemma -/
+
+variable {R S K L : Type*} [CommRing R] [IsDedekindDomain R] [Field K] [Algebra R K]
+  [IsFractionRing R K] [CommRing S] [IsDedekindDomain S] [Field L] [Algebra S L]
+  [IsFractionRing S L] [Algebra R S] [Algebra K L] [Algebra R L] [IsScalarTower R S L]
+  [IsScalarTower R K L] [Module.Finite K L] [Algebra.IsIntegral R S] [Module.IsTorsionFree R S]
+
+variable (K L) (v : HeightOneSpectrum R) (w : HeightOneSpectrum S) [w.asIdeal.LiesOver v.asIdeal]
+  [Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)]
+
+/-- The embedding `K₀ˣ ↪ (v.adicCompletion K)ˣ`, with range exactly `(v.adicCompletionIntegers
+K).units` (`range_units_map_algebraMap_adicCompletionIntegers_eq`). -/
+def embedK : (v.adicCompletionIntegers K)ˣ →* (v.adicCompletion K)ˣ :=
+  Units.map (algebraMap (v.adicCompletionIntegers K) (v.adicCompletion K)).toMonoidHom
+
+/-- The embedding `L₀ˣ ↪ (w.adicCompletion L)ˣ`, with range exactly `(w.adicCompletionIntegers
+L).units` (`range_units_map_algebraMap_adicCompletionIntegers_eq`). -/
+def embedL : (w.adicCompletionIntegers L)ˣ →* (w.adicCompletion L)ˣ :=
+  Units.map (algebraMap (w.adicCompletionIntegers L) (w.adicCompletion L)).toMonoidHom
+
+omit [Algebra.IsIntegral R S] in
+/-- **`localNormMap ∘ embedL = embedK ∘ normUnitsK₀`.** The square commutes: pushing a unit of
+`L₀` into `(w.adicCompletion L)ˣ` and then taking the local norm agrees with first taking the
+`K₀`-level norm and then pushing into `(v.adicCompletion K)ˣ`. This is exactly
+`algebraMap_norm_eq_norm_algebraMap`, transported from `Algebra.norm` to `Units.map`. -/
+theorem localNormMap_comp_embedL_eq :
+    (localNormMap K L v w).comp (embedL L w) = (embedK K v).comp (normUnitsK₀ K L v w) := by
+  apply MonoidHom.ext
+  intro x
+  apply Units.ext
+  show Algebra.norm (v.adicCompletion K)
+      (algebraMap (w.adicCompletionIntegers L) (w.adicCompletion L)
+        (x : w.adicCompletionIntegers L)) =
+    algebraMap (v.adicCompletionIntegers K) (v.adicCompletion K)
+      (Algebra.norm (v.adicCompletionIntegers K) (x : w.adicCompletionIntegers L))
+  rw [algebraMap_norm_eq_norm_algebraMap K L v w x]
+
+omit [Algebra.IsIntegral R S] in
+/-- **Task 1: the bridging lemma.** `N_{L/K}(U_L)`, at the `(v.adicCompletion K)ˣ` level (the
+literal image `(w.adicCompletionIntegers L).units.map (localNormMap K L v w)` that
+`localNormMap_range_eq_of_isTotallyRamified` is phrased in terms of), coincides with the
+`K₀ˣ`-level range `MonoidHom.range (normUnitsK₀ K L v w)` pushed forward along `embedK`. Proved by
+rewriting `(w.adicCompletionIntegers L).units` as `MonoidHom.range (embedL L w)` (Step 0) and
+pushing both sides of the commuting square (`localNormMap_comp_embedL_eq`) through
+`MonoidHom.map_range`. -/
+theorem units_map_localNormMap_eq_map_normUnitsK₀ :
+    (w.adicCompletionIntegers L).units.map (localNormMap K L v w) =
+      (MonoidHom.range (normUnitsK₀ K L v w)).map (embedK K v) := by
+  rw [show (w.adicCompletionIntegers L).units = MonoidHom.range (embedL L w) from
+      (range_units_map_algebraMap_adicCompletionIntegers_eq w).symm,
+    MonoidHom.map_range, MonoidHom.map_range, localNormMap_comp_embedL_eq K L v w]
+
 end IsDedekindDomain.HeightOneSpectrum
 
 end
