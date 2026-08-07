@@ -7,9 +7,14 @@ import Langlands.PrincipalUnitsFiltration
 `Langlands.NonarchimedeanExponential` builds `exp`/`log` and proves convergence purely in terms of
 the abstract threshold `‖x‖ < convergenceRadius K p` (resp. `logConvergenceRadius K p`). This file
 takes the first step toward the payoff stated in that file's "What remains" list — connecting that
-abstract threshold to `x ∈ 𝔪_A^i` for a valuation subring `A` of `K` and an explicit `i` — but does
-**not** reach the full statement `exp : 𝔪_L^i →+ U_L^{(i)}` that file's docstring targets. See "What
-remains" below for exactly what is and is not closed here.
+abstract threshold to `x ∈ 𝔪_A^i` for a valuation subring `A` of `K` and an explicit `i`. The further
+step — showing `exp x` actually lands in `U_A^{(i)} = ValuationSubring.principalUnitsPow A i`, not
+merely that it converges — is now closed in
+`Langlands.NonarchimedeanExponentialUnitsFiltration.exp_mem_principalUnitsPow`, which builds on this
+file's `norm_le_pow_of_mem_maximalIdeal_pow` and its converse `mem_maximalIdeal_pow_of_norm_le`
+(added here, see below). The remaining gap to the full statement `exp : 𝔪_L^i →+ U_L^{(i)}` that
+`NonarchimedeanExponential`'s docstring targets is the group-homomorphism law, not attempted anywhere
+in this thread — see "What remains" below.
 
 ## Scope: abstract `ValuationSubring`, not the concrete `HeightOneSpectrum` setting
 
@@ -32,8 +37,12 @@ here.
 
 * `norm_le_pow_of_mem_maximalIdeal_pow` : for `A` a `ValuationSubring K` whose membership matches the
   norm's unit ball (`hA`) and `π` a uniformizer, `x ∈ 𝔪_A^i → ‖x‖ ≤ ‖π‖^i` — the "ideal power implies
-  norm bound" half of the classical filtration/norm correspondence (the only half needed to place
-  `𝔪_A^i` inside `exp`/`log`'s convergence domain; the converse is not proved or needed here).
+  norm bound" half of the classical filtration/norm correspondence.
+* `mem_maximalIdeal_pow_of_norm_le` : the converse — `‖x‖ ≤ ‖π‖^i → x ∈ 𝔪_A^i`, for `x : A` — proved
+  directly from `hA` with no discrete-valuation-ring uniqueness argument needed. Originally flagged
+  as "not proved or needed here"; it turned out to be exactly the fact
+  `Langlands.NonarchimedeanExponentialUnitsFiltration.exp_mem_principalUnitsPow` needs to convert its
+  tail-sum norm bound on `exp x - 1` into genuine ideal membership.
 * `exists_maximalIdeal_pow_le_convergenceRadius` / `..._le_logConvergenceRadius` : since
   `‖π‖ < 1`, `‖π‖^i → 0`, so some explicit `i₀` has `‖π‖^i₀` strictly below the relevant threshold;
   combined with the previous result and antitonicity of `i ↦ ‖π‖^i`, `𝔪_A^i` lies inside the
@@ -41,18 +50,15 @@ here.
 
 ## What remains
 
-* **Landing in `U_A^{(i)}`, not just convergence.** This file shows `exp`/`log` are *defined*
-  (convergent) on `𝔪_A^i` for `i` above the computed threshold — it does **not** show `exp x` is a
-  unit congruent to `1` mod `𝔪_A^i` (i.e. `exp x ∈ ValuationSubring.principalUnitsPow A i`, after
-  coercing `exp x` into `A`). That needs a genuinely new estimate (a tail bound
-  `‖exp x - 1 - x‖ ≤ (something small)`, using the same geometric-series machinery
-  `NonarchimedeanExponential.norm_pow_div_factorial_le` already provides for each term, summed via
-  the nonarchimedean triangle inequality and passed through the limit) — not attempted this pass.
-* **An explicit closed-form `i` in terms of `e` and `p`.** The results here give existence of a
-  threshold (`exists_pow_lt_of_lt_one`), not a computed formula; the classical statement (Serre) is
-  `i > e·v(p)/(p-1)` for `e` the ramification index — deriving that exact bound (rather than
-  `∃ i₀, ∀ i ≥ i₀, …`) needs `‖π_A‖` expressed in terms of `‖π_K‖`'s ramification-index-th root,
-  which is exactly the concrete-instance data flagged as missing above.
+* **Landing in `U_A^{(i)}`, not just convergence.** Closed — see
+  `Langlands.NonarchimedeanExponentialUnitsFiltration.exp_mem_principalUnitsPow`.
+* **An explicit closed-form `i` in terms of `e` and `p`.** Partially reached: that file's
+  `expUnitsThreshold` gives a genuinely explicit (not merely existential) threshold, but in terms of
+  `‖π‖`/`‖p‖` directly rather than the classical `e·v(p)/(p-1)` form, and it is twice Serre's sharp
+  constant (a consequence of using the crude, not sharp, Legendre bound already available in
+  `NonarchimedeanExponential`). Reaching the literal `e`-parametrized sharp bound still needs
+  `‖π_A‖` expressed in terms of `‖π_K‖`'s ramification-index-th root, which is exactly the
+  concrete-instance data flagged as missing above.
 * **The concrete `HeightOneSpectrum` instantiation** (`A := w.adicCompletionIntegers L`,
   `K := w.adicCompletion L`) is not done — see "Scope" above.
 -/
@@ -82,6 +88,37 @@ theorem norm_le_pow_of_mem_maximalIdeal_pow {π : A}
   have hxeq : (x : K) = (π : K) ^ i * (c : K) := by exact_mod_cast congrArg Subtype.val hc
   rw [hxeq, norm_mul, norm_pow]
   exact mul_le_of_le_one_right (pow_nonneg (norm_nonneg _) i) hcnorm
+
+omit [IsUltrametricDist K] [CharZero K] in
+include hA in
+/-- **Converse of `norm_le_pow_of_mem_maximalIdeal_pow`: a norm bound implies ideal-power
+membership.** For `π` a uniformizer of `A` with `(π : K) ≠ 0`, an element `x : A` with
+`‖(x : K)‖ ≤ ‖(π : K)‖ ^ i` already lies in `𝔪_A ^ i`. Proved directly from `hA`, with no need for
+`A` to be a discrete valuation ring or for any uniqueness-of-valuation argument: `y := (x : K) /
+(π : K) ^ i` has `‖y‖ ≤ 1` (dividing the hypothesis by `‖π‖ ^ i > 0`), hence `y ∈ A` by `hA`; the
+resulting `A`-element `c` satisfies `x = π ^ i * c` in `A` (transported from the `K`-equality
+`(x : K) = (π : K) ^ i * y` via injectivity of the coercion `A → K`), i.e. `x ∈ span {π ^ i} = 𝔪_A ^
+i`. -/
+theorem mem_maximalIdeal_pow_of_norm_le {π : A} (hπ0 : (π : K) ≠ 0)
+    (hπ : maximalIdeal A = Ideal.span ({π} : Set A)) {i : ℕ} {x : A}
+    (hx : ‖(x : K)‖ ≤ ‖(π : K)‖ ^ i) : x ∈ maximalIdeal A ^ i := by
+  have hπpow0 : (0 : ℝ) < ‖(π : K)‖ ^ i := by positivity
+  set y : K := (x : K) / (π : K) ^ i with hy
+  have hynorm : ‖y‖ ≤ 1 := by
+    rw [hy, norm_div, norm_pow, div_le_one hπpow0]
+    exact hx
+  have hyA : y ∈ A := (hA y).mpr hynorm
+  set c : A := ⟨y, hyA⟩ with hc
+  have hxeq : (x : K) = (π : K) ^ i * (c : K) := by
+    show (x : K) = (π : K) ^ i * y
+    rw [hy]
+    field_simp
+  have hxeqA : x = π ^ i * c := by
+    apply Subtype.ext
+    push_cast
+    exact hxeq
+  rw [hπ, Ideal.span_singleton_pow, Ideal.mem_span_singleton']
+  exact ⟨c, by rw [hxeqA]; ring⟩
 
 omit [IsUltrametricDist K] hA in
 /-- **A threshold `i₀` above which `𝔪_A^i` lies inside `exp`'s convergence domain**, for `{π : A}`
