@@ -6081,3 +6081,114 @@ repo's `exp`/`log`). The remaining assembly gap is narrower and more precisely i
 ((i)–(iv) above, replacing the ninth pass's single undifferentiated "substitution-composition analytic
 argument" note) but not smaller in raw difficulty — the sigma-reindexing and degree-`m`-slice matching
 steps are still substantial, unattempted proof work. Items 1, 3, 4, 5 are unchanged.
+
+## 6i. Eleventh pass (2026-08-07): step (i)'s sigma-flattening tool built; a previously-unnoticed
+domain-compatibility gap discovered and closed with an explicit sufficient radius; the concrete
+flat-sum instantiation and the degree-`m` matching (steps (i)'s literal assembly, (ii)–(iv)) remain
+open, with a sharper diagnosis of exactly why (i)'s cofinite estimate is hard
+
+**Task was the tenth pass's four-step assembly** ((i) sigma-reindex the outer/inner `HasSum`s into
+one flat sum, (ii) match its degree-`m` slice to `coeff_subst'`'s finite formula, (iii) invoke the
+closed formal identity, (iv) conclude via uniqueness), attempted as a real, sustained proof effort
+per the task brief, with instructions to land sorry-free partial progress and precisely document the
+gap if the full assembly did not close.
+
+**Step (i)'s general tool, built and closed
+(`Langlands/NonarchimedeanSigmaSummability.lean`, commit `e983828`).**
+`Mathlib.Topology.Algebra.InfiniteSum.Constructions`'s `HasSum.sigma_of_hasSum` assembles a flat
+`HasSum` on a sigma type from per-fiber `HasSum`s, a fiber-sum `HasSum`, and `Summable f` on the flat
+type supplied separately — in general this third hypothesis needs its own rearrangement argument, but
+in a complete ultrametric normed group `Langlands.NonarchimedeanUnconditionalSummability`'s
+`IsUltrametricDist.summable_of_tendsto_zero` gets it for free from `Tendsto f cofinite (nhds 0)` alone.
+`HasSum.sigma_of_isUltrametricDist` packages this specialization as its own general-purpose lemma (any
+`NormedAddCommGroup` with `IsUltrametricDist`, not tied to `exp`/`log`): given per-fiber `HasSum`s, an
+outer `HasSum`, and *only* a cofinite-vanishing hypothesis on the flat family, concludes the flat
+`HasSum`. `#print axioms`: `[propext, Classical.choice, Quot.sound]` only.
+
+**A previously-unnoticed prerequisite gap, found by direct computation, not assumed:** applying this
+tool (or even just invoking `hasSum_coeff_exp` directly) at `y := log hnorm x` needs `‖log hnorm x‖ <
+convergenceRadius K p` — a hypothesis no prior pass on this thread had separately verified. Checked
+directly: the natural bound is `‖log hnorm x‖ ≤ ‖x‖ / ‖p‖` (ultrametric: norm of a sum is at most the
+sup of the terms' norms), and requiring `‖x‖ / ‖p‖ < convergenceRadius K p = ‖p‖ ^ (1/(p-1))` reduces
+to `‖x‖ < ‖p‖ ^ (p/(p-1))`. Since `p/(p-1) > 1` for `p ≥ 2` and `‖p‖ < 1`, `‖p‖ ^ (p/(p-1)) < ‖p‖ =
+logConvergenceRadius K p` — **strictly** narrower than `log`'s own stated convergence domain. So
+`‖x‖ < logConvergenceRadius K p` (the hypothesis `hasSum_log`/`hasSum_coeff_log` already need) is
+*not* enough, by itself, to even state the outer sum `exp hnorm (log hnorm x) = Σ_n c_n (log hnorm
+x)^n` as a `HasSum` — a strictly smaller sub-domain is required first. This is a distinct gap from
+item 3 ("landing in `U^{(i)}`, not just the convergence domain", about the tail estimate
+`‖exp x - 1 - x‖` and `ValuationSubring.principalUnitsPow`) — this pass's gap is specifically about
+`exp`'s and `log`'s convergence-radius *domains* being compatible for composition, a prerequisite
+internal to item 2's own assembly, not item 3's principal-units question. Recorded as such below to
+avoid conflating the two.
+
+**Closed, in `Langlands/NonarchimedeanExponentialHasSum.lean` (extended, commit `9d137f3`):**
+
+* `norm_log_le (hnorm) (hx : ‖x‖ < logConvergenceRadius K p) : ‖log hnorm x‖ ≤ ‖x‖ / ‖p‖` — via
+  `IsUltrametricDist.norm_tsum_le` applied to `hasSum_log`'s `tsum`, bounding each term by the same
+  geometric estimate `hasSum_log`'s own proof uses internally (duplicated here since that bound was
+  private to that proof; not refactored to share code, to avoid touching an already-closed proof).
+* `expLogCompositionRadius K p := ‖p‖ ^ (p/(p-1))` and `norm_log_lt_convergenceRadius (hnorm)
+  (hx : ‖x‖ < expLogCompositionRadius K p) : ‖log hnorm x‖ < convergenceRadius K p` — the precise
+  sufficient threshold computed above, proved directly (`Real.rpow_lt_rpow_of_exponent_gt`,
+  `Real.rpow_add`), plus the auxiliary `lt_logConvergenceRadius_of_lt_expLogCompositionRadius`
+  confirming this new radius is inside `log`'s own domain too (so `log hnorm x` is defined by its
+  series at all under this hypothesis). `#print axioms` on all three: `[propext, Classical.choice,
+  Quot.sound]` only.
+
+**Build status.** `nix develop -c lake build Langlands.NonarchimedeanSigmaSummability
+Langlands.NonarchimedeanExponentialHasSum`: both clean. Full `nix develop -c lake build Langlands`:
+clean, whole project (`8715` jobs, two more than the tenth pass's `8714` — the new file plus the
+extended one — same pre-existing linter warnings elsewhere, unrelated). No `sorry` anywhere in either
+file.
+
+**What this does not close — the concrete assembly itself.** Neither step (i)'s literal
+instantiation (building the actual flat sigma `HasSum` for `exp hnorm (log hnorm x)`, using the two
+tools above) nor steps (ii)–(iv) were completed this pass. Attempted the cofinite-vanishing estimate
+`(i)` needs for the flat family `f ⟨n, g⟩ := coeff n (exp K) * ∏ i, (coeff (g i) (log K) * x ^ (g i))`
+(on `Σ n, Fin n → ℕ`) far enough to find a specific obstruction, not merely to run out of time on it:
+the crude uniform bound `‖f ⟨n, g⟩‖ ≤ ‖c_n‖ * s ^ n` (with `s := ‖x‖/‖p‖`, using only that each of the
+`n` factors is `≤ s` in norm) is **not** tight enough to prove cofiniteness, because the fiber
+`Fin n → ℕ` over a fixed `n ≥ 1` is itself infinite, and this bound does not decay across that fiber
+at all (it is constant in `g`). The correct per-tuple bound is finer — `‖f ⟨n, g⟩‖ ≤ ‖c_n‖ *
+s ^ (Σ i, g i)`, decaying in the tuple's *actual* total, not just its length `n` — and combining that
+correctly with the constraint "only finitely many tuples have bounded total" (itself only true because
+`coeff 0 (log K) = 0` forces every nonzero-contributing `g i` to be `≥ 1`, exactly the fact
+`PowerSeries.coeff_subst_finite'`'s finite-support proof already encodes formally, via a different,
+finsum-based route) is precisely the estimate that would need to be built and is genuinely nontrivial —
+not a routine corollary of the two tools landed this pass. This confirms, with a specific concrete
+obstruction rather than a general "this looks hard" assessment, the tenth pass's characterization of
+step (ii)'s degree-matching burden as the hardest, least-scoped part of the whole sub-thread: the same
+"only tuples with bounded/matching total degree survive" combinatorics that (ii) needs to match against
+`coeff_subst'`'s `finsum` is *also* exactly what step (i)'s own cofinite estimate needs, earlier than
+expected, to get off the ground at all. Steps (ii)–(iv) were not attempted, since (i) itself is not
+closed.
+
+**Updated "what remains" list** (item 2, previously "the formal identity and the formal/convergent
+coefficient bookkeeping remain closed... What remains is the four-step assembly (i)–(iv)... Not
+attempted this pass"):
+
+1. **A genuine concrete mixed-characteristic example** — unchanged from the sixth pass, still unbuilt.
+2. **The mutual-inverse relationship between `exp` and `log`** — the formal identity, the
+   formal/convergent coefficient bookkeeping, and step (i)'s general sigma-flattening tool are closed
+   (eighth, ninth, this pass). A previously-unidentified domain-compatibility prerequisite (`log`'s
+   image must land inside `exp`'s convergence radius, which `log`'s own convergence domain does not
+   guarantee) is now also closed with an explicit sufficient sub-radius (`expLogCompositionRadius`,
+   this pass). What remains: step (i)'s literal flat-sum instantiation still needs a genuine
+   finite-support/degree-bounded-tuples estimate (found to be necessary, not yet built, this pass);
+   steps (ii)–(iv) (matching the flattened sum's degree-`m` slice to `coeff_subst'`'s finite formula,
+   invoking the formal identity, concluding via uniqueness) remain entirely unattempted, blocked behind
+   (i).
+3. **Landing in `U^{(i)}`, not just the convergence domain** — unchanged, still unattempted; distinct
+   from this pass's domain-compatibility finding (see above) — that finding is about `exp`'s and
+   `log`'s convergence-radius domains being compatible for composition, not about the tail estimate
+   `‖exp x - 1 - x‖` this item needs.
+4. **An explicit closed-form threshold** (Serre's `i > e·v(p)/(p-1)`) — unchanged.
+5. **The norm/trace compatibility formula** `N_{L/K}(exp x) = exp(Tr_{L/K}(x))`, and its own
+   trace-norm precondition — unchanged, still entirely unstarted.
+
+**Net effect on the wild-case picture.** Item 2 gains two closed pieces this pass (the general
+sigma-flattening tool; the domain-compatibility sub-gap, previously unnoticed by any prior pass on this
+thread) but is not closed at the concrete level: the flat-sum instantiation that step (i) still needs
+is now known to require the same finite-support/bounded-degree combinatorics that step (ii) needs
+downstream, discovered by direct attempt rather than assumed — a genuine sharpening of *where* the
+difficulty sits, not a reduction of it. Items 1, 3, 4, 5 are unchanged.
