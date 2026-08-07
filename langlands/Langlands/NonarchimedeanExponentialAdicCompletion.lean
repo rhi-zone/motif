@@ -1,0 +1,146 @@
+import Langlands.AdicCompletionMixedCharacteristic
+import Langlands.NonarchimedeanExponentialFiltration
+
+/-!
+# Instantiating the exponential/logarithm's convergence domain for `v.adicCompletionIntegers F`
+
+`Langlands.NonarchimedeanExponentialFiltration` translates `NonarchimedeanExponential.exp`/`log`'s
+abstract convergence threshold into filtration-level language for an abstract `ValuationSubring A`
+of a `NormedField K`, but stops short of the concrete `HeightOneSpectrum` setting used throughout
+this repo: that concrete instantiation needs `CharZero (v.adicCompletion F)` and a
+residue-characteristic-`p` instance, neither of which existed anywhere in this repo before
+`Langlands.AdicCompletionMixedCharacteristic`. This file supplies the missing bridge and produces
+the concrete existence statement: for `v` a place of a Dedekind domain `A` with fraction field `F`
+of characteristic `0`, and `p` the residue characteristic of `v`, some explicit `i₀` has `exp`
+(resp. `log`) defined on all of `𝔪^i` for `v.adicCompletionIntegers F`, for every `i ≥ i₀`.
+
+## Route
+
+* `v.adicCompletionIntegers F` *is*, definitionally, `Valued.v.valuationSubring`
+  (`IsDedekindDomain.HeightOneSpectrum.adicCompletionIntegers`, Mathlib) — so
+  `NonarchimedeanExponentialFiltration`'s abstract `ValuationSubring A` can be instantiated at `A :=
+  v.adicCompletionIntegers F` directly, with no new subring construction needed.
+* Its membership hypothesis `hA : ∀ x, x ∈ A ↔ ‖x‖ ≤ 1` is `mem_adicCompletionIntegers` chained with
+  `Valued.toNormedField.norm_le_one_iff` (the norm on `v.adicCompletion F` built in
+  `Langlands.NormMap`'s `instNontriviallyNormedFieldAdicCompletion` is, by construction, compatible
+  with `Valued.v`).
+* A uniformizer exists unconditionally: `Valued.v` is `Valuation.IsRankOneDiscrete` for any Dedekind
+  domain (Mathlib, already invoked in `Langlands.NormMap`), so
+  `Valuation.IsRankOneDiscrete.generator_mem_range` produces `π : v.adicCompletion F` with
+  `Valued.v π = ↑(generator)`, i.e. `Valuation.IsUniformizer Valued.v π`; `IsUniformizer.is_generator`
+  then gives `maximalIdeal (v.adicCompletionIntegers F) = Ideal.span {π}` and `val_lt_one` gives
+  `‖π‖ < 1`.
+* The threshold hypothesis `‖(p : K)‖ < 1` that `exp`/`log` need is exactly
+  `CharP (ResidueField (v.adicCompletionIntegers F)) p`, unwound: that characteristic instance says
+  `(p : ResidueField _) = 0`, i.e. (naturality of the residue map's cast, `residue_eq_zero_iff`) `(p :
+  v.adicCompletionIntegers F) ∈ maximalIdeal`, hence (`valued_lt_one_of_mem_maximalIdeal`,
+  `Langlands.AdicCompletionIntegersResidue`) `Valued.v (p : v.adicCompletion F) < 1`.
+
+## Main results
+
+* `norm_natCast_lt_one_of_charP_residueField` : the threshold hypothesis `exp`/`log` need, derived
+  from the residue-characteristic instance rather than assumed separately.
+* `exists_uniformizer` : existence of a uniformizer of `v.adicCompletionIntegers F`, unconditionally.
+* `exists_maximalIdeal_pow_lt_convergenceRadius` / `..._lt_logConvergenceRadius` : the concrete
+  instantiation — some explicit `i₀` has `𝔪^i` inside `exp`'s (resp. `log`'s) convergence domain for
+  every `i ≥ i₀`.
+
+## What remains
+
+Landing in the principal-units subgroup `U^{(i)}`, an explicit closed-form `i` (rather than
+existential), and the mutual-inverse/norm-compatibility facts are exactly the items
+`Langlands.NonarchimedeanExponentialFiltration`'s and `Langlands.NonarchimedeanExponential`'s "What
+remains" sections already flag as unattempted; none of that is closed by this file.
+-/
+
+noncomputable section
+
+open IsDedekindDomain IsLocalRing NonarchimedeanExponential
+open scoped WithZero
+
+namespace IsDedekindDomain.HeightOneSpectrum
+
+variable {A F : Type*} [CommRing A] [IsDedekindDomain A] [Field F] [Algebra A F]
+  [IsFractionRing A F] (v : HeightOneSpectrum A)
+
+open scoped Valued in
+/-- **A uniformizer of `v.adicCompletionIntegers F` exists, unconditionally.** `Valued.v` is
+`Valuation.IsRankOneDiscrete` for any Dedekind domain (Mathlib), so its generator is realized by
+some `π : v.adicCompletion F` (`Valuation.IsRankOneDiscrete.generator_mem_range`). -/
+theorem exists_isUniformizer_valued :
+    ∃ π : v.adicCompletion F, Valuation.IsUniformizer (Valued.v : Valuation _ ℤᵐ⁰) π :=
+  Valuation.IsRankOneDiscrete.generator_mem_range (v.adicCompletion F)
+    (Valued.v : Valuation (v.adicCompletion F) ℤᵐ⁰)
+
+open scoped Valued in
+/-- **The threshold hypothesis `exp`/`log` need, derived from the residue characteristic.** If
+`ResidueField (v.adicCompletionIntegers F)` has characteristic `p`, then `‖(p : v.adicCompletion
+F)‖ < 1`: unwinding `CharP`, `(p : ResidueField _) = 0`, hence (naturality of the cast through the
+residue map, `IsLocalRing.residue_eq_zero_iff`) `(p : v.adicCompletionIntegers F) ∈ maximalIdeal`,
+hence (`valued_lt_one_of_mem_maximalIdeal`) `Valued.v (p : v.adicCompletion F) < 1`, hence (the norm
+on `v.adicCompletion F` is compatible with `Valued.v`) the stated norm bound. -/
+theorem norm_natCast_lt_one_of_charP_residueField (p : ℕ)
+    [CharP (ResidueField (v.adicCompletionIntegers F)) p] :
+    ‖(p : v.adicCompletion F)‖ < 1 := by
+  have hzero : (p : ResidueField (v.adicCompletionIntegers F)) = 0 := CharP.cast_eq_zero _ p
+  have hnat : (p : ResidueField (v.adicCompletionIntegers F))
+      = residue (v.adicCompletionIntegers F) (p : v.adicCompletionIntegers F) := by
+    rw [map_natCast]
+  rw [hnat] at hzero
+  have hmem : (p : v.adicCompletionIntegers F) ∈ maximalIdeal (v.adicCompletionIntegers F) :=
+    (residue_eq_zero_iff _).mp hzero
+  have hlt := valued_lt_one_of_mem_maximalIdeal v hmem
+  have hcast : ((p : v.adicCompletionIntegers F) : v.adicCompletion F) = (p : v.adicCompletion F) := by
+    norm_cast
+  rw [hcast] at hlt
+  exact Valued.toNormedField.norm_lt_one_iff.mpr hlt
+
+/-- **The membership hypothesis `NonarchimedeanExponentialFiltration`'s machinery needs**, for
+`A := v.adicCompletionIntegers F`: membership matches the closed unit ball of the norm built from
+`Valued.v` (`Langlands.NormMap`'s `instNontriviallyNormedFieldAdicCompletion`). -/
+theorem mem_adicCompletionIntegers_iff_norm_le_one (x : v.adicCompletion F) :
+    x ∈ v.adicCompletionIntegers F ↔ ‖x‖ ≤ 1 := by
+  rw [mem_adicCompletionIntegers A F v, Valued.toNormedField.norm_le_one_iff]
+
+open scoped Valued in
+/-- **A uniformizer of `v.adicCompletionIntegers F`, as an element of that subring, with norm
+`< 1` and generating its maximal ideal.** Packages `exists_isUniformizer_valued` into the exact
+shape `NonarchimedeanExponentialFiltration`'s theorems need. -/
+theorem exists_uniformizer :
+    ∃ π : v.adicCompletionIntegers F, ‖(π : v.adicCompletion F)‖ < 1 ∧
+      maximalIdeal (v.adicCompletionIntegers F) = Ideal.span ({π} : Set (v.adicCompletionIntegers F)) := by
+  obtain ⟨π, hπ⟩ := exists_isUniformizer_valued v (F := F)
+  have hπlt : ‖π‖ < 1 := Valued.toNormedField.norm_lt_one_iff.mpr hπ.val_lt_one
+  have hπmem : π ∈ v.adicCompletionIntegers F :=
+    (mem_adicCompletionIntegers_iff_norm_le_one v π).mpr hπlt.le
+  refine ⟨⟨π, hπmem⟩, hπlt, ?_⟩
+  exact hπ.is_generator (π := (⟨π, hπmem⟩ : v.adicCompletionIntegers F))
+
+variable [CharZero F] (p : ℕ) [hp : Fact p.Prime] [CharP (ResidueField (v.adicCompletionIntegers F)) p]
+
+/-- **The concrete instantiation, for `exp`.** Some explicit `i₀` has every `x ∈ 𝔪^i` (`i ≥ i₀`) of
+`v.adicCompletionIntegers F` inside `NonarchimedeanExponential.exp`'s convergence domain. Assembles
+`exists_uniformizer`, `norm_natCast_lt_one_of_charP_residueField`, and
+`NonarchimedeanExponential.exists_forall_mem_maximalIdeal_pow_norm_lt_convergenceRadius`. -/
+theorem exists_maximalIdeal_pow_lt_convergenceRadius :
+    ∃ i₀ : ℕ, ∀ i ≥ i₀, ∀ x : v.adicCompletionIntegers F,
+      x ∈ maximalIdeal (v.adicCompletionIntegers F) ^ i →
+        ‖(x : v.adicCompletion F)‖ < convergenceRadius (v.adicCompletion F) p := by
+  obtain ⟨π, hπnorm, hπ⟩ := exists_uniformizer v (F := F)
+  exact exists_forall_mem_maximalIdeal_pow_norm_lt_convergenceRadius (v.adicCompletionIntegers F)
+    (mem_adicCompletionIntegers_iff_norm_le_one v)
+    (norm_natCast_lt_one_of_charP_residueField v p) hπ hπnorm
+
+/-- The `log`-domain analogue of `exists_maximalIdeal_pow_lt_convergenceRadius`. -/
+theorem exists_maximalIdeal_pow_lt_logConvergenceRadius :
+    ∃ i₀ : ℕ, ∀ i ≥ i₀, ∀ x : v.adicCompletionIntegers F,
+      x ∈ maximalIdeal (v.adicCompletionIntegers F) ^ i →
+        ‖(x : v.adicCompletion F)‖ < logConvergenceRadius (v.adicCompletion F) p := by
+  obtain ⟨π, hπnorm, hπ⟩ := exists_uniformizer v (F := F)
+  exact exists_forall_mem_maximalIdeal_pow_norm_lt_logConvergenceRadius (v.adicCompletionIntegers F)
+    (mem_adicCompletionIntegers_iff_norm_le_one v)
+    (norm_natCast_lt_one_of_charP_residueField v p) hπ hπnorm
+
+end IsDedekindDomain.HeightOneSpectrum
+
+end
