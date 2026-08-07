@@ -743,6 +743,84 @@ theorem isTotallyRamified : IsDedekindDomain.HeightOneSpectrum.IsTotallyRamified
   finrank_eq := finrank_eq
   exists_sub_algebraMap_mem_maximalIdeal := exists_sub_algebraMap_mem_maximalIdeal
 
+/-! ### Capstone: the norm-group index `[(v.adicCompletion K)ˣ : N(L_w^×)] = gcd(e, #κ[K]ˣ) = 3`
+
+`R = k[X]`, `v.asIdeal = (X)`, so `R ⧸ v.asIdeal ≅ k` via the constant-coefficient map
+(`Polynomial.ker_constantCoeff`); likewise `S ⧸ w.asIdeal ≅ k` via the same map transported across
+`S ≃+* k[Y]`. Composed with `Langlands.AdicCompletionIntegersResidue.residueFieldQuotientRingEquiv`,
+this identifies both `ResidueField (v.adicCompletionIntegers K)` and `ResidueField
+(w.adicCompletionIntegers L)` with `k := ZMod 7`, giving `Nat.card (ResidueField
+(v.adicCompletionIntegers K))ˣ = Nat.card kˣ = 6` and finiteness of `ResidueField
+(w.adicCompletionIntegers L)` (needed as an instance by
+`index_localNormMap_range_eq_of_isTotallyRamified`). With `e = 3`, the classical formula
+`gcd(e, #κ[K]ˣ)` evaluates to `gcd(3, 6) = 3`. -/
+
+theorem constantCoeff_S_surjective :
+    Function.Surjective (Polynomial.constantCoeff.comp S.ringEquivPoly.toRingHom : S →+* k) :=
+  fun c => ⟨S.ringEquivPoly.symm (Polynomial.C c), by simp⟩
+
+theorem ker_constantCoeff_S_eq :
+    RingHom.ker (Polynomial.constantCoeff.comp S.ringEquivPoly.toRingHom : S →+* k) = w.asIdeal := by
+  ext s
+  rw [RingHom.mem_ker, RingHom.comp_apply, Polynomial.constantCoeff_apply]
+  show (S.ringEquivPoly s).coeff 0 = 0 ↔ s ∈ Ideal.span ({Y} : Set S)
+  rw [Ideal.mem_span_singleton, Y_eq]
+  constructor
+  · intro h0
+    have hdvdX : Polynomial.X ∣ S.ringEquivPoly s := Polynomial.X_dvd_iff.mpr h0
+    have hdvdY := map_dvd S.ringEquivPoly.symm hdvdX
+    rwa [RingEquiv.symm_apply_apply] at hdvdY
+  · intro hdvd
+    have hdvdX : Polynomial.X ∣ S.ringEquivPoly s := by
+      have hdvdY := map_dvd S.ringEquivPoly hdvd
+      rwa [RingEquiv.apply_symm_apply] at hdvdY
+    exact Polynomial.X_dvd_iff.mp hdvdX
+
+/-- `R ⧸ v.asIdeal ≃+* k`, via the constant-coefficient map (`Polynomial.ker_constantCoeff`,
+`v.asIdeal = Ideal.span {X}` by definition). -/
+noncomputable def quotientVAsIdealRingEquiv : (R ⧸ v.asIdeal) ≃+* k :=
+  (Ideal.quotEquivOfEq
+      (show v.asIdeal = RingHom.ker (Polynomial.constantCoeff : R →+* k) from
+        Polynomial.ker_constantCoeff.symm)).trans
+    (RingHom.quotientKerEquivOfSurjective
+      (fun c => ⟨Polynomial.C c, by rw [Polynomial.constantCoeff_apply, Polynomial.coeff_C_zero]⟩))
+
+/-- `S ⧸ w.asIdeal ≃+* k`, via the constant-coefficient map transported across `S ≃+* k[Y]`. -/
+noncomputable def quotientWAsIdealRingEquiv : (S ⧸ w.asIdeal) ≃+* k :=
+  (Ideal.quotEquivOfEq ker_constantCoeff_S_eq.symm).trans
+    (RingHom.quotientKerEquivOfSurjective constantCoeff_S_surjective)
+
+/-- `ResidueField (v.adicCompletionIntegers K) ≃+* k`. -/
+noncomputable def residueFieldK₀RingEquiv :
+    IsLocalRing.ResidueField (v.adicCompletionIntegers K) ≃+* k :=
+  (v.residueFieldQuotientRingEquiv (F := K)).symm.trans quotientVAsIdealRingEquiv
+
+/-- `ResidueField (w.adicCompletionIntegers L) ≃+* k`. -/
+noncomputable def residueFieldL₀RingEquiv :
+    IsLocalRing.ResidueField (w.adicCompletionIntegers L) ≃+* k :=
+  (w.residueFieldQuotientRingEquiv (F := L)).symm.trans quotientWAsIdealRingEquiv
+
+instance : Finite (IsLocalRing.ResidueField (w.adicCompletionIntegers L)) :=
+  Finite.of_equiv k residueFieldL₀RingEquiv.symm.toEquiv
+
+theorem nat_card_residueFieldK₀_units :
+    Nat.card (IsLocalRing.ResidueField (v.adicCompletionIntegers K))ˣ = 6 := by
+  rw [Nat.card_congr (Units.mapEquiv residueFieldK₀RingEquiv.toMulEquiv).toEquiv,
+    Nat.card_eq_fintype_card, ZMod.card_units_eq_totient]
+  decide
+
+/-- **The capstone computation**: instantiating
+`index_localNormMap_range_eq_of_isTotallyRamified` on this concrete totally, tamely ramified
+example gives `[(v.adicCompletion K)ˣ : N(L_w^×)] = gcd(3, 6) = 3`, a genuine local class field
+theory computation checked end-to-end by the Lean type-checker. -/
+theorem index_localNormMap_range_eq_three
+    {πL : w.adicCompletionIntegers L} (hπL : Irreducible πL) :
+    (MonoidHom.range (IsDedekindDomain.HeightOneSpectrum.localNormMap K L v w)).index = 3 := by
+  rw [IsDedekindDomain.HeightOneSpectrum.index_localNormMap_range_eq_of_isTotallyRamified K L v w
+      isTotallyRamified isTamelyRamified hπL,
+    ramificationIdx'_eq, nat_card_residueFieldK₀_units]
+  decide
+
 end Langlands.TotallyRamifiedConcreteExample
 
 end
