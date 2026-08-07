@@ -296,6 +296,14 @@ instance : w.asIdeal.LiesOver v.asIdeal := by
   rw [← Ideal.map_le_iff_le_comap, algebraMap_R_S_eq, map_v_eq]
   exact Ideal.pow_le_self e_pos.ne'
 
+/- **Sanity check**: `IsTotallyRamified K L v w` now typechecks against this concrete instance —
+every ambient hypothesis in its `variable` block (`Module.Finite K L`, `Algebra.IsIntegral R S`,
+`Module.IsTorsionFree R S`, `IsScalarTower R K L`, etc.) is satisfied. This is a regression check,
+not a proof of the predicate itself: `IsTotallyRamified`'s three fields talk about
+`v.adicCompletionIntegers K` / `w.adicCompletionIntegers L`, and completing that proof needs the
+separability bridge documented in `ROADMAP.md` (still open). -/
+#check (IsDedekindDomain.HeightOneSpectrum.IsTotallyRamified K L v w : Prop)
+
 end Langlands.TotallyRamifiedConcreteExample
 
 end
