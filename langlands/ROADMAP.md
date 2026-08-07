@@ -5335,3 +5335,75 @@ just not yet computable from what's proved.
 **Build status.** `nix develop -c lake build Langlands` — clean, whole project. `#print axioms` on
 `map_maximalIdeal_eq`, `finrank_eq`, `isTamelyRamified`: all three depend only on `[propext,
 Classical.choice, Quot.sound]` (no `sorry`, no stray axioms).
+
+## 6c. Fifth pass (2026-08-07): field 3 closed, `IsTotallyRamified` fully available, capstone index computed — `= 3`
+
+**The field-3 wall from 6b did not require the scale of infrastructure that pass estimated.** Both
+routes 6b scoped (density-with-coprimality in `L`; `Localization.AtPrime`) were dead ends as
+described, but a *third* route — chaining two density facts already sitting unconnected in Mathlib
+— closed it directly: `IsDedekindDomain.HeightOneSpectrum.denseRange_algebraMap` (a field dense in
+its own adic completion) composed with `IsDedekindDomain.HeightOneSpectrum.exists_valuation_sub_lt_of_integer`
+(a Dedekind domain dense, in the *un-completed* topology, among valuation-`≤ 1` elements of its
+fraction field). Approximating twice — completion element by field element, then field element by
+ring element — and combining the two triangle inequalities via the ultrametric closes the gap. This
+is a general, single-place fact (no extension `L/K` data needed at all), landed as its own file:
+
+* `Langlands/AdicCompletionIntegersResidue.lean` (new, commit `64e34b4`, refactored `eab2f09`):
+  `IsDedekindDomain.HeightOneSpectrum.exists_algebraMap_sub_mem_maximalIdeal` — every `y :
+  v.adicCompletionIntegers F` is congruent mod `𝔪` to `algebraMap A r` for some `r : A`, for *any*
+  Dedekind domain `A` with fraction field `F` and place `v`. Uses the `NontriviallyNormedField`
+  structure on `v.adicCompletion F` already built in `Langlands.NormMap`
+  (`instNontriviallyNormedFieldAdicCompletion`) via `Metric.mem_closure_iff` +
+  `Valued.toNormedField.norm_lt_one_iff`, rather than the `ValuativeRel`-flavored `Valued.mem_nhds`
+  API (whose `ValueGroup₀` abstraction is needlessly heavy for a plain metric-space density
+  argument). A byproduct, `mem_maximalIdeal_of_valued_lt_one`, is a small reusable "valuation `< 1`
+  ⟹ nonunit ⟹ in the maximal ideal" bridge.
+* Same file, commit `8b60f27`: pushed one step further into
+  `IsDedekindDomain.HeightOneSpectrum.residueFieldQuotientRingEquiv : A ⧸ v.asIdeal ≃+*
+  ResidueField (v.adicCompletionIntegers F)` — **the classical "completion does not change the
+  residue field" fact, in full generality**, via the first isomorphism theorem
+  (`RingHom.quotientKerEquivOfSurjective`) applied to `residue ∘ algebraMap A K₀`: surjectivity is
+  the lemma above, and the kernel is `v.asIdeal` via `valuation_lt_one_iff_mem` plus the new
+  converse helper `valued_lt_one_of_mem_maximalIdeal`. This is a genuinely reusable general-purpose
+  result, not a concrete-instance hack.
+
+**Field 3 for the concrete instance** (`Langlands/TotallyRamifiedConcreteExample.lean`, commit
+`ed0d75b`) then follows by specializing the general lemma to `(S, L, w)` and reducing `s : S` to its
+constant term `c := (S.ringEquivPoly s).coeff 0 : k`: `s - S.ringEquivPoly.symm (C c) ∈ w.asIdeal =
+(Y)` (its image under `S ≃+* k[Y]` has zero constant term, hence is an `X`-multiple, via
+`Polynomial.X_dvd_iff` and `map_dvd` transported across the ring equiv). Since `X ↦ Y^e` fixes
+constants (`Polynomial.expand_C`), `algebraMap R S (C c) = S.ringEquivPoly.symm (C c)`, and the
+naturality square `R → K₀ → L₀ = R → S → L₀` (`coe_algebraMap_adicCompletionIntegers` +
+`adicCompletionComap_algebraMap` + the already-proved `algebraMap_S_L_algebraMap_R_S_eq`) identifies
+`algebraMap S (S.ringEquivPoly.symm (C c))` with `algebraMap K₀ L₀ (algebraMap R K₀ (C c))`. Summing
+the two maximal-ideal memberships (`y - algebraMap_S s` and `algebraMap_S s - algebraMap_S
+(ringEquivPoly.symm (C c))`) finishes it, with `r := algebraMap R K₀ (C c)`.
+
+**`IsDedekindDomain.HeightOneSpectrum.IsTotallyRamified K L v w` is now a fully available,
+`sorry`-free term** (`isTotallyRamified`, assembling `map_maximalIdeal_eq`, `finrank_eq`, and the
+newly-closed `exists_sub_algebraMap_mem_maximalIdeal`), alongside the already-closed
+`isTamelyRamified`. `#print axioms` on both: `[propext, Classical.choice, Quot.sound]` only.
+
+**The capstone: `[(v.adicCompletion K)ˣ : N(L_w^×)] = 3`, computed and type-checked** (same file,
+commit `d2947a9`). Instantiating `residueFieldQuotientRingEquiv` at both `(R, K, v)` and `(S, L, w)`
+and composing with the constant-coefficient quotient isomorphisms `R ⧸ (X) ≃+* k` and `S ⧸ (Y) ≃+*
+k` (`Polynomial.ker_constantCoeff` for `R`; the same map transported across `S ≃+* k[Y]` for `S`,
+with the kernel computed by the identical `X_dvd_iff`/`map_dvd` argument used for field 3) gives
+`ResidueField (v.adicCompletionIntegers K) ≃+* k` and `ResidueField (w.adicCompletionIntegers L)
+≃+* k` — in particular `Finite (ResidueField (w.adicCompletionIntegers L))` (an instance
+`index_localNormMap_range_eq_of_isTotallyRamified` needs) and `Nat.card (ResidueField
+(v.adicCompletionIntegers K))ˣ = Nat.card (ZMod 7)ˣ = 6` (`ZMod.card_units_eq_totient`,
+`Nat.totient 7 = 6` by `decide`). With `e = 3` (`ramificationIdx'_eq`), the formula
+`Nat.gcd e (Nat.card (ResidueField K₀)ˣ)` evaluates by `decide` to **`3`**, matching the third-pass
+entry's classical-formula expectation `gcd(3,6) = 3` — now an actual Lean theorem
+(`index_localNormMap_range_eq_three`) with a literal RHS numeral, not an informal claim.
+
+**Build status.** `nix develop -c lake build Langlands` — clean, whole project (`8709` jobs).
+`#print axioms` on `exists_sub_algebraMap_mem_maximalIdeal`, `isTotallyRamified`,
+`index_localNormMap_range_eq_three`, and `residueFieldQuotientRingEquiv`: all four depend only on
+`[propext, Classical.choice, Quot.sound]` — no `sorry`, no stray axioms.
+
+**This closes the concrete-example thread** opened across the third through fifth passes above: a
+concrete totally, tamely ramified extension of function fields, with `IsTamelyRamified`,
+`IsTotallyRamified`, and a genuine local-class-field-theory norm-index computation all available as
+`sorry`-free Lean terms, end-to-end.
