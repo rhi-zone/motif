@@ -10,6 +10,7 @@ import Langlands.MonogenicIntegralClosure
 import Langlands.MonogenicMaximalOrder
 import Langlands.NonarchimedeanExponential
 import Langlands.NonarchimedeanExponentialFiltration
+import Langlands.PowerSeriesExpLog
 import Langlands.ProfiniteCompletionUlift
 import Langlands.ProfiniteGrpUlift
 import Langlands.RamificationFiltration
