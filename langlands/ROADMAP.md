@@ -5057,3 +5057,91 @@ completion-level separability bridge and the subsequent `IsTotallyRamified` proo
 brief's own estimate and this pass's confirmation that no shortcut exists in the repo already,
 comparable in size to the multi-pass threads already logged above (Phase 2a's ten passes, the
 totally-ramified norm-index thread's own many-pass history) — not a quick follow-on.
+
+### Update (2026-08-07, second pass same day) — the three ambient instances CLOSED, sorry-free;
+`IsTotallyRamified K L v w` now typechecks against the instance; the separability bridge re-examined
+on its merits (per explicit request) and confirmed to be a genuine, precisely-located gap, not one
+overlooked for lack of trying two concrete escape routes.
+
+**`Module.Finite R S`, `Algebra.IsIntegral R S`, `Module.IsTorsionFree R S`, `Module.Finite K L` —
+all four closed, commit `bbbbba6`.** Built directly, without `AdjoinRoot`:
+
+1. **`Module.Finite R S`** via the explicit basis `{1, Y, …, Y^{e-1}}`. The key identity
+   (`algebraMap_mul_Y_pow_eq`): writing a monomial's exponent `n = e·(n/e) + n%e`, `C c * Y^n =
+   algebraMap R S (C c * X^(n/e)) * Y^(n%e)` — an `R`-multiple of one of the `e` basis elements —
+   via `Polynomial.expand_C`/`expand_X`/`pow_mul`/`pow_add`/`Nat.div_add_mod`. Spanning all of `S`
+   is induction on `natDegree` using `Polynomial.eraseLead` (`self_sub_C_mul_X_pow` splits off the
+   leading term unconditionally; `eraseLead_natDegree_lt_or_eraseLead_eq_zero` gives the decreasing
+   measure without needing `Polynomial.eraseLead`'s `2 ≤ support.card` side condition directly).
+2. **`Algebra.IsIntegral R S`, `Module.IsTorsionFree R S`** — one-line consequences
+   (`Algebra.IsIntegral.of_finite`; injectivity of `algebraMap R S` into the domain `S`).
+3. **`Module.Finite K L`** — *not* via `IsIntegralClosure.isLocalization` (that lemma needs
+   `Algebra.IsAlgebraic K L` as a hypothesis, which is exactly as hard to get independently as
+   `Module.Finite K L` itself — checked and rejected as circular this pass). Instead: `yL :=
+   algebraMap S L Y` satisfies `yL^e = algebraMap K L (algebraMap R K X)` (chased through both
+   `IsScalarTower R S L` and `IsScalarTower R K L`), hence `IsIntegral K yL` via the monic witness
+   `T^e - C x` (`Polynomial.monic_X_pow_sub_C`). `IntermediateField.adjoin K {yL}` is therefore
+   finite-dimensional over `K` (`IntermediateField.adjoin.finiteDimensional`) and, separately, equals
+   `⊤`: every element of `S` maps into it (`Submodule.span_induction` over the basis fact above,
+   pushed through the algebra maps), and since it is already a *field* (not just a subalgebra), every
+   quotient of two such images — i.e. every element of `L = Frac(S)`, via `IsLocalization.mk'_surjective`
+   — lies in it too. `Module.Finite K L` then transports across `IntermediateField.topEquiv`.
+   *This route was chosen deliberately over `IntermediateField`-free alternatives specifically because
+   it sidesteps needing `S` to be identified as "the" integral closure of `R` in `L` — a fact that is
+   true here but itself nontrivial to establish and unnecessary for this goal.*
+4. **Confirmed by direct `#check` (commit `04924ee`): `IsDedekindDomain.HeightOneSpectrum.
+   IsTotallyRamified K L v w` now typechecks** — every instance argument in that predicate's
+   `variable` block resolves against `R S K L v w`. This is a real, verifiable milestone: it is the
+   first point in this repo's history where the predicate's hypotheses are known to be jointly
+   satisfiable by an actual example (as opposed to merely not-yet-shown-inconsistent).
+
+**On the separability bridge — re-examined per explicit request, not simply re-asserted.** Two
+concrete escape routes were checked on their merits this pass, as requested, before concluding
+anything:
+
+- *Route checked: does `Algebra.IsSeparable K L` (the plain, uncompleted fact) transport to the
+  completion via some generic Mathlib lemma about base change/completion?* Found
+  `Polynomial.Separable.map : p.Separable → (p.map f).Separable` for *any* ring hom `f`. Combined
+  with `Polynomial.separable_X_pow_sub_C` (`T^e - x` is separable whenever `(e:K) ≠ 0` and `x ≠ 0`)
+  and lemma names located for the needed side facts (`x ≠ 0` from injectivity of `algebraMap R K`;
+  `(e:K) ≠ 0` from `CharP K p` via `Polynomial.charP`/`IsFractionRing.charP` plus `coprime_e_p`
+  giving `p ∤ e`), this sketches a real route to `Algebra.IsSeparable K L` for this instance — **but
+  it was not written into the file or built this pass** (checked via `loogle` lemma-existence only,
+  not compiled; flagged here as a plausible, not yet verified, next step, not a closed result). Even
+  granting it, `Polynomial.Separable.map` only says one specific polynomial stays separable after
+  mapping its coefficients into the completion — it says nothing about *which* polynomial is the
+  minimal polynomial of a generator of `w.adicCompletion L`, or even that `w.adicCompletion L` is
+  generated by (the image of) `yL` at all, which is the actual remaining content of the bridge.
+- *Route checked: is there a general Mathlib/repo fact that a finite separable extension `L/K`
+  stays finite of the same degree (hence generated by the same element, hence separable by the
+  bullet above) after completing at a place?* Searched Mathlib's `RingTheory/DedekindDomain/`,
+  `RingTheory/Valuation/`, and this repo's own adic-completion files
+  (`NormMap.lean`, `AdicCompletionIntegralClosure.lean`, `FiniteAdeleRing.lean`) — **no such lemma
+  exists, in this repo or (as far as targeted search found) in Mathlib.** Reasoning through what it
+  would take to build it directly for this instance (rather than waiting for a general lemma):
+  showing `w.adicCompletion L = (v.adicCompletion K)⟮image of yL⟯` needs (a) density of `L`'s image
+  in `w.adicCompletion L` (routine, definition of completion) and (b) that
+  `(v.adicCompletion K)⟮image of yL⟯` is *closed* in `w.adicCompletion L`, which needs "a
+  finite-dimensional extension of a complete valued field is itself complete" *and* "the valuation
+  on a finite extension of a complete field extends uniquely" — both real, standard facts in local
+  field theory, **neither located in this repo's existing adic-completion infrastructure** (which is
+  exactly *why* `Algebra.IsSeparable (adicCompletion K v) (adicCompletion L w)` is an ambient
+  hypothesis throughout `NormMap.lean`/`AdicCompletionIntegralClosure.lean` rather than a derived
+  instance — the repo's own authors evidently hit the same gap and chose to assume it rather than
+  build it).
+
+**Conclusion: the separability bridge is a genuine, precisely-located gap, not an unexplored one.**
+Building it — even just for this one instance, let alone generally — requires reconstructing
+"finite-dimensional extension of a complete nonarchimedean field is complete, with a uniquely
+extended valuation," which is itself a substantial, self-contained piece of local field theory
+comparable in size to a dedicated multi-pass thread (on the order of the totally-ramified
+norm-index thread already logged above), not a short follow-on. This pass did not attempt it, per
+the "commit what you have, document the gap honestly" instruction, rather than force a shortcut
+that doesn't exist.
+
+**Consequence, updated.** Items 2–4 of "done" remain open, for the single, now precisely-identified
+reason above (not three separate open items as the first pass of this section reported — the
+`Module.Finite`/`Algebra.IsIntegral`/`Module.IsTorsionFree` layer is closed). No number was computed
+this pass either, for the same reason: `index_localNormMap_range_eq_of_isTotallyRamified` needs
+`IsTotallyRamified` proved first, which needs the completion-level facts, which need the
+separability bridge above.
