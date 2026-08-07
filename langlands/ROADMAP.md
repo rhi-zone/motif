@@ -6288,3 +6288,106 @@ unattempted, blocked behind (i)"):
 estimate the eleventh pass diagnosed as necessary, and the literal flat `HasSum` built on top of it) —
 a genuine reduction in remaining work, not just a re-diagnosis: what remains is now exactly steps
 (ii)–(iv), with no open sub-gap behind them. Items 1, 3, 4, 5 are unchanged.
+
+## 6k. Thirteenth pass (2026-08-07): steps (ii)–(iv) CLOSED — item 2 (the `exp`/`log` mutual-inverse
+identity for the convergent series) is now fully proved, sorry-free
+
+**Task was the twelfth pass's remaining steps (ii)–(iv)**: matching the flattened sum's degree-`m`
+slice against `PowerSeries.coeff_subst'`'s finite formula, invoking the closed formal identity
+`PowerSeries.exp_sub_one_subst_log`, and concluding `exp hnorm (log hnorm x) = 1 + x` via uniqueness
+of `HasSum` — flagged by three consecutive prior passes (tenth, eleventh, twelfth) as the hardest,
+least-scoped part of the whole sub-thread. This pass closes it in full.
+
+**Route, found by direct reading rather than the prior passes' framing.** The tenth/eleventh/twelfth
+passes framed step (ii) around `coeff_subst'`'s `finsum`-over-`d` formula
+(`coeff e (f.subst b) = finsum d, coeff d f • coeff e (b^d)`), which sums over the *outer* index `d`
+(matching `n`, not the tuple `g`) — so the real combinatorial burden is a level down, matching
+`coeff_m (log K ^ n)` itself (a single term of that finsum) against the convergent tuple-indexed sum
+`∑_{g : Fin n → ℕ, ∑ g_i = m} ∏_i coeff (g_i) (log K)`. Two general-purpose lemmas closed this,
+independent of `exp`/`log`:
+
+* **`Langlands/PowerSeriesCoeffPowTuple.lean` (new, commit `ce5becc`).**
+  `PowerSeries.coeff_pow_eq_sum_antidiagonalTuple (n m : ℕ) (φ : R⟦X⟧) : coeff m (φ ^ n) = ∑ g ∈
+  Finset.Nat.antidiagonalTuple n m, ∏ i, coeff (g i) φ` — restates Mathlib's existing `coeff_pow`
+  (stated via `Finset.finsuppAntidiag`, functions `ℕ →₀ ℕ`) in the tuple-indexed form
+  `Finset.Nat.antidiagonalTuple n m : Finset (Fin n → ℕ)` provides (found via the file
+  `Mathlib.Data.Fin.Tuple.NatAntidiagonal`, previously unexamined on this thread), via the bijection
+  `Finsupp.equivFunOnFinite` between `Fin n →₀ ℕ` and `Fin n → ℕ` (`Finset.sum_nbij'`). This is exactly
+  the "connective tissue" the ninth/tenth passes' Route A/B search anticipated needing but did not find
+  a name for.
+* **`Langlands/PowerSeriesExpLogCoeffFormula.lean` (new, commit `ce5becc`).**
+  `PowerSeries.sum_coeff_exp_mul_coeff_log_pow (m : ℕ) : ∑ n ∈ range (m+1), coeff n (exp A) * coeff m
+  (log A ^ n) = (if m = 0 then 1 else if m = 1 then 1 else 0)` — the finite closed form, derived from
+  `exp_sub_one_subst_log` (`PowerSeriesExpLog.lean`, eighth pass) via `coeff_subst'` and a genuinely
+  simpler fact than expected: `coeff_log_pow_eq_zero_of_lt` shows `coeff m (log A ^ n) = 0` for `m < n`
+  directly from `X_pow_dvd_iff` (`log A` has zero constant term, so `X ∣ log A`, so `X^n ∣ (log A)^n`),
+  truncating `coeff_subst'`'s `finsum` to a `Finset.range (m+1)` sum
+  (`finsum_eq_sum_of_support_subset`) with no need to separately re-derive that vanishing
+  combinatorially from `antidiagonalTuple` (the twelfth pass's own framing would have needed that).
+
+**`Langlands/NonarchimedeanExpLogDegreeMatch.lean` (new, commit `2aee17d`)** assembles these into the
+full convergent identity:
+
+* `degreeFinset (m : ℕ) := (range (m+1)).sigma (fun n => Finset.Nat.antidiagonalTuple n m)` — the
+  finite `Finset` of flat indices `⟨n, g⟩` of total degree `m` and length `≤ m`.
+* `apply_eq_zero_of_totalDegree_eq_of_lt`: a flat index of total degree `m` but length `n > m`
+  contributes `0` (pigeonhole: some entry of `g` must be `0`, forcing the `log`-coefficient factor to
+  vanish) — the same case-split `norm_coeff_exp_mul_prod_le` (`NonarchimedeanExpLogCofinite.lean`,
+  twelfth pass) already used for a norm bound, restated here as an exact equality.
+* `sum_degreeFinset_eq`: a purely algebraic identity (no convergence hypothesis) — summing the flat
+  family over `degreeFinset m` gives exactly `x^m * (1 if m ∈ {0,1} else 0)`, by `Finset.sum_sigma`
+  distributing the sigma-sum, pulling `x^m` out via `Finset.prod_mul_distrib`/`prod_pow_eq_pow_sum`,
+  then matching the resulting tuple sum to `coeff_pow_eq_sum_antidiagonalTuple` and the outer `n`-sum
+  to `sum_coeff_exp_mul_coeff_log_pow`.
+* `hasSum_fiber_totalDegree`: the degree-`m` fiber (as a subtype of `Σ n, Fin n → ℕ`) has `HasSum` to
+  `x^m * (1 if m ∈ {0,1} else 0)` — every fiber index outside `degreeFinset m` contributes `0`
+  (previous bullet), so `hasSum_sum_of_ne_finset_zero` plus `hasSum_subtype_iff_indicator` reduce the
+  fiber's `HasSum` to the finite sum just computed. (Needed `set_option maxHeartbeats 1000000`, found
+  by direct measurement after a genuine `whnf` timeout at the default budget — not a correctness gap,
+  the proof term itself is unchanged, just costly to elaborate.)
+* `hasSum_degree_graded`: regrouping the flat `HasSum` (`hasSum_coeff_exp_log`, twelfth pass) by total
+  degree via **`HasSum.tsum_fiberwise`** — a ready-made Mathlib regrouping tool (`to_additive` from
+  `HasProd.tprod_fiberwise`, `Mathlib.Topology.Algebra.InfiniteSum.Constructions`) that needed no
+  search on this pass beyond checking it applies: valid for any `HasSum` in a complete Hausdorff
+  uniform additive group (satisfied by `K` outright, no extra rearrangement hypothesis), it directly
+  produces the degree-graded `HasSum` once each fiber's value is known
+  (`hasSum_fiber_totalDegree`). This is the concrete regrouping tool the task brief anticipated needing
+  to search for; it existed already; no ultrametric-specific "reverse-flatten" lemma had to be built.
+* `exp_log_eq_one_add : exp hnorm (log hnorm x) = 1 + x` — the degree-graded series also, trivially,
+  sums to `1 + x` (finite support `{0, 1}`, `hasSum_sum_of_ne_finset_zero`); `HasSum.unique` (valid
+  since `K` is Hausdorff) identifies the two sums.
+
+**Build status.** `nix develop -c lake build Langlands.PowerSeriesCoeffPowTuple
+Langlands.PowerSeriesExpLogCoeffFormula Langlands.NonarchimedeanExpLogDegreeMatch`: all three clean.
+Full `nix develop -c lake build Langlands`: clean, whole project, `8715` jobs (three more files than
+the twelfth pass's count), only the same pre-existing warnings elsewhere (unrelated to this pass's
+files). `#print axioms` on every new declaration, including `exp_log_eq_one_add` itself:
+`[propext, Classical.choice, Quot.sound]` only. No `sorry` anywhere.
+
+**Updated "what remains" list** (item 2, previously "steps (ii)–(iv) ... Not attempted this pass;
+still the least-scoped, hardest-diagnosed remaining piece"):
+
+1. **A genuine concrete mixed-characteristic example** — unchanged from the sixth pass, still unbuilt.
+2. **The mutual-inverse relationship between `exp` and `log`** — **fully CLOSED**, sorry-free:
+   `NonarchimedeanExponential.exp_log_eq_one_add : exp hnorm (log hnorm x) = 1 + x`, for
+   `‖x‖ < expLogCompositionRadius K p`. This closes the eighth-through-thirteenth-pass sub-thread in
+   full: the formal identity (eighth pass), the formal/convergent coefficient bookkeeping (ninth
+   pass), the Cauchy-product tooling (tenth pass), the sigma-flattening tool and domain-compatibility
+   radius (eleventh pass), the `cofinite`-vanishing estimate and flat `HasSum` (twelfth pass), and now
+   the degree-matching assembly (this pass) are all landed, sorry-free, with no known open sub-gap.
+3. **Landing in `U^{(i)}`, not just the convergence domain** — unchanged, still unattempted. Note this
+   is a *different* gap from item 2: `exp_log_eq_one_add` proves the mutual-inverse identity on
+   `expLogCompositionRadius K p`'s ball; showing `exp` maps a *specific* filtration level `U^{(i)}`
+   into `U^{(i)}` (or the shifted level the wild case's tail estimate needs) is separate work, not a
+   corollary of this pass.
+4. **An explicit closed-form threshold** (Serre's `i > e·v(p)/(p-1)`) — unchanged.
+5. **The norm/trace compatibility formula** `N_{L/K}(exp x) = exp(Tr_{L/K}(x))`, and its own
+   trace-norm precondition — unchanged, still entirely unstarted.
+
+**Net effect on the wild-case picture.** Item 2 of the wild case's five-item list is now fully closed
+— the first of the five items to reach that state (item 1's status is unchanged: an unbuilt concrete
+example, tracked separately). Items 3, 4, 5 remain entirely open, and item 3 in particular is now the
+most natural next target: it shares `exp_log_eq_one_add`'s convergence-domain machinery
+(`expLogCompositionRadius`, `hasSum_coeff_exp_log`) but needs a genuinely different argument (a tail
+estimate on `‖exp x - 1 - x‖`, not a mutual-inverse identity) to show `exp` actually lands inside a
+specific principal-units filtration level.
