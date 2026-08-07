@@ -5966,3 +5966,118 @@ general-purpose Mathlib-quality lemma was also produced along the way
 thread — anywhere an ultrametric normed group's summability needs to be established. The wild case's
 overall shape is unchanged: the substitution-composition argument, the tail estimate, and the
 norm/trace compatibility formula remain the substantive open pieces.
+
+## 6h. Tenth pass (2026-08-07): Route B confirmed by direct reading; two new general Mathlib-quality
+lemmas land the Cauchy-product machinery the substitution-composition step needs; the coefficient-
+matching assembly against `PowerSeries.subst` itself still not attempted
+
+**Task was to reassess Route A vs. Route B** for the ninth pass's remaining gap (the substitution-
+composition analytic argument for `exp hnorm (log hnorm x) = 1 + x`), then attempt whichever route the
+reading indicated, per the brief's explicit instruction not to guess and to read
+`Mathlib.RingTheory.PowerSeries.Substitution` before choosing.
+
+**Route decision, from direct reading (not re-derivation of the prior pass's notes).**
+`Mathlib.RingTheory.PowerSeries.Substitution`'s `coeff_subst'` (`coeff e (f.subst b) = finsum (fun d ↦
+coeff d f • coeff e (b ^ d))`) is a `finsum` over `d`, and `coeff_subst_finite`/`coeff_subst_finite'`
+prove this sum has **finite support for each fixed output coefficient** — i.e. `PowerSeries.subst` is
+purely formal/algebraic bookkeeping with no topology anywhere in its definition or coefficient lemmas.
+The one topological section in the file (`subst_tsum`/`summable_subst`, lines 601–618) requires
+`[UniformSpace R] [DiscreteUniformity R]` — the *discrete* (formal-power-series) topology on
+coefficients, not a nonarchimedean-valued-field topology — so it is not applicable to evaluating at a
+point of `K` and gives no shortcut here. This rules out any reading of Route A/B as "Mathlib already
+connects `subst` to `HasSum` at a point" (confirming the ninth pass's finding that no such lemma
+exists) and confirms Route B (a direct nonarchimedean argument building up the double/multi-indexed sum
+by hand and matching it to `coeff_subst'`'s finite-sum formula termwise) as the only route with content
+to build on, rather than Route A's `FormalMultilinearSeries.comp`/`HasFPowerSeriesOnBall` path, which
+would still need its own from-scratch coefficient-matching lemma against `coeff_subst'` with no
+corresponding readymade "no side condition" simplification (see below).
+
+**The load-bearing discovery this pass**: `Mathlib.Topology.Algebra.InfiniteSum.Nonarchimedean` (found
+via loogle, pattern-searching for `HasSum ?f ?a → HasSum ?g ?b → HasSum (fun p ↦ ?f p.1 * ?g p.2) (?a *
+?b)`) already has exactly the Cauchy-product tool Route B needs: `HasSum.mul_of_nonarchimedean` — for
+`f : α → R`, `g : β → R` in a `NonarchimedeanRing R`, `HasSum f a → HasSum g b → HasSum (fun i : α × β ↦
+f i.1 * g i.2) (a * b)`, **with no separate summability hypothesis on the product family** (the proof
+derives it internally from each factor's own convergence-to-zero, via the completion trick and
+`tendsto_mul_cofinite_nhds_zero`) — unlike the archimedean `HasSum.mul`, which needs `Summable (fun p ↦
+f p.1 * g p.2)` supplied as an extra hypothesis. This is a strictly better tool than the "build a
+double-series estimate by hand" the ninth pass anticipated needing: the ultrametric case gets the
+Cauchy product unconditionally, for free, from the ring's nonarchimedean-ness alone. But
+`NonarchimedeanRing` (a topological-ring class, `Mathlib.Topology.Algebra.Nonarchimedean.Basic`) had the
+same missing-bridge problem the ninth pass found and fixed for `NonarchimedeanAddGroup`: nothing
+connects `IsUltrametricDist` to it. Verified by writing and building a scratch instance
+(`Langlands/ZZZScratch.lean`, not committed) before landing the real one: `SeminormedRing R` +
+`IsUltrametricDist R` needs both `IsTopologicalRing R` (already an instance,
+`NonUnitalSeminormedRing.toIsTopologicalRing`, `Mathlib.Analysis.Normed.Ring.Lemmas`) and the
+`is_nonarchimedean` witness (already proved for the additive-group class by the ninth pass's
+`toNonarchimedeanAddGroup`) — these two pre-existing pieces combine directly into `NonarchimedeanRing`.
+
+**`Langlands/NonarchimedeanUnconditionalSummability.lean` (extended, commit `f9b0389`).** Adds
+`IsUltrametricDist.toNonarchimedeanRing {R} [SeminormedRing R] [IsUltrametricDist R] :
+NonarchimedeanRing R`, an `instance` combining the two ingredients above. This makes
+`HasSum.mul_of_nonarchimedean`/`Summable.mul_of_nonarchimedean`/`tsum_mul_tsum_of_nonarchimedean`
+available, unconditionally, for `K` (any `NormedField` with `IsUltrametricDist`) — general-purpose,
+Mathlib-quality, not tied to `exp`/`log`.
+
+**`Langlands/NonarchimedeanCauchyProduct.lean` (new, commit `f9b0389`).** Iterates the binary Cauchy
+product `n` times to get `HasSum.pow_of_nonarchimedean {f : ι → R} {a : R} (hf : HasSum f a) (n : ℕ) :
+HasSum (fun g : Fin n → ι ↦ ∏ i, f (g i)) (a ^ n)` — the "expand `y ^ n` as an infinite sum over
+multi-indices" step a composite series `∑ n, c n * y ^ n` (with `y` itself an infinite sum) needs before
+any coefficient-by-total-degree grouping can be attempted. Proved by induction: the base case `n = 0` is
+the one-point type `Fin 0 → ι` (`hasSum_fintype`); the successor step feeds
+`hf.mul_of_nonarchimedean (hf.pow_of_nonarchimedean n)` (`HasSum` on `ι × (Fin n → ι)`) through
+`Equiv.hasSum_iff` along `(Fin.consEquiv (fun _ ↦ ι)).symm` to reindex onto `Fin (n + 1) → ι`, then
+matches the reindexed function to `fun g ↦ ∏ i, f (g i)` via `Fin.consEquiv_symm_apply`/
+`Fin.prod_univ_succ`. No hand-built "double-series estimate" was needed anywhere in this proof — every
+step is either the ready-made `mul_of_nonarchimedean` or a pure reindexing identity.
+
+**Build status.** `nix develop -c lake build Langlands.NonarchimedeanCauchyProduct
+Langlands.NonarchimedeanUnconditionalSummability`: both clean. Full `nix develop -c lake build
+Langlands`: clean, whole project (`8714` jobs, one more than the ninth pass's `8713` — the new file —
+plus the same pre-existing linter warnings elsewhere, unrelated). `#print axioms` on both new
+declarations (`IsUltrametricDist.toNonarchimedeanRing`, `HasSum.pow_of_nonarchimedean`): `[propext,
+Classical.choice, Quot.sound]` only — no `sorry`, no stray axioms.
+
+**What this does not close.** `HasSum.pow_of_nonarchimedean` gives `HasSum` for a single power `y ^ n`
+as a tuple-indexed sum; it does **not** yet assemble the full composite-series argument. What remains,
+precisely: (i) combine `HasSum.pow_of_nonarchimedean` (applied to `hasSum_coeff_log`'s series for `y =
+log hnorm x`) with `hasSum_coeff_exp`'s outer sum over `n` into a single sigma-indexed
+(`Σ n, Fin n → ℕ`) `HasSum` — needs a "`HasSum` of a sigma-type family, reindexed by an equiv/embedding
+into a flat index type" step, itself unattempted; (ii) group the flattened sum by total `x`-degree `m`
+and show each degree-`m` slice is a *finite* sum (matching `coeff_subst_finite'`'s finite-support
+witness) equal to `coeff_subst'`'s `finsum` formula for `coeff m ((exp K - 1).subst (log K))`; (iii)
+invoke the already-closed formal identity `PowerSeries.exp_sub_one_subst_log` (`PowerSeriesExpLog.lean`,
+eighth pass) to collapse that formula to `coeff m X = if m = 1 then 1 else 0`; (iv) conclude the
+original `HasSum`'s value is `1 + x` via `tsum`/uniqueness. None of (i)–(iv) was attempted this pass —
+each is itself a nontrivial lemma, and (ii) in particular ("match a tuple-indexed nonarchimedean sum's
+degree-`m` slice to a formal `finsum`") is the same "combinatorial matching burden" flagged as the
+hardest, least-scoped part since the eighth pass's investigation, now precisely relocated to a specific
+finite calculation rather than a vague "needs gluing" note.
+
+**Updated "what remains" list** (item 2, previously "the coefficient bookkeeping between the formal and
+convergent series is now closed... What remains is the substitution-composition analytic argument
+itself... candidate machinery identified (`FormalMultilinearSeries.ofScalars`, `HasFPowerSeriesAt.comp`)
+but not assembled"):
+
+1. **A genuine concrete mixed-characteristic example** — unchanged from the sixth pass, still unbuilt.
+2. **The mutual-inverse relationship between `exp` and `log`** — the formal identity and the
+   formal/convergent coefficient bookkeeping remain closed (eighth, ninth passes). Route A
+   (`FormalMultilinearSeries`/`HasFPowerSeriesAt.comp`) is superseded as the chosen path: direct reading
+   of `Substitution.lean` confirms `PowerSeries.subst` is purely formal (finite `finsum`s throughout,
+   `coeff_subst_finite`), so Route B (build the nonarchimedean sum by hand, match it to that finsum
+   termwise) is the tractable route, and this pass built its two necessary general-purpose tools
+   (`IsUltrametricDist.toNonarchimedeanRing`, `HasSum.pow_of_nonarchimedean`) sorry-free. What remains
+   is the four-step assembly (i)–(iv) above: sigma-reindexing the outer/inner sums into one flat
+   `HasSum`, grouping by total `x`-degree to match `coeff_subst'`'s finite formula, invoking the closed
+   formal identity, and concluding via uniqueness of the sum. Not attempted this pass.
+3. **Landing in `U^{(i)}`, not just the convergence domain** — unchanged, still unattempted.
+4. **An explicit closed-form threshold** (Serre's `i > e·v(p)/(p-1)`) — unchanged.
+5. **The norm/trace compatibility formula** `N_{L/K}(exp x) = exp(Tr_{L/K}(x))`, and its own
+   trace-norm precondition — unchanged, still entirely unstarted.
+
+**Net effect on the wild-case picture.** Item 2's route question is now settled with direct textual
+evidence (not inference from a prior pass's summary), and its Cauchy-product prerequisite tooling is
+built and general-purpose (reusable for any nonarchimedean-ring power-series evaluation, not just this
+repo's `exp`/`log`). The remaining assembly gap is narrower and more precisely itemized than before
+((i)–(iv) above, replacing the ninth pass's single undifferentiated "substitution-composition analytic
+argument" note) but not smaller in raw difficulty — the sigma-reindexing and degree-`m`-slice matching
+steps are still substantial, unattempted proof work. Items 1, 3, 4, 5 are unchanged.
