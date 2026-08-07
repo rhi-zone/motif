@@ -15,6 +15,7 @@ import Langlands.ResidueField
 import Langlands.TotallyRamifiedEisenstein
 import Langlands.TotallyRamifiedNormRange
 import Langlands.TotallyRamifiedNormResidue
+import Langlands.TotallyRamifiedNormIndex
 import Langlands.TotallyRamifiedNormResidueImage
 import Langlands.TotallyRamifiedNormSurjective
 import Langlands.TowerBundle
