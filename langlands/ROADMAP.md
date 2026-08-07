@@ -5715,3 +5715,107 @@ abstract filtration translation, concrete single-field instantiation, two-field 
 actual mathematical content of the wild-case argument — mutual inverse, tail estimate, and above all
 the norm/trace compatibility formula together with its own trace-norm precondition — remains
 entirely open.
+
+## 6f. Eighth pass (2026-08-07): item 2 (mutual-inverse) closed at the *formal* power-series
+level — the "confirmed absent" finding corrected; convergent transport still open
+
+**Task was item 2** (the mutual-inverse relationship between `exp` and `log`), flagged unattempted
+since the fourth pass, with every subsequent pass (sixth, seventh) re-confirming "no ready-made
+formal identity to transport" *without* a fresh search. This pass ran that search properly and found
+the prior finding needed correction, not just re-confirmation.
+
+**Correction to the "confirmed absent" claim.** The specific identity (`exp_log`/`log_exp`-style)
+genuinely does not exist anywhere in this repo's vendored Mathlib (`v4.32.1`) — that half of the
+prior finding stands. What was missed every prior pass: the **machinery** to derive it was already
+present and unused. `Mathlib.RingTheory.PowerSeries.Substitution` has `PowerSeries.substInv`, a
+general formal substitution-inverse construction (`P.subst (substInv P) = X`,
+`(substInv P).subst P = X` for `P` with zero constant term and invertible linear coefficient, via
+`subst_substInv_right`/`subst_substInv_left`) and the composition law `subst_comp_subst_apply`.
+`Mathlib.RingTheory.PowerSeries.Derivative` has the chain rule `derivative_subst` and, tellingly, a
+constant-term/derivative uniqueness principle `PowerSeries.derivative.ext` whose own module docstring
+names *this exact identity* as its motivating example: "one can easily prove the power series
+identity `exp(log(1+X)) = 1+X` by differentiating twice." No prior pass on this thread had read that
+file's docstring.
+
+**`Langlands/PowerSeriesExpLog.lean` (new, commit `3b6913a`).** Proves, for any `CommRing A` with
+`Algebra ℚ A`:
+
+* `PowerSeries.eq_substInv_of_subst_eq_X {P Q : R⟦X⟧} (hP : P.constantCoeff = 0)
+  [Invertible (coeff 1 P)] (hQP : Q.subst P = X) : Q = P.substInv` — a general uniqueness-of-
+  substitution-inverse lemma (any `CommRing R`, not tied to `exp`/`log`), proved by a six-step `calc`
+  chaining `X_subst`, `subst_substInv_right`, `subst_comp_subst_apply`, `subst_X`. Encountered and
+  worked around a genuine elaboration trap here: writing the chain with nested dot notation
+  (`(Q.subst P).subst P.substInv`) makes Lean resolve `.subst` against `MvPowerSeries.subst` instead
+  of `PowerSeries.subst` (both live in a namespace matching `R⟦X⟧`'s reducible head), which first
+  produced a hard-to-diagnose "expected `Unit → MvPowerSeries Unit R`" type mismatch and, in one
+  formulation, a genuine `whnf` deterministic-timeout (not just slowness — confirmed by retrying with
+  `maxHeartbeats 0` and observing it did not terminate within several minutes). Fixed by writing the
+  whole `calc` in prefix form (`subst a f`) instead of dot notation; documented inline as a comment
+  since it is exactly the kind of trap the `lean-proof-writing` skill's "stop-and-diagnose" rule
+  targets.
+* `PowerSeries.one_add_X_mul_derivative_log_eq_one : (1 + X) * G = 1` where
+  `G := mk fun n ↦ algebraMap ℚ A ((-1:ℚ)^n)` (`= d⁄dX A (log A)`, `deriv_log`) — the formal
+  geometric-series identity, by direct coefficient computation (`coeff_succ_X_mul`, `coeff_one`,
+  telescoping `(-1)^(m+1) + (-1)^m = 0`), stated as its own lemma since it is a fact about the
+  geometric series, not specific to `log`.
+* `PowerSeries.log_subst_exp_sub_one : (log A).subst (exp A - 1) = X` (formally, `log(exp X) = X`) —
+  by the "differentiate twice" method `Derivative.lean`'s docstring names directly: the chain rule
+  reduces the derivative of `(log A).subst (exp A - 1)` to `G.subst (exp A - 1) * exp A`; transporting
+  `one_add_X_mul_derivative_log_eq_one` through the substitution ring homomorphism at `exp A - 1`
+  shows this equals `1`, matching `d⁄dX A X`; both sides also share constant term `0`
+  (`constantCoeff_logOf`, `constantCoeff_X`); `derivative.ext` (needing `[IsAddTorsionFree A]`,
+  supplied via `IsAddTorsionFree.of_module_rat` since `A` is a `ℚ`-algebra) concludes equality.
+* `PowerSeries.exp_sub_one_subst_log : (exp A - 1).subst (log A) = X` (formally,
+  `exp(log(1+X)) = 1+X`) — obtained from the previous identity via `eq_substInv_of_subst_eq_X` with
+  `P := exp A - 1`, `Q := log A` (both hypotheses — zero constant term, `coeff 1 = 1` hence
+  `Invertible` — computed directly from `constantCoeff_exp`/`coeff_exp`), giving
+  `log A = (exp A - 1).substInv`; substituting back into `subst_substInv_right` gives the identity
+  with **no second derivative computation** — exactly the payoff of proving the uniqueness lemma
+  first, as the task brief's plan anticipated.
+
+**Build status.** `nix develop -c lake build Langlands.PowerSeriesExpLog`: clean. Full
+`nix develop -c lake build Langlands`: clean, whole project (`8711` jobs; only the same
+pre-existing `unusedSectionVars`/`overlappingInstances` linter warnings elsewhere, unrelated to this
+file). `#print axioms` on all four new theorems
+(`eq_substInv_of_subst_eq_X`, `one_add_X_mul_derivative_log_eq_one`, `log_subst_exp_sub_one`,
+`exp_sub_one_subst_log`): `[propext, Classical.choice, Quot.sound]` only — no `sorry`, no stray
+axioms.
+
+**What this does not close.** This is the *formal* power-series identity only. Transporting it to
+`Langlands.NonarchimedeanExponential`'s from-scratch *convergent* `exp`/`log` — the actual target of
+the wild-ramification thread's item 2 — needs, additionally: (a) matching `PowerSeries.exp`/`.log`'s
+coefficient-indexed definitions against `NonarchimedeanExponential.exp`/`.log`'s Cauchy-limit
+definitions termwise (their series are indexed slightly differently — `NonarchimedeanExponential.log`
+sums `∑ k ∈ range n, (-1)^k x^(k+1)/(k+1)`, `PowerSeries.log`'s coefficients are
+`(-1)^(n+1)/n` — these need to be shown to match term-by-term, not merely superficially similar), and
+(b) a genuinely new analytic argument that termwise convergence commutes with formal substitution:
+that the convergent `exp`/`log`, defined as limits of partial sums, actually satisfy the substitution
+identity the formal power series satisfy coefficientwise (this is not automatic — substitution of one
+convergent series into another needs its own convergence/rearrangement justification, e.g. via
+double-series estimates, not supplied by anything in this file or `NonarchimedeanExponential.lean`).
+Neither (a) nor (b) was attempted this pass — assessed as substantial, standalone follow-on work, not
+a quick corollary of the formal identity, and out of scope for the time remaining in this pass.
+
+**Updated "what remains" list** (item 2, previously "unchanged, still unattempted; Mathlib's
+`PowerSeries.exp`/`.Log` still have no ready-made formal identity to transport"):
+
+1. **A genuine concrete mixed-characteristic example** — unchanged from the sixth pass, still
+   unbuilt.
+2. **The mutual-inverse relationship between `exp` and `log`** — *the formal power-series identity is
+   now closed* (`Langlands/PowerSeriesExpLog.lean`, this pass). What remains is transporting it to
+   the convergent `exp`/`log` of `Langlands.NonarchimedeanExponential`: termwise coefficient matching
+   plus a new analytic argument that convergence commutes with substitution (see "What this does not
+   close" above) — neither attempted.
+3. **Landing in `U^{(i)}`, not just the convergence domain** — unchanged, still unattempted.
+4. **An explicit closed-form threshold** (Serre's `i > e·v(p)/(p-1)`) — unchanged.
+5. **The norm/trace compatibility formula** `N_{L/K}(exp x) = exp(Tr_{L/K}(x))`, and its own
+   trace-norm precondition — unchanged, still entirely unstarted.
+
+**Net effect on the wild-case picture.** Item 2 moves from "entirely unattempted, believed to need
+Mathlib content that does not exist" to "closed at the formal level, with a precisely scoped
+convergent-transport gap remaining" — a genuine reduction in uncertainty (the prior passes' repeated
+"confirmed absent" note was itself imprecise: the identity was absent, the machinery to build it was
+not) even though the item is not fully closed. The wild case's overall shape is unchanged: mutual
+inverse (now half-closed), the tail estimate, and the norm/trace compatibility formula remain the
+substantive open pieces, with the concrete mixed-characteristic example and explicit threshold as the
+comparatively mechanical gaps around them.
