@@ -5819,3 +5819,150 @@ not) even though the item is not fully closed. The wild case's overall shape is 
 inverse (now half-closed), the tail estimate, and the norm/trace compatibility formula remain the
 substantive open pieces, with the concrete mixed-characteristic example and explicit threshold as the
 comparatively mechanical gaps around them.
+
+## 6g. Ninth pass (2026-08-07): unconditional-summability bridge built; convergent `exp`/`log`
+upgraded to `HasSum` and matched termwise to `PowerSeries.exp`/`.log`; the substitution-composition
+step (part (b)) remains the open core
+
+**Task was item 2's remaining half**: transport the now-closed *formal* mutual-inverse identity
+(`Langlands/PowerSeriesExpLog.lean`, eighth pass) to `Langlands.NonarchimedeanExponential`'s
+*convergent* `exp`/`log`. The eighth pass split this into (a) coefficient bookkeeping (matching
+`NonarchimedeanExponential.exp`/`.log`'s Cauchy-limit partial sums against
+`PowerSeries.exp`/`.log`'s coefficients termwise) and (b) an analytic argument that termwise
+convergence commutes with formal substitution. This pass closes (a) in full, builds a genuinely new
+general-purpose Mathlib-quality lemma that (b) will need, and identifies (without assembling) the
+remaining Mathlib machinery that could close (b) — but does not close (b) itself.
+
+**Search findings (per the task's requirement to check before building).** Ran loogle and grep
+searches for: `PowerSeries.eval`/`HasSum`-based power-series evaluation, Cauchy-product/rearrangement
+lemmas for `IsUltrametricDist`, and general "formal identity transports to convergent evaluation"
+principles.
+
+* **No existing Mathlib lemma connects `PowerSeries.subst` (formal substitution) to `HasSum`/`tsum`
+  evaluation at a point in any normed ring** — confirmed by exhaustive grep of every file mentioning
+  `IsUltrametricDist` for `Summable`/`HasSum` content (only hit: `Mathlib.NumberTheory.Padics.MahlerBasis`,
+  unrelated to power-series substitution) and by loogle searches for `PowerSeries.eval`-shaped
+  declarations (none exist under that name at all).
+* **A genuine, load-bearing gap was found and closed this pass**: nothing in the vendored Mathlib
+  connects the metric-space notion `IsUltrametricDist` (used throughout
+  `Langlands.NonarchimedeanExponential`) to the topological-group notion `NonarchimedeanAddGroup`
+  (`Mathlib.Topology.Algebra.Nonarchimedean.Basic`: every neighborhood of `0` contains an open
+  subgroup) — despite Mathlib already having exactly the summability theorem this bridge would
+  unlock, `NonarchimedeanAddGroup.summable_of_tendsto_cofinite_zero`
+  (`Mathlib.Topology.Algebra.InfiniteSum.Nonarchimedean`): in a complete nonarchimedean additive
+  group, a function tending to `0` along `cofinite` is automatically `Summable` — i.e. the classical
+  fact that ultrametric absolute convergence is *unconditional*, needing no separate rearrangement
+  argument, unlike the archimedean case. Both notions are heavily used independently elsewhere in
+  Mathlib; nothing joins them.
+* **For the harder substitution-composition step (part (b)), the relevant machinery does exist**,
+  field-agnostically: `Mathlib.Analysis.Analytic.OfScalars`'s `FormalMultilinearSeries.ofScalars`
+  (turns a scalar coefficient sequence into a one-variable formal power series in the
+  `FormalMultilinearSeries` framework) and `Mathlib.Analysis.Analytic.Composition`'s
+  `HasFPowerSeriesAt.comp` (composition of analytic functions' power series, stated for any
+  `NontriviallyNormedField 𝕜`, not just `ℝ`/`ℂ` — nothing in its statement is archimedean-specific).
+  This is a real, substantive finding: the general "formal identity transports to convergent
+  evaluation" principle the task asked to search for is not a single ready-made lemma, but its two
+  main ingredients (turn a coefficient sequence into an analytic function; compose two analytic
+  functions' power series) are already in Mathlib in full generality. What is *not* present, and
+  would need building, is the connective tissue: (i) showing `NonarchimedeanExponential.exp`/`.log`
+  actually satisfy `HasFPowerSeriesOnBall` for the `ofScalars` series built from
+  `PowerSeries.exp`/`.log`'s coefficients (this pass's `hasSum_coeff_exp`/`hasSum_coeff_log`, below,
+  are exactly the per-point fact this needs, but `HasFPowerSeriesOnBall` additionally packages
+  uniform convergence on a ball, not proved here), and (ii) a lemma matching
+  `FormalMultilinearSeries.comp`'s multi-index composition-of-compositions coefficient formula
+  against `PowerSeries.subst`'s coefficient formula for the one-variable case — genuinely new glue,
+  not found anywhere in the vendored Mathlib, and not attempted this pass.
+
+**`Langlands/NonarchimedeanUnconditionalSummability.lean` (new).** Builds the bridge just described,
+at full Mathlib-quality generality (not tied to `K`, `exp`, or `log`):
+
+* `IsUltrametricDist.addSubgroupBall {r : ℝ} (hr : 0 < r) : AddSubgroup G` for any
+  `[SeminormedAddCommGroup G] [IsUltrametricDist G]` — the ball `Metric.ball 0 r` is an additive
+  subgroup: closed under addition by the ultrametric triangle inequality
+  (`IsUltrametricDist.norm_add_le_max`), closed under negation by `norm_neg`.
+* `IsUltrametricDist.openAddSubgroupBall` — the same ball, packaged as an `OpenAddSubgroup` (balls
+  are always open in a metric space, `Metric.isOpen_ball`).
+* `IsUltrametricDist.toNonarchimedeanAddGroup` (an `instance`, priority `100`): **every seminormed
+  additive group with an ultrametric distance is nonarchimedean.** Proof: balls of positive radius
+  form a neighborhood basis at `0` (`Metric.nhds_basis_ball`), so any neighborhood of `0` contains
+  some `openAddSubgroupBall`.
+* `IsUltrametricDist.summable_of_tendsto_zero`: the immediate corollary, feeding
+  `NonarchimedeanAddGroup.summable_of_tendsto_cofinite_zero` — in a *complete* ultrametric seminormed
+  additive group, `Tendsto f cofinite (nhds 0) → Summable f`.
+
+**`Langlands/NonarchimedeanExponentialHasSum.lean` (new).** Applies the bridge to
+`NonarchimedeanExponential.exp`/`.log`, closing part (a) in full:
+
+* `hasSum_exp`/`hasSum_log`: upgrade `tendsto_partialSum_exp`/`tendsto_partialSum_log`'s
+  along-`range n` `Tendsto` facts to genuine `HasSum` — the per-term geometric bounds already proved
+  (`norm_pow_div_factorial_le`, `norm_pow_div_natCast_le`) give `Tendsto (terms) atTop (nhds 0)`,
+  hence (since `cofinite = atTop` on `ℕ`, `Nat.cofinite_eq_atTop`) `Summable` via the new bridge; the
+  resulting `HasSum`'s partial-sum limit (`HasSum.tendsto_sum_nat`) is then identified with
+  `exp`/`log`'s already-defined value via `tendsto_nhds_unique` (matching index shifts with
+  `Filter.tendsto_add_atTop_iff_nat` for `exp`, since its convention sums over `range (n+1)`).
+* `hasSum_coeff_exp : HasSum (fun n => coeff n (PowerSeries.exp K) * x ^ n) (exp hnorm x)` and
+  `hasSum_coeff_log : HasSum (fun n => coeff n (PowerSeries.log K) * x ^ n) (log hnorm x)` — the
+  actual coefficient-bookkeeping closure. `hasSum_coeff_exp` is a direct rewrite of `hasSum_exp`
+  (`coeff n (exp K) = algebraMap ℚ K (1/n!)` computes to `(n!:K)⁻¹` via `map_inv₀`/`map_natCast`).
+  `hasSum_coeff_log` is the genuinely nontrivial one: `PowerSeries.log`'s coefficients are indexed
+  and signed differently from `NonarchimedeanExponential.log`'s series (`coeff (n+1) (log K) =
+  (-1)^(n+2)/(n+1)` vs. the file's `(-1)^n * x^(n+1)/(n+1)`); confirmed by direct computation that
+  `(-1)^(n+2) = (-1)^n` makes these coincide exactly, then used `hasSum_nat_add_iff'` to reindex
+  `hasSum_log`'s series (which starts at the `x^1` term) into the `coeff 0 (log K) = 0`-prefixed form
+  `PowerSeries.log`'s coefficients use. This is precisely the index/sign match that
+  `Langlands/PowerSeriesExpLog.lean`'s module docstring and ROADMAP.md's §6f flagged as an open
+  question ("these need to be shown to match term-by-term, not just assumed similar") — now verified,
+  not merely assumed.
+
+**Build status.** `nix develop -c lake build Langlands.NonarchimedeanUnconditionalSummability` and
+`... Langlands.NonarchimedeanExponentialHasSum`: both clean. Full `nix develop -c lake build
+Langlands`: clean, whole project (`8713` jobs; only the same pre-existing
+`unusedSectionVars` linter warnings elsewhere, unrelated to these files). `#print axioms` on all six
+new theorems (`IsUltrametricDist.toNonarchimedeanAddGroup`, `IsUltrametricDist.summable_of_tendsto_zero`,
+`hasSum_exp`, `hasSum_log`, `hasSum_coeff_exp`, `hasSum_coeff_log`): `[propext, Classical.choice,
+Quot.sound]` only — no `sorry`, no stray axioms.
+
+**What this does not close.** `hasSum_coeff_exp`/`hasSum_coeff_log` establish that
+`NonarchimedeanExponential.exp`/`.log`, evaluated at a point, equal the `HasSum`-sum of
+`PowerSeries.exp`/`.log`'s coefficients against powers of that point — i.e. that the convergent
+function and the formal series' coefficients denote "the same object" pointwise. This is *not* the
+same as showing that formal *substitution* commutes with evaluation: the actual target identity
+`exp hnorm (log hnorm x) = 1 + x` is a statement about `exp` applied to the specific value `log hnorm
+x`, and proving it from the formal identity `(exp K - 1).subst (log K) = X` needs a genuinely
+different argument than termwise coefficient matching — informally, that plugging the convergent
+value `log hnorm x` into `exp`'s convergent series and rearranging the resulting double sum
+(`∑_n (1/n!) (∑_k a_k x^k)^n`) into single-variable form recovers the formal composite series'
+coefficients, term by term. This is a Cauchy-product/double-series rearrangement argument, not a
+corollary of this pass's per-series `HasSum` facts, and was assessed (per the task's explicit
+"land partial progress, don't force an incomplete general statement" guidance) as substantial,
+standalone follow-on work — not attempted this pass. The two Mathlib pieces identified above
+(`FormalMultilinearSeries.ofScalars`, `HasFPowerSeriesAt.comp`) are candidate machinery for that
+argument, but assembling them (particularly matching `FormalMultilinearSeries.comp`'s coefficient
+formula against `PowerSeries.subst`'s) is itself nontrivial and unattempted.
+
+**Updated "what remains" list** (item 2, previously "the formal power-series identity is now closed;
+what remains is transporting it to the convergent `exp`/`log`: termwise coefficient matching plus a
+new analytic argument that convergence commutes with substitution"):
+
+1. **A genuine concrete mixed-characteristic example** — unchanged from the sixth pass, still
+   unbuilt.
+2. **The mutual-inverse relationship between `exp` and `log`** — *the formal identity is closed*
+   (eighth pass) and *the coefficient bookkeeping between the formal and convergent series is now
+   closed* (this pass, `hasSum_coeff_exp`/`hasSum_coeff_log`). What remains is the substitution-
+   composition analytic argument itself: showing `exp hnorm (log hnorm x) = 1 + x` (and its
+   counterpart) from the formal identity plus the now-available `HasSum` facts — candidate machinery
+   identified (`FormalMultilinearSeries.ofScalars`, `HasFPowerSeriesAt.comp`) but not assembled.
+3. **Landing in `U^{(i)}`, not just the convergence domain** — unchanged, still unattempted.
+4. **An explicit closed-form threshold** (Serre's `i > e·v(p)/(p-1)`) — unchanged.
+5. **The norm/trace compatibility formula** `N_{L/K}(exp x) = exp(Tr_{L/K}(x))`, and its own
+   trace-norm precondition — unchanged, still entirely unstarted.
+
+**Net effect on the wild-case picture.** Item 2 is now closed at two of its three necessary layers
+(formal identity; coefficient bookkeeping between formal and convergent series), with the third layer
+(substitution-composition analytic argument) precisely scoped and its candidate Mathlib machinery
+named, rather than left as an undifferentiated "needs an analytic argument" note. A genuinely new
+general-purpose Mathlib-quality lemma was also produced along the way
+(`IsUltrametricDist.toNonarchimedeanAddGroup`) that is reusable well beyond this repo's `exp`/`log`
+thread — anywhere an ultrametric normed group's summability needs to be established. The wild case's
+overall shape is unchanged: the substitution-composition argument, the tail estimate, and the
+norm/trace compatibility formula remain the substantive open pieces.
