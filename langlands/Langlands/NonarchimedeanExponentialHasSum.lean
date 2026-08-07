@@ -163,4 +163,84 @@ theorem hasSum_coeff_log (hnorm : ‖(p : K)‖ < 1) {x : K} (hx : ‖x‖ < log
     simpa only [hshift] using hasSum_log hnorm hx
   exact (hasSum_nat_add_iff' 1).mp hkey
 
+/-! ## A norm bound on `log`, and a sufficient radius for `exp ∘ log` to land in `exp`'s domain
+
+The mutual-inverse identity `exp hnorm (log hnorm x) = 1 + x` needs `exp` evaluated at `log hnorm x`,
+which is only characterized by a `HasSum`/convergent series (`hasSum_exp`, `hasSum_coeff_exp`) when
+`‖log hnorm x‖ < convergenceRadius K p`. This is *not* automatic from `‖x‖ < logConvergenceRadius K p`
+alone: the crude bound below only gives `‖log hnorm x‖ ≤ ‖x‖ / ‖p‖`, and `‖x‖ / ‖p‖ < convergenceRadius
+K p` needs `‖x‖ < ‖p‖ ^ (p / (p - 1))` — strictly *narrower* than `logConvergenceRadius K p = ‖p‖`
+itself (since `p / (p - 1) > 1` for `p ≥ 2`, and `‖p‖ < 1`). This is exactly `ROADMAP.md`'s item 3
+("landing in `U^{(i)}`, not just the convergence domain"), now given a precise sufficient threshold
+rather than left as an unattempted note. -/
+
+/-- **A norm bound on `log`.** `‖log hnorm x‖ ≤ ‖x‖ / ‖p‖`, for `x` in `log`'s convergence domain.
+Proved via `IsUltrametricDist.norm_tsum_le` (the norm of a sum in an ultrametric group is at most the
+supremum of the terms' norms) applied to `hasSum_log`, bounding each term by the same geometric
+estimate `hasSum_log`'s own proof uses internally. -/
+theorem norm_log_le (hnorm : ‖(p : K)‖ < 1) {x : K} (hx : ‖x‖ < logConvergenceRadius K p) :
+    ‖log hnorm x‖ ≤ ‖x‖ / ‖(p : K)‖ := by
+  have hp0 : (0 : ℝ) < ‖(p : K)‖ := norm_natCast_pos
+  set r := ‖x‖ / ‖(p : K)‖ with hrdef
+  have hr0 : 0 ≤ r := div_nonneg (norm_nonneg x) hp0.le
+  have hr1 : r < 1 := by rw [hrdef, div_lt_one hp0]; exact hx
+  have heq : log hnorm x = ∑' k, (-1 : K) ^ k * x ^ (k + 1) / ((k + 1 : ℕ) : K) :=
+    (hasSum_log hnorm hx).tsum_eq.symm
+  rw [heq]
+  refine (IsUltrametricDist.norm_tsum_le _).trans (ciSup_le fun k => ?_)
+  have hbound : ‖(-1 : K) ^ k * x ^ (k + 1) / ((k + 1 : ℕ) : K)‖ ≤ r ^ (k + 1) := by
+    have hneg1 : ‖(-1 : K) ^ k‖ = 1 := by rw [norm_pow, norm_neg, norm_one, one_pow]
+    calc ‖(-1 : K) ^ k * x ^ (k + 1) / ((k + 1 : ℕ) : K)‖
+        = ‖x ^ (k + 1) / ((k + 1 : ℕ) : K)‖ := by
+          rw [norm_div, norm_mul, hneg1, one_mul, ← norm_div]
+      _ ≤ r ^ (k + 1) := norm_pow_div_natCast_le hnorm x k.succ_ne_zero
+  refine hbound.trans ?_
+  calc r ^ (k + 1) ≤ r ^ 1 := pow_le_pow_of_le_one hr0 hr1.le (Nat.one_le_iff_ne_zero.mpr k.succ_ne_zero)
+    _ = r := pow_one r
+
+/-- **A sufficient radius for the `exp`/`log` composite to land in `exp`'s convergence domain.**
+`‖p‖ ^ (p / (p - 1))` — strictly narrower than `logConvergenceRadius K p = ‖p‖` (since the exponent
+`p / (p - 1) > 1` for `p ≥ 2` and `‖p‖ < 1`), and exactly sufficient: `‖x‖` below this threshold forces
+both `‖x‖ < logConvergenceRadius K p` (so `log hnorm x` is defined by its series at all) and
+`‖log hnorm x‖ < convergenceRadius K p` (so `exp` at that point is likewise defined by its series),
+via `norm_log_le`'s bound `‖log hnorm x‖ ≤ ‖x‖ / ‖p‖`. -/
+noncomputable def expLogCompositionRadius (K : Type*) [NormedField K] (p : ℕ) : ℝ :=
+  ‖(p : K)‖ ^ (((p : ℝ)) / ((p : ℝ) - 1))
+
+omit [IsUltrametricDist K] [CompleteSpace K] in
+theorem lt_logConvergenceRadius_of_lt_expLogCompositionRadius (hnorm : ‖(p : K)‖ < 1) {x : K}
+    (hx : ‖x‖ < expLogCompositionRadius K p) : ‖x‖ < logConvergenceRadius K p := by
+  have hp0 : (0 : ℝ) < ‖(p : K)‖ := norm_natCast_pos
+  refine hx.trans_le ?_
+  unfold expLogCompositionRadius logConvergenceRadius
+  have hexp1 : (1 : ℝ) < (p : ℝ) / ((p : ℝ) - 1) := by
+    have hp2 : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hp.out.two_le
+    rw [lt_div_iff₀ (by linarith)]
+    linarith
+  calc ‖(p : K)‖ ^ ((p : ℝ) / ((p : ℝ) - 1)) ≤ ‖(p : K)‖ ^ (1 : ℝ) :=
+        (Real.rpow_lt_rpow_of_exponent_gt hp0 hnorm hexp1).le
+    _ = ‖(p : K)‖ := Real.rpow_one _
+
+theorem norm_log_lt_convergenceRadius (hnorm : ‖(p : K)‖ < 1) {x : K}
+    (hx : ‖x‖ < expLogCompositionRadius K p) :
+    ‖log hnorm x‖ < convergenceRadius K p := by
+  have hp0 : (0 : ℝ) < ‖(p : K)‖ := norm_natCast_pos
+  have hp1 : ((p : ℝ) - 1) ≠ 0 := by
+    have hp2 : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hp.out.two_le
+    intro h; nlinarith
+  have hxlog : ‖x‖ < logConvergenceRadius K p :=
+    lt_logConvergenceRadius_of_lt_expLogCompositionRadius hnorm hx
+  refine (norm_log_le hnorm hxlog).trans_lt ?_
+  rw [div_lt_iff₀ hp0]
+  have hexp : (((p : ℝ) - 1)⁻¹) + 1 = (p : ℝ) / ((p : ℝ) - 1) := by
+    rw [eq_div_iff hp1]; field_simp; ring
+  have hcomb : ‖(p : K)‖ ^ (((p : ℝ) - 1)⁻¹) * ‖(p : K)‖ ^ (1 : ℝ)
+      = ‖(p : K)‖ ^ ((p : ℝ) / ((p : ℝ) - 1)) := by
+    rw [← Real.rpow_add hp0, hexp]
+  rw [Real.rpow_one] at hcomb
+  have heq : convergenceRadius K p * ‖(p : K)‖ = expLogCompositionRadius K p := by
+    unfold convergenceRadius expLogCompositionRadius
+    exact hcomb
+  rwa [heq]
+
 end NonarchimedeanExponential
