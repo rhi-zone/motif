@@ -145,16 +145,16 @@ instance : IsScalarTower R K L := by
 def v : HeightOneSpectrum R where
   asIdeal := Ideal.span {Polynomial.X}
   isPrime := (Ideal.span_singleton_prime Polynomial.X_ne_zero).mpr Polynomial.prime_X
-  ne_bot := by simpa using Polynomial.X_ne_zero (R := k)
+  ne_bot := by simp
 
 /-- `w`, the place of `S = k[Y]` at `Y`. -/
 def w : HeightOneSpectrum S where
   asIdeal := Ideal.span {Y}
-  isPrime := (Ideal.span_singleton_prime (by rw [Y_eq]; simpa using Polynomial.X_ne_zero (R := k))).mpr
+  isPrime := (Ideal.span_singleton_prime (by rw [Y_eq]; simp)).mpr
     (Y_eq ▸ (MulEquiv.prime_iff S.ringEquivPoly.symm).mpr Polynomial.prime_X)
   ne_bot := by
     rw [ne_eq, Ideal.span_singleton_eq_bot, Y_eq]
-    simpa using Polynomial.X_ne_zero (R := k)
+    simp
 
 /-- **The ramification is definitional**: `algebraMap R S` sends `(X)` to `(Y) ^ e`. -/
 theorem map_v_eq : Ideal.map algMapRS v.asIdeal = w.asIdeal ^ e := by

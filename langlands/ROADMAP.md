@@ -4965,3 +4965,95 @@ This is the correct next move because:
   up front but expensive to discover after building — hence checking for
   prior/in-flight CFT formalization is the first concrete step, not an
   afterthought.
+
+## 6. Concrete `IsTotallyRamified` instance (2026-08-07): ring-level layer done, completion-level proof not reached
+
+**Task.** Nowhere in this repo did a concrete `R S K L v w` instance exist verifying that
+`IsDedekindDomain.HeightOneSpectrum.IsTotallyRamified` (`TotallyRamifiedValuationExtension.lean`)
+is jointly satisfiable at all, or that its three fields don't hide something vacuous/broken. Build
+one, entirely algebraically (no Eisenstein polynomials, no actual number fields), and instantiate
+at least one downstream closed theorem against it.
+
+**What was built, sorry-free (`Langlands/TotallyRamifiedConcreteExample.lean`, commit `ae402a0`).**
+The function-field analogue of `ℚ_p(p^{1/e})/ℚ_p`: `k := ZMod 7`, `e := 3` (coprime to `7`), `R :=
+k[X]` (a PID hence Dedekind domain), `S` a type synonym of `k[Y]` — a one-field wrapper structure,
+with `CommRing`/`IsDomain`/`IsPrincipalIdealRing`/`IsDedekindDomain` transported across the
+equivalence `S ≃ k[Y]` (`Equiv.commRing`, `Function.Injective.isDomain`, and a hand-written
+`IsPrincipalIdealRing` transport via `Ideal.map`/`Ideal.map_map`/`Ideal.map_span`) — kept as a
+genuinely distinct type from `R` specifically to avoid the `Algebra.id R` diamond that `R = S`
+literally would create for the custom `Algebra R S` instance. The algebra map `R →+* S` is `X ↦
+Y ^ e` (`Polynomial.expand`, transported across the wrapper), injective (`Polynomial.expand_injective`),
+giving `K := FractionRing R`, `L := FractionRing S`, `algebraMap K L` via `IsFractionRing.map`, and
+`IsScalarTower R K L` (`IsScalarTower R S L` and `Algebra R L` turned out to already be
+automatically supplied — see the diamond note below). `v : HeightOneSpectrum R` at `(X)`, `w :
+HeightOneSpectrum S` at `(Y)`; proved `w.asIdeal.LiesOver v.asIdeal` and the **definitional**
+ramification fact `Ideal.map (algebraMap R S) v.asIdeal = w.asIdeal ^ e` (`map_v_eq`) — exactly as
+predicted, this followed from `Ideal.span_singleton_pow` plus `map_pow`, with no Eisenstein-style
+argument needed.
+
+**A diamond surfaced that the task's plan did not anticipate, and its actual shape.** The
+concern about an `Algebra R S` / `Algebra.id R` diamond when `R = S` literally was correctly
+flagged and correctly avoided via the type synonym. A *different* diamond appeared one layer up:
+attempting to declare a custom `instance : Algebra R L` (by composing `algebraMap S L` with the
+`R → S` map, the natural-looking thing to write) collides with an SMul instance Mathlib **already**
+derives automatically once `Algebra R S` and `IsFractionRing S L` are in scope — `L = FractionRing
+S` is built on `OreLocalization`, which auto-lifts any `SMul R S` to `SMul R (OreLocalization T
+S)` for every submonoid `T`, with no `Algebra R L` needed as an intermediate step. Diagnosed by
+`example : IsScalarTower R S L := inferInstance` (and similarly for `Algebra R L`) actually
+*succeeding* against the ambient automatic instance once the competing custom one was deleted,
+after `apply IsScalarTower.of_algebraMap_eq` on the custom version failed to unify with a
+confusing `OreLocalization.instSMulOfIsScalarTower` head symbol in the goal. Net effect: `Algebra R
+L` and `IsScalarTower R S L` needed no code at all; only `IsScalarTower R K L` (bridging through the
+custom `Algebra K L`, which *is* needed since `K` has no natural action on `S`) needed a hand proof,
+via `IsScalarTower.algebraMap_eq` and `IsLocalization.map_eq`. Worth recording since the task's
+"recommended construction" section did not anticipate this — the ring-theoretic layer needed more
+live Mathlib-diamond diagnosis than the write-up implied, even though the top-level construction
+idea (type synonym, `X ↦ Y^e`) was sound and required no revision.
+
+**What was NOT reached, and why — three "done" items are open.** `IsTotallyRamified`'s ambient
+section variables (`TotallyRamifiedValuationExtension.lean`) require, just to *state* the predicate
+against this instance: `Module.Finite K L`, `Algebra.IsIntegral R S`, `Module.IsTorsionFree R S`.
+None of these three were built this pass. The natural route — `S` free of rank `e` over `R` with
+basis `{1, Y, …, Y^{e-1}}` (equivalently, exhibiting the ring isomorphism `S ≅ AdjoinRoot (Y^e - X)`
+and pulling `Module.Finite`/`Module.Free` across it from `AdjoinRoot.powerBasis`, since `Y^e - X` is
+monic of degree `e`) — was scoped but not attempted; it is a self-contained, plausible-looking piece
+of work, not a wall, just not reached in this pass's budget.
+
+Beyond that: even granting those three instances, `IsTotallyRamified`'s actual three fields are
+stated on `v.adicCompletionIntegers K` / `w.adicCompletionIntegers L` — the **completion**-level
+rings, not `R`/`S` — and lifting `map_v_eq` and the freeness fact up to that level needs
+`Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)`, which every downstream file in this
+thread (`AdicCompletionIntegralClosure.lean`, `TotallyRamifiedNormIndex.lean`, …) takes as an
+ambient hypothesis rather than derives. **Confirmed by grep this pass: no lemma anywhere in this
+repo bridges a global `Algebra.IsSeparable K L` fact to the completed
+`Algebra.IsSeparable (adicCompletion K v) (adicCompletion L w)` it needs.** This is not specific to
+this construction — it is a structural gap in the existing abstract machinery's own dependency
+chain, worth flagging for *any* future concrete instantiation attempt, not just this one: every
+file consuming `IsTotallyRamified` (or the plain `IsUnramified`/tame-norm machinery) presupposes
+local separability is available from *somewhere*, and this repo does not yet supply a route to it
+from the ordinarily-available global fact. The task brief's own assessment — "the hardest part is
+almost certainly transporting the ideal/finrank facts from the uncompleted rings up to the
+completions" — is confirmed correct, and this pass did not get far enough to attempt that
+transport itself.
+
+**Consequence for "done" items 2–4.** `IsTotallyRamified K L v w` was not proved (item 2):
+blocked upstream on the three ambient instances above, in turn on the completion-level
+separability gap. `IsTamelyRamified` (item 3) — once the ambient instances existed, this would
+reduce to `IsUnit ((3 : ℕ) : ZMod 7)`, i.e. `gcd(3, 7) = 1`, a one-line fact — was not attempted
+since its statement itself is gated on the same missing instances. No downstream theorem (item 4,
+e.g. `index_localNormMap_range_eq_of_isTotallyRamified`) was instantiated, and consequently **no
+number was computed** this pass (not the `gcd(e, #κ[K]ˣ) = gcd(3, 6) = 3` this instance was chosen
+to make interesting, nor any other).
+
+**Nothing found suggesting `IsTotallyRamified`/`IsTamelyRamified` are vacuous, inconsistent, or
+mismatched with their downstream theorems' conclusions** — the gap identified here is purely "not
+yet instantiated, and the instantiation is real, unattempted work," not evidence of a problem with
+the predicates themselves. No `sorry` was introduced to paper over any of this; the incomplete
+parts are simply absent from the committed file, documented here instead.
+
+**Honest scope assessment for a future pass.** The `Module.Finite`/`Algebra.IsIntegral`/
+`Module.IsTorsionFree` layer looks like it could plausibly close in a single further pass. The
+completion-level separability bridge and the subsequent `IsTotallyRamified` proof are, per the task
+brief's own estimate and this pass's confirmation that no shortcut exists in the repo already,
+comparable in size to the multi-pass threads already logged above (Phase 2a's ten passes, the
+totally-ramified norm-index thread's own many-pass history) — not a quick follow-on.
