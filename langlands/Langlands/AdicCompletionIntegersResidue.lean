@@ -110,6 +110,61 @@ theorem exists_algebraMap_sub_mem_maximalIdeal (y : v.adicCompletionIntegers F) 
   refine lt_of_le_of_lt (Valuation.map_add _ _ _) (max_lt hlt ?_)
   rwa [Valuation.map_sub_swap]
 
+/-- The converse direction: an element of the maximal ideal has valuation strictly less than `1`
+(elements of `v.adicCompletionIntegers F` always have valuation `≤ 1`, and non-units are exactly
+those with valuation `≠ 1`). -/
+theorem valued_lt_one_of_mem_maximalIdeal {x : v.adicCompletionIntegers F}
+    (hx : x ∈ maximalIdeal (v.adicCompletionIntegers F)) :
+    Valued.v (x : v.adicCompletion F) < 1 := by
+  rw [IsLocalRing.mem_maximalIdeal, mem_nonunits_iff] at hx
+  have hle : Valued.v (x : v.adicCompletion F) ≤ 1 := (mem_adicCompletionIntegers A F v).mp x.2
+  exact hle.lt_of_ne fun h => hx (adicCompletionIntegers.isUnit_iff_valued_eq_one.mpr h)
+
+/-- The kernel of `residue ∘ algebraMap A (v.adicCompletionIntegers F) : A →+* ResidueField
+(v.adicCompletionIntegers F)` is exactly `v.asIdeal`. -/
+theorem ker_residue_comp_algebraMap :
+    RingHom.ker ((residue (v.adicCompletionIntegers F)).comp
+        (algebraMap A (v.adicCompletionIntegers F))) = v.asIdeal := by
+  have hval : ∀ k : F, Valued.v (algebraMap F (v.adicCompletion F) k) = v.valuation F k :=
+    fun k => IsDedekindDomain.HeightOneSpectrum.adicCompletion.valued_coe F v k
+  ext a
+  rw [RingHom.mem_ker, RingHom.comp_apply, residue_eq_zero_iff]
+  constructor
+  · intro h
+    have hlt := valued_lt_one_of_mem_maximalIdeal v h
+    rw [show (algebraMap A (v.adicCompletionIntegers F) a : v.adicCompletion F) =
+        algebraMap A (v.adicCompletion F) a from rfl,
+      IsScalarTower.algebraMap_apply A F (v.adicCompletion F), hval] at hlt
+    exact (v.valuation_lt_one_iff_mem a).mp hlt
+  · intro h
+    apply mem_maximalIdeal_of_valued_lt_one
+    rw [show (algebraMap A (v.adicCompletionIntegers F) a : v.adicCompletion F) =
+        algebraMap A (v.adicCompletion F) a from rfl,
+      IsScalarTower.algebraMap_apply A F (v.adicCompletion F), hval]
+    exact (v.valuation_lt_one_iff_mem a).mpr h
+
+/-- `residue ∘ algebraMap A (v.adicCompletionIntegers F) : A →+* ResidueField
+(v.adicCompletionIntegers F)` is surjective: given `z`, lift it to `y := ` some preimage under
+`residue`, then apply `exists_algebraMap_sub_mem_maximalIdeal` to `y`. -/
+theorem surjective_residue_comp_algebraMap :
+    Function.Surjective ((residue (v.adicCompletionIntegers F)).comp
+        (algebraMap A (v.adicCompletionIntegers F))) := by
+  intro z
+  obtain ⟨y, rfl⟩ := residue_surjective z
+  obtain ⟨r, hr⟩ := v.exists_algebraMap_sub_mem_maximalIdeal y
+  refine ⟨r, ?_⟩
+  rw [RingHom.comp_apply, eq_comm, ← sub_eq_zero, ← map_sub, residue_eq_zero_iff]
+  exact hr
+
+/-- **The residue field of `v.adicCompletionIntegers F` is `A ⧸ v.asIdeal`**: completing at `v`
+does not change the residue field. The classical local-field-theory fact underlying `IsTamelyRamified`
+/ `IsTotallyRamified`'s residue-triviality field, in a form usable for any place of any Dedekind
+domain. -/
+noncomputable def residueFieldQuotientRingEquiv :
+    (A ⧸ v.asIdeal) ≃+* ResidueField (v.adicCompletionIntegers F) :=
+  (Ideal.quotEquivOfEq (ker_residue_comp_algebraMap v).symm).trans
+    (RingHom.quotientKerEquivOfSurjective (surjective_residue_comp_algebraMap v))
+
 end IsDedekindDomain.HeightOneSpectrum
 
 end
