@@ -1,3 +1,4 @@
+import Langlands.AdicCompletionIntegersResidue
 import Langlands.TotallyRamifiedNormIndex
 
 /-!
@@ -654,40 +655,93 @@ theorem isTamelyRamified : IsDedekindDomain.HeightOneSpectrum.IsTamelyRamified K
     CharP.cast_eq_zero_iff (IsLocalRing.ResidueField (v.adicCompletionIntegers K)) p]
   exact (Nat.Prime.coprime_iff_not_dvd (Fact.out)).mp coprime_e_p.symm
 
-/-! ### Remaining gap: `exists_sub_algebraMap_mem_maximalIdeal` (residue triviality)
+/-! ### Field 3 of `IsTotallyRamified`: `exists_sub_algebraMap_mem_maximalIdeal`
 
-The third field of `IsTotallyRamified` — every `y : w.adicCompletionIntegers L` differs from
-(the image of) some `r : v.adicCompletionIntegers K` by an element of `maximalIdeal
-(w.adicCompletionIntegers L)` — is **not proved here**. `map_maximalIdeal_eq` and `finrank_eq`
-above are the other two fields, both closed without `sorry`.
+`Langlands.AdicCompletionIntegersResidue.exists_algebraMap_sub_mem_maximalIdeal` (a general,
+single-place density fact — no extension data needed) gives, for `y : w.adicCompletionIntegers L`,
+some `s : S` with `y - algebraMap S (w.adicCompletionIntegers L) s ∈ maximalIdeal
+(w.adicCompletionIntegers L)`. It remains to replace `s` by an element of `v.adicCompletionIntegers
+K`: writing `c := (S.ringEquivPoly s).coeff 0 : k` for `s`'s constant term, `s -
+S.ringEquivPoly.symm (C c) ∈ w.asIdeal = (Y)` (its image under `S ≃+* k[Y]` has zero constant term,
+hence is a multiple of `X`), so `algebraMap S s` and `algebraMap S (S.ringEquivPoly.symm (C c))`
+agree mod `maximalIdeal (w.adicCompletionIntegers L)`. Since `X ↦ Y ^ e` fixes constants,
+`algebraMap R S (C c) = S.ringEquivPoly.symm (C c)`, and the naturality square `R → K₀ → L₀ = R → S
+→ L₀` (`coe_algebraMap_adicCompletionIntegers`, `adicCompletionComap_algebraMap`,
+`algebraMap_S_L_algebraMap_R_S_eq`) identifies `algebraMap S (S.ringEquivPoly.symm (C c))` with
+`algebraMap K₀ L₀ (algebraMap R K₀ (C c))`. Composing the two maximal-ideal memberships (the ideal
+being closed under addition) finishes it, with `r := algebraMap R (v.adicCompletionIntegers K) (C
+c)`. -/
 
-Unlike those two, this field needs identifying `ResidueField (v.adicCompletionIntegers K)` and
-`ResidueField (w.adicCompletionIntegers L)` with `k := ZMod p` at the *completed* level, not just
-matching characteristics (`charP_residueK₀` above, which *is* enough for `IsTamelyRamified` but not
-for this field). That identification is a genuine, self-contained piece of local-field theory —
-"the residue field of an adic completion equals the residue field of the original local ring" —
-comparable in scope to the `Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)`
-separability bridge closed by a prior pass. Two routes were assessed, neither taken:
+/-- **The naturality square `R → K₀ → L₀ = R → S → L₀`.** Pushing `a : R` into `K₀ :=
+v.adicCompletionIntegers K` and then into `L₀ := w.adicCompletionIntegers L` agrees with pushing it
+into `S` and then into `L₀`. Both sides reduce, via `coe_algebraMap_adicCompletionIntegers` /
+`algebraMap_adicCompletionIntegers_apply` and `adicCompletionComap_algebraMap`, to the single
+identity `algebraMap S L (algebraMap R S a) = algebraMap K L (algebraMap R K a)`
+(`algebraMap_S_L_algebraMap_R_S_eq`). -/
+theorem algebraMap_R_K₀_L₀_eq (a : R) :
+    algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L)
+        (algebraMap R (v.adicCompletionIntegers K) a) =
+      algebraMap S (w.adicCompletionIntegers L) (algebraMap R S a) := by
+  apply Subtype.ext
+  rw [IsDedekindDomain.HeightOneSpectrum.coe_algebraMap_adicCompletionIntegers]
+  show IsDedekindDomain.HeightOneSpectrum.adicCompletionComap K L v w
+      (algebraMap R (v.adicCompletionIntegers K) a : v.adicCompletion K) = _
+  rw [show (algebraMap R (v.adicCompletionIntegers K) a : v.adicCompletion K)
+        = algebraMap K (v.adicCompletion K) (algebraMap R K a) from rfl,
+    IsDedekindDomain.HeightOneSpectrum.adicCompletionComap_algebraMap,
+    ← algebraMap_S_L_algebraMap_R_S_eq a]
+  rfl
 
-1. **Density in `w.adicCompletion L`.** `w.denseRange_algebraMap L` gives, for `y` and any
-   threshold, some `l : L` with `Valued.v (y - algebraMap l)` small. But `l = a / b` (`a b : S`)
-   need not have `b` coprime to `w.asIdeal = (Y)`; extracting a residue in `k` needs either a
-   PID lowest-terms/`IsCoprime` argument (`Y ∤ b` after cancelling common factors, then inverting
-   `b` in `S ⧸ (Y) ≅ k`) or an approximation-by-`S`-elements lemma, neither of which exists yet in
-   this repo or (as far as this pass's Mathlib searches found) in Mathlib.
-2. **`Localization.AtPrime S w.asIdeal`.** This is a DVR
-   (`IsLocalization.AtPrime.isDiscreteValuationRing_of_dedekind_domain`), and
-   `IsDiscreteValuationRing.exists_lift_of_le_one` gives *exact* (not merely approximate) lifts of
-   valuation-`≤ 1` elements of `L` into it. But connecting *that* valuation (`(IsDiscreteValuationRing.maximalIdeal
-   (Localization.AtPrime S w.asIdeal)).valuation L`) to `w.valuation L` (needed to feed in `y`'s
-   data) and connecting the residue field of the localization to `k` are two more un-formalized
-   equivalences on top of the lift lemma itself.
+theorem algebraMap_R_S_C_eq (c : k) :
+    algebraMap R S (Polynomial.C c) = S.ringEquivPoly.symm (Polynomial.C c) := by
+  rw [algebraMap_R_S_eq]
+  show S.ringEquivPoly.symm (Polynomial.expand k e (Polynomial.C c)) = _
+  rw [Polynomial.expand_C]
 
-Either route is a legitimate next-pass task, not a dead end — but building it was judged, at this
-pass's effort budget, to be new mathematical infrastructure on the scale of a separate pass rather
-than a lookup/bridging gap. `IsDedekindDomain.HeightOneSpectrum.IsTotallyRamified K L v w` is
-therefore **not** proved for this concrete instance, and `index_localNormMap_range_eq_of_isTotallyRamified`
-cannot yet be instantiated against it. -/
+theorem exists_sub_algebraMap_mem_maximalIdeal :
+    ∀ y : w.adicCompletionIntegers L, ∃ r : v.adicCompletionIntegers K,
+      y - algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) r ∈
+        IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) := by
+  intro y
+  obtain ⟨s, hs⟩ := w.exists_algebraMap_sub_mem_maximalIdeal y
+  set c : k := (S.ringEquivPoly s).coeff 0 with hcdef
+  refine ⟨algebraMap R (v.adicCompletionIntegers K) (Polynomial.C c), ?_⟩
+  rw [algebraMap_R_K₀_L₀_eq, algebraMap_R_S_C_eq]
+  have hsc : (y : w.adicCompletionIntegers L) -
+      algebraMap S (w.adicCompletionIntegers L) (S.ringEquivPoly.symm (Polynomial.C c)) =
+      ((y : w.adicCompletionIntegers L) - algebraMap S (w.adicCompletionIntegers L) s) +
+        algebraMap S (w.adicCompletionIntegers L) (s - S.ringEquivPoly.symm (Polynomial.C c)) := by
+    rw [map_sub]; ring
+  rw [hsc]
+  refine (IsLocalRing.maximalIdeal (w.adicCompletionIntegers L)).add_mem hs ?_
+  have hmem : s - S.ringEquivPoly.symm (Polynomial.C c) ∈ w.asIdeal := by
+    have hdvdX : Polynomial.X ∣ (S.ringEquivPoly s - Polynomial.C c) :=
+      Polynomial.X_dvd_iff.mpr (by simp [hcdef])
+    have hdvdY : S.ringEquivPoly.symm Polynomial.X ∣
+        S.ringEquivPoly.symm (S.ringEquivPoly s - Polynomial.C c) :=
+      map_dvd S.ringEquivPoly.symm hdvdX
+    rw [map_sub, RingEquiv.symm_apply_apply] at hdvdY
+    show s - S.ringEquivPoly.symm (Polynomial.C c) ∈ Ideal.span ({Y} : Set S)
+    rw [Ideal.mem_span_singleton, Y_eq]
+    exact hdvdY
+  have hval_lt : w.valuation L (algebraMap S L (s - S.ringEquivPoly.symm (Polynomial.C c))) < 1 :=
+    (w.valuation_lt_one_iff_mem (s - S.ringEquivPoly.symm (Polynomial.C c))).mpr hmem
+  have hValued_lt : Valued.v (algebraMap S (w.adicCompletionIntegers L)
+      (s - S.ringEquivPoly.symm (Polynomial.C c)) : w.adicCompletion L) < 1 := by
+    rw [show (algebraMap S (w.adicCompletionIntegers L)
+        (s - S.ringEquivPoly.symm (Polynomial.C c)) : w.adicCompletion L)
+        = (algebraMap S L (s - S.ringEquivPoly.symm (Polynomial.C c)) : w.adicCompletion L)
+        from rfl,
+      IsDedekindDomain.HeightOneSpectrum.valuedAdicCompletion_eq_valuation']
+    exact hval_lt
+  exact IsDedekindDomain.HeightOneSpectrum.mem_maximalIdeal_of_valued_lt_one w hValued_lt
+
+/-- **`IsTotallyRamified K L v w` for this concrete instance.** Assembled from `map_maximalIdeal_eq`,
+`finrank_eq`, and `exists_sub_algebraMap_mem_maximalIdeal` above. -/
+theorem isTotallyRamified : IsDedekindDomain.HeightOneSpectrum.IsTotallyRamified K L v w where
+  map_maximalIdeal_eq := map_maximalIdeal_eq
+  finrank_eq := finrank_eq
+  exists_sub_algebraMap_mem_maximalIdeal := exists_sub_algebraMap_mem_maximalIdeal
 
 end Langlands.TotallyRamifiedConcreteExample
 
