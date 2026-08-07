@@ -1,4 +1,5 @@
 import Langlands.AdicCompletionIntegersResidue
+import Langlands.AdicCompletionTraceBound
 import Langlands.Basic
 import Langlands.CyclicGaloisSubfields
 import Langlands.CyclicSubgroups
@@ -9,12 +10,15 @@ import Langlands.IdeleGroup
 import Langlands.MonogenicIntegralClosure
 import Langlands.MonogenicMaximalOrder
 import Langlands.NonarchimedeanCauchyProduct
+import Langlands.NonarchimedeanExpLogDegreeMatch
 import Langlands.NonarchimedeanExponential
 import Langlands.NonarchimedeanExponentialFiltration
 import Langlands.NonarchimedeanExponentialHasSum
+import Langlands.NonarchimedeanExponentialUnitsFiltration
 import Langlands.NonarchimedeanSigmaSummability
 import Langlands.NonarchimedeanUnconditionalSummability
 import Langlands.PowerSeriesExpLog
+import Langlands.PrimitiveElementFusion
 import Langlands.ProfiniteCompletionUlift
 import Langlands.ProfiniteGrpUlift
 import Langlands.RamificationFiltration
