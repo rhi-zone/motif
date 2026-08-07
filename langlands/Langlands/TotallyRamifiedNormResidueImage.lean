@@ -1,0 +1,132 @@
+import Langlands.TotallyRamifiedNormResidue
+import Langlands.TotallyRamifiedNormSurjective
+import Langlands.UnitGroupModPrincipalUnitsSurjective
+import Mathlib.GroupTheory.SpecificGroups.Cyclic
+
+/-!
+# The level-`0` image of `residue ∘ N`, at the `K₀ˣ` level
+
+Let `L / K` be a finite extension of fraction fields of Dedekind domains `S / R`, let `v` be a
+place of `R` and `w` a place of `S` lying over `v`, and write `K₀ := v.adicCompletionIntegers K`,
+`L₀ := w.adicCompletionIntegers L`, `κ := ResidueField K₀`, `e := v.asIdeal.ramificationIdx'
+w.asIdeal`. This file computes the exact image of the level-`0` map "`residue` composed with the
+ring norm `Algebra.norm K₀ : L₀ → K₀`" as a subgroup of `κˣ`, closing the surjectivity direction
+that `Langlands.TotallyRamifiedNormResidue`'s
+`residue_norm_eq_residue_pow_ramificationIdx_of_isTotallyRamified` left open (it gives only the
+`⊆` half of "the image is the `e`-th powers of `κˣ`").
+
+## Route
+
+`residueNormUnits : L₀ˣ →* κˣ` is `x ↦ residue (Algebra.norm K₀ x)` (well-defined on units since
+`Algebra.norm K₀` and `residue K₀` are both `MonoidHom`s, hence send units to units).
+`range_residueNormUnits_eq_of_isTotallyRamified` shows, under `IsTotallyRamified` alone (no
+tameness), that `MonoidHom.range residueNormUnits = MonoidHom.range (powMonoidHom e)`:
+
+* `⊆`: for `x : L₀ˣ`, `IsTotallyRamified.exists_sub_algebraMap_mem_maximalIdeal` gives `r : K₀`
+  with `x ≡ algebraMap r (mod 𝔪_L)`, so
+  `residue_norm_eq_residue_pow_ramificationIdx_of_isTotallyRamified` gives
+  `residue (N x) = (residue r) ^ e`. Since `x` is a unit, so is `N x` (norm is a `MonoidHom`), so
+  `residue (N x) ≠ 0`; since `κ` is a field (no zero divisors) this forces `residue r ≠ 0`, i.e.
+  `residue r` is a unit of `κ` (`isUnit_iff_ne_zero`), witnessing membership in the range of
+  `powMonoidHom e`.
+* `⊇`: for `s : κˣ`, `Langlands.UnitGroupModPrincipalUnitsSurjective`'s
+  `surjective_units_map_residue` (applied to `K₀`, not `L₀`) gives `r₀ : K₀ˣ` with
+  `residue r₀ = s`. Taking `x := algebraMap K₀ L₀ r₀` directly (not via any lift chosen inside
+  `L₀`) as a unit of `L₀`, `residue_norm_eq_residue_pow_ramificationIdx_of_isTotallyRamified`
+  applies with the trivial witness `x - algebraMap r₀ = 0 ∈ 𝔪_L`, giving
+  `residue (N x) = (residue r₀) ^ e = s ^ e`.
+
+Neither direction needs `𝓀[L] = 𝓀[K]` as an isomorphism, nor `IsTamelyRamified` — matching the
+repo's established avoidance of building an `Algebra 𝓀[K] 𝓀[L]` instance
+(`IsTotallyRamified`'s docstring).
+
+## Main results
+
+* `IsDedekindDomain.HeightOneSpectrum.residueNormUnits`
+* `IsDedekindDomain.HeightOneSpectrum.range_residueNormUnits_eq_of_isTotallyRamified`
+-/
+
+noncomputable section
+
+open IsDedekindDomain IsLocalRing
+
+namespace IsDedekindDomain.HeightOneSpectrum
+
+variable {R S K L : Type*} [CommRing R] [IsDedekindDomain R] [Field K] [Algebra R K]
+  [IsFractionRing R K] [CommRing S] [IsDedekindDomain S] [Field L] [Algebra S L]
+  [IsFractionRing S L] [Algebra R S] [Algebra K L] [Algebra R L] [IsScalarTower R S L]
+  [IsScalarTower R K L] [Module.Finite K L] [Algebra.IsIntegral R S] [Module.IsTorsionFree R S]
+
+variable (K L) (v : HeightOneSpectrum R) (w : HeightOneSpectrum S) [w.asIdeal.LiesOver v.asIdeal]
+  [Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)]
+
+omit [Algebra.IsIntegral R S] in
+/-- **`residue ∘ N`, as a map on unit groups.** The composite `L₀ˣ → K₀ˣ → κˣ`: first the ring
+norm `Algebra.norm K₀ : L₀ → K₀` (a `MonoidHom`, hence lands in units on units), then reduction
+mod `𝔪_K`. -/
+def residueNormUnits : (w.adicCompletionIntegers L)ˣ →* (ResidueField (v.adicCompletionIntegers K))ˣ :=
+  (Units.map (residue (v.adicCompletionIntegers K)).toMonoidHom).comp
+    (Units.map (Algebra.norm (v.adicCompletionIntegers K)))
+
+omit [Algebra.IsIntegral R S] [Module.Finite K L]
+  [Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)] in
+@[simp]
+theorem residueNormUnits_apply (x : (w.adicCompletionIntegers L)ˣ) :
+    (residueNormUnits K L v w x : ResidueField (v.adicCompletionIntegers K)) =
+      residue (v.adicCompletionIntegers K)
+        (Algebra.norm (v.adicCompletionIntegers K) (x : w.adicCompletionIntegers L)) := by
+  show ((Units.map (residue (v.adicCompletionIntegers K)).toMonoidHom).comp
+      (Units.map (Algebra.norm (v.adicCompletionIntegers K))) x :
+      ResidueField (v.adicCompletionIntegers K)) = _
+  rw [MonoidHom.comp_apply, Units.coe_map, Units.coe_map]
+  rfl
+
+omit [Algebra.IsIntegral R S] in
+/-- **The level-`0` image is exactly the `e`-th powers of `κˣ`, unconditionally on tameness.**
+The exact-range counterpart of
+`Langlands.TotallyRamifiedNormResidue.residue_norm_eq_residue_pow_ramificationIdx_of_isTotallyRamified`,
+which only gave the `⊆` half. -/
+theorem range_residueNormUnits_eq_of_isTotallyRamified (h : IsTotallyRamified K L v w) :
+    MonoidHom.range (residueNormUnits K L v w) =
+      MonoidHom.range (powMonoidHom (v.asIdeal.ramificationIdx' w.asIdeal) :
+        (ResidueField (v.adicCompletionIntegers K))ˣ →*
+          (ResidueField (v.adicCompletionIntegers K))ˣ) := by
+  have he0 : v.asIdeal.ramificationIdx' w.asIdeal ≠ 0 :=
+    Ideal.IsDedekindDomain.ramificationIdx'_ne_zero_of_liesOver w.asIdeal v.ne_bot
+  apply le_antisymm
+  · rintro _ ⟨x, rfl⟩
+    obtain ⟨r, hr⟩ := h.exists_sub_algebraMap_mem_maximalIdeal (x : w.adicCompletionIntegers L)
+    have hres := residue_norm_eq_residue_pow_ramificationIdx_of_isTotallyRamified K L v w h hr
+    have hNxu : IsUnit (Algebra.norm (v.adicCompletionIntegers K)
+        (x : w.adicCompletionIntegers L)) :=
+      x.isUnit.map (Algebra.norm (v.adicCompletionIntegers K))
+    have hNxne : residue (v.adicCompletionIntegers K)
+        (Algebra.norm (v.adicCompletionIntegers K) (x : w.adicCompletionIntegers L)) ≠ 0 :=
+      (hNxu.map (residue (v.adicCompletionIntegers K)).toMonoidHom).ne_zero
+    have hrne : residue (v.adicCompletionIntegers K) r ≠ 0 := ne_zero_pow he0 (hres ▸ hNxne)
+    refine ⟨(isUnit_iff_ne_zero.mpr hrne).unit, ?_⟩
+    apply Units.ext
+    simp only [powMonoidHom_apply, Units.val_pow_eq_pow_val, IsUnit.unit_spec,
+      residueNormUnits_apply]
+    exact hres.symm
+  · rintro _ ⟨s, rfl⟩
+    obtain ⟨r0, hr0⟩ := surjective_units_map_residue (A := v.adicCompletionIntegers K) s
+    have hru : IsUnit (algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L)
+        (r0 : v.adicCompletionIntegers K)) :=
+      r0.isUnit.map (algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L))
+    refine ⟨hru.unit, ?_⟩
+    apply Units.ext
+    have hx : (hru.unit : w.adicCompletionIntegers L) -
+        algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L)
+          (r0 : v.adicCompletionIntegers K) ∈ maximalIdeal (w.adicCompletionIntegers L) := by
+      rw [hru.unit_spec, sub_self]; exact Submodule.zero_mem _
+    have hres := residue_norm_eq_residue_pow_ramificationIdx_of_isTotallyRamified K L v w h hx
+    simp only [powMonoidHom_apply, Units.val_pow_eq_pow_val, residueNormUnits_apply]
+    rw [hres]
+    congr 1
+    have hcast := congrArg Units.val hr0
+    simpa [Units.coe_map] using hcast
+
+end IsDedekindDomain.HeightOneSpectrum
+
+end
