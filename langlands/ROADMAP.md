@@ -6192,3 +6192,99 @@ thread) but is not closed at the concrete level: the flat-sum instantiation that
 is now known to require the same finite-support/bounded-degree combinatorics that step (ii) needs
 downstream, discovered by direct attempt rather than assumed — a genuine sharpening of *where* the
 difficulty sits, not a reduction of it. Items 1, 3, 4, 5 are unchanged.
+
+## 6j. Twelfth pass (2026-08-07): the `cofinite`-vanishing estimate built in full, closing step (i)
+entirely (both the estimate and the literal flat `HasSum`); steps (ii)–(iv) (degree-`m` matching against
+`coeff_subst'`, invoking the formal identity, concluding via uniqueness) remain open
+
+**Task was to build the exact estimate the eleventh pass diagnosed as necessary** — the fiber `Fin n →
+ℕ`'s own finiteness constraint, combined with the coarse per-`n` bound, giving `Tendsto f cofinite
+(nhds 0)` for the flat family `f ⟨n, g⟩ := coeff n (exp K) * ∏ i, (coeff (g i) (log K) * x ^ (g i))` —
+following the worked mathematical route the task brief laid out, verifying each step in Lean rather than
+assuming the route transcribes cleanly.
+
+**Closed, in `Langlands/NonarchimedeanExpLogCofinite.lean` (new file, commit `508bbcf`):**
+
+* `norm_coeff_log_mul_pow_le`: the per-index bound `‖coeff m (log K) * x ^ m‖ ≤ r ^ m` (`r := ‖x‖/‖p‖`),
+  uniform in `m` including `m = 0` (where the left side is `0`, since `coeff 0 (log K) = 0`) — extracted
+  as its own `m`-indexed statement from the shifted-index bound `hasSum_coeff_log`'s proof uses
+  internally, by a `cases m` split reusing that proof's algebra at `m = k + 1` and `PowerSeries.coeff_log`'s
+  `if`-branch directly at `m = 0`.
+* `norm_prod_coeff_log_mul_pow_le`: the **tight** product bound
+  `‖∏ i, (coeff (g i) (log K) * x ^ (g i))‖ ≤ r ^ (∑ i, g i)`, decaying in the tuple's actual total
+  degree, not just its length `n` — via `norm_prod` (multiplicativity of the norm over a finite product)
+  and `Finset.prod_pow_eq_pow_sum`.
+* `norm_coeff_exp_mul_prod_le`: the coarse per-`n` bound `‖c_n * ∏ i, (...)‖ ≤ ‖c_n‖ * r ^ n`, recovered
+  as *valid after all* (resolving the eleventh pass's apparent contradiction) by case-splitting on
+  whether any `g i = 0` (product is literally `0`, `Finset.prod_eq_zero`) or every `g i ≥ 1` (forcing
+  `∑ i, g i ≥ n`, so `pow_le_pow_of_le_one` turns the tight bound into this coarser one) — the coarse
+  bound was never wrong, it just isn't by itself enough to see the fiber's finiteness; the tight bound
+  is what does that work.
+* `norm_coeff_exp_le`, `div_norm_lt_convergenceRadius`, `tendsto_norm_coeff_exp_mul_pow_atTop_zero`:
+  `‖c_n‖ * r ^ n → 0` as `n → ∞`, via `norm_pow_div_factorial_le` at `x := 1` for `‖c_n‖`'s bound and an
+  extraction of the intermediate ratio-bound fact (`r < convergenceRadius K p`) that
+  `norm_log_lt_convergenceRadius`'s proof already computes but did not expose as its own lemma.
+* `finite_setOf_ge_of_tendsto_zero`, `finite_setOf_sum_mem_of_finite`: two general-purpose finiteness
+  facts (a nonnegative real sequence tending to `0` exceeds any positive threshold only finitely often,
+  via `Metric.tendsto_nhds`/`Filter.eventually_cofinite`/`Nat.cofinite_eq_atTop`; the set of `Fin n → ℕ`
+  tuples whose coordinate sum lies in a finite set is itself finite, via `Set.Finite.bddAbove` +
+  `Finset.single_le_sum` + `Set.Finite.pi`), assembled with the bounds above into
+  `tendsto_cofinite_exp_log_flatSum`: for `ε > 0`, the "bad set" `{q | ε ≤ ‖f q‖}` is contained in a
+  finite union (over the finitely many `n` with `‖c_n‖ * r ^ n ≥ ε`) of finite fibers (the finitely many
+  tuples in each such fiber whose total degree is small enough for `ε ≤ ‖c_n‖ * r ^ (∑ g i)` to be
+  possible), hence finite.
+
+`#print axioms` on every new lemma (`tendsto_cofinite_exp_log_flatSum` included): `[propext,
+Classical.choice, Quot.sound]` only. No `sorry`.
+
+**Step (i)'s literal flat `HasSum`, also closed, in `Langlands/NonarchimedeanExpLogFlatHasSum.lean`
+(new file, commit `9beba2b`)** — going past the task's minimum bar (which only required the `Tendsto`
+prerequisite) since the remaining assembly (outer `HasSum` from `hasSum_coeff_exp` at `log hnorm x`,
+per-`n` inner `HasSum`s from `HasSum.pow_of_nonarchimedean` on `hasSum_coeff_log` scaled by
+`HasSum.mul_left`, fed together with the `cofinite`-vanishing fact into
+`HasSum.sigma_of_isUltrametricDist`) turned out to close directly once the `Tendsto` gap was shut, with
+no further obstruction found. One incidental confirmation needed along the way: `HasSum.pow_of_nonarchimedean`
+(`Langlands.NonarchimedeanCauchyProduct`, built in an earlier pass but never yet applied to a concrete
+field) needs `NonarchimedeanRing K`, which `Langlands.NonarchimedeanUnconditionalSummability`'s
+`IsUltrametricDist.toNonarchimedeanRing` instance already supplies for any `NormedField` with
+`IsUltrametricDist` — confirmed to fire by `lake build`, not merely assumed. `hasSum_coeff_exp_log`:
+`#print axioms` gives `[propext, Classical.choice, Quot.sound]` only; no `sorry`.
+
+**Build status.** `nix develop -c lake build Langlands.NonarchimedeanExpLogCofinite
+Langlands.NonarchimedeanExpLogFlatHasSum`: both clean, no warnings (all `omit [...] in` clauses added
+where the linter flagged unused section variables). Full `nix develop -c lake build Langlands`: clean,
+whole project, `8715` jobs (same count as the eleventh pass — no other files touched), only
+pre-existing warnings elsewhere (unrelated to this pass's files).
+
+**What this does not close — steps (ii)–(iv).** Not attempted this pass: matching the flattened sum's
+degree-`m` slice against `PowerSeries.coeff_subst'`'s finite `finsum` formula (step (ii)), invoking the
+closed formal identity `PowerSeries.exp_sub_one_subst_log` (step (iii)), and concluding `exp hnorm
+(log hnorm x) = 1 + x` via uniqueness of `HasSum` (step (iv)). Every prior pass on this thread
+(tenth, eleventh) has flagged step (ii)'s degree-matching burden as the hardest, least-scoped part of
+the whole assembly — a genuinely different kind of argument from this pass's estimate-building (it needs
+to connect this pass's *convergent*, tuple-indexed grouping to `coeff_subst'`'s *formal*, finsum-over-
+compositions grouping, not just bound norms) — and this pass did not attempt to reduce that scoping
+uncertainty, having spent its effort on step (i) instead.
+
+**Updated "what remains" list** (item 2, previously "step (i)'s literal flat-sum instantiation still
+needs a genuine finite-support/degree-bounded-tuples estimate ... steps (ii)–(iv) ... remain entirely
+unattempted, blocked behind (i)"):
+
+1. **A genuine concrete mixed-characteristic example** — unchanged from the sixth pass, still unbuilt.
+2. **The mutual-inverse relationship between `exp` and `log`** — the formal identity, the
+   formal/convergent coefficient bookkeeping, the general sigma-flattening tool, the domain-compatibility
+   prerequisite, and now (this pass) both the `cofinite`-vanishing estimate and step (i)'s literal flat
+   `HasSum` for `exp hnorm (log hnorm x)` are all closed. What remains: steps (ii)–(iv) — matching the
+   flattened sum's degree-`m` slice against `coeff_subst'`'s finite formula, invoking
+   `exp_sub_one_subst_log`, concluding via uniqueness of `HasSum`. Not attempted this pass; still the
+   least-scoped, hardest-diagnosed remaining piece per the tenth/eleventh passes' assessment, unchanged
+   by this pass's progress on step (i).
+3. **Landing in `U^{(i)}`, not just the convergence domain** — unchanged, still unattempted.
+4. **An explicit closed-form threshold** (Serre's `i > e·v(p)/(p-1)`) — unchanged.
+5. **The norm/trace compatibility formula** `N_{L/K}(exp x) = exp(Tr_{L/K}(x))`, and its own
+   trace-norm precondition — unchanged, still entirely unstarted.
+
+**Net effect on the wild-case picture.** Item 2's step (i) is now fully closed (both the `Tendsto`
+estimate the eleventh pass diagnosed as necessary, and the literal flat `HasSum` built on top of it) —
+a genuine reduction in remaining work, not just a re-diagnosis: what remains is now exactly steps
+(ii)–(iv), with no open sub-gap behind them. Items 1, 3, 4, 5 are unchanged.
