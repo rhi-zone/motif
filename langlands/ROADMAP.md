@@ -5240,3 +5240,98 @@ still needs `IsTotallyRamified` (and, for the `gcd` formula specifically, `IsTam
 one-line consequence once the ambient instances exist: `IsUnit ((3:ℕ) : ZMod 7)`, i.e.
 `gcd(3,7)=1`) proved first. The expected number, once this closes, is `gcd(e, #κ[K]ˣ) = gcd(3,6) =
 3` (`κ[K] = ZMod 7`, `#κ[K]ˣ = 6`) — unconfirmed, not yet computed.
+
+## 6b. Fourth pass (2026-08-07): fields 1–2 of `IsTotallyRamified` closed, `IsTamelyRamified` closed, field 3 and the index number still open
+
+**Refactor first.** `Langlands/NormMap.lean`'s `adicCompletionIntegers_comap_eq` had the exact
+valuation-power identity `∀ y : v.adicCompletion K, Valued.v (adicCompletionComap K L v w y) =
+Valued.v y ^ e` buried in a local `have heq`. Extracted it as a standalone theorem
+`valuation_algebraMap_pow_eq` (commit `1adf9ee`), with `adicCompletionIntegers_comap_eq` refactored
+to call it — same proof content, now directly reusable. This is exactly the tool the ROADMAP's
+third-pass entry (above) flagged as needed.
+
+**Field 1, `map_maximalIdeal_eq`, closed** (`Langlands/TotallyRamifiedConcreteExample.lean`, commit
+`1adf9ee`). Route:
+
+1. `v.asIdeal.ramificationIdx' w.asIdeal = e` (`ramificationIdx'_eq`): `Ideal.ramificationIdx'_spec`
+   applied to the exact identity `map_v_eq` (giving `≤`) and `Ideal.pow_succ_lt_pow w.ne_bot e`
+   (`w.asIdeal ^ (e+1) < w.asIdeal ^ e` strictly, so `≤` fails at `e+1`).
+2. `Valued.v xK = WithZero.exp (-1 : ℤ)` (`valuation_xK`): `X` generates `v.asIdeal` *exactly*
+   (`v.asIdeal := Ideal.span {X}` by the instance's own definition), so `intValuation_singleton`
+   gives the canonical-uniformizer value directly — no approximation needed.
+3. `Valued.v yLw = WithZero.exp (-1 : ℤ)` (`valuation_yLw`): from `yLw ^ e = algebraMap Kv Lw xK`
+   (`yLw_pow_eq`, already proved) and `valuation_algebraMap_pow_eq`, `Valued.v yLw ^ e = Valued.v xK
+   ^ e` in `ℤᵐ⁰`; applying the (unconditional, even at `0`) `WithZero.log` turns `e`-th powers into
+   `e`-multiples in `ℤ`, and `ℤ` is torsion-free, so cancelling the nonzero integer `e` pins down
+   `Valued.v yLw` exactly (not just up to an `e`-th root of unity in the value group).
+4. Both `xK` and `yLw`, viewed as elements `xK₀ : K₀` / `yLw₀ : L₀`, are therefore
+   `Valuation.IsUniformizer`s of `Valued.v` (`Valuation.IsRankOneDiscrete.generator_eq_exp_neg_one_of_surjective`
+   identifies the abstract `IsRankOneDiscrete` generator with `exp (-1)`, matching steps 2–3), so
+   `Valuation.IsUniformizer.is_generator` gives `maximalIdeal K₀ = span {xK₀}` and `maximalIdeal L₀ =
+   span {yLw₀}` directly — no need to separately establish `Irreducible` first (though
+   `IsDiscreteValuationRing.irreducible_iff_uniformizer` converts the span-generation facts into
+   `Irreducible xK₀` / `Irreducible yLw₀` too, `irreducible_xK₀` / `irreducible_yLw₀`, for later use).
+5. `algebraMap K₀ L₀ xK₀ = yLw₀ ^ e` (`algebraMap_xK₀_eq`, from `yLw_pow_eq` plus the definitional
+   fact that `algebraMap (v.adicCompletion K) (w.adicCompletion L)` *is* `adicCompletionComap K L v
+   w`), so `Ideal.map (algebraMap K₀ L₀) (maximalIdeal K₀) = span {algebraMap K₀ L₀ xK₀} = span
+   {yLw₀ ^ e} = (span {yLw₀}) ^ e = maximalIdeal L₀ ^ e` (`Ideal.map_span`, `Ideal.span_singleton_pow`).
+
+**Field 2, `finrank_eq`, closed** (same commit). `e = 3` is prime, so
+`X_pow_sub_C_irreducible_of_prime` needs only "`xK` has no `e`-th root in `v.adicCompletion K`"
+(`xK_not_pow`) — proved by the *same* `WithZero.log`-cancellation trick as step 3 above: `b ^ e =
+xK` would force `e * WithZero.log (Valued.v b) = -1` in `ℤ`, impossible since `3 ∤ 1`. This makes
+`gPoly := X ^ e - C xK` irreducible; since it's also monic and `yLw` is a root,
+`minpoly.eq_of_irreducible` forces `minpoly Kv yLw = gPoly` **exactly** (not just `∣`), pinning
+`Module.finrank Kv Kv⟮yLw⟯ = gPoly.natDegree = e` (`IntermediateField.adjoin.finrank`) — the sharper
+fact `integrality` alone only gives `≤ e` for. Combined with `adjoin_yLw_eq_top`,
+`Module.finrank Kv Lw = e` (`finrank_Kv_Lw`), and `IsIntegralClosure.rank` (`L₀` being the integral
+closure of `K₀` in `Lw`, `instIsIntegralClosureAdicCompletionIntegers`) transports this to
+`Module.finrank K₀ L₀ = e` (`finrank_K₀_L₀`) — the completed-integers level `IsTotallyRamified`
+actually needs.
+
+**`IsTamelyRamified`, closed** (same commit) — **without** needing field 3. `IsTamelyRamified`
+reduces (via `finrank_eq`) to `IsUnit ((3:ℕ) : ResidueField K₀)`. Rather than identifying
+`ResidueField K₀` with `ZMod 7` outright (field 3's job, not reached — see below), it suffices to
+know its *characteristic* is `7`: `CharP K p` (already an instance, `charP_K`) transports along the
+injective field map `K → Kv` (`RingHom.charP_iff_charP`), then along the injective inclusion `K₀ →
+Kv` (`RingHom.charP`), then along the residue map `K₀ → ResidueField K₀` — this last step needs
+only that the residue map is *a* ring hom into a nontrivial ring out of a nonzero-characteristic
+domain (`CharP.of_ringHom_of_ne_zero`), not injectivity or surjectivity. With `CharP (ResidueField
+K₀) 7` in hand, `(3 : ResidueField K₀) ≠ 0` follows from `7 ∤ 3` (`coprime_e_p`,
+`CharP.cast_eq_zero_iff`), i.e. `IsUnit`.
+
+**Field 3, `exists_sub_algebraMap_mem_maximalIdeal` (residue triviality), NOT closed — the genuine
+remaining wall.** This needs identifying `ResidueField K₀` and `ResidueField L₀` with `k = ZMod 7`
+*themselves*, not just their characteristic (which `charP_residueK₀` above already gives, and which
+sufficed for `IsTamelyRamified` but not for this field). That identification — "the residue field
+of an adic completion equals the residue field of the original local ring" — is genuine,
+self-contained local-field theory, comparable in scope to the `Algebra.IsSeparable (v.adicCompletion
+K) (w.adicCompletion L)` bridge the third pass closed. Two routes were scoped this pass and neither
+taken, both requiring new multi-lemma constructions rather than a lookup:
+
+1. **Density in `w.adicCompletion L`.** `w.denseRange_algebraMap L` gives, for any `y` and
+   threshold, some `l : L` close to it. But `l = a / b` (`a b : S`) need not have `b` coprime to
+   `w.asIdeal = (Y)` in general; extracting a well-defined residue in `k` needs either a PID
+   lowest-terms/`IsCoprime` argument (cancel common `Y`-factors, then invert `b` in `S ⧸ (Y) ≅ k`
+   via Bézout, `Ideal.IsCoprime`) or a direct "`S` is dense, not just `L`" lemma — neither exists
+   yet in this repo, and this pass's Mathlib searches (loogle, grep) found neither in Mathlib either.
+2. **`Localization.AtPrime S w.asIdeal`.** This is a DVR
+   (`IsLocalization.AtPrime.isDiscreteValuationRing_of_dedekind_domain`), and
+   `IsDiscreteValuationRing.exists_lift_of_le_one` gives *exact* lifts of valuation-`≤ 1` elements
+   of `L` into it — stronger than density. But connecting *that* valuation to `w.valuation L`, and
+   its residue field to `k`, are two more unformalized equivalences stacked on top of the lift
+   lemma itself.
+
+Given the effort budget of this pass, building either was judged new infrastructure on the scale of
+a separate pass, not a bridging gap — so no `sorry`, no forced proof; the gap is left open here,
+precisely relocated to field 3 alone (fields 1–2 are done).
+
+**No number computed this pass either, precisely because of field 3.**
+`index_localNormMap_range_eq_of_isTotallyRamified` requires an actual term of `IsTotallyRamified K L
+v w`, which needs all three fields; with only 1–2 closed, the theorem cannot yet be instantiated.
+The `gcd(3,6) = 3` expectation from the third-pass entry remains **unconfirmed** — not contradicted,
+just not yet computable from what's proved.
+
+**Build status.** `nix develop -c lake build Langlands` — clean, whole project. `#print axioms` on
+`map_maximalIdeal_eq`, `finrank_eq`, `isTamelyRamified`: all three depend only on `[propext,
+Classical.choice, Quot.sound]` (no `sorry`, no stray axioms).

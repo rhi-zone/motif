@@ -436,18 +436,20 @@ theorem valuation_valuationSubring_eq_adicCompletionIntegers :
   exact ValuativeRel.isEquiv _ _
 
 omit [Module.Finite K L] [Algebra.IsIntegral R S] in
-/-- `adicCompletionComap` pulls `w.adicCompletionIntegers L` back exactly to
-`v.adicCompletionIntegers K`.
+/-- **The valuation-power bridge.** Writing `e` for the ramification index of `w` over `v`,
+`Valued.v (adicCompletionComap y) = Valued.v y ^ e` for every `y : v.adicCompletion K`.
 
-Writing `e` for the ramification index of `w` over `v`, the continuous maps
-`y ↦ Valued.v (adicCompletionComap y)` and `y ↦ Valued.v y ^ e` agree on the dense image of `K`
-(`valuation_liesOver`), hence everywhere. Since `e ≠ 0`, raising to the `e`-th power preserves
-`≤ 1`. -/
-theorem adicCompletionIntegers_comap_eq :
-    (w.adicCompletionIntegers L).comap (adicCompletionComap K L v w)
-      = v.adicCompletionIntegers K := by
+The continuous maps `y ↦ Valued.v (adicCompletionComap y)` and `y ↦ Valued.v y ^ e` agree on the
+dense image of `K` (`valuation_liesOver`), hence everywhere by continuity and density
+(`DenseRange.equalizer`).
+
+Extracted as a standalone theorem (rather than left as a `have` inside
+`adicCompletionIntegers_comap_eq`'s proof) so that concrete instances needing the exact
+valuation-power relationship — not just the `≤ 1` comap equality — can invoke it directly. -/
+theorem valuation_algebraMap_pow_eq (y : v.adicCompletion K) :
+    Valued.v (adicCompletionComap K L v w y) =
+      (Valued.v y) ^ (v.asIdeal.ramificationIdx' w.asIdeal) := by
   set e := v.asIdeal.ramificationIdx' w.asIdeal with hedef
-  have he0 : e ≠ 0 := Ideal.IsDedekindDomain.ramificationIdx'_ne_zero_of_liesOver w.asIdeal v.ne_bot
   have hcont1 :
       Continuous (fun y : v.adicCompletion K => Valued.v (adicCompletionComap K L v w y)) :=
     (Valued.continuous_valuation_of_surjective (valuedAdicCompletion_surjective L w)).comp
@@ -465,11 +467,23 @@ theorem adicCompletionIntegers_comap_eq :
       show (algebraMap K (adicCompletion K v) k) = ((k : K) : adicCompletion K v) from rfl,
       valuedAdicCompletion_eq_valuation', valuedAdicCompletion_eq_valuation',
       valuation_liesOver L v w]
-  have heq : ∀ y : v.adicCompletion K,
-      Valued.v (adicCompletionComap K L v w y) = (Valued.v y) ^ e :=
-    congrFun (hden.equalizer hcont1 hcont2 hcomp)
+  exact congrFun (hden.equalizer hcont1 hcont2 hcomp) y
+
+omit [Module.Finite K L] [Algebra.IsIntegral R S] in
+/-- `adicCompletionComap` pulls `w.adicCompletionIntegers L` back exactly to
+`v.adicCompletionIntegers K`.
+
+Writing `e` for the ramification index of `w` over `v`, `Valued.v (adicCompletionComap y) =
+Valued.v y ^ e` (`valuation_algebraMap_pow_eq`); since `e ≠ 0`, raising to the `e`-th power
+preserves `≤ 1`. -/
+theorem adicCompletionIntegers_comap_eq :
+    (w.adicCompletionIntegers L).comap (adicCompletionComap K L v w)
+      = v.adicCompletionIntegers K := by
+  have he0 : v.asIdeal.ramificationIdx' w.asIdeal ≠ 0 :=
+    Ideal.IsDedekindDomain.ramificationIdx'_ne_zero_of_liesOver w.asIdeal v.ne_bot
   ext y
-  rw [ValuationSubring.mem_comap, mem_adicCompletionIntegers, mem_adicCompletionIntegers, heq]
+  rw [ValuationSubring.mem_comap, mem_adicCompletionIntegers, mem_adicCompletionIntegers,
+    valuation_algebraMap_pow_eq K L v w]
   exact pow_le_one_iff_of_nonneg zero_le he0
 
 omit [Algebra.IsIntegral R S] in

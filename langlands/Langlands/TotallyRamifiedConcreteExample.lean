@@ -453,13 +453,241 @@ instance : Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L) := by
   exact AlgEquiv.Algebra.isSeparable
     (IntermediateField.topEquiv (F := v.adicCompletion K) (E := w.adicCompletion L))
 
-/- **Sanity check**: `IsTotallyRamified K L v w` now typechecks against this concrete instance —
-every ambient hypothesis in its `variable` block (`Module.Finite K L`, `Algebra.IsIntegral R S`,
-`Module.IsTorsionFree R S`, `IsScalarTower R K L`, etc.) is satisfied. This is a regression check,
-not a proof of the predicate itself: `IsTotallyRamified`'s three fields talk about
-`v.adicCompletionIntegers K` / `w.adicCompletionIntegers L`, and completing that proof needs the
-separability bridge documented in `ROADMAP.md` (still open). -/
-#check (IsDedekindDomain.HeightOneSpectrum.IsTotallyRamified K L v w : Prop)
+/-! ### The Dedekind-style ramification index equals `e`
+
+`v.asIdeal.ramificationIdx' w.asIdeal` (the exponent `IsTotallyRamified` is stated in terms of)
+equals the concrete instance's `e`, via `Ideal.ramificationIdx'_spec` applied to the exact identity
+`map_v_eq` and the strict decrease `Ideal.pow_succ_lt_pow` of powers of the nonzero prime
+`w.asIdeal`. -/
+
+theorem ramificationIdx'_eq : v.asIdeal.ramificationIdx' w.asIdeal = e := by
+  apply Ideal.ramificationIdx'_spec
+  · show Ideal.map algMapRS v.asIdeal ≤ w.asIdeal ^ e
+    exact le_of_eq map_v_eq
+  · show ¬ Ideal.map algMapRS v.asIdeal ≤ w.asIdeal ^ (e + 1)
+    intro hle
+    rw [map_v_eq] at hle
+    have hlt := Ideal.pow_succ_lt_pow w.ne_bot e
+    exact hlt.ne (le_antisymm hlt.le hle)
+
+/-! ### `xK` and `yLw` are uniformizers of `v.adicCompletion K` / `w.adicCompletion L`
+
+`X` generates `v.asIdeal` exactly (`v.asIdeal := Ideal.span {X}` by definition), so its `v`-adic
+valuation is the canonical uniformizer value `exp (-1)` (`intValuation_singleton`). Since `yLw ^ e =
+algebraMap xK` (`yLw_pow_eq`) and `Valued.v (algebraMap xK) = Valued.v xK ^ e`
+(`valuation_algebraMap_pow_eq`, via `ramificationIdx'_eq`), `Valued.v yLw` and `exp (-1)` have equal
+`e`-th powers in `ℤᵐ⁰`; taking `WithZero.log` (additive, so `e`-th powers become `e`-multiples) and
+cancelling the nonzero integer `e` pins `Valued.v yLw` down to `exp (-1)` exactly, not merely up to
+an `e`-th root of unity — `ℤᵐ⁰`'s value group `ℤ` is torsion-free, so there is no such ambiguity. -/
+
+open scoped WithZero
+
+theorem valuation_xK : Valued.v xK = WithZero.exp (-1 : ℤ) := by
+  show Valued.v (algebraMap K (v.adicCompletion K) (algebraMap R K (Polynomial.X : R))) = _
+  rw [show algebraMap K (v.adicCompletion K) (algebraMap R K (Polynomial.X : R))
+      = ((algebraMap R K (Polynomial.X : R) : K) : v.adicCompletion K) from rfl,
+    IsDedekindDomain.HeightOneSpectrum.valuedAdicCompletion_eq_valuation',
+    IsDedekindDomain.HeightOneSpectrum.valuation_of_algebraMap]
+  exact v.intValuation_singleton Polynomial.X_ne_zero rfl
+
+theorem valuation_yLw : Valued.v yLw = WithZero.exp (-1 : ℤ) := by
+  have hpow : (Valued.v yLw) ^ e = (WithZero.exp (-1 : ℤ)) ^ e := by
+    rw [← map_pow, yLw_pow_eq]
+    show Valued.v (IsDedekindDomain.HeightOneSpectrum.adicCompletionComap K L v w xK) = _
+    rw [IsDedekindDomain.HeightOneSpectrum.valuation_algebraMap_pow_eq K L v w xK,
+      ramificationIdx'_eq, valuation_xK]
+  have hlog := congrArg WithZero.log hpow
+  rw [WithZero.log_pow, WithZero.log_pow, WithZero.log_exp, nsmul_eq_mul, nsmul_eq_mul] at hlog
+  have he : WithZero.log (Valued.v yLw) = -1 :=
+    mul_left_cancel₀ (by exact_mod_cast e_pos.ne' : (e : ℤ) ≠ 0) hlog
+  have hne0 : Valued.v yLw ≠ 0 := by
+    intro h0; rw [h0, WithZero.log_zero] at he; exact absurd he (by norm_num)
+  rw [← WithZero.exp_log hne0, he]
+
+/-- `xK`, viewed as an element of `v.adicCompletionIntegers K`. -/
+def xK₀ : v.adicCompletionIntegers K :=
+  ⟨xK, by
+    rw [IsDedekindDomain.HeightOneSpectrum.mem_adicCompletionIntegers R K v, valuation_xK,
+      ← WithZero.exp_zero]
+    exact WithZero.exp_le_exp.mpr (by norm_num)⟩
+
+/-- `yLw`, viewed as an element of `w.adicCompletionIntegers L`. -/
+def yLw₀ : w.adicCompletionIntegers L :=
+  ⟨yLw, by
+    rw [IsDedekindDomain.HeightOneSpectrum.mem_adicCompletionIntegers S L w, valuation_yLw,
+      ← WithZero.exp_zero]
+    exact WithZero.exp_le_exp.mpr (by norm_num)⟩
+
+theorem coe_xK₀ : (xK₀ : v.adicCompletion K) = xK := rfl
+
+theorem coe_yLw₀ : (yLw₀ : w.adicCompletion L) = yLw := rfl
+
+theorem isUniformizer_xK₀ : Valuation.IsUniformizer Valued.v (xK₀ : v.adicCompletion K) := by
+  rw [Valuation.IsUniformizer.iff, coe_xK₀, valuation_xK,
+    Valuation.IsRankOneDiscrete.generator_eq_exp_neg_one_of_surjective
+      (IsDedekindDomain.HeightOneSpectrum.valuedAdicCompletion_surjective K v)]
+  rfl
+
+theorem isUniformizer_yLw₀ : Valuation.IsUniformizer Valued.v (yLw₀ : w.adicCompletion L) := by
+  rw [Valuation.IsUniformizer.iff, coe_yLw₀, valuation_yLw,
+    Valuation.IsRankOneDiscrete.generator_eq_exp_neg_one_of_surjective
+      (IsDedekindDomain.HeightOneSpectrum.valuedAdicCompletion_surjective L w)]
+  rfl
+
+/-- `xK₀` generates the maximal ideal of `K₀ := v.adicCompletionIntegers K`. -/
+theorem maximalIdeal_K₀_eq : IsLocalRing.maximalIdeal (v.adicCompletionIntegers K)
+    = Ideal.span {(xK₀ : v.adicCompletionIntegers K)} :=
+  isUniformizer_xK₀.is_generator
+
+/-- `yLw₀` generates the maximal ideal of `L₀ := w.adicCompletionIntegers L`. -/
+theorem maximalIdeal_L₀_eq : IsLocalRing.maximalIdeal (w.adicCompletionIntegers L)
+    = Ideal.span {(yLw₀ : w.adicCompletionIntegers L)} :=
+  isUniformizer_yLw₀.is_generator
+
+theorem irreducible_xK₀ : Irreducible (xK₀ : v.adicCompletionIntegers K) :=
+  (IsDiscreteValuationRing.irreducible_iff_uniformizer _).mpr maximalIdeal_K₀_eq
+
+theorem irreducible_yLw₀ : Irreducible (yLw₀ : w.adicCompletionIntegers L) :=
+  (IsDiscreteValuationRing.irreducible_iff_uniformizer _).mpr maximalIdeal_L₀_eq
+
+/-! ### Field 1 of `IsTotallyRamified`: `map_maximalIdeal_eq` -/
+
+theorem algebraMap_xK₀_eq : algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L)
+    (xK₀ : v.adicCompletionIntegers K) = (yLw₀ : w.adicCompletionIntegers L) ^ e := by
+  apply Subtype.ext
+  show IsDedekindDomain.HeightOneSpectrum.adicCompletionComap K L v w xK = yLw ^ e
+  rw [yLw_pow_eq]; rfl
+
+theorem map_maximalIdeal_eq :
+    Ideal.map (algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L))
+        (IsLocalRing.maximalIdeal (v.adicCompletionIntegers K)) =
+      IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) ^
+        (v.asIdeal.ramificationIdx' w.asIdeal) := by
+  rw [maximalIdeal_K₀_eq, Ideal.map_span, Set.image_singleton, algebraMap_xK₀_eq,
+    ← Ideal.span_singleton_pow, ← maximalIdeal_L₀_eq, ramificationIdx'_eq]
+
+/-! ### Field 2 of `IsTotallyRamified`: `finrank_eq`
+
+`e = 3` is prime, so it suffices to show `xK` has no `e`-th root in `v.adicCompletion K`
+(`X_pow_sub_C_irreducible_of_prime`) to conclude `gPoly := X ^ e - C xK` is irreducible. Since
+`gPoly` is monic and `yLw` is a root, `gPoly` **is** `minpoly (v.adicCompletion K) yLw`
+(`minpoly.eq_of_irreducible`), pinning `Module.finrank (v.adicCompletion K)
+(v.adicCompletion K)⟮yLw⟯` at exactly `e = gPoly.natDegree` (`IntermediateField.adjoin.finrank`) —
+not just `≤ e` from integrality alone. Combined with `adjoin_yLw_eq_top`, this gives
+`Module.finrank (v.adicCompletion K) (w.adicCompletion L) = e`, which transports to the
+completed-integers level via `IsIntegralClosure.rank` (`w.adicCompletionIntegers L` being the
+integral closure of `v.adicCompletionIntegers K` in `w.adicCompletion L`,
+`instIsIntegralClosureAdicCompletionIntegers`). -/
+
+theorem e_prime : Nat.Prime e := by decide
+
+/-- `xK` has no `e`-th root in `v.adicCompletion K`: if `b ^ e = xK`, taking `Valued.v` and then
+`WithZero.log` gives `e * WithZero.log (Valued.v b) = -1` in `ℤ`, impossible since `e = 3 ∤ 1`. -/
+theorem xK_not_pow (b : v.adicCompletion K) : b ^ e ≠ xK := by
+  intro hb
+  have hv : Valued.v (b ^ e) = Valued.v xK := congrArg Valued.v hb
+  rw [map_pow, valuation_xK] at hv
+  have hlog := congrArg WithZero.log hv
+  rw [WithZero.log_pow, WithZero.log_exp, nsmul_eq_mul] at hlog
+  have he3 : (e : ℤ) = 3 := by norm_num [e]
+  rw [he3] at hlog
+  omega
+
+theorem gPoly_irreducible : Irreducible gPoly :=
+  X_pow_sub_C_irreducible_of_prime e_prime xK_not_pow
+
+theorem minpoly_yLw_eq : minpoly (v.adicCompletion K) yLw = gPoly := by
+  have haeval : Polynomial.aeval yLw gPoly = 0 := by
+    rw [gPoly, Polynomial.aeval_sub, Polynomial.aeval_X_pow, Polynomial.aeval_C, yLw_pow_eq,
+      sub_self]
+  have heq := minpoly.eq_of_irreducible gPoly_irreducible haeval
+  rw [gPoly_monic.leadingCoeff, inv_one, map_one, mul_one] at heq
+  exact heq.symm
+
+theorem natDegree_minpoly_yLw : (minpoly (v.adicCompletion K) yLw).natDegree = e := by
+  rw [minpoly_yLw_eq, gPoly, Polynomial.natDegree_X_pow_sub_C]
+
+theorem finrank_adjoin_yLw : Module.finrank (v.adicCompletion K)
+    (IntermediateField.adjoin (v.adicCompletion K) ({yLw} : Set (w.adicCompletion L))) = e := by
+  rw [IntermediateField.adjoin.finrank isIntegral_yLw, natDegree_minpoly_yLw]
+
+theorem finrank_Kv_Lw : Module.finrank (v.adicCompletion K) (w.adicCompletion L) = e := by
+  rw [← LinearEquiv.finrank_eq (IntermediateField.topEquiv (F := v.adicCompletion K)
+    (E := w.adicCompletion L)).toLinearEquiv, ← adjoin_yLw_eq_top]
+  exact finrank_adjoin_yLw
+
+theorem finrank_K₀_L₀ :
+    Module.finrank (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) = e := by
+  rw [IsIntegralClosure.rank (v.adicCompletionIntegers K) (v.adicCompletion K)
+    (w.adicCompletion L) (w.adicCompletionIntegers L), finrank_Kv_Lw]
+
+theorem finrank_eq :
+    Module.finrank (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) =
+      v.asIdeal.ramificationIdx' w.asIdeal := by
+  rw [finrank_K₀_L₀, ramificationIdx'_eq]
+
+/-! ### `IsTamelyRamified`
+
+`ResidueField (v.adicCompletionIntegers K)` has characteristic `p`: `CharP K p` (`charP_K`)
+transports along the injective field map `K → v.adicCompletion K`
+(`RingHom.charP_iff_charP`), then along the injective inclusion `v.adicCompletionIntegers K →
+v.adicCompletion K` (`RingHom.charP`), then along the (surjective, but injectivity is not needed —
+any ring hom out of a nonzero-characteristic domain into a nontrivial ring preserves that
+characteristic) residue map (`CharP.of_ringHom_of_ne_zero`). Since `finrank_eq` gives
+`Module.finrank K₀ L₀ = e = 3`, `IsTamelyRamified` reduces to `(3 : ResidueField K₀) ≠ 0`, which
+holds because `p = 7 ∤ 3` (`coprime_e_p`). -/
+
+instance charP_Kv : CharP (v.adicCompletion K) p :=
+  (RingHom.charP_iff_charP (algebraMap K (v.adicCompletion K)) p).mp charP_K
+
+instance charP_K₀ : CharP (v.adicCompletionIntegers K) p :=
+  RingHom.charP (algebraMap (v.adicCompletionIntegers K) (v.adicCompletion K))
+    Subtype.coe_injective p
+
+instance charP_residueK₀ : CharP (IsLocalRing.ResidueField (v.adicCompletionIntegers K)) p :=
+  CharP.of_ringHom_of_ne_zero (IsLocalRing.residue (v.adicCompletionIntegers K)) p (by norm_num)
+
+theorem isTamelyRamified : IsDedekindDomain.HeightOneSpectrum.IsTamelyRamified K L v w := by
+  show IsUnit ((Module.finrank (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) : ℕ) :
+    IsLocalRing.ResidueField (v.adicCompletionIntegers K))
+  rw [finrank_eq, ramificationIdx'_eq, isUnit_iff_ne_zero, Ne,
+    CharP.cast_eq_zero_iff (IsLocalRing.ResidueField (v.adicCompletionIntegers K)) p]
+  exact (Nat.Prime.coprime_iff_not_dvd (Fact.out)).mp coprime_e_p.symm
+
+/-! ### Remaining gap: `exists_sub_algebraMap_mem_maximalIdeal` (residue triviality)
+
+The third field of `IsTotallyRamified` — every `y : w.adicCompletionIntegers L` differs from
+(the image of) some `r : v.adicCompletionIntegers K` by an element of `maximalIdeal
+(w.adicCompletionIntegers L)` — is **not proved here**. `map_maximalIdeal_eq` and `finrank_eq`
+above are the other two fields, both closed without `sorry`.
+
+Unlike those two, this field needs identifying `ResidueField (v.adicCompletionIntegers K)` and
+`ResidueField (w.adicCompletionIntegers L)` with `k := ZMod p` at the *completed* level, not just
+matching characteristics (`charP_residueK₀` above, which *is* enough for `IsTamelyRamified` but not
+for this field). That identification is a genuine, self-contained piece of local-field theory —
+"the residue field of an adic completion equals the residue field of the original local ring" —
+comparable in scope to the `Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)`
+separability bridge closed by a prior pass. Two routes were assessed, neither taken:
+
+1. **Density in `w.adicCompletion L`.** `w.denseRange_algebraMap L` gives, for `y` and any
+   threshold, some `l : L` with `Valued.v (y - algebraMap l)` small. But `l = a / b` (`a b : S`)
+   need not have `b` coprime to `w.asIdeal = (Y)`; extracting a residue in `k` needs either a
+   PID lowest-terms/`IsCoprime` argument (`Y ∤ b` after cancelling common factors, then inverting
+   `b` in `S ⧸ (Y) ≅ k`) or an approximation-by-`S`-elements lemma, neither of which exists yet in
+   this repo or (as far as this pass's Mathlib searches found) in Mathlib.
+2. **`Localization.AtPrime S w.asIdeal`.** This is a DVR
+   (`IsLocalization.AtPrime.isDiscreteValuationRing_of_dedekind_domain`), and
+   `IsDiscreteValuationRing.exists_lift_of_le_one` gives *exact* (not merely approximate) lifts of
+   valuation-`≤ 1` elements of `L` into it. But connecting *that* valuation (`(IsDiscreteValuationRing.maximalIdeal
+   (Localization.AtPrime S w.asIdeal)).valuation L`) to `w.valuation L` (needed to feed in `y`'s
+   data) and connecting the residue field of the localization to `k` are two more un-formalized
+   equivalences on top of the lift lemma itself.
+
+Either route is a legitimate next-pass task, not a dead end — but building it was judged, at this
+pass's effort budget, to be new mathematical infrastructure on the scale of a separate pass rather
+than a lookup/bridging gap. `IsDedekindDomain.HeightOneSpectrum.IsTotallyRamified K L v w` is
+therefore **not** proved for this concrete instance, and `index_localNormMap_range_eq_of_isTotallyRamified`
+cannot yet be instantiated against it. -/
 
 end Langlands.TotallyRamifiedConcreteExample
 
