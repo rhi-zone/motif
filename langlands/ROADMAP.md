@@ -5619,3 +5619,99 @@ unstarted pieces; a concrete mixed-characteristic example is a new, separate, co
 mechanical gap (analogous in shape and difficulty to
 `Langlands.TotallyRamifiedConcreteExample`, which took five passes) that would need to exist before
 any of this pass's results apply to an actual witness.
+
+## 6e. Seventh pass (2026-08-07): assessed item 5 directly; not stateable this session; closed the
+"shared residue characteristic" precondition instead — the two-field wiring gap, not the norm
+formula itself
+
+**Task was item 5** (`N_{L/K}(exp x) = exp(Tr_{L/K}(x))`, the wild-case payoff, flagged
+highest-priority and entirely unattempted). **Assessed first, per the task's own instruction not to
+force it if unstateable.** To state the formula precisely needs three things simultaneously: (a)
+`exp` instantiated at both `v.adicCompletion K` and `w.adicCompletion L` for an actual extension
+`L / K`, (b) the same residue characteristic `p` feeding both instantiations, and (c) `x` in
+`exp_L`'s convergence domain guaranteeing `Tr_{L/K}(x)` lands in `exp_K`'s convergence domain. No
+file in this repo's exp/log thread had ever brought two fields into the machinery at once (every
+prior file — `NonarchimedeanExponential`, `NonarchimedeanExponentialFiltration`,
+`NonarchimedeanExponentialAdicCompletion`, `AdicCompletionMixedCharacteristic` — works at a single
+place `v` of a single field). Checked whether (c) has any Mathlib support: `grep`/loogle for
+`Algebra.trace`/`Algebra.norm` combined with `IsUltrametricDist` both return **zero hits** — no
+lemma anywhere connects the trace or norm map to a nonarchimedean bound. This is new, nontrivial
+mathematical content (a bound in the shape `‖Tr_{L/K}(x)‖_K ≤ ‖x‖_L`, or a filtration-level analogue
+via the different ideal), not a naming/lookup gap the way (a)/(b) turned out to be. **Conclusion:
+item 5 is not stateable precisely, let alone provable, this session** — confirming the task's own
+suspicion, not just the prior passes' flagging of it as hardest.
+
+**Worked the load-bearing prerequisite instead: (a) and (b), the two-field wiring, in
+`Langlands/NonarchimedeanExponentialExtension.lean` (new, commit `41b2971`).** Chose this over
+items 2 (mutual-inverse) or 3 (tail estimate/`U^{(i)}`) because those two are self-contained
+single-field gaps already precisely scoped by prior passes, whereas the two-field wiring is the one
+piece item 5's own statement cannot exist without, and — unlike (c) above or item 4's explicit
+closed-form threshold — turned out to be *closeable* this session (cheap, in the same sense the
+sixth pass's mixed-characteristic instances were cheap: one-line transfer lemmas already sitting in
+Mathlib, not new mathematical content):
+
+* `charP_quotient_of_liesOver` : `[CharP (R ⧸ v.asIdeal) p] → CharP (S ⧸ w.asIdeal) p`, for
+  `w.asIdeal.LiesOver v.asIdeal`. The quotient map `R ⧸ v.asIdeal →+* S ⧸ w.asIdeal` induced by
+  `algebraMap R S` (`Ideal.quotientMap`, composed with `Ideal.quotEquivOfEq` transporting along
+  `v.asIdeal = w.asIdeal.under R`, `Ideal.over_def`) is injective (`Ideal.quotientMap_injective`,
+  which applies precisely because `v.asIdeal` **is** `w.asIdeal`'s comap — exactly what `LiesOver`
+  asserts), so `CharP` transfers forward (`charP_of_injective_ringHom`). This is the formal content
+  of the classical fact "a finite extension of local fields has the same residue characteristic,
+  only `e`/`f` differ" — previously assumed informally in this repo's task briefs, now a Lean term.
+  Stated as a plain `theorem`, not an `instance`: an earlier attempt to state it as an `instance`
+  failed to build (`cannot find synthesization order` — `R` is not determined by the conclusion
+  `CharP (S ⧸ w.asIdeal) p` alone, so instance search cannot locate it; callers supply it via
+  `haveI`).
+* `charZero_of_algebra` : `[CharZero K] → CharZero L` along `[Algebra K L]` — `algebraMap K L` is
+  injective (`K` a field, hence `IsSimpleRing`, into the nontrivial ring `L`), so `CharZero`
+  transfers forward (`charZero_of_injective_algebraMap`), the same one-line argument
+  `AdicCompletionMixedCharacteristic.instCharZeroAdicCompletion` uses one level up (`v.adicCompletion
+  K`/`w.adicCompletion L`), applied here at the level of `K`/`L` themselves.
+* `exists_maximalIdeal_pow_lt_convergenceRadius_of_liesOver` / `..._lt_logConvergenceRadius_of_liesOver`
+  : combining both of the above with `AdicCompletionMixedCharacteristic`'s existing instances gives,
+  from a single hypothesis `[CharP (R ⧸ v.asIdeal) p]` at the base plus `[CharZero K]`, **both**
+  `exp`'s (resp. `log`'s) convergence-domain existence statements for `v.adicCompletionIntegers K`
+  and `w.adicCompletionIntegers L` simultaneously, for the same `p` — the first time this repo's
+  exp/log machinery has been run at two fields of an actual extension at once.
+
+**Build status.** `nix develop -c lake build Langlands` — clean, whole project (`8710` jobs; only
+the same class of pre-existing `unusedSectionVars` linter warnings elsewhere, unrelated to this
+pass; this file's own four such warnings were resolved with explicit `omit [...] in` clauses rather
+than left as warnings). `#print axioms` on all four new theorems: `[propext, Classical.choice,
+Quot.sound]` only — no `sorry`, no stray axioms.
+
+**What remains, precisely, toward the wild-case norm-group index theorem** (unchanged in count from
+the sixth pass's list — this pass closed a *precondition* for stating item 5, not item 5 itself, so
+the five-item list stands, with item 5 now understood more precisely):
+
+1. **A genuine concrete mixed-characteristic example** — unchanged from the sixth pass, still
+   unbuilt.
+2. **The mutual-inverse relationship between `exp` and `log`** — unchanged, still unattempted;
+   Mathlib's `PowerSeries.exp`/`.Log` still have no ready-made formal identity to transport (no new
+   search conducted this pass).
+3. **Landing in `U^{(i)}`, not just the convergence domain** — unchanged, still unattempted; the
+   tail estimate `‖exp x - 1 - x‖ ≤ (something small)` remains the blocker.
+4. **An explicit closed-form threshold** (Serre's `i > e·v(p)/(p-1)`) — unchanged; still needs an
+   actual extension's ramification index and the concrete example from item 1. Note this pass's
+   two-field wiring does *not* by itself supply this: it gives the same abstract existential `∃ i₀`
+   at both `v` and `w` independently, not a relationship between the two thresholds in terms of `e`.
+5. **The norm/trace compatibility formula** `N_{L/K}(exp x) = exp(Tr_{L/K}(x))` — now assessed, not
+   merely flagged. Precisely what blocks stating it: a nonarchimedean bound on `Algebra.trace`
+   (confirmed absent from Mathlib this pass, in addition to the already-known items 2–4 above,
+   which bear on giving it a *sharp* domain rather than blocking the statement outright). This
+   trace-norm bound is a **new item**, not previously named in this list, surfaced by this pass's
+   assessment — it sits alongside (not instead of) items 2–4 as a precondition for a precise
+   statement of item 5, and no attempt was made to prove it this pass (out of scope: assessing
+   feasibility and closing the wiring precondition was the full extent of this pass's mandate).
+
+**Net effect on the wild-case picture.** The two-field wiring — previously an implicit, unformalized
+assumption every prior pass's task brief leaned on ("a finite extension of local fields has the same
+`p`") — is now a Lean theorem, and both `exp`/`log` instantiations can be invoked side by side for an
+actual `L / K`. This removes one of the three preconditions item 5 needs to be *stated*, but item 5
+itself — and now, explicitly, the trace-norm bound it also needs — remain completely unstarted. The
+honest distance to the wild-case norm-group index theorem is unchanged in kind from the sixth pass's
+assessment: this thread has closed every piece of *scaffolding* attempted so far (convergence,
+abstract filtration translation, concrete single-field instantiation, two-field wiring) while the
+actual mathematical content of the wild-case argument — mutual inverse, tail estimate, and above all
+the norm/trace compatibility formula together with its own trace-norm precondition — remains
+entirely open.
