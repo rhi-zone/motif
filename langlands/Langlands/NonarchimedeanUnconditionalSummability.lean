@@ -1,4 +1,5 @@
 import Mathlib.Analysis.Normed.Group.Ultra
+import Mathlib.Analysis.Normed.Ring.Lemmas
 import Mathlib.Topology.Algebra.InfiniteSum.Nonarchimedean
 
 /-!
@@ -29,6 +30,25 @@ additive group with an ultrametric distance, any sequence tending to `0` is unco
 — exactly the hypothesis needed to upgrade `Langlands.NonarchimedeanExponential.exp`/`.log`'s
 along-`range n` `Tendsto` facts (`tendsto_partialSum_exp`, `tendsto_partialSum_log`) to genuine
 `HasSum` statements, which is done in `Langlands.NonarchimedeanExponentialHasSum`.
+
+## Ring-level addition: `IsUltrametricDist.toNonarchimedeanRing`
+
+The same gap exists one level up: `Mathlib.Topology.Algebra.InfiniteSum.Nonarchimedean` also proves
+`HasSum.mul_of_nonarchimedean` (Cauchy product `fun i : α × β ↦ f i.1 * g i.2` sums to `a * b`, for any
+two `HasSum`s in a nonarchimedean ring, **with no additional summability hypothesis on the product** —
+the nonarchimedean case needs none, unlike the archimedean Mathlib API which requires
+`Summable (fun p ↦ f p.1 * g p.2)` as a separate hypothesis, e.g. `HasSum.mul`), but that lemma needs
+`NonarchimedeanRing R` (`Mathlib.Topology.Algebra.Nonarchimedean.Basic`: a topological ring whose
+underlying additive group is nonarchimedean), and nothing bridges `IsUltrametricDist` to it either.
+`IsUltrametricDist.toNonarchimedeanRing` closes that gap: any `SeminormedRing` with an ultrametric
+distance is a `NonarchimedeanRing`, by pairing the topological-ring instance every seminormed ring
+already carries (`NonUnitalSeminormedRing.toIsTopologicalRing`) with `toNonarchimedeanAddGroup`'s
+`is_nonarchimedean` witness (both notions ultimately say "every neighborhood of `0` contains an open
+additive subgroup"; `NonarchimedeanRing` just packages that fact together with the ring topology).
+This makes `HasSum.mul_of_nonarchimedean`/`Summable.mul_of_nonarchimedean`/
+`tsum_mul_tsum_of_nonarchimedean` available, unconditionally, for any `NormedField` (or more generally
+`SeminormedRing`) carrying `IsUltrametricDist` — the key remaining tool identified in `ROADMAP.md`'s
+ninth pass for the `exp`/`log` mutual-inverse thread's substitution-composition step.
 -/
 
 @[expose] public section
@@ -72,5 +92,17 @@ or rearrangement argument is needed, unlike the archimedean case. A direct corol
 theorem summable_of_tendsto_zero [CompleteSpace G] {α : Type*} {f : α → G}
     (hf : Filter.Tendsto f Filter.cofinite (nhds 0)) : Summable f :=
   NonarchimedeanAddGroup.summable_of_tendsto_cofinite_zero hf
+
+variable {R : Type*} [SeminormedRing R] [IsUltrametricDist R]
+
+/-- **Every seminormed ring with an ultrametric distance is a nonarchimedean ring**: it is already a
+topological ring (`NonUnitalSeminormedRing.toIsTopologicalRing`), and its underlying additive group is
+nonarchimedean (`toNonarchimedeanAddGroup`, since `SeminormedRing` is in particular a
+`SeminormedAddCommGroup`) — exactly the two ingredients `NonarchimedeanRing` packages. This unlocks
+`Mathlib.Topology.Algebra.InfiniteSum.Nonarchimedean`'s `HasSum.mul_of_nonarchimedean` and friends for
+any such ring, with no separate summability side-condition on the product family. -/
+instance (priority := 100) toNonarchimedeanRing : NonarchimedeanRing R where
+  __ := (inferInstance : IsTopologicalRing R)
+  is_nonarchimedean := (toNonarchimedeanAddGroup (G := R)).is_nonarchimedean
 
 end IsUltrametricDist

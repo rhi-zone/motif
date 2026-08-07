@@ -8,6 +8,7 @@ import Langlands.HenselianResidueLift
 import Langlands.IdeleGroup
 import Langlands.MonogenicIntegralClosure
 import Langlands.MonogenicMaximalOrder
+import Langlands.NonarchimedeanCauchyProduct
 import Langlands.NonarchimedeanExponential
 import Langlands.NonarchimedeanExponentialFiltration
 import Langlands.NonarchimedeanExponentialHasSum
