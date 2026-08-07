@@ -2609,6 +2609,75 @@ that avoids stalling on (a).
 > `normUnitsK₀_range_eq_of_isTotallyRamified`, `index_normUnitsK₀_range_eq_of_isTotallyRamified`):
 > only `propext, Classical.choice, Quot.sound`.
 
+> **Update (2026-08-07, forty-fourth pass) — CAPSTONE: the totally-ramified norm-group index
+> theorem closes at the full `(v.adicCompletion K)ˣ` level, exactly closing the gap the
+> forty-third pass left open.** New file `TotallyRamifiedNormIndex.lean`, one commit (`26d9a4f`,
+> plus supporting Task 1/2 commits `7a74a3a`, `ae7495c`, `c7b7a30` earlier in this pass). The
+> final theorem, `index_localNormMap_range_eq_of_isTotallyRamified`:
+> ```
+> theorem index_localNormMap_range_eq_of_isTotallyRamified (h : IsTotallyRamified K L v w)
+>     (htame : IsTamelyRamified K L v w) {πL : w.adicCompletionIntegers L} (hπL : Irreducible πL) :
+>     (MonoidHom.range (localNormMap K L v w)).index =
+>       Nat.gcd (v.asIdeal.ramificationIdx' w.asIdeal)
+>         (Nat.card (ResidueField (v.adicCompletionIntegers K))ˣ)
+> ```
+> i.e. `[(v.adicCompletion K)ˣ : N_{L/K}(L_w^×)] = gcd(e, #κ[K]ˣ)`. **This is left as `gcd(e,
+> #κ[K]ˣ)`, not simplified to `e`, deliberately** — the task brief for this pass explicitly warned
+> that an earlier pass found a concrete counterexample showing tame (`char κ[K] ∤ e`) does not
+> force `gcd(e, #κ[K]ˣ) = e` in general (e.g. `e` need not divide `#κ[K]ˣ - 1`), and no such forcing
+> argument was found or attempted here; `gcd(e, #κ[K]ˣ)` is the genuinely most-refined statement
+> given what tameness alone provides, matching the finite-cyclic-group computation
+> (`IsCyclic.index_powMonoidHom_range`) both this file and Phase 2a ultimately rest on.
+>
+> **How `K₀ˣ` sits inside `(v.adicCompletion K)ˣ`, and how the bridge was built.** `K₀ˣ` embeds via
+> `embedK : (v.adicCompletionIntegers K)ˣ →* (v.adicCompletion K)ˣ := Units.map (algebraMap
+> K₀ (v.adicCompletion K)).toMonoidHom` (already present pre-pass in `TotallyRamifiedNormRange.lean`
+> style, following `UnramifiedNormRange.lean`'s identical convention). Its range is exactly
+> `(v.adicCompletionIntegers K).units` as a subgroup of `(v.adicCompletion K)ˣ`
+> (`range_embedK_eq`, restating the generic `range_units_map_algebraMap_adicCompletionIntegers_eq`
+> lemma — proved once, instantiated at both `K` and `L` as `range_embedK_eq`/`range_embedL_eq`) and
+> `embedK` is injective (`embedK_injective`, since the underlying `algebraMap` is the subtype
+> inclusion). Three pieces combine to compute the ambient index, mirroring
+> `UnramifiedNormRange.lean`'s `K^× ≅ ℤ × O_K^×`-style decomposition via a fixed uniformizer:
+> 1. **Task 1 (bridging lemma, `ae7495c`)**: `units_map_localNormMap_eq_map_normUnitsK₀` shows
+>    `(L₀ˣ).map localNormMap = (N_{L/K}(U_L)).map embedK`, i.e. the ambient-level image of the
+>    valuation-ring units agrees with pushing the `K₀ˣ`-level result forward through `embedK`.
+> 2. **Task 2 (single-field uniformizer decomposition, `c7b7a30`)**: applied to `π := N(π_L)`
+>    itself (irreducible in `K₀` under total ramification, `irreducible_norm_of_isTotallyRamified`),
+>    every `a : (v.adicCompletion K)ˣ` decomposes as `a = π'^k · embedK u` where `π' :=
+>    uniformizerUnit K v hπ` is the same generator `localNormMap_range_eq_of_isTotallyRamified`
+>    (Phase 2b, forty-second pass) uses for `G`'s cyclic part. This gives **step 1**, `G ⊔ U_K = ⊤`
+>    (`sup_units_eq_top`), since `π' ∈ G` already (`uniformizerUnit_norm_mem_range`).
+> 3. **Step 2**, `G ⊓ U_K = N_{L/K}(U_L)` (`inf_units_eq_units_map`): `⊇` is immediate;
+>    `⊆` uses a valuation-order argument — writing `y = π'^k · u'` for `u' ∈ N_{L/K}(U_L)` (from
+>    `G`'s known exact-range decomposition `⟨N(π_L)⟩ ⊔ N_{L/K}(U_L)`), `y, u' ∈ U_K` forces
+>    `π'^k ∈ U_K`, i.e. `Valued.v(π')^k = 1`; since `0 < Valued.v(π') < 1`
+>    (`valued_coe_lt_one_of_irreducible`, from `π'` generating the maximal ideal), `k ↦ Valued.v(π')^k`
+>    is injective (`zpow_right_strictAnti₀`), forcing `k = 0` and hence `y = u' ∈ N_{L/K}(U_L)`.
+> 4. Steps 1–2 turn `G.index` into `G.relIndex U_K` (`Subgroup.relIndex_sup_left` +
+>    `relIndex_top_right`), then `G.relIndex U_K = (G ⊓ U_K).relIndex U_K` (`inf_relIndex_right`)
+>    reduces via step 2 and Task 1's bridging lemma to `(N_{L/K}(U_L).map embedK).relIndex
+>    (⊤.map embedK)`, which `Subgroup.relIndex_map_map_of_injective` (using `embedK_injective`)
+>    collapses to the plain `K₀ˣ`-level `N_{L/K}(U_L).relIndex ⊤ = N_{L/K}(U_L).index`, exactly
+>    `index_normUnitsK₀_range_eq_of_isTotallyRamified`'s already-proved value.
+>
+> `nix develop -c lake build Langlands.TotallyRamifiedNormIndex`: clean, 3485 jobs, only pre-existing
+> `unusedSectionVars`/`overlappingInstances` linter warnings (no errors). `grep -rn sorry
+> langlands/Langlands/`: unchanged, the single prose-only hit at `TotallyRamifiedEisenstein.lean:19`.
+> `#print axioms index_localNormMap_range_eq_of_isTotallyRamified` (scratch `lake env lean`): only
+> `propext, Classical.choice, Quot.sound`.
+>
+> **This closes the totally-ramified norm-group index thread spanning passes 36–44.** Combined with
+> Phase 2a's unramified norm-index results, both halves of local CFT's norm-group index computation
+> (unramified and totally-ramified-tame) are now proved, sorry-free, matching the classical
+> statements, at the ambient `(v.adicCompletion K)ˣ` level. **The wild case remains explicitly out
+> of scope** (no attempt made this pass or any prior pass to remove the `IsTamelyRamified`
+> hypothesis — the wild case is genuinely harder and was flagged as out of scope since the fortieth
+> pass). `IsTotallyRamified`/`IsTamelyRamified` still have no nontrivial instances constructed
+> anywhere in this repo (flagged since the fortieth pass, still unaddressed here). The general
+> (mixed ramification) case and the reciprocity map itself remain the subject of Phase 2b's still-open
+> "what comes next" survey above.
+
 - **Why this exists.** Phase 2a closed the "easy half" of local CFT (unramified norm-group
   surjectivity) in full, across ten passes. This section applies the same before-you-build
   discipline to Phase 2's actual hard content — the ramified case and the reciprocity map itself —
@@ -4762,7 +4831,18 @@ Both are sorry-free (see Phase 0 and Phase 1 status above).
 = ⟨π⟩^n·O_K^×` for unramified `L/K`) is also done, sorry-free, closed across
 ten passes — see Phase 2a's status entries above.**
 
-**Next move: Phase 2b's scoped candidates (ramified local reciprocity —
+**Status update: the totally-ramified (tame) norm-group index thread within
+Phase 2b (passes 36–44) is also done, sorry-free — see the forty-fourth-pass
+status entry above.** `[(v.adicCompletion K)ˣ : N_{L/K}(L_w^×)] = gcd(e,
+#κ[K]ˣ)` is proved for `IsTotallyRamified` + `IsTamelyRamified` extensions,
+in `Langlands/TotallyRamifiedNormIndex.lean`. Together with Phase 2a, both
+non-wild-case norm-group index computations of local CFT are now formalized
+at the ambient unit-group level. The wild (`char κ[K] ∣ e`) case, the
+general mixed-ramification case, and the full reciprocity map itself remain
+open — this closes only the norm-*group* computation, not local CFT's
+reciprocity isomorphism.
+
+**Next move: Phase 2b's remaining scoped candidates (ramified local reciprocity —
 see the "Phase 2b" section above for the full landscape survey, the
 duplication re-check against kbuzzard/ClassFieldTheory, and two candidate
 first milestones with their tradeoffs laid out honestly rather than a single
