@@ -6478,3 +6478,133 @@ and independent), the group-homomorphism law for `exp` (needed to turn `exp_mem_
 pointwise landing statement into the isomorphism `U_L^{(i)} ≅ (𝔪_L^i, +)` the wild-case argument
 actually wants), and the norm/trace compatibility formula (item 5, the actual payoff, not attempted
 in any pass so far).
+
+## 6m. Fifteenth pass (2026-08-07): item 5 CLOSED for Galois completions — the norm/trace
+compatibility formula, plus its two prerequisites (the trace-norm bound and the `exp` addition law)
+
+**Task was item 5**, `N_{L/K}(exp x) = exp(Tr_{L/K} x)`, with an explicit instruction to first
+re-check the seventh pass's (§6e) blocker (c) — the absence of any nonarchimedean bound on
+`Algebra.trace` — against a specific lead (`trace_eq_sum_embeddings` / `norm_eq_prod_embeddings`,
+`Mathlib.Analysis.Normed.Unbundled.SpectralNorm`, and the classical "all conjugates have the same
+absolute value"). **Item 5 is now closed for `IsGalois (v.adicCompletion K) (w.adicCompletion L)`,
+sorry-free.** Three commits: `906bc27` (trace-norm bound), `20157e9` (`exp_add`), `a9da3b4` (the
+formula), plus `edf6570` (a pre-existing build breakage, below).
+
+**The suggested lead does not work in this repo, and the reason is structural, not a lookup gap.**
+`NormedAlgebra.norm_eq_spectralNorm` and everything downstream of it requires
+`NormedAlgebra K_v L_w`, i.e. `norm_smul_le`. That instance is **false here**:
+`Langlands.NormMap`'s `instRankOneValuedAdicCompletion` picks the same rank-one base `2` at *every*
+place, so `‖algebraMap K_v L_w a‖ = ‖a‖ ^ e` (`valuation_algebraMap_pow_eq`, with `e` the
+ramification index), and `norm_smul_le` fails as soon as `e > 1` — precisely the wild/ramified case
+of interest. Repairing this would mean renormalizing `L_w`'s norm by an `e`-th root. The
+`Algebra.trace`/`IsUltrametricDist` search finding of §6e was also re-run and **still returns zero
+declarations**; that half of the seventh pass's finding stands.
+
+**Blocker (c) is closed by a different route: integrality, which is normalization-free.**
+`Langlands/AdicCompletionTraceBound.lean` (new):
+
+* `ValuationSubring.trace_mem_of_isIntegral` (general, Mathlib-shaped): for `L / K` finite and `O` a
+  valuation subring of `K`, an `x : L` integral over `O` has `Algebra.trace K L x ∈ O`. Two lines —
+  `Algebra.isIntegral_trace` plus integral-closedness of a valuation subring in its fraction field.
+* `trace_mem_adicCompletionIntegers` : `Tr_{L_w/K_v}` maps `w.adicCompletionIntegers L` into
+  `v.adicCompletionIntegers K`, reusing `Langlands.NormMap`'s `isIntegral_of_mem_of_comap_eq` exactly
+  as `localNormMap_mem_units` already did for `Algebra.norm`.
+* `norm_trace_le` : **the trace-norm bound.** `‖x‖ ≤ ‖algebraMap K_v L_w a‖ → ‖Tr x‖ ≤ ‖a‖`. The
+  statement is phrased through `algebraMap` rather than as a bare `‖Tr x‖ ≤ ‖x‖` precisely because
+  the two norms are differently normalized (`‖algebraMap a‖ = ‖a‖ ^ e`).
+* `exists_maximalIdeal_pow_norm_trace_lt` : for any `ε > 0`, deep enough filtration levels of `L_w`
+  have `‖Tr x‖ < ε`; the `convergenceRadius` and `logConvergenceRadius` versions are corollaries.
+
+This bound is **not sharp** — the sharp classical statement is `‖Tr x‖ ≤ ‖x‖ ^ (1/e)`, and scaling
+by base-field elements only reaches `K_v`'s value group, losing up to a factor of `‖π_K‖`. That is
+irrelevant here: every convergence-domain statement in this thread is existential in the filtration
+level, so any bound tending to `0` suffices.
+
+**The real gate turned out to be the `exp` addition law, not the trace bound.**
+`exp (x + y) = exp x * exp y` was listed in §6l only as a "Bonus (not attempted)"; in fact *no*
+route to item 5 exists without it. It is much easier than the `exp ∘ log` mutual-inverse identity
+of §6k and reuses none of that machinery — the composite problem needs `n`-ary Cauchy products and
+sigma-flattening, whereas this needs only the *binary* product.
+`Langlands/NonarchimedeanExponentialAdd.lean` (new) proves it exactly as
+`NormedSpace.exp_add_of_commute_of_mem_ball` does over ℝ/ℂ, with two nonarchimedean simplifications:
+`Summable.mul_of_nonarchimedean` supplies summability of the product family with no norm-summability
+side condition, and `IsUltrametricDist.norm_add_le_max` keeps `x + y` in the domain with **no radius
+shrinkage** (contrast `expLogCompositionRadius`). Also `exp_zero`, `exp_mul_exp_neg`, `isUnit_exp`.
+
+`Langlands/NonarchimedeanExponentialRingHom.lean` (new) adds the two structural facts the conjugates
+argument consumes: `map_exp` (a *continuous* ring homomorphism commutes with `exp`) and `exp_sum`
+(`exp` of a finite sum is the product of the `exp`s, `exp_add` iterated with the induction staying
+in the domain by the ultrametric inequality).
+
+**`Langlands/AdicCompletionNormExpTrace.lean` (new): the formula.**
+
+* `continuous_algEquiv` : every `K_v`-algebra automorphism of `L_w` is continuous. **This is the
+  observation that unblocks the whole thing.** It needs no isometry, no `spectralNorm`, and no
+  uniqueness of the valuation extension — a linear map on a finite-dimensional Hausdorff topological
+  vector space over a complete field is continuous (`LinearMap.continuous_of_finiteDimensional`,
+  the *topological* version, which asks for `ContinuousSMul` and `Module.Finite`, both already
+  instances in `Langlands.NormMap`, and not for any norm compatibility). Continuity replaces
+  isometry throughout — including in every domain condition, since all the maps involved send `0`
+  to `0` and an ε/δ argument then pairs with `exists_maximalIdeal_pow_norm_lt`.
+* `norm_exp_eq_exp_trace` : the formula, with its four convergence-domain memberships as explicit
+  hypotheses. Apply the injective `algebraMap K_v L_w`; the left side becomes `∏_σ σ (exp x)`
+  (`Algebra.norm_eq_prod_automorphisms`) `= ∏_σ exp (σ x)` (`map_exp`) `= exp (∑_σ σ x)` (`exp_sum`)
+  `= exp (algebraMap (Tr x))` (`trace_eq_sum_automorphisms`) `= algebraMap (exp_{K_v}(Tr x))`
+  (`map_exp` again).
+* `exists_maximalIdeal_pow_norm_exp_eq_exp_trace` : the same identity for **every** `x ∈ 𝔪_{L_w}^i`
+  with `i` above a threshold, with no hypotheses on `x` at all. Finiteness of `Gal(L_w/K_v)` is what
+  lets the per-`σ` continuity thresholds be combined into one.
+
+**Scope limit, stated plainly.** `IsGalois (v.adicCompletion K) (w.adicCompletion L)` is assumed.
+Dropping it means running the argument in a normal closure of `L_w / K_v`, which needs an
+exponential — and a norm — on that closure; this repo has neither. The Galois case is the one the
+wild-case norm-group-index argument uses, so this is a real limitation to record rather than a
+blocking one.
+
+**A pre-existing build breakage was found and fixed (`edf6570`).**
+`Langlands/NonarchimedeanExponentialExtension.lean` — the seventh pass's own file, and the direct
+dependency of this pass's work — **did not parse**: every `omit [...] in` clause in it sat *after*
+its doc-comment instead of before, which Lean rejects. §6e's "clean whole-project build" claim was
+not wrong about the command it ran; the file was simply never compiled, because nothing imported it
+and `Langlands.lean` never listed it. Two other leaf modules
+(`NonarchimedeanExpLogDegreeMatch`, `NonarchimedeanExponentialUnitsFiltration`, plus
+`PrimitiveElementFusion`) were in the same unimported position — those three do build — and all are
+now listed in `Langlands.lean`, so `lake build Langlands` covers the whole tree. **Any earlier pass's
+"whole project builds clean" claim about a leaf module should be treated as unverified.**
+
+**Build status.** `nix develop -c lake build Langlands`: clean, `8729` jobs, only pre-existing
+warnings elsewhere. `#print axioms` on `norm_exp_eq_exp_trace`,
+`exists_maximalIdeal_pow_norm_exp_eq_exp_trace`, `continuous_algEquiv`, `map_exp`, `exp_sum`,
+`exp_add`, `norm_trace_le`, `trace_mem_of_isIntegral` and the rest: `[propext, Classical.choice,
+Quot.sound]` only. No `sorry` anywhere.
+
+**Updated "what remains" list:**
+
+1. **A genuine concrete mixed-characteristic example** — unchanged, still unbuilt. This is now the
+   *only* item of the original five that has seen no progress at all, and it is what item 4's
+   remaining gap is blocked on.
+2. **The mutual-inverse relationship between `exp` and `log`** — closed (thirteenth pass).
+3. **Landing in `U^{(i)}`** — closed (fourteenth pass). Now upgradeable: with `exp_add` and
+   `isUnit_exp` in hand, `exp_mem_principalUnitsPow`'s pointwise statement can be turned into an
+   actual group homomorphism `(𝔪_A^i, +) →* U_A^{(i)}` — **not done this pass**, but no longer
+   blocked on anything.
+4. **An explicit closed-form threshold** (Serre's `i > e·v(p)/(p-1)`) — unchanged from §6l:
+   `expUnitsThreshold` is explicit but twice Serre's sharp constant (crude vs. sharp Legendre bound)
+   and phrased in `‖π‖`/`‖p‖` rather than `e`. The `e`-form gap remains blocked on item 1.
+5. **The norm/trace compatibility formula** — **CLOSED this pass for Galois completions.**
+   Remaining: the non-Galois case (needs a normal closure carrying an exponential and a norm).
+6. **New item: the trace-norm bound** (surfaced by §6e as a precondition of item 5) — **CLOSED this
+   pass**, at a non-sharp but sufficient strength.
+7. **New item: the `exp` addition law** (listed by §6l only as an unattempted bonus) — **CLOSED this
+   pass**.
+
+**Net effect on the wild-case picture.** Four of the five original items are closed or
+substantially closed; the exp/log *analytic* machinery for the wild case is now essentially
+complete — `exp` is a convergent, injective-on-its-domain group homomorphism into the principal
+units, compatible with norms and traces across a Galois extension of completions. What remains
+between here and the wild-case norm-group **index theorem** is no longer analytic: it is (a) item 1's
+concrete mixed-characteristic instance, (b) packaging item 3 + `exp_add` into the isomorphism
+`U_L^{(i)} ≅ (𝔪_L^i, +)` and its `K`-counterpart, and (c) running the index computation through
+that isomorphism using this pass's `norm_exp_eq_exp_trace` — the wild analogue of what
+`TotallyRamifiedNormIndex` does with residue-field multiplication in the tame case. None of (a)–(c)
+was attempted this pass, and (a) in particular is substantial and independent.
