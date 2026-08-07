@@ -2678,6 +2678,89 @@ that avoids stalling on (a).
 > (mixed ramification) case and the reciprocity map itself remain the subject of Phase 2b's still-open
 > "what comes next" survey above.
 
+> **Update (2026-08-07, wild-ramification scoping pass) — confirmed the tame-case route is dead for
+> the wild case; scoped the classical fix (`p`-adic exp/log) as a large standalone effort.** The
+> tame-case key computation — the norm induces multiplication-by-`e` on the residue-graded pieces of
+> the principal-units filtration (`Langlands.TotallyRamifiedTrace`'s
+> `exists_norm_one_add_uniformizer_pow_smul_eq_finrank_nsmul`) — degenerates to the zero map at every
+> filtration level once `char 𝓀[K] ∣ e` (multiplication by `e` on a field of characteristic dividing
+> `e` is the zero map); no partial cut of the tame argument survives this. The classical replacement
+> (Serre; recalled with medium confidence, not verified against a primary source this pass): above
+> the ramification break, a `p`-adic exponential/logarithm gives an isomorphism `U_L^{(i)} ≅
+> (𝔪_L^i, +)`, turning the norm computation additive instead of multiplicative-residue. Confirmed
+> absent from Mathlib in every form checked: `padicLog`, `expLocal`, valuation-tied `exp`/`log`,
+> Lubin–Tate constructions, and `Mathlib/RingTheory/PowerSeries/Exp.lean`'s formal/combinatorial
+> `exp` (no convergence theory attached, purely a formal-power-series identity). No `.lean` files
+> touched this pass.
+
+> **Update (2026-08-07, same day) — the convergent nonarchimedean exponential is built and
+> committed, sorry-free** (`Langlands/NonarchimedeanExponential.lean`, commit `328f888`), closing the
+> first of the three pieces the classical fix needs (see below for what's still open). Built for a
+> *general* complete, characteristic-`0`, nonarchimedean-valued field `K` of residue characteristic
+> `p` — phrased purely via `NormedField`/`IsUltrametricDist`, no `HeightOneSpectrum`/
+> `adicCompletion` dependency, so it is independent of (and could be lifted out of) the rest of this
+> repo's local-field infrastructure.
+> - **The convergence threshold is verified correct**, matching the classical statement
+>   `v(x) > v(p)/(p-1)` (equivalently `‖x‖ < ‖p‖^(1/(p-1))`): `norm_natCast_eq_one_of_not_dvd`
+>   proves from scratch (Bézout, `Nat.gcd_eq_gcd_ab`, plus the ultrametric triangle inequality) that
+>   an integer coprime to the residue characteristic has norm exactly `1` in any such field — the
+>   same "coprime-to-`p`-integers-are-units" fact underlying the classical `p`-adic norm, built here
+>   with no valuation-subring or residue-field machinery, just `‖(p:K)‖ < 1` and
+>   `IsUltrametricDist`. Combined with Mathlib's exact Legendre's-theorem formula
+>   `sub_one_mul_padicValNat_factorial` (`(p-1) * padicValNat p n! = n - digitsum`, in
+>   `Mathlib.NumberTheory.Padics.PadicVal.Basic`, confirmed present and exactly the right tool —
+>   no generalization of Mathlib's own `padicValNat`/factorial-valuation machinery was needed, only
+>   the norm-transfer argument above to move it from `ℕ` into a general valued field), this gives
+>   the exact formula `‖n!‖ = ‖p‖^(padicValNat p n!)` (`norm_factorial_eq`) and the resulting
+>   geometric per-term bound `‖x^n/n!‖ ≤ (‖x‖/‖p‖^(1/(p-1)))^n` (`norm_pow_div_factorial_le`), via
+>   `Real.rpow_le_rpow_of_exponent_ge` (a base in `(0,1]` is exponent-antitone).
+> - **The partial sums of `Σ x^n/n!` are proved Cauchy** (`cauchySeq_partialSum`) on this domain,
+>   via `cauchySeq_of_le_geometric` fed the bound above — the same pattern this repo's
+>   `Langlands.PrincipalUnitsSuccessiveApproximation.cauchySeq_approxUnit` already uses for its own
+>   geometric Cauchy-sequence argument. `exp` (`NonarchimedeanExponential.exp`) is then defined as
+>   the limit, given `[CompleteSpace K]` (`cauchySeq_tendsto_of_complete`), with `0` outside the
+>   convergence domain; `tendsto_partialSum_exp` records the defining limit property.
+> - **Why `[CharZero K]` is a hard requirement, not a simplifying convenience, flagged explicitly in
+>   the file's docstring**: this repo's ambient `IsNonarchimedeanLocalField` notion (Mathlib's
+>   `Mathlib.NumberTheory.LocalField.Basic`) covers both mixed characteristic (finite extensions of
+>   `ℚ_p`) and equal characteristic (finite extensions of `𝔽_p((t))`). In equal characteristic,
+>   `(n! : K) = 0` in `K` for every `n ≥ p`, so the defining series is division by zero from the
+>   `p`-th term on — the exponential map is a mixed-characteristic-only construction, a classical
+>   fact confirmed (not just assumed) by inspecting exactly where `CharZero` enters the proof
+>   (`norm_natCast_pos`, the only place `(p:K) ≠ 0` is used) — every other lemma in the file
+>   (`norm_natCast_eq_one_of_not_dvd`, `norm_factorial_eq`) is char-independent and marked
+>   `omit [CharZero K]` accordingly.
+> - **What remains, precisely** (none attempted this pass, and none small — see the file's "What
+>   remains" docstring section for the same list in-repo):
+>   1. **The isomorphism with a logarithm** — `exp` here is a one-way convergent map, not yet shown
+>      injective, surjective onto anything, or invertible; the actual `U_L^{(i)} ≅ (𝔪_L^i, +)`
+>      isomorphism needs a `log` and the standard `exp(log x) = x`/`log(exp x) = x` identities on
+>      matched domains.
+>   2. **Translating the abstract threshold into a concrete filtration level** of
+>      `w.adicCompletionIntegers L`'s principal units (this repo's
+>      `Langlands.PrincipalUnitsFiltrationAdicCompletion`) — i.e. relating `‖x‖ < ‖p‖^(1/(p-1))` to
+>      `x ∈ 𝔪_L^i` for a specific `i` above the ramification break, and showing `exp` actually maps
+>      into `U_L^{(i)}`, not just converges.
+>   3. **The norm/trace compatibility formula** (`N_{L/K}(exp x) = exp(Tr_{L/K}(x))`, or whatever the
+>      precise mechanism turns out to be) that would let this replace the tame case's
+>      residue-multiplication argument in the wild-ramification norm-group computation — this is the
+>      actual mathematical payoff, and it is the piece that would determine whether this route
+>      closes the wild case at all. Not attempted.
+>   4. Group-homomorphism properties of `exp` (`exp(x+y) = exp(x)·exp(y)` on a suitable domain) are
+>      also not proved — only convergence (existence of the limit).
+>   Rough fraction of the classical machinery landed this pass: the convergence-theory foundation
+>   (Serre, *Local Fields* Ch. II §2's estimate, generalized past `ℚ_p` to a general nonarchimedean
+>   field) — one of roughly four major pieces (convergence, log/inverse, filtration-level
+>   translation, norm-compatibility) the full classical argument needs. **The wild case of the
+>   totally-ramified norm-group index theorem is not closed by this pass.**
+> - **Flagged as an independent Mathlib-upstream candidate**: general nonarchimedean `exp`
+>   convergence theory (not tied to `ℚ_p`, `HeightOneSpectrum`, or this repo's infrastructure) is
+>   exactly the kind of gap this thread has found and flagged before (Weil group, Weil–Deligne
+>   representation, idele class group).
+> `nix develop -c lake build Langlands.NonarchimedeanExponential` and `lake build Langlands`: both
+> clean. `grep -rn sorry langlands/Langlands/NonarchimedeanExponential.lean`: no hits. `#print axioms`
+> on the three main theorems (scratch `lake env lean`): only `propext, Classical.choice, Quot.sound`.
+
 - **Why this exists.** Phase 2a closed the "easy half" of local CFT (unramified norm-group
   surjectivity) in full, across ten passes. This section applies the same before-you-build
   discipline to Phase 2's actual hard content — the ramified case and the reciprocity map itself —
