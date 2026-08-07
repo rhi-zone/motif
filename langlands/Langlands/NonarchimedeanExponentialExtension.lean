@@ -46,20 +46,21 @@ harder gap the assessment for this task surfaced independently — see "What rem
 This file closes only the "shared `p`" sub-question the task's feasibility assessment flagged.
 Two harder gaps remain, neither attempted here:
 
-* **Domain compatibility.** To state the formula for `x` in `exp_L`'s convergence domain, one needs
-  `Tr_{L/K}(x)` to land in `exp_K`'s convergence domain. This needs a norm bound on the trace map
-  itself (something in the shape `‖Tr_{L/K}(x)‖_K ≤ ‖x‖_L`, or a filtration-level analogue via the
-  different ideal). Checked and confirmed absent from Mathlib this pass: neither `Algebra.trace` nor
-  `Algebra.norm` has any lemma connecting it to `IsUltrametricDist` anywhere in the vendored Mathlib
-  (`grep`/loogle both return zero hits for `Algebra.trace`/`Algebra.norm` combined with
-  `IsUltrametricDist`). This is new, nontrivial mathematical content, not a naming/lookup gap.
+* **Domain compatibility.** ~~To state the formula for `x` in `exp_L`'s convergence domain, one
+  needs `Tr_{L/K}(x)` to land in `exp_K`'s convergence domain.~~ **Closed** in
+  `Langlands.AdicCompletionTraceBound` (`norm_trace_le`,
+  `exists_maximalIdeal_pow_norm_trace_lt`), by an integrality argument rather than the analytic
+  conjugates/`spectralNorm` route — see that file's docstring for why the latter is unavailable at
+  this repo's normalizations. Mathlib still has no lemma connecting `Algebra.trace`/`Algebra.norm`
+  to `IsUltrametricDist`; that part of this file's original assessment stands.
 * **Landing in `U^{(i)}`, an explicit closed-form threshold, and the mutual-inverse identity** — items
   2–4's remaining sub-parts (`Langlands.NonarchimedeanExponentialFiltration`'s and
   `Langlands.NonarchimedeanExponential`'s "What remains" sections) are all still open and are
   prerequisites for a *sharp* version of item 5, though not for the wiring closed in this file.
 
-`N_{L/K}(exp x) = exp(Tr_{L/K}(x))` itself remains entirely unattempted; this file only removes one
-of the three preconditions the task's assessment identified as needed just to *state* it precisely.
+`N_{L/K}(exp x) = exp(Tr_{L/K}(x))` itself is now proved, for `IsGalois K_v L_w`, in
+`Langlands.AdicCompletionNormExpTrace` (`norm_exp_eq_exp_trace`); this file supplies one of its
+preconditions.
 -/
 
 noncomputable section

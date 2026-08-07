@@ -55,10 +55,10 @@ the weaker `‖π‖`/`‖p‖`-only form.
 
 ## What remains
 
-* **The group-homomorphism law** `exp (x + y) = exp x * exp y` on `𝔪_A^i` (which would upgrade this
-  file's landing statement to an actual group homomorphism `𝔪_A^i →+ U_A^{(i)}`) is not proved here
-  — `NonarchimedeanExponential`'s own module docstring already flags this as unattempted anywhere in
-  this thread, and it is separate, substantial work.
+* **The group-homomorphism law** `exp (x + y) = exp x * exp y` is proved in
+  `Langlands.NonarchimedeanExponentialAdd` (`exp_add`), but the *packaging* it enables — upgrading
+  this file's pointwise landing statement to a bundled group homomorphism `𝔪_A^i →* U_A^{(i)}` — is
+  still not done here.
 * **Serre's sharp threshold** (`‖π‖ ^ i ≤ ‖p‖ ^ (1/(p-1))`, matching the classical statement exactly)
   is not derived — see "On the threshold" above.
 * **The concrete `HeightOneSpectrum` instantiation** of this file's abstract `ValuationSubring`
