@@ -336,6 +336,123 @@ instance : Algebra.IsSeparable K L := by
       (IntermediateField.isSeparable_adjoin_simple_iff_isSeparable K L).mpr isSeparable_yL
   exact AlgEquiv.Algebra.isSeparable (IntermediateField.topEquiv (F := K) (E := L))
 
+/-! ### `Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)`
+
+The completion-level bridge. Write `Kv := v.adicCompletion K`, `Lw := w.adicCompletion L`,
+`xK := algebraMap K Kv (algebraMap R K X)`, `yLw := algebraMap L Lw yL`. The candidate polynomial
+`gPoly := X ^ e - C xK` is separable over `Kv` *for free*, by mapping `separable_X_pow_sub_C_x`
+along `algebraMap K Kv` (`Polynomial.Separable.map`) — no Eisenstein/irreducibility argument is
+needed for separability itself. `yLw` is a root of `gPoly` (chasing `yL_pow_eq` through the
+commuting square `adicCompletionComap_algebraMap`, i.e. `algebraMap Kv Lw ∘ algebraMap K Kv =
+algebraMap L Lw ∘ algebraMap K L`), so `minpoly Kv yLw ∣ gPoly` (`minpoly.dvd`), hence is itself
+separable (`Polynomial.Separable.of_dvd`) — `IsSeparable Kv yLw`.
+
+The remaining content is `Kv⟮yLw⟯ = ⊤`: this is where "totally ramified" (in the sense that this
+instance's construction makes it, definitionally) actually enters, via the two facts flagged in
+`ROADMAP.md` as the missing local-field-theory ingredients — both of which turned out to already
+exist in `Langlands.HenselianValuation`/`Langlands.NormMap`, just not yet invoked here. `Kv⟮yLw⟯`
+is finite-dimensional over `Kv` (from `IsIntegral Kv yLw`, witnessed by `gPoly`), hence *closed* in
+`Lw` (`Submodule.closed_of_finiteDimensional`, needing only `CompleteSpace Kv` — the adic-completion
+instance already in Mathlib — not the more elaborate `LocalField.exists_completeSpace_of_finiteDimensional`
+machinery, since `Lw` is already known complete as an adic completion in its own right). It contains
+the image of `L` (every `l : L` is a `K`-polynomial value at `yL`, since `K⟮yL⟯ = ⊤`; push through
+the commuting square to express its image as a `Kv`-polynomial value at `yLw`). Since the image of
+`L` is *dense* in `Lw` (`IsDedekindDomain.HeightOneSpectrum.denseRange_algebraMap`), a closed set
+containing a dense set is everything: `Kv⟮yLw⟯ = ⊤`. -/
+
+/-- `xK`, the image of `x := algebraMap R K X` inside `v.adicCompletion K`. -/
+def xK : v.adicCompletion K := algebraMap K (v.adicCompletion K) (algebraMap R K (Polynomial.X : R))
+
+/-- `yLw`, the image of `yL` inside `w.adicCompletion L`. -/
+def yLw : w.adicCompletion L := algebraMap L (w.adicCompletion L) yL
+
+/-- The candidate minimal-polynomial witness for `yLw` over `v.adicCompletion K`. -/
+def gPoly : Polynomial (v.adicCompletion K) := Polynomial.X ^ e - Polynomial.C (xK)
+
+theorem gPoly_monic : gPoly.Monic := Polynomial.monic_X_pow_sub_C _ e_pos.ne'
+
+theorem gPoly_separable : gPoly.Separable := by
+  have hmap := separable_X_pow_sub_C_x.map (f := algebraMap K (v.adicCompletion K))
+  rwa [Polynomial.map_sub, Polynomial.map_pow, Polynomial.map_X, Polynomial.map_C] at hmap
+
+theorem yLw_pow_eq : yLw ^ e = algebraMap (v.adicCompletion K) (w.adicCompletion L) xK := by
+  show (algebraMap L (w.adicCompletion L) yL) ^ e = _
+  rw [← map_pow, yL_pow_eq, xK]
+  exact (IsDedekindDomain.HeightOneSpectrum.adicCompletionComap_algebraMap K L v w
+    (algebraMap R K (Polynomial.X : R))).symm
+
+theorem isIntegral_yLw : IsIntegral (v.adicCompletion K) yLw :=
+  ⟨gPoly, gPoly_monic, by
+    rw [gPoly, Polynomial.eval₂_sub, Polynomial.eval₂_X_pow, Polynomial.eval₂_C, yLw_pow_eq,
+      sub_self]⟩
+
+theorem isSeparable_yLw : IsSeparable (v.adicCompletion K) yLw := by
+  have haeval : Polynomial.aeval yLw gPoly = 0 := by
+    rw [gPoly, Polynomial.aeval_sub, Polynomial.aeval_X_pow, Polynomial.aeval_C, yLw_pow_eq,
+      sub_self]
+  exact gPoly_separable.of_dvd (minpoly.dvd (v.adicCompletion K) yLw haeval)
+
+theorem algebraMap_L_mem_adjoin_yLw (l : L) :
+    algebraMap L (w.adicCompletion L) l ∈
+      IntermediateField.adjoin (v.adicCompletion K) ({yLw} : Set (w.adicCompletion L)) := by
+  have htopalg : Algebra.adjoin K ({yL} : Set L) = ⊤ := by
+    rw [← IntermediateField.adjoin_simple_toSubalgebra_of_isAlgebraic isIntegral_yL.isAlgebraic,
+      adjoin_yL_eq_top, IntermediateField.top_toSubalgebra]
+  have hl : l ∈ Algebra.adjoin K ({yL} : Set L) := htopalg ▸ Algebra.mem_top
+  induction hl using Algebra.adjoin_induction with
+  | mem x hx =>
+    rw [Set.mem_singleton_iff.mp hx]
+    exact IntermediateField.subset_adjoin _ _ (Set.mem_singleton yLw)
+  | algebraMap r =>
+    have heq : algebraMap L (w.adicCompletion L) (algebraMap K L r) =
+        algebraMap (v.adicCompletion K) (w.adicCompletion L)
+          (algebraMap K (v.adicCompletion K) r) :=
+      (IsDedekindDomain.HeightOneSpectrum.adicCompletionComap_algebraMap K L v w r).symm
+    rw [heq]
+    exact IntermediateField.algebraMap_mem _ _
+  | add x y' hx hy' ihx ihy' =>
+    rw [map_add]
+    exact (IntermediateField.adjoin (v.adicCompletion K)
+      ({yLw} : Set (w.adicCompletion L))).add_mem ihx ihy'
+  | mul x y' hx hy' ihx ihy' =>
+    rw [map_mul]
+    exact (IntermediateField.adjoin (v.adicCompletion K)
+      ({yLw} : Set (w.adicCompletion L))).mul_mem ihx ihy'
+
+theorem adjoin_yLw_eq_top :
+    IntermediateField.adjoin (v.adicCompletion K) ({yLw} : Set (w.adicCompletion L)) = ⊤ := by
+  haveI : FiniteDimensional (v.adicCompletion K)
+      (IntermediateField.adjoin (v.adicCompletion K) ({yLw} : Set (w.adicCompletion L))) :=
+    IntermediateField.adjoin.finiteDimensional isIntegral_yLw
+  have hMclosed : IsClosed
+      ((IntermediateField.adjoin (v.adicCompletion K)
+        ({yLw} : Set (w.adicCompletion L))).toSubalgebra.toSubmodule : Set (w.adicCompletion L)) :=
+    Submodule.closed_of_finiteDimensional _
+  have hsub : Set.range (algebraMap L (w.adicCompletion L)) ⊆
+      ((IntermediateField.adjoin (v.adicCompletion K)
+        ({yLw} : Set (w.adicCompletion L))) : Set (w.adicCompletion L)) := by
+    rintro _ ⟨l, rfl⟩
+    exact algebraMap_L_mem_adjoin_yLw l
+  have hdense : Dense (Set.range (algebraMap L (w.adicCompletion L))) :=
+    w.denseRange_algebraMap L
+  have htop : (Set.univ : Set (w.adicCompletion L)) ⊆
+      ((IntermediateField.adjoin (v.adicCompletion K)
+        ({yLw} : Set (w.adicCompletion L))) : Set (w.adicCompletion L)) := by
+    rw [← hdense.closure_eq]
+    exact closure_minimal hsub hMclosed
+  rw [eq_top_iff]
+  intro z _
+  exact htop (Set.mem_univ z)
+
+instance : Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L) := by
+  haveI htop : Algebra.IsSeparable (v.adicCompletion K)
+      ↥(⊤ : IntermediateField (v.adicCompletion K) (w.adicCompletion L)) :=
+    adjoin_yLw_eq_top ▸
+      (IntermediateField.isSeparable_adjoin_simple_iff_isSeparable
+        (v.adicCompletion K) (w.adicCompletion L)).mpr isSeparable_yLw
+  exact AlgEquiv.Algebra.isSeparable
+    (IntermediateField.topEquiv (F := v.adicCompletion K) (E := w.adicCompletion L))
+
 /- **Sanity check**: `IsTotallyRamified K L v w` now typechecks against this concrete instance —
 every ambient hypothesis in its `variable` block (`Module.Finite K L`, `Algebra.IsIntegral R S`,
 `Module.IsTorsionFree R S`, `IsScalarTower R K L`, etc.) is satisfied. This is a regression check,
