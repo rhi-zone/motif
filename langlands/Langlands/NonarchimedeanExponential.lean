@@ -95,9 +95,13 @@ Not attempted in this file, and not small:
 * **Translating the abstract thresholds `‖x‖ < ‖p‖^(1/(p-1))` (`exp`) and `‖x‖ < ‖p‖` (`log`) into
   concrete filtration levels** of `w.adicCompletionIntegers L`'s principal units
   (`ValuationSubring.principalUnitsPow`, this repo's `Langlands.PrincipalUnitsFiltrationAdicCompletion`)
-  — i.e. relating `‖x‖ < r` to `x ∈ 𝔪_L^i` for a specific `i`, and showing `exp`/`log` actually map
-  into/onto the corresponding principal-units level, not just converge. Attempted separately in
-  `Langlands.NonarchimedeanExponentialFiltration` (see that file for what landed).
+  — i.e. relating `‖x‖ < r` to `x ∈ 𝔪_L^i` for a specific `i`, and showing `exp` actually maps into
+  the corresponding principal-units level, not just converges. The convergence-domain translation is
+  in `Langlands.NonarchimedeanExponentialFiltration`; the landing statement itself (`exp` maps `𝔪_A^i`
+  into `U_A^{(i)}`, at the abstract `ValuationSubring` level, not yet the concrete
+  `HeightOneSpectrum` one) is now closed in
+  `Langlands.NonarchimedeanExponentialUnitsFiltration.exp_mem_principalUnitsPow`. `log`'s analogue is
+  not attempted.
 * **The norm/trace compatibility** `N_{L/K}(exp x) = exp(Tr_{L/K}(x))` (or whatever the precise
   mechanism is) that would let this replace the tame case's residue-multiplication argument in the
   wild-ramification norm-group computation. This is the actual payoff and is not attempted here.
