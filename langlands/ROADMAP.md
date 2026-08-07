@@ -5145,3 +5145,98 @@ reason above (not three separate open items as the first pass of this section re
 this pass either, for the same reason: `index_localNormMap_range_eq_of_isTotallyRamified` needs
 `IsTotallyRamified` proved first, which needs the completion-level facts, which need the
 separability bridge above.
+
+### Update (2026-08-07, third pass same day) — the separability bridge is CLOSED, sorry-free, for
+this concrete instance; `IsTotallyRamified K L v w` itself (and hence the norm-group-index number)
+remains open, now precisely relocated to a single, well-scoped remaining chunk.
+
+**The "genuine multi-week gap" conclusion of the previous two passes was wrong, and re-examining it
+on explicit request (rather than re-asserting it) found why.** Both facts the second-pass entry
+said were "not located in this repo's existing adic-completion infrastructure" — (a) a finite
+extension of a complete field is complete, (b) the valuation on a finite extension of a complete
+field extends uniquely — already exist, built and committed, in `Langlands/HenselianValuation.lean`
+(`LocalField.exists_completeSpace_of_finiteDimensional`, `LocalField.valuationSubring_eq_of_comap_eq`),
+and are already *used* elsewhere in this repo against exactly the `adicCompletion`-shaped types this
+task needs (`Langlands/RamificationFiltrationAdicCompletion.lean`'s `decompositionSubgroup_eq_top`,
+`henselianLocalRing_adicCompletionIntegers`). The earlier passes' grep only checked `NormMap.lean`,
+`AdicCompletionIntegralClosure.lean`, `FiniteAdeleRing.lean` and stopped there.
+
+**What closed, commit `c3f935a` (plain `Algebra.IsSeparable K L`) and commit `c12d8de`
+(completion-level `Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)`), both in
+`Langlands/TotallyRamifiedConcreteExample.lean`, both `#print axioms`-checked
+(`[propext, Classical.choice, Quot.sound]` only, no `sorry`, no stray axiom):**
+
+1. **Plain `Algebra.IsSeparable K L`.** The ROADMAP sketch from two passes ago was verified piece by
+   piece, not trusted blindly, and one piece needed adjusting: `CharP K p` (`(e:K) ≠ 0` via
+   `coprime_e_p`/`CharP.cast_eq_zero_iff`) transports from `CharP k p` through `R = k[X]`
+   (`Polynomial.charP`) and `K = Frac(R)` (`IsFractionRing.charP`); `x ≠ 0` from injectivity of
+   `algebraMap R K`. `Polynomial.separable_X_pow_sub_C` then gives `(T^e - C x).Separable`. The
+   adjustment: rather than trying to identify this polynomial *as* `minpoly K yL` (which would need
+   irreducibility, unproven), `minpoly K yL ∣ (T^e - C x)` suffices (`minpoly.dvd`, reusing the same
+   `IsIntegral_yL` witness), and a divisor of a separable polynomial is separable
+   (`Polynomial.Separable.of_dvd`) — no irreducibility needed anywhere in this step.
+   `IntermediateField.isSeparable_adjoin_simple_iff_isSeparable` (using `K⟮yL⟯ = ⊤`, already closed)
+   then upgrades `IsSeparable K yL` to `Algebra.IsSeparable K ↥(⊤ : IntermediateField K L)`,
+   transported to `Algebra.IsSeparable K L` across `IntermediateField.topEquiv`
+   (`AlgEquiv.Algebra.isSeparable`).
+
+2. **Completion-level `Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)`.** The same
+   "divisor of a separable polynomial is separable" trick removes the need for Eisenstein/
+   irreducibility at the completion level too, which is what makes this tractable in one pass rather
+   than needing the DVR/uniformizer apparatus the task brief anticipated
+   (`Langlands/TotallyRamifiedEisenstein.lean`'s machinery was read in full and turned out to be
+   unnecessary here — it *presupposes* `Algebra.IsSeparable`, so it cannot supply it). Concretely,
+   with `Kv := v.adicCompletion K`, `Lw := w.adicCompletion L`, `xK := algebraMap K Kv x`, `yLw :=
+   algebraMap L Lw yL`, `gPoly := T^e - C xK`:
+   - `gPoly` is separable "for free" — `Polynomial.Separable.map` applied to the already-separable
+     `T^e - C x` along `algebraMap K Kv`, no new argument needed.
+   - `yLw` is a root of `gPoly`: chase `yL_pow_eq` through the commuting square
+     `adicCompletionComap_algebraMap K L v w` (`Langlands.NormMap`), i.e. `algebraMap Kv Lw ∘
+     algebraMap K Kv = algebraMap L Lw ∘ algebraMap K L`.
+   - `minpoly Kv yLw ∣ gPoly` (`minpoly.dvd`), hence separable, i.e. `IsSeparable Kv yLw`.
+   - The remaining content, where "totally ramified" (definitionally, from this instance's
+     construction) actually enters: `Kv⟮yLw⟯ = ⊤`. `Kv⟮yLw⟯` is finite-dimensional over `Kv` (from
+     `IsIntegral Kv yLw`, witnessed by `gPoly`), hence **closed** in `Lw`
+     (`Submodule.closed_of_finiteDimensional`, needing only `CompleteSpace Kv` — already an instance
+     for any adic completion in Mathlib, no need for the more elaborate
+     `LocalField.exists_completeSpace_of_finiteDimensional` machinery here since `Lw` is *already*
+     complete as an adic completion in its own right, independent of any finite-extension argument).
+     It contains the image of `L` (every `l : L` is a `K`-polynomial value at `yL`, since `K⟮yL⟯ =
+     ⊤`; `Algebra.adjoin_induction` over that fact, pushed through the same commuting square, gives
+     its image as a `Kv`-polynomial value at `yLw`, hence in `Kv⟮yLw⟯`). Since the image of `L` is
+     *dense* in `Lw` (`IsDedekindDomain.HeightOneSpectrum.denseRange_algebraMap`, Mathlib), a closed
+     set containing a dense set is everything.
+   - `isSeparable_adjoin_simple_iff_isSeparable` + `AlgEquiv.Algebra.isSeparable` (same pattern as
+     item 1) then give `Algebra.IsSeparable Kv Lw`.
+
+**What did NOT close this pass, precisely relocated.** `IsTotallyRamified K L v w`
+(`Langlands/TotallyRamifiedValuationExtension.lean`) is a three-field structure stated entirely at
+the *completion-integers* level (`K₀ := v.adicCompletionIntegers K`, `L₀ :=
+w.adicCompletionIntegers L`):
+
+1. `map_maximalIdeal_eq : Ideal.map (algebraMap K₀ L₀) (maximalIdeal K₀) = maximalIdeal L₀ ^ e`
+   (`e := v.asIdeal.ramificationIdx' w.asIdeal`);
+2. `finrank_eq : Module.finrank K₀ L₀ = e`;
+3. `exists_sub_algebraMap_mem_maximalIdeal` : the residue extension `𝓀[K] → 𝓀[L]` is trivial.
+
+This repo's construction only has the analogous facts at the **uncompleted** `R`/`S` level
+(`map_v_eq : Ideal.map (algebraMap R S) v.asIdeal = w.asIdeal ^ e`, definitional from `X ↦ Y^e`).
+Grepped this pass: no file in this repo constructs an actual instance of `IsTotallyRamified` from
+`R`/`S`-level data for *any* example, concrete or abstract — every consumer (`TotallyRamifiedNormRange.lean`,
+`TotallyRamifiedNormResidue.lean`, `TotallyRamifiedNormResidueImage.lean`, `TotallyRamifiedTrace.lean`,
+`TotallyRamifiedNormIndex.lean`) takes `h : IsTotallyRamified K L v w` as a hypothesis; this would be
+the first. Transporting `map_v_eq`'s ideal identity and a rank-`e`-freeness fact for `S/R` up to the
+completions is real, unattempted work — plausibly one further self-contained pass (now that
+`Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)` is available as an instance for this
+example, several of `Langlands/AdicCompletionIntegralClosure.lean`'s conditional results should
+apply directly), but not attempted here to avoid rushing it. Residue field triviality (field 3)
+should be easy once (1)–(2) are in place, since `κ[K] = κ[L] = ZMod 7` at the uncompleted level
+already (both `v` and `w` have residue field `k = ZMod 7` by construction) — this just needs
+transporting that equality to the completions' residue fields, a standard adic-completion fact
+(residue field is preserved by completion).
+
+**Consequently, no number was computed this pass either** — `index_localNormMap_range_eq_of_isTotallyRamified`
+still needs `IsTotallyRamified` (and, for the `gcd` formula specifically, `IsTamelyRamified`, a
+one-line consequence once the ambient instances exist: `IsUnit ((3:ℕ) : ZMod 7)`, i.e.
+`gcd(3,7)=1`) proved first. The expected number, once this closes, is `gcd(e, #κ[K]ˣ) = gcd(3,6) =
+3` (`κ[K] = ZMod 7`, `#κ[K]ˣ = 6`) — unconfirmed, not yet computed.
