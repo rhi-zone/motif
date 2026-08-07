@@ -12,6 +12,7 @@ import Langlands.NonarchimedeanCauchyProduct
 import Langlands.NonarchimedeanExponential
 import Langlands.NonarchimedeanExponentialFiltration
 import Langlands.NonarchimedeanExponentialHasSum
+import Langlands.NonarchimedeanSigmaSummability
 import Langlands.NonarchimedeanUnconditionalSummability
 import Langlands.PowerSeriesExpLog
 import Langlands.ProfiniteCompletionUlift
