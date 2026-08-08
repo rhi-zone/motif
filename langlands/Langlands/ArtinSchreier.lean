@@ -1,0 +1,122 @@
+import Mathlib.FieldTheory.SplittingField.Construction
+import Mathlib.RingTheory.Polynomial.Vieta
+
+/-!
+# The Artin–Schreier polynomial
+
+For a field `k` of characteristic `p` and `a : k`, the Artin–Schreier polynomial is
+`f_a := X ^ p - X - C a`. This file proves the classical irreducibility criterion:
+
+`Irreducible f_a ↔ a ∉ Set.range (fun x : k => x ^ p - x)`.
+
+## Main definitions
+
+* `ArtinSchreier.poly p a` : the polynomial `X ^ p - X - C a`.
+
+## Main results
+
+* `ArtinSchreier.not_irreducible_of_mem_range` : if `a = θ ^ p - θ` for some `θ : k`, then `poly p
+  a` has a root in `k`, hence (being of degree `p ≥ 2`) is reducible.
+* `ArtinSchreier.irreducible_of_not_mem_range` : if `poly p a` is reducible, exhibited as
+  `poly p a = g * h` with neither factor a unit, then, working in a splitting field `L`, all roots
+  of `poly p a` are of the form `θ + i` for a fixed root `θ` and `i` ranging over the (fixed, size
+  `p`) image of `ZMod p` in `L` (`isRoot_add_of_isRoot`, `roots_eq_image_add`). Vieta's formula
+  applied to `g` expresses `d • θ` (`d := g.natDegree`, `0 < d < p`) as an element of the image of
+  `k` in `L` plus an element of the image of `ZMod p` in `L`; since `d` is invertible mod `p`, this
+  forces `θ` itself into the image of `k`, giving `a = θ ^ p - θ ∈ Set.range (fun x : k => x ^ p -
+  x)` directly. Packaged as the contrapositive of the irreducibility statement.
+* `ArtinSchreier.irreducible_iff` : the two directions combined into the iff.
+-/
+
+@[expose] public section
+
+namespace ArtinSchreier
+
+variable {k : Type*} [Field k] (p : ℕ) [Fact p.Prime] [CharP k p] (a : k)
+
+open Polynomial
+
+/-- The Artin–Schreier polynomial `X ^ p - X - C a`. -/
+noncomputable def poly : Polynomial k := X ^ p - X - C a
+
+omit [Fact p.Prime] [CharP k p] in
+theorem poly_def : poly p a = X ^ p - X - C a := rfl
+
+omit [CharP k p] in
+/-- `poly p a` is monic: it is `X ^ p - (X + C a)`, and `X + C a` has degree `1 < p` (using
+`p.Prime` to get `p ≥ 2`). -/
+theorem poly_monic : (poly p a).Monic := by
+  have hp2 : 2 ≤ p := (Fact.out : p.Prime).two_le
+  have hlt : (X + C a : Polynomial k).degree < (p : ℕ) := by
+    rw [degree_X_add_C]
+    exact_mod_cast (by omega : 1 < p)
+  have := monic_X_pow_sub (R := k) (p := X + C a) (n := p) hlt
+  rwa [sub_add_eq_sub_sub] at this
+
+omit [CharP k p] in
+/-- `poly p a` has degree exactly `p`. -/
+theorem natDegree_poly : (poly p a).natDegree = p := by
+  have hp2 : 2 ≤ p := (Fact.out : p.Prime).two_le
+  have hlt : (X + C a : Polynomial k).degree < (X ^ p : Polynomial k).degree := by
+    rw [degree_X_add_C, degree_X_pow]
+    exact_mod_cast (by omega : 1 < p)
+  have hdeg : (poly p a).degree = (X ^ p : Polynomial k).degree := by
+    rw [poly_def, ← sub_add_eq_sub_sub]
+    exact degree_sub_eq_left_of_degree_lt hlt
+  rw [degree_X_pow] at hdeg
+  exact natDegree_eq_of_degree_eq_some hdeg
+
+omit [CharP k p] in
+theorem poly_ne_zero : poly p a ≠ 0 := (poly_monic p a).ne_zero
+
+omit [CharP k p] in
+/-- `poly p a` has degree `≥ 2`. -/
+theorem two_le_natDegree_poly : 2 ≤ (poly p a).natDegree := by
+  rw [natDegree_poly]; exact (Fact.out : p.Prime).two_le
+
+variable {p a}
+
+omit [CharP k p] in
+/-- **Additivity of roots.** If `θ` is a root of `poly p a` in a `k`-algebra `L`, and `i : L`
+satisfies `i ^ p = i` (e.g. `i` in the image of `ZMod p`, via `ZMod.pow_card` pulled through a
+ring hom), then `θ + i` is also a root: `(θ + i) ^ p - (θ + i) - a = (θ ^ p - θ - a) + (i ^ p - i) =
+0 + 0`, using `add_pow_char`. -/
+theorem isRoot_add_of_isRoot {L : Type*} [Field L] [Algebra k L] [CharP L p] {θ i : L}
+    (hθ : aeval θ (poly p a) = 0) (hi : i ^ p = i) :
+    aeval (θ + i) (poly p a) = 0 := by
+  simp only [poly_def, map_sub, map_pow, aeval_X, aeval_C] at hθ ⊢
+  rw [add_pow_char, hi]
+  have : θ ^ p + i - (θ + i) - algebraMap k L a
+      = (θ ^ p - θ - algebraMap k L a) + (i - i) := by ring
+  rw [this, hθ, sub_self, add_zero]
+
+omit [Fact p.Prime] [CharP k p] in
+/-- If `a = θ ^ p - θ` for some `θ : k`, then `θ` is a root of `poly p a` in `k` itself. -/
+theorem isRoot_poly_of_eq (θ : k) (ha : a = θ ^ p - θ) : (poly p a).IsRoot θ := by
+  simp [poly_def, IsRoot, ha]
+
+omit [CharP k p] in
+/-- **Easy direction.** If `a` is in the range of `x ↦ x ^ p - x` (over `k` itself), then
+`poly p a` has a root in `k`, and since it is monic of degree `p ≥ 2`, it factors as
+`(X - C θ) * g` with both factors non-units — so it is not irreducible. -/
+theorem not_irreducible_of_mem_range (h : a ∈ Set.range (fun x : k => x ^ p - x)) :
+    ¬ Irreducible (poly p a) := by
+  obtain ⟨θ, hθ⟩ := h
+  have hroot : (poly p a).IsRoot θ := isRoot_poly_of_eq θ hθ.symm
+  obtain ⟨g, hg⟩ := dvd_iff_isRoot.mpr hroot
+  have hp2 : 2 ≤ p := (Fact.out : p.Prime).two_le
+  have hpne : poly p a ≠ 0 := poly_ne_zero p a
+  have hgne : g ≠ 0 := right_ne_zero_of_mul (hg ▸ hpne)
+  have hgdeg : g.natDegree = p - 1 := by
+    have heq := natDegree_mul (X_sub_C_ne_zero θ) hgne
+    rw [← hg, natDegree_X_sub_C, natDegree_poly] at heq
+    omega
+  intro hirr
+  rcases hirr.isUnit_or_isUnit hg with hu | hu
+  · rw [isUnit_iff_degree_eq_zero, degree_X_sub_C] at hu
+    exact absurd hu one_ne_zero
+  · rw [isUnit_iff_degree_eq_zero, degree_eq_natDegree hgne, hgdeg] at hu
+    have hpos : (0 : ℕ) < p - 1 := by omega
+    exact absurd hu (by exact_mod_cast hpos.ne')
+
+end ArtinSchreier
