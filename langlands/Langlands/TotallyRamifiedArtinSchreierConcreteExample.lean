@@ -1,4 +1,5 @@
 import Langlands.AdicCompletionIntegersResidue
+import Langlands.AdicCompletionIntegralClosure
 import Langlands.ArtinSchreier
 import Langlands.TotallyRamifiedNormIndex
 import Mathlib.NumberTheory.RamificationInertia.Basic
@@ -433,6 +434,168 @@ theorem e_eq_p : v.asIdeal.ramificationIdx' w.asIdeal = p := by
     have hm1 : m = 1 := by nlinarith
     have : (e : ℤ) = p := by rw [← hpm, hm1, mul_one]
     exact_mod_cast this
+
+/-! ### `Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)`, and `finrank Kv Lw = p`
+
+Needed as an explicit hypothesis by `Langlands.AdicCompletionIntegralClosure`'s
+`instModuleFiniteAdicCompletionIntegers` / `instModuleFreeAdicCompletionIntegers` (it is *not*
+derived automatically from the global `Algebra.IsSeparable K L`). Built exactly as in
+`TotallyRamifiedConcreteExample`: `gPoly := ArtinSchreier.poly p (algebraMap K Kv a)` is irreducible
+(the same ultrametric argument as `a_not_mem_range`, run in `Kv` via `Valued.v`), hence *is*
+`minpoly Kv thetaw`, pinning `finrank Kv Kv⟮thetaw⟯ = p` exactly; combined with the density argument
+`Kv⟮thetaw⟯ = ⊤` this gives `finrank Kv Lw = p`. Separability of `gPoly` itself is free
+(`ArtinSchreier.poly_separable`), transporting to `Algebra.IsSeparable Kv Lw` the same way. -/
+
+theorem algebraMap_K_Kv_a_eq : algebraMap K (v.adicCompletion K) a = xK⁻¹ := by
+  have h3 := congrArg (algebraMap K (v.adicCompletion K)) a_def
+  rwa [map_inv₀] at h3
+
+theorem xK_inv_not_mem_range :
+    xK⁻¹ ∉ Set.range (fun x : v.adicCompletion K => x ^ p - x) := by
+  rintro ⟨θ, hθ'⟩
+  have hθ : θ ^ p - θ = xK⁻¹ := hθ'
+  have hxK_val : Valued.v (xK⁻¹ : v.adicCompletion K) = WithZero.exp (1 : ℤ) := by
+    rw [map_inv₀, valuation_xK, ← WithZero.exp_neg, neg_neg]
+  by_cases hle : Valued.v θ ≤ 1
+  · have hp_le : Valued.v (θ ^ p) ≤ 1 := by
+      rw [map_pow]; exact pow_le_one₀ zero_le hle
+    have hsub_le : Valued.v (θ ^ p - θ) ≤ 1 :=
+      le_trans (Valuation.map_sub _ _ _) (max_le hp_le hle)
+    rw [hθ, hxK_val] at hsub_le
+    exact absurd hsub_le (not_le.mpr (WithZero.exp_lt_exp.mpr (by norm_num)))
+  · push Not at hle
+    set m : ℤ := WithZero.log (Valued.v θ) with hmdef
+    have hvθ : Valued.v θ = WithZero.exp m := (WithZero.exp_log (by
+      rintro h0; rw [h0] at hle; exact absurd hle (by simp))).symm
+    have hm_pos : 0 < m := by
+      rw [hvθ] at hle
+      exact WithZero.exp_lt_exp.mp (by simpa using hle)
+    have hpow : Valued.v (θ ^ p) = WithZero.exp (p * m : ℤ) := by
+      rw [map_pow, hvθ, ← WithZero.exp_nsmul, nsmul_eq_mul]
+    have hlt : Valued.v θ < Valued.v (θ ^ p) := by
+      rw [hvθ, hpow]
+      apply WithZero.exp_lt_exp.mpr
+      have hp2 : (2 : ℤ) ≤ p := by exact_mod_cast (Fact.out : p.Prime).two_le
+      nlinarith
+    have hsub_eq : Valued.v (θ ^ p - θ) = Valued.v (θ ^ p) :=
+      Valuation.map_sub_eq_of_lt_left _ hlt
+    rw [hθ, hxK_val, hpow] at hsub_eq
+    have hpm : (p : ℤ) * m = 1 := WithZero.exp_injective hsub_eq.symm
+    have hp2 : (2 : ℤ) ≤ p := by exact_mod_cast (Fact.out : p.Prime).two_le
+    nlinarith
+
+instance charP_Kv : CharP (v.adicCompletion K) p :=
+  (RingHom.charP_iff_charP (algebraMap K (v.adicCompletion K)) p).mp charP_K
+
+/-- The candidate minimal polynomial witness for `thetaw` over `Kv := v.adicCompletion K`. -/
+def gPoly : Polynomial (v.adicCompletion K) := ArtinSchreier.poly p (algebraMap K (v.adicCompletion K) a)
+
+theorem gPoly_monic : gPoly.Monic := ArtinSchreier.poly_monic p _
+
+theorem gPoly_irreducible : Irreducible gPoly :=
+  ArtinSchreier.irreducible_iff.mpr (algebraMap_K_Kv_a_eq ▸ xK_inv_not_mem_range)
+
+theorem gPoly_separable : gPoly.Separable := ArtinSchreier.poly_separable (p := p)
+
+theorem aeval_thetaw_gPoly : Polynomial.aeval thetaw gPoly = 0 := by
+  simp only [gPoly, ArtinSchreier.poly_def, map_sub, map_pow, aeval_X, aeval_C]
+  rw [algebraMap_K_Kv_a_eq, ← thetaw_pow_sub_thetaw]
+  ring
+
+theorem isIntegral_thetaw : IsIntegral (v.adicCompletion K) thetaw := ⟨gPoly, gPoly_monic, aeval_thetaw_gPoly⟩
+
+theorem minpoly_thetaw_eq : minpoly (v.adicCompletion K) thetaw = gPoly := by
+  have heq := minpoly.eq_of_irreducible gPoly_irreducible aeval_thetaw_gPoly
+  rw [gPoly_monic.leadingCoeff, inv_one, map_one, mul_one] at heq
+  exact heq.symm
+
+theorem isSeparable_thetaw : IsSeparable (v.adicCompletion K) thetaw := by
+  rw [IsSeparable, minpoly_thetaw_eq]; exact gPoly_separable
+
+theorem natDegree_minpoly_thetaw : (minpoly (v.adicCompletion K) thetaw).natDegree = p := by
+  rw [minpoly_thetaw_eq, gPoly, ArtinSchreier.natDegree_poly]
+
+theorem finrank_adjoin_thetaw : Module.finrank (v.adicCompletion K)
+    (IntermediateField.adjoin (v.adicCompletion K) ({thetaw} : Set (w.adicCompletion L))) = p := by
+  rw [IntermediateField.adjoin.finrank isIntegral_thetaw, natDegree_minpoly_thetaw]
+
+theorem algebraMap_L_mem_adjoin_thetaw (l : L) :
+    algebraMap L (w.adicCompletion L) l ∈
+      IntermediateField.adjoin (v.adicCompletion K) ({thetaw} : Set (w.adicCompletion L)) := by
+  have htopalg : Algebra.adjoin K ({theta} : Set L) = ⊤ := by
+    have hInt : IsIntegral K theta := ⟨ArtinSchreier.poly p a, ArtinSchreier.poly_monic p a, aeval_theta⟩
+    rw [← IntermediateField.adjoin_simple_toSubalgebra_of_isAlgebraic hInt.isAlgebraic,
+      adjoin_θ_eq_top, IntermediateField.top_toSubalgebra]
+  have hl : l ∈ Algebra.adjoin K ({theta} : Set L) := htopalg ▸ Algebra.mem_top
+  induction hl using Algebra.adjoin_induction with
+  | mem x hx =>
+    rw [Set.mem_singleton_iff.mp hx]
+    exact IntermediateField.subset_adjoin _ _ (Set.mem_singleton thetaw)
+  | algebraMap r =>
+    have heq : algebraMap L (w.adicCompletion L) (algebraMap K L r) =
+        algebraMap (v.adicCompletion K) (w.adicCompletion L)
+          (algebraMap K (v.adicCompletion K) r) :=
+      (IsDedekindDomain.HeightOneSpectrum.adicCompletionComap_algebraMap K L v w r).symm
+    rw [heq]
+    exact IntermediateField.algebraMap_mem _ _
+  | add x y' hx hy' ihx ihy' =>
+    rw [map_add]
+    exact (IntermediateField.adjoin (v.adicCompletion K)
+      ({thetaw} : Set (w.adicCompletion L))).add_mem ihx ihy'
+  | mul x y' hx hy' ihx ihy' =>
+    rw [map_mul]
+    exact (IntermediateField.adjoin (v.adicCompletion K)
+      ({thetaw} : Set (w.adicCompletion L))).mul_mem ihx ihy'
+
+theorem adjoin_thetaw_eq_top :
+    IntermediateField.adjoin (v.adicCompletion K) ({thetaw} : Set (w.adicCompletion L)) = ⊤ := by
+  haveI : FiniteDimensional (v.adicCompletion K)
+      (IntermediateField.adjoin (v.adicCompletion K) ({thetaw} : Set (w.adicCompletion L))) :=
+    IntermediateField.adjoin.finiteDimensional isIntegral_thetaw
+  have hMclosed : IsClosed
+      ((IntermediateField.adjoin (v.adicCompletion K)
+        ({thetaw} : Set (w.adicCompletion L))).toSubalgebra.toSubmodule :
+        Set (w.adicCompletion L)) :=
+    Submodule.closed_of_finiteDimensional _
+  have hsub : Set.range (algebraMap L (w.adicCompletion L)) ⊆
+      ((IntermediateField.adjoin (v.adicCompletion K)
+        ({thetaw} : Set (w.adicCompletion L))) : Set (w.adicCompletion L)) := by
+    rintro _ ⟨l, rfl⟩
+    exact algebraMap_L_mem_adjoin_thetaw l
+  have hdense : Dense (Set.range (algebraMap L (w.adicCompletion L))) :=
+    w.denseRange_algebraMap L
+  have htop : (Set.univ : Set (w.adicCompletion L)) ⊆
+      ((IntermediateField.adjoin (v.adicCompletion K)
+        ({thetaw} : Set (w.adicCompletion L))) : Set (w.adicCompletion L)) := by
+    rw [← hdense.closure_eq]
+    exact closure_minimal hsub hMclosed
+  rw [eq_top_iff]
+  intro z _
+  exact htop (Set.mem_univ z)
+
+theorem finrank_Kv_Lw : Module.finrank (v.adicCompletion K) (w.adicCompletion L) = p := by
+  rw [← LinearEquiv.finrank_eq (IntermediateField.topEquiv (F := v.adicCompletion K)
+    (E := w.adicCompletion L)).toLinearEquiv, ← adjoin_thetaw_eq_top]
+  exact finrank_adjoin_thetaw
+
+instance : Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L) := by
+  haveI htop : Algebra.IsSeparable (v.adicCompletion K)
+      ↥(⊤ : IntermediateField (v.adicCompletion K) (w.adicCompletion L)) :=
+    adjoin_thetaw_eq_top ▸
+      (IntermediateField.isSeparable_adjoin_simple_iff_isSeparable
+        (v.adicCompletion K) (w.adicCompletion L)).mpr isSeparable_thetaw
+  exact AlgEquiv.Algebra.isSeparable
+    (IntermediateField.topEquiv (F := v.adicCompletion K) (E := w.adicCompletion L))
+
+theorem finrank_K₀_L₀ :
+    Module.finrank (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) = p := by
+  rw [IsIntegralClosure.rank (v.adicCompletionIntegers K) (v.adicCompletion K)
+    (w.adicCompletion L) (w.adicCompletionIntegers L), finrank_Kv_Lw]
+
+theorem finrank_eq :
+    Module.finrank (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) =
+      v.asIdeal.ramificationIdx' w.asIdeal := by
+  rw [finrank_K₀_L₀, e_eq_p]
 
 end Langlands.TotallyRamifiedArtinSchreierConcreteExample
 
