@@ -313,4 +313,94 @@ theorem expHom_injective (hnorm : ‖(p : K)‖ < 1) {π : A}
   simp only [sub_self, zero_sub, norm_neg] at htail
   exact absurd htail (lt_irrefl _)
 
+/-! ## Step 3: surjectivity — the no-shift `log` landing lemma -/
+
+omit hA in
+/-- `log hnorm 0 = 0`: every term of the defining series vanishes at `z = 0`. -/
+theorem log_zero (hnorm : ‖(p : K)‖ < 1) : log hnorm (0 : K) = 0 := by
+  have h0 : ‖(0 : K)‖ < logConvergenceRadius K p := by
+    rw [norm_zero]; exact norm_natCast_pos
+  have hs := hasSum_log hnorm h0
+  have hzero : HasSum (fun k => (-1 : K) ^ k * (0 : K) ^ (k + 1) / ((k + 1 : ℕ) : K)) 0 := by
+    have heq : (fun k => (-1 : K) ^ k * (0 : K) ^ (k + 1) / ((k + 1 : ℕ) : K)) = fun _ : ℕ => 0 := by
+      funext k; simp
+    rw [heq]; exact hasSum_zero
+  exact (hzero.unique hs).symm
+
+omit hA in
+/-- **The `log`-side threshold**, `‖p‖ ^ 2` — a plain natural-number square, simpler than
+`expUnitsThreshold`'s `rpow`, since `log`'s own per-term geometric bound
+(`norm_pow_div_natCast_le`) already uses the plain ratio `‖z‖ / ‖p‖` with no exponent adjustment. -/
+def logUnitsThreshold (K : Type*) [NormedField K] (p : ℕ) : ℝ := ‖(p : K)‖ ^ 2
+
+omit hA [IsUltrametricDist K] [CompleteSpace K] in
+/-- **`logUnitsThreshold K p ≤ expUnitsThreshold K p` always.** `expUnitsThreshold K p = ‖p‖ ^
+(2/(p-1))` and `2/(p-1) ≤ 2` for `p ≥ 2` (equality only at `p = 2`); since `‖p‖ < 1`, a *smaller*
+`rpow` exponent gives a *larger* value, so `expUnitsThreshold K p ≥ ‖p‖ ^ 2 = logUnitsThreshold K
+p`. Consequently a single strict hypothesis `‖π‖ ^ i < logUnitsThreshold K p` suffices for both
+`expHom_injective` (which only needs the weaker `< expUnitsThreshold K p`) and `log`'s own landing
+lemma below. -/
+theorem logUnitsThreshold_le_expUnitsThreshold (hnorm : ‖(p : K)‖ < 1) :
+    logUnitsThreshold K p ≤ expUnitsThreshold K p := by
+  have hp0 : (0 : ℝ) < ‖(p : K)‖ := norm_natCast_pos
+  have hp1 : (0 : ℝ) < (p : ℝ) - 1 := by
+    have h2 : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hp.out.two_le
+    linarith
+  have hexple : (2 : ℝ) / ((p : ℝ) - 1) ≤ 2 := by
+    rw [div_le_iff₀ hp1]
+    have h2 : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hp.out.two_le
+    nlinarith
+  unfold logUnitsThreshold expUnitsThreshold
+  rw [← Real.rpow_natCast ‖(p : K)‖ 2]
+  exact Real.rpow_le_rpow_of_exponent_ge hp0 hnorm.le hexple
+
+omit hA in
+/-- **`log` matches `‖·‖` exactly, below the strict threshold** (the no-shift landing bound):
+for `z` with `‖z‖ < logUnitsThreshold K p`, `‖log hnorm z‖ = ‖z‖`. Trivial at `z = 0` (`log_zero`);
+for `z ≠ 0`, the degree-`≥ 2` tail `‖log hnorm z - z‖` is bounded by `ρ ^ 2` for `ρ := ‖z‖/‖p‖ < 1`
+(`norm_pow_div_natCast_le`, shifted via `hasSum_nat_add_iff' 1`), and `ρ^2 = ‖z‖^2/‖p‖^2 < ‖z‖` is
+exactly the threshold hypothesis; `norm_eq_of_norm_sub_lt` then identifies `‖log hnorm z‖ = ‖z‖`. -/
+theorem norm_log_eq_of_lt_sq (hnorm : ‖(p : K)‖ < 1) {z : K}
+    (hzlt : ‖z‖ < logUnitsThreshold K p) : ‖log hnorm z‖ = ‖z‖ := by
+  rcases eq_or_ne z 0 with hz0 | hz0
+  · rw [hz0, log_zero, norm_zero]
+  have hp0 : (0 : ℝ) < ‖(p : K)‖ := norm_natCast_pos
+  have hzpos : 0 < ‖z‖ := norm_pos_iff.mpr hz0
+  have hzltp2 : ‖z‖ < ‖(p : K)‖ ^ 2 := hzlt
+  have hzltp : ‖z‖ < ‖(p : K)‖ := by
+    have hp1 : ‖(p : K)‖ ^ 2 < ‖(p : K)‖ := by
+      calc ‖(p : K)‖ ^ 2 = ‖(p : K)‖ * ‖(p : K)‖ := sq ‖(p : K)‖
+        _ < ‖(p : K)‖ * 1 := mul_lt_mul_of_pos_left hnorm hp0
+        _ = ‖(p : K)‖ := mul_one _
+    exact hzltp2.trans hp1
+  have hx : ‖z‖ < logConvergenceRadius K p := hzltp
+  set ρ : ℝ := ‖z‖ / ‖(p : K)‖ with hρ
+  have hρ0 : 0 ≤ ρ := div_nonneg hzpos.le hp0.le
+  have hρlt1 : ρ < 1 := by rw [hρ, div_lt_one hp0]; exact hzltp
+  have hρsq_lt : ρ ^ 2 < ‖z‖ := by
+    have heq : ρ ^ 2 = ‖z‖ ^ 2 / ‖(p : K)‖ ^ 2 := by rw [hρ, div_pow]
+    rw [heq, div_lt_iff₀ (by positivity)]
+    have hzsq : ‖z‖ ^ 2 = ‖z‖ * ‖z‖ := sq ‖z‖
+    rw [hzsq]
+    exact mul_lt_mul_of_pos_left hzltp2 hzpos
+  have hsum := hasSum_log hnorm hx
+  have hshift : HasSum (fun j => (-1 : K) ^ (j + 1) * z ^ (j + 2) / ((j + 2 : ℕ) : K))
+      (log hnorm z - ∑ k ∈ Finset.range 1, (-1 : K) ^ k * z ^ (k + 1) / ((k + 1 : ℕ) : K)) :=
+    (hasSum_nat_add_iff' 1).mpr hsum
+  have hsum0 : ∑ k ∈ Finset.range 1, (-1 : K) ^ k * z ^ (k + 1) / ((k + 1 : ℕ) : K) = z := by
+    simp
+  rw [hsum0] at hshift
+  have heq : log hnorm z - z = ∑' j, (-1 : K) ^ (j + 1) * z ^ (j + 2) / ((j + 2 : ℕ) : K) :=
+    hshift.tsum_eq.symm
+  have htail : ‖log hnorm z - z‖ < ‖z‖ := by
+    rw [heq]
+    refine (IsUltrametricDist.norm_tsum_le _).trans_lt (lt_of_le_of_lt (ciSup_le fun j => ?_) hρsq_lt)
+    have hneg1 : ‖(-1 : K) ^ (j + 1)‖ = 1 := by rw [norm_pow, norm_neg, norm_one, one_pow]
+    have hbound : ‖(-1 : K) ^ (j + 1) * z ^ (j + 2) / ((j + 2 : ℕ) : K)‖ ≤ ρ ^ (j + 2) := by
+      rw [norm_div, norm_mul, hneg1, one_mul, ← norm_div, hρ]
+      exact norm_pow_div_natCast_le hnorm z (n := j + 2) (by omega)
+    refine hbound.trans ?_
+    exact pow_le_pow_of_le_one hρ0 hρlt1.le (by omega)
+  exact norm_eq_of_norm_sub_lt htail
+
 end NonarchimedeanExponential
