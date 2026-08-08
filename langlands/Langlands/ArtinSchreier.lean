@@ -37,7 +37,7 @@ namespace ArtinSchreier
 
 variable {k : Type*} [Field k] (p : ℕ) [Fact p.Prime] [CharP k p] (a : k)
 
-open Polynomial
+open Polynomial IntermediateField
 
 /-- The Artin–Schreier polynomial `X ^ p - X - C a`. -/
 noncomputable def poly : Polynomial k := X ^ p - X - C a
@@ -334,5 +334,59 @@ the splitting field's automatic normality (`Polynomial.SplittingField.instNormal
 via `IsGalois.of_separable_splitting_field`. -/
 instance instIsGalois : IsGalois k (poly p a).SplittingField :=
   IsGalois.of_separable_splitting_field (p := poly p a) poly_separable
+
+/-- **The splitting field of an irreducible `poly p a` has degree exactly `p` over `k`.** A root
+`θ` (in the splitting field `L`) has `minpoly k θ = poly p a` (`minpoly.eq_of_irreducible_of_monic`),
+so `k⟮θ⟯` already has degree `p`. Every other root is `θ + i` for `i` in the (`k`-rational, via
+`ψ`/`ψ₀`) image of `ZMod p`, hence already lies in `k⟮θ⟯`; since `L` is generated over `k` by all
+the roots (`Polynomial.SplittingField.adjoin_rootSet`), `k⟮θ⟯ = ⊤`, i.e. `k⟮θ⟯ = L`. -/
+theorem finrank_splittingField_eq (hirr : Irreducible (poly p a)) :
+    Module.finrank k (poly p a).SplittingField = p := by
+  classical
+  set L := (poly p a).SplittingField
+  set M := (poly p a).map (algebraMap k L) with hMdef
+  have hMsplits : M.Splits := Polynomial.SplittingField.splits (poly p a)
+  have hMne : M ≠ 0 := Polynomial.map_ne_zero (poly_ne_zero p a)
+  have hMdeg : M.natDegree = p := (Polynomial.natDegree_map _).trans (natDegree_poly p a)
+  have hMcard : M.roots.card = p := by
+    have hc := Polynomial.splits_iff_card_roots.mp hMsplits; rwa [hMdeg] at hc
+  have hMpos : 0 < M.roots.card := by rw [hMcard]; exact (Fact.out : p.Prime).pos
+  obtain ⟨θ, hθmem⟩ := Multiset.card_pos_iff_exists_mem.mp hMpos
+  have hθroot : M.IsRoot θ := (Polynomial.mem_roots'.mp hθmem).2
+  have hθaeval : aeval θ (poly p a) = 0 := by
+    rw [aeval_def, ← Polynomial.eval_map]; exact hθroot
+  have hInt : IsIntegral k θ := ⟨poly p a, poly_monic p a, hθaeval⟩
+  have hminpoly : poly p a = minpoly k θ :=
+    minpoly.eq_of_irreducible_of_monic hirr hθaeval (poly_monic p a)
+  have hfinrank_adj : Module.finrank k (k⟮θ⟯ : IntermediateField k L) = p := by
+    rw [IntermediateField.adjoin.finrank hInt, ← hminpoly, natDegree_poly]
+  set ψ : ZMod p →+* L := ZMod.castHom (dvd_refl p) L with hψdef
+  set ψ₀ : ZMod p →+* k := ZMod.castHom (dvd_refl p) k with hψ₀def
+  have hψcompat : (algebraMap k L).comp ψ₀ = ψ := RingHom.ext_zmod _ _
+  have hMroots_eq := roots_eq_image_add hMsplits hθroot
+  have hrootSet_le : (poly p a).rootSet L ⊆ (k⟮θ⟯ : IntermediateField k L) := by
+    intro x hx
+    have hxmem : x ∈ M.roots := by
+      have hx' : x ∈ (poly p a).aroots L := by
+        rwa [Polynomial.rootSet, Finset.mem_coe, Multiset.mem_toFinset] at hx
+      rwa [Polynomial.aroots] at hx'
+    rw [hMroots_eq] at hxmem
+    obtain ⟨j, -, hjx⟩ := Multiset.mem_map.mp hxmem
+    rw [← hjx]
+    have hψj : ψ j = algebraMap k L (ψ₀ j) := by rw [← hψcompat, RingHom.comp_apply]
+    rw [hψj]
+    exact add_mem (IntermediateField.mem_adjoin_simple_self k θ)
+      (IntermediateField.algebraMap_mem _ _)
+  have htop_sub : Algebra.adjoin k ((poly p a).rootSet L) ≤ (k⟮θ⟯ : IntermediateField k L).toSubalgebra :=
+    Algebra.adjoin_le hrootSet_le
+  have htop : (k⟮θ⟯ : IntermediateField k L).toSubalgebra = ⊤ := by
+    rw [Polynomial.SplittingField.adjoin_rootSet] at htop_sub
+    exact top_le_iff.mp htop_sub
+  have hktheta_top : (k⟮θ⟯ : IntermediateField k L) = ⊤ :=
+    IntermediateField.toSubalgebra_injective (htop.trans IntermediateField.top_toSubalgebra.symm)
+  have : Module.finrank k L = Module.finrank k (k⟮θ⟯ : IntermediateField k L) := by
+    rw [hktheta_top]
+    exact (IntermediateField.topEquiv (F := k) (E := L)).symm.toLinearEquiv.finrank_eq
+  rw [this, hfinrank_adj]
 
 end ArtinSchreier
