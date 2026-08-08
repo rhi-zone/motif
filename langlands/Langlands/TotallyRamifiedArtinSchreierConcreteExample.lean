@@ -266,6 +266,37 @@ instance : NoZeroSMulDivisors R S where
     · exact Or.inl (algebraMap_R_S_injective (h1.trans (map_zero (algebraMap R S)).symm))
     · exact Or.inr h1
 
+/-! ### `w : HeightOneSpectrum S` lying over `v`
+
+Since `S` is no longer a hand-built ring, `w` cannot be written down combinatorially (as `(Y)` was
+in the template files) — it is obtained from the general going-up theorem for integral extensions
+of domains. -/
+
+theorem ker_algebraMap_R_S_le : RingHom.ker (algebraMap R S) ≤ v.asIdeal := by
+  intro x hx
+  rw [RingHom.mem_ker] at hx
+  have hx0 : x = 0 := algebraMap_R_S_injective (hx.trans (map_zero _).symm)
+  simp [hx0]
+
+theorem exists_Q : ∃ Q : Ideal S, Q.IsPrime ∧ Q.comap (algebraMap R S) = v.asIdeal :=
+  Ideal.exists_ideal_over_prime_of_isIntegral_of_isDomain v.asIdeal ker_algebraMap_R_S_le
+
+theorem Q_ne_bot : (exists_Q.choose) ≠ ⊥ := by
+  intro hQbot
+  have hcomap := exists_Q.choose_spec.2
+  rw [hQbot, Ideal.comap_bot_of_injective _ algebraMap_R_S_injective] at hcomap
+  exact v.ne_bot hcomap.symm
+
+/-- `w`, a place of `S` lying over `v`. -/
+def w : HeightOneSpectrum S where
+  asIdeal := exists_Q.choose
+  isPrime := exists_Q.choose_spec.1
+  ne_bot := Q_ne_bot
+
+theorem w_comap_eq : w.asIdeal.comap (algebraMap R S) = v.asIdeal := exists_Q.choose_spec.2
+
+instance : w.asIdeal.LiesOver v.asIdeal := ⟨w_comap_eq.symm⟩
+
 end Langlands.TotallyRamifiedArtinSchreierConcreteExample
 
 end
