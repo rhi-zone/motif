@@ -112,6 +112,66 @@ instance : IsCyclotomicExtension {p} ℚ K :=
 
 instance : NumberField K := IsCyclotomicExtension.numberField {p} ℚ K
 
+/-! ### `IsGalois K L`
+
+Free from `IsGalois ℚ L` (`IsCyclotomicExtension.isGalois`, unconditional for any cyclotomic
+extension of `ℚ`) plus the generic fact that any intermediate field of a Galois extension is
+itself Galois over that intermediate field (`IsGalois.tower_top_intermediateField`, already an
+instance in Mathlib — no extra work needed here, unlike the Artin–Schreier file's from-scratch
+`IsGalois` construction at the *completed* level in `AdicCompletionIntegersResidue`-adjacent
+files). -/
+
+instance : IsGalois ℚ L := IsCyclotomicExtension.isGalois {p ^ (1 + 1)} ℚ L
+
+instance : IsGalois K L := inferInstance
+
+/-! ### `v : HeightOneSpectrum (𝓞 K)` and `w : HeightOneSpectrum (𝓞 L)`, both explicit
+
+Unlike the Artin–Schreier file (which had to invoke a going-up theorem since its `S` was not a
+hand-built ring), the places `v` and `w` here are **explicit** ideals, courtesy of
+`IsCyclotomicExtension.Rat.eq_span_zeta_sub_one_of_liesOver'`/`_of_liesOver`: the *unique* prime
+of `𝓞 K` (resp. `𝓞 L`) above the rational prime `p` is `span {ζₚ - 1}` (resp. `span {ζ - 1}`). -/
+
+/-- `ζ_K`, a primitive `p`-th root of unity **native to `K` itself** (as opposed to `ζₚ : L`,
+which merely generates `K`) — used for `v` below so that all the "Prime"-section lemmas of
+`IsCyclotomicExtension.Rat` apply directly with ambient field `K`, matching their stated
+signatures without any `algebraMap`/injectivity bookkeeping. Which primitive root is chosen does
+not matter for `v` itself: `eq_span_zeta_sub_one_of_liesOver'` shows every primitive `p`-th root of
+unity in `K` gives the same ideal `span {ζ_K - 1}`, the unique prime of `𝓞 K` above `p`. -/
+noncomputable def ζ_K : K := IsCyclotomicExtension.zeta p ℚ K
+
+theorem hζ_K : IsPrimitiveRoot ζ_K p := IsCyclotomicExtension.zeta_spec p ℚ K
+
+/-- `v`, the unique place of `𝓞 K` above the rational prime `p`. -/
+def v : HeightOneSpectrum (𝓞 K) where
+  asIdeal := Ideal.span {hζ_K.toInteger - 1}
+  isPrime := IsCyclotomicExtension.Rat.isPrime_span_zeta_sub_one' p hζ_K
+  ne_bot := by
+    simpa [Ideal.span_singleton_eq_bot] using (hζ_K.zeta_sub_one_prime' (p := p)).ne_zero
+
+/-- `w`, the unique place of `𝓞 L` above the rational prime `p`. -/
+def w : HeightOneSpectrum (𝓞 L) where
+  asIdeal := Ideal.span {hζ.toInteger - 1}
+  isPrime := IsCyclotomicExtension.Rat.isPrime_span_zeta_sub_one p 1 hζ
+  ne_bot := by
+    simpa [Ideal.span_singleton_eq_bot] using (hζ.zeta_sub_one_prime (p := p) (k := 1)).ne_zero
+
+/-- `hζ_K`, recast as a primitive `p ^ (0 + 1)`-th root, to match Mathlib's prime-power (`k = 0`)
+lemmas syntactically (mirroring how `IsCyclotomicExtension.Rat`'s own "Prime"-section lemmas are
+proved by reducing to the `k = 0` case of the "PrimePow" section, e.g. `isPrime_span_zeta_sub_one'`
+itself). -/
+theorem hζ_K' : IsPrimitiveRoot ζ_K (p ^ (0 + 1)) := by simpa using hζ_K
+
+instance isCyclotomicExtension_K_pow_zero_add_one :
+    IsCyclotomicExtension {p ^ (0 + 1)} ℚ K := by simpa using
+  (inferInstance : IsCyclotomicExtension {p} ℚ K)
+
+instance : v.asIdeal.LiesOver (Ideal.span {(p : ℤ)}) :=
+  IsCyclotomicExtension.Rat.liesOver_span_zeta_sub_one p 0 hζ_K'
+
+instance : w.asIdeal.LiesOver (Ideal.span {(p : ℤ)}) :=
+  IsCyclotomicExtension.Rat.liesOver_span_zeta_sub_one p 1 hζ
+
 end Langlands.TotallyRamifiedCyclotomicConcreteExample
 
 end
