@@ -429,4 +429,79 @@ theorem log_mem_maximalIdeal_pow (hnorm : ‖(p : K)‖ < 1) {π : A}
   show ‖(y : K)‖ ≤ ‖(π : K)‖ ^ i
   simpa [hydef] using hlognorm
 
+omit hA [IsUltrametricDist K] [CompleteSpace K] in
+/-- **`logUnitsThreshold K p ≤ expLogCompositionRadius K p` always** — the same exponent-comparison
+argument as `logUnitsThreshold_le_expUnitsThreshold`: `expLogCompositionRadius K p = ‖p‖ ^ (p/(p-1))`
+and `p/(p-1) ≤ 2` for `p ≥ 2`, so `‖p‖ < 1` makes `expLogCompositionRadius K p ≥ ‖p‖ ^ 2 =
+logUnitsThreshold K p`. Needed so `expHom_surjective`'s single strict threshold hypothesis also
+places `log`'s output back inside `exp`'s domain, for `exp_log_eq_one_add`. -/
+theorem logUnitsThreshold_le_expLogCompositionRadius (hnorm : ‖(p : K)‖ < 1) :
+    logUnitsThreshold K p ≤ expLogCompositionRadius K p := by
+  have hp0 : (0 : ℝ) < ‖(p : K)‖ := norm_natCast_pos
+  have hp1 : (0 : ℝ) < (p : ℝ) - 1 := by
+    have h2 : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hp.out.two_le
+    linarith
+  have hexple : (p : ℝ) / ((p : ℝ) - 1) ≤ 2 := by
+    rw [div_le_iff₀ hp1]
+    have h2 : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hp.out.two_le
+    nlinarith
+  unfold logUnitsThreshold expLogCompositionRadius
+  rw [← Real.rpow_natCast ‖(p : K)‖ 2]
+  exact Real.rpow_le_rpow_of_exponent_ge hp0 hnorm.le hexple
+
+include hA in
+/-- **`expHom` is surjective**, for the same strict threshold `expHom_injective` needs. Given `u ∈
+U_A^{(i)}`, `y₀ := (u:A) - 1 ∈ 𝔪_A^i` (`principalUnitsPow`'s defining membership); the preimage is
+`log hnorm (y₀:K)`, landing in `𝔪_A^i` with no shift (`log_mem_maximalIdeal_pow`); `exp_log_eq_one_add`
+(valid since `‖y₀‖ < logUnitsThreshold K p ≤ expLogCompositionRadius K p`) identifies `exp hnorm (log
+hnorm (y₀:K)) = 1 + (y₀:K) = (u:A:K)`, closing the loop via the same `Subtype.ext`/`Units.ext`
+reduction to a `K`-level identity that `expHom`'s own definitional equalities use. -/
+theorem expHom_surjective (hnorm : ‖(p : K)‖ < 1) {π : A}
+    (hπ : maximalIdeal A = Ideal.span ({π} : Set A)) (hπ0 : (π : K) ≠ 0)
+    (hπnorm : ‖(π : K)‖ < 1) {i : ℕ} (hthreshStrict : ‖(π : K)‖ ^ i < logUnitsThreshold K p) :
+    Function.Surjective (expHom (A := A) (hA := hA) hnorm hπ hπ0 hπnorm
+      (hthreshStrict.trans_le (logUnitsThreshold_le_expUnitsThreshold hnorm)).le) := by
+  set hthresh : ‖(π : K)‖ ^ i ≤ expUnitsThreshold K p :=
+    (hthreshStrict.trans_le (logUnitsThreshold_le_expUnitsThreshold hnorm)).le with hthreshdef
+  intro u
+  set uA : Aˣ := (u : Aˣ) with huAdef
+  set y0 : A := (uA : A) - 1 with hy0def
+  have humem : y0 ∈ maximalIdeal A ^ i :=
+    (ValuationSubring.mem_principalUnitsPow_iff A).mp u.2
+  obtain ⟨y, hymem, hycoe⟩ :=
+    log_mem_maximalIdeal_pow (A := A) (hA := hA) hnorm hπ hπ0 hπnorm hthreshStrict humem
+  have hy0norm : ‖(y0 : K)‖ ≤ ‖(π : K)‖ ^ i := norm_le_pow_of_mem_maximalIdeal_pow A hA hπ humem
+  have hy0lt : ‖(y0 : K)‖ < expLogCompositionRadius K p :=
+    lt_of_le_of_lt hy0norm
+      (lt_of_lt_of_le hthreshStrict (logUnitsThreshold_le_expLogCompositionRadius hnorm))
+  have hexplog : exp hnorm (log hnorm (y0 : K)) = 1 + (y0 : K) := exp_log_eq_one_add hnorm hy0lt
+  have huAeq : ((uA : A) : K) = 1 + (y0 : K) := by rw [hy0def]; push_cast; ring
+  refine ⟨Multiplicative.ofAdd (⟨y, hymem⟩ : ↥(maximalIdeal A ^ i)), ?_⟩
+  apply Subtype.ext
+  apply Units.ext
+  apply Subtype.ext
+  show ((expUnit A hA hnorm hπ hπ0 hπnorm hthresh
+      (Multiplicative.toAdd (Multiplicative.ofAdd (⟨y, hymem⟩ : ↥(maximalIdeal A ^ i)))).2 : A) : K)
+      = ((uA : A) : K)
+  rw [expUnit_coe]
+  show exp hnorm ((⟨y, hymem⟩ : ↥(maximalIdeal A ^ i)).1 : K) = ((uA : A) : K)
+  show exp hnorm ((y : A) : K) = ((uA : A) : K)
+  rw [hycoe, hexplog, huAeq]
+
+/-! ## The headline isomorphism -/
+
+include hA in
+/-- **`U_A^{(i)} ≅ (𝔪_A^i, +)`**, for `A` a `ValuationSubring K`, a uniformizer `π`, and `i` above
+the strict threshold `‖π‖^i < logUnitsThreshold K p`. Assembled from `expHom` (a `MonoidHom`,
+`expHom_injective`, `expHom_surjective`) via `MulEquiv.ofBijective`. -/
+noncomputable def expEquiv (hnorm : ‖(p : K)‖ < 1) {π : A}
+    (hπ : maximalIdeal A = Ideal.span ({π} : Set A)) (hπ0 : (π : K) ≠ 0)
+    (hπnorm : ‖(π : K)‖ < 1) {i : ℕ} (hthreshStrict : ‖(π : K)‖ ^ i < logUnitsThreshold K p) :
+    Multiplicative ↥(maximalIdeal A ^ i) ≃* ↥(ValuationSubring.principalUnitsPow A i) :=
+  MulEquiv.ofBijective _
+    ⟨expHom_injective (A := A) (hA := hA) hnorm hπ hπ0 hπnorm
+        (hthreshStrict.trans_le (logUnitsThreshold_le_expUnitsThreshold hnorm)).le
+        (hthreshStrict.trans_le (logUnitsThreshold_le_expUnitsThreshold hnorm)),
+      expHom_surjective (A := A) (hA := hA) hnorm hπ hπ0 hπnorm hthreshStrict⟩
+
 end NonarchimedeanExponential
