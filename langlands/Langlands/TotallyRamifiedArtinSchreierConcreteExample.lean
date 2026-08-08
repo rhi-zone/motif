@@ -391,12 +391,16 @@ theorem valuation_algebraMap_xK_inv :
   rw [IsDedekindDomain.HeightOneSpectrum.valuation_algebraMap_pow_eq K L v w xK,
     valuation_xK, ← WithZero.exp_nsmul, nsmul_eq_mul, mul_neg_one, ← WithZero.exp_neg, neg_neg]
 
-/-- **`e := v.asIdeal.ramificationIdx' w.asIdeal` equals `p` exactly.** `thetaw` cannot be
-`w`-integral (else `thetaw ^ p - thetaw` would be too, but it has valuation `exp e ≥ exp 1 > 1`), so
-`Valued.v thetaw = exp m` for some `m ≥ 1`; then `Valued.v (thetaw ^ p - thetaw) = exp (p * m)` (the
-dominant-term case of the ultrametric inequality), forcing `p * m = e`. Since `e ≤ p` (`e_le_p`) and
-`m ≥ 1`, this forces `m = 1`, i.e. `e = p`. -/
-theorem e_eq_p : v.asIdeal.ramificationIdx' w.asIdeal = p := by
+/-- **`e := v.asIdeal.ramificationIdx' w.asIdeal` equals `p` exactly, and `Valued.v thetaw = exp
+1`.** `thetaw` cannot be `w`-integral (else `thetaw ^ p - thetaw` would be too, but it has valuation
+`exp e ≥ exp 1 > 1`), so `Valued.v thetaw = exp m` for some `m ≥ 1`; then `Valued.v (thetaw ^ p -
+thetaw) = exp (p * m)` (the dominant-term case of the ultrametric inequality), forcing `p * m = e`.
+Since `e ≤ p` (`e_le_p`) and `m ≥ 1`, this forces `m = 1`, i.e. `e = p` — and, as a byproduct,
+`thetaw` itself has valuation exactly `exp 1` (a genuine simple pole at `w`, so `thetaw⁻¹` is a
+uniformizer — used below for field 1). -/
+theorem e_eq_p_and_valuation_thetaw :
+    v.asIdeal.ramificationIdx' w.asIdeal = p ∧
+      Valued.v (thetaw : w.adicCompletion L) = WithZero.exp (1 : ℤ) := by
   set e := v.asIdeal.ramificationIdx' w.asIdeal with hedef
   have he_pos : 0 < e := by
     haveI := v.isMaximal
@@ -432,8 +436,13 @@ theorem e_eq_p : v.asIdeal.ramificationIdx' w.asIdeal = p := by
     have hp2 : (2 : ℤ) ≤ p := by exact_mod_cast (Fact.out : p.Prime).two_le
     have he_le : (e : ℤ) ≤ p := by exact_mod_cast e_le_p
     have hm1 : m = 1 := by nlinarith
-    have : (e : ℤ) = p := by rw [← hpm, hm1, mul_one]
-    exact_mod_cast this
+    have he_eq : (e : ℤ) = p := by rw [← hpm, hm1, mul_one]
+    exact ⟨by exact_mod_cast he_eq, by rw [hvθ, hm1]⟩
+
+theorem e_eq_p : v.asIdeal.ramificationIdx' w.asIdeal = p := e_eq_p_and_valuation_thetaw.1
+
+theorem valuation_thetaw : Valued.v (thetaw : w.adicCompletion L) = WithZero.exp (1 : ℤ) :=
+  e_eq_p_and_valuation_thetaw.2
 
 /-! ### `Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)`, and `finrank Kv Lw = p`
 
@@ -596,6 +605,145 @@ theorem finrank_eq :
     Module.finrank (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) =
       v.asIdeal.ramificationIdx' w.asIdeal := by
   rw [finrank_K₀_L₀, e_eq_p]
+
+/-! ### Field 1 of `IsTotallyRamified`: `map_maximalIdeal_eq`
+
+Unlike the template files, there is no definitional identity `Ideal.map (algebraMap R S) v.asIdeal
+= w.asIdeal ^ e` to fall back on (`w` is abstract). Instead: `pi := thetaw⁻¹` is an *exact*
+uniformizer of `w` (`Valued.v thetaw = exp 1` exactly, `e_eq_p_and_valuation_thetaw`), and algebra
+gives `algebraMap Kv Lw xK = pi ^ p * u` for the unit `u := (1 - pi ^ (p - 1))⁻¹` — an honest
+algebraic identity (not merely a valuation coincidence), obtained by clearing denominators in
+`thetaw ^ p - thetaw = algebraMap Kv Lw xK⁻¹`. The unit factor does not affect the ideal identity:
+`span {pi ^ p * u} = span {pi ^ p} = span {pi} ^ p = maximalIdeal L₀ ^ p = maximalIdeal L₀ ^ e`. -/
+
+theorem thetaw_ne_zero : (thetaw : w.adicCompletion L) ≠ 0 :=
+  fun h => theta_ne_zero ((algebraMap L (w.adicCompletion L)).injective (h.trans (map_zero _).symm))
+
+/-- `pi`, the image of `thetaw⁻¹` — an exact uniformizer of `w.adicCompletion L`. -/
+def pi : w.adicCompletion L := thetaw⁻¹
+
+theorem valuation_pi : Valued.v (pi : w.adicCompletion L) = WithZero.exp (-1 : ℤ) := by
+  rw [pi, map_inv₀, valuation_thetaw, ← WithZero.exp_neg]
+
+theorem pi_pow_sub_one_lt_one : Valued.v ((pi : w.adicCompletion L) ^ (p - 1)) < 1 := by
+  rw [map_pow, valuation_pi, ← WithZero.exp_nsmul, nsmul_eq_mul, mul_neg_one, ← WithZero.exp_zero]
+  apply WithZero.exp_lt_exp.mpr
+  have hp2 : 1 < p := (Fact.out : p.Prime).one_lt
+  have : (0 : ℕ) < p - 1 := Nat.sub_pos_of_lt hp2
+  exact_mod_cast (neg_lt_zero).mpr (by exact_mod_cast this)
+
+/-- **A generic field identity** (stated over a fresh field/element/exponent, deliberately not
+mentioning `p`/`L`/`w` etc., to avoid `rw`-ing the ambient `p : ℕ` — since `L`'s *type* is defined in
+terms of `p`, `rw`-ing `p` inside any goal mentioning `L`-derived types breaks Lean's motive
+well-typedness check): `x * x ^ (n - 1) = x ^ n` for `n ≥ 1`. -/
+theorem pow_one_mul_pow_pred_eq {F : Type*} [Monoid F] {x : F} {n : ℕ} (hn : 1 ≤ n) :
+    x * x ^ (n - 1) = x ^ n := by
+  rw [← pow_succ']
+  congr 1
+  omega
+
+/-- **The key algebraic identity**: `algebraMap Kv Lw xK = pi ^ p * u`, for a genuine unit
+`u := (1 - pi ^ (p - 1))⁻¹` of `w.adicCompletion L`. Derived purely algebraically from
+`thetaw ^ p - thetaw = algebraMap Kv Lw xK⁻¹` (`thetaw_pow_sub_thetaw`) by factoring
+`thetaw ^ p - thetaw = thetaw ^ p * (1 - pi ^ (p - 1))` and inverting both sides. -/
+theorem algebraMap_xK_eq :
+    algebraMap (v.adicCompletion K) (w.adicCompletion L) xK =
+      (pi : w.adicCompletion L) ^ p * (1 - pi ^ (p - 1))⁻¹ := by
+  show algebraMap (v.adicCompletion K) (w.adicCompletion L) xK =
+      (thetaw : w.adicCompletion L)⁻¹ ^ p * (1 - (thetaw : w.adicCompletion L)⁻¹ ^ (p - 1))⁻¹
+  have hp1 : 1 ≤ p := (Fact.out : p.Prime).one_lt.le
+  have hkey : (thetaw : w.adicCompletion L) =
+      thetaw ^ p * (thetaw : w.adicCompletion L)⁻¹ ^ (p - 1) := by
+    rw [inv_pow, ← div_eq_mul_inv, eq_div_iff (pow_ne_zero _ thetaw_ne_zero)]
+    exact pow_one_mul_pow_pred_eq hp1
+  have hfactor : (thetaw : w.adicCompletion L) ^ p - thetaw =
+      thetaw ^ p * (1 - (thetaw : w.adicCompletion L)⁻¹ ^ (p - 1)) := by
+    rw [mul_sub, mul_one, ← hkey]
+  have hstar : algebraMap (v.adicCompletion K) (w.adicCompletion L) xK *
+      (thetaw ^ p * (1 - (thetaw : w.adicCompletion L)⁻¹ ^ (p - 1))) = 1 := by
+    rw [← hfactor, thetaw_pow_sub_thetaw, ← map_mul, mul_inv_cancel₀ xK_ne_zero, map_one]
+  have h4 : algebraMap (v.adicCompletion K) (w.adicCompletion L) xK =
+      (thetaw ^ p * (1 - (thetaw : w.adicCompletion L)⁻¹ ^ (p - 1)))⁻¹ :=
+    eq_inv_of_mul_eq_one_left hstar
+  rw [h4, mul_inv, ← inv_pow]
+
+/-- `xK`, viewed as an element of `v.adicCompletionIntegers K`. -/
+def xK₀ : v.adicCompletionIntegers K :=
+  ⟨xK, by
+    rw [IsDedekindDomain.HeightOneSpectrum.mem_adicCompletionIntegers R K v, valuation_xK,
+      ← WithZero.exp_zero]
+    exact WithZero.exp_le_exp.mpr (by norm_num)⟩
+
+/-- `pi`, viewed as an element of `w.adicCompletionIntegers L`. -/
+def π₀ : w.adicCompletionIntegers L :=
+  ⟨pi, by
+    rw [IsDedekindDomain.HeightOneSpectrum.mem_adicCompletionIntegers S L w, valuation_pi,
+      ← WithZero.exp_zero]
+    exact WithZero.exp_le_exp.mpr (by norm_num)⟩
+
+theorem isUniformizer_xK₀ : Valuation.IsUniformizer Valued.v (xK₀ : v.adicCompletion K) := by
+  rw [Valuation.IsUniformizer.iff, show (xK₀ : v.adicCompletion K) = xK from rfl, valuation_xK,
+    Valuation.IsRankOneDiscrete.generator_eq_exp_neg_one_of_surjective
+      (IsDedekindDomain.HeightOneSpectrum.valuedAdicCompletion_surjective K v)]
+  rfl
+
+theorem isUniformizer_π₀ : Valuation.IsUniformizer Valued.v (π₀ : w.adicCompletion L) := by
+  rw [Valuation.IsUniformizer.iff, show (π₀ : w.adicCompletion L) = pi from rfl, valuation_pi,
+    Valuation.IsRankOneDiscrete.generator_eq_exp_neg_one_of_surjective
+      (IsDedekindDomain.HeightOneSpectrum.valuedAdicCompletion_surjective L w)]
+  rfl
+
+theorem maximalIdeal_K₀_eq : IsLocalRing.maximalIdeal (v.adicCompletionIntegers K)
+    = Ideal.span {(xK₀ : v.adicCompletionIntegers K)} :=
+  isUniformizer_xK₀.is_generator
+
+theorem maximalIdeal_L₀_eq : IsLocalRing.maximalIdeal (w.adicCompletionIntegers L)
+    = Ideal.span {(π₀ : w.adicCompletionIntegers L)} :=
+  isUniformizer_π₀.is_generator
+
+theorem valuation_one_sub_pi_pow : Valued.v (1 - (pi : w.adicCompletion L) ^ (p - 1)) = 1 := by
+  have h := Valuation.map_sub_eq_of_lt_left (v := Valued.v) (x := (1 : w.adicCompletion L))
+    (y := (pi : w.adicCompletion L) ^ (p - 1)) (by rw [map_one]; exact pi_pow_sub_one_lt_one)
+  rwa [map_one] at h
+
+theorem one_sub_pi_pow_ne_zero : (1 - (pi : w.adicCompletion L) ^ (p - 1)) ≠ 0 := by
+  intro h0
+  have hcopy := valuation_one_sub_pi_pow
+  rw [h0, Valuation.map_zero] at hcopy
+  exact absurd hcopy (by norm_num)
+
+/-- `u₀`, the unit `(1 - pi ^ (p - 1))⁻¹` of `w.adicCompletionIntegers L`. -/
+def u₀ : w.adicCompletionIntegers L :=
+  ⟨(1 - (pi : w.adicCompletion L) ^ (p - 1))⁻¹, by
+    rw [IsDedekindDomain.HeightOneSpectrum.mem_adicCompletionIntegers S L w, map_inv₀,
+      valuation_one_sub_pi_pow, inv_one]⟩
+
+theorem u₀_isUnit : IsUnit (u₀ : w.adicCompletionIntegers L) := by
+  refine IsUnit.of_mul_eq_one
+    (⟨(1 - (pi : w.adicCompletion L) ^ (p - 1)), by
+      rw [IsDedekindDomain.HeightOneSpectrum.mem_adicCompletionIntegers S L w,
+        valuation_one_sub_pi_pow]⟩) ?_
+  apply Subtype.ext
+  show (1 - (pi : w.adicCompletion L) ^ (p - 1))⁻¹ * (1 - (pi : w.adicCompletion L) ^ (p - 1)) = 1
+  exact inv_mul_cancel₀ one_sub_pi_pow_ne_zero
+
+/-- **The key identity, descended to `L₀ := w.adicCompletionIntegers L`.** -/
+theorem algebraMap_xK₀_eq :
+    algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L)
+        (xK₀ : v.adicCompletionIntegers K) =
+      (π₀ : w.adicCompletionIntegers L) ^ p * u₀ := by
+  apply Subtype.ext
+  show algebraMap (v.adicCompletion K) (w.adicCompletion L) xK = _
+  rw [algebraMap_xK_eq]; rfl
+
+theorem map_maximalIdeal_eq :
+    Ideal.map (algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L))
+        (IsLocalRing.maximalIdeal (v.adicCompletionIntegers K)) =
+      IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) ^
+        (v.asIdeal.ramificationIdx' w.asIdeal) := by
+  rw [maximalIdeal_K₀_eq, Ideal.map_span, Set.image_singleton, algebraMap_xK₀_eq,
+    Ideal.span_singleton_mul_right_unit u₀_isUnit,
+    ← Ideal.span_singleton_pow, ← maximalIdeal_L₀_eq, e_eq_p]
 
 end Langlands.TotallyRamifiedArtinSchreierConcreteExample
 
