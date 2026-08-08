@@ -172,6 +172,30 @@ instance : v.asIdeal.LiesOver (Ideal.span {(p : ℤ)}) :=
 instance : w.asIdeal.LiesOver (Ideal.span {(p : ℤ)}) :=
   IsCyclotomicExtension.Rat.liesOver_span_zeta_sub_one p 1 hζ
 
+/-! ### `w.asIdeal.LiesOver v.asIdeal`
+
+Since `𝓞 K` has a *unique* prime over the rational prime `p` (`v`, by
+`IsCyclotomicExtension.Rat.eq_span_zeta_sub_one_of_liesOver'`), and `w.asIdeal`'s comap to `𝓞 K`
+is itself a prime lying over `p` (by transitivity of `Ideal.under`, since `w.asIdeal` already lies
+over `p`), that comap must equal `v.asIdeal` exactly — no going-up theorem needed, unlike the
+Artin–Schreier file (where `S` was not a hand-built ring and `w` could not be pinned down this
+concretely to begin with). -/
+
+instance isPrime_comap_w : (w.asIdeal.comap (algebraMap (𝓞 K) (𝓞 L))).IsPrime :=
+  Ideal.IsPrime.comap _
+
+instance liesOver_comap_w : (w.asIdeal.comap (algebraMap (𝓞 K) (𝓞 L))).LiesOver
+    (Ideal.span {(p : ℤ)}) where
+  over := by
+    rw [Ideal.over_def w.asIdeal (Ideal.span {(p : ℤ)}), ← Ideal.under_under (A := ℤ) (B := 𝓞 K)]
+
+theorem comap_w_eq_v :
+    w.asIdeal.comap (algebraMap (𝓞 K) (𝓞 L)) = v.asIdeal :=
+  IsCyclotomicExtension.Rat.eq_span_zeta_sub_one_of_liesOver' p K hζ_K _
+
+instance : w.asIdeal.LiesOver v.asIdeal where
+  over := comap_w_eq_v.symm
+
 end Langlands.TotallyRamifiedCyclotomicConcreteExample
 
 end
