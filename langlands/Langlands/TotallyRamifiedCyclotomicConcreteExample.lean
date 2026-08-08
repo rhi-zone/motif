@@ -3,6 +3,7 @@ import Mathlib.NumberTheory.NumberField.Cyclotomic.Galois
 import Langlands.TotallyRamifiedValuationExtension
 import Langlands.AdicCompletionIntegersResidue
 import Langlands.AdicCompletionIntegralClosure
+import Langlands.HeightOneSpectrumRationalPrimeTower
 
 /-!
 # A concrete MIXED-CHARACTERISTIC, WILD, GALOIS ramified extension: `ℚ(ζ_{p²}) / ℚ(ζ_p)`
@@ -65,7 +66,8 @@ See the closing section of this file and `ROADMAP.md` for the precise account of
 
 noncomputable section
 
-open IsDedekindDomain IsLocalRing Polynomial NumberField Ideal IntermediateField
+open IsDedekindDomain IsDedekindDomain.HeightOneSpectrum IsLocalRing Polynomial NumberField Ideal
+  IntermediateField
 open scoped Cyclotomic
 
 namespace Langlands.TotallyRamifiedCyclotomicConcreteExample
@@ -195,6 +197,43 @@ theorem comap_w_eq_v :
 
 instance : w.asIdeal.LiesOver v.asIdeal where
   over := comap_w_eq_v.symm
+
+/-! ### `e := v.asIdeal.ramificationIdx' w.asIdeal = p` and `f := v.asIdeal.inertiaDeg' w.asIdeal
+= 1`, via the general bridge lemma (`Langlands.HeightOneSpectrumRationalPrimeTower`) and
+Mathlib's concrete cyclotomic formulas
+
+`Ideal.ramificationIdx v.asIdeal ℤ = p - 1` (`ramificationIdx_eq_of_prime`, since `K = ℚ(ζ_p)`) and
+`Ideal.ramificationIdx w.asIdeal ℤ = p ^ 1 * (p - 1)` (`ramificationIdx_eq_of_prime_pow` with
+`k = 1`, since `L = ℚ(ζ_{p²})`); the bridge lemma's tower identity
+`Ideal.ramificationIdx w.asIdeal ℤ = Ideal.ramificationIdx v.asIdeal ℤ * v.asIdeal.ramificationIdx'
+w.asIdeal` then forces `e = p` exactly (cancelling the common nonzero factor `p - 1`) — the
+genuinely wild ramification the task is after. The inertia-degree computation is identical in
+shape, with both absolute inertia degrees equal to `1`, forcing `f = 1`. -/
+
+theorem ramificationIdx_v : Ideal.ramificationIdx v.asIdeal ℤ = p - 1 :=
+  IsCyclotomicExtension.Rat.ramificationIdx_eq_of_prime p K v.asIdeal
+
+theorem ramificationIdx_w : Ideal.ramificationIdx w.asIdeal ℤ = p ^ 1 * (p - 1) :=
+  IsCyclotomicExtension.Rat.ramificationIdx_eq_of_prime_pow p 1 L w.asIdeal
+
+/-- **`e := v.asIdeal.ramificationIdx' w.asIdeal = p` exactly.** -/
+theorem ramificationIdx'_eq : v.asIdeal.ramificationIdx' w.asIdeal = p := by
+  have hb := ramificationIdx_int_eq_mul_ramificationIdx' v w (p := p)
+  rw [ramificationIdx_w, ramificationIdx_v, pow_one, mul_comm p (p - 1)] at hb
+  have hp1 : 0 < p - 1 := by have := (Fact.out : p.Prime).two_le; omega
+  exact (Nat.eq_of_mul_eq_mul_left hp1 hb).symm
+
+theorem inertiaDeg_v : Ideal.inertiaDeg v.asIdeal ℤ = 1 :=
+  IsCyclotomicExtension.Rat.inertiaDeg_eq_of_prime p K v.asIdeal
+
+theorem inertiaDeg_w : Ideal.inertiaDeg w.asIdeal ℤ = 1 :=
+  IsCyclotomicExtension.Rat.inertiaDeg_eq_of_prime_pow p 1 L w.asIdeal
+
+/-- **`f := v.asIdeal.inertiaDeg' w.asIdeal = 1` exactly.** -/
+theorem inertiaDeg'_eq : v.asIdeal.inertiaDeg' w.asIdeal = 1 := by
+  have hb := inertiaDeg_int_eq_mul_inertiaDeg' v w (p := p)
+  rw [inertiaDeg_w, inertiaDeg_v] at hb
+  omega
 
 end Langlands.TotallyRamifiedCyclotomicConcreteExample
 
