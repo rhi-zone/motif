@@ -1,5 +1,6 @@
 import Mathlib.Data.ZMod.Basic
 import Mathlib.FieldTheory.Finite.Basic
+import Mathlib.FieldTheory.Galois.Basic
 import Mathlib.FieldTheory.SplittingField.Construction
 import Mathlib.RingTheory.Polynomial.Vieta
 
@@ -315,5 +316,23 @@ theorem irreducible_of_not_mem_range (h : a ∉ Set.range (fun x : k => x ^ p - 
 `a` is not of the form `x ^ p - x` for `x : k`. -/
 theorem irreducible_iff : Irreducible (poly p a) ↔ a ∉ Set.range (fun x : k => x ^ p - x) :=
   ⟨fun hirr h => not_irreducible_of_mem_range h hirr, irreducible_of_not_mem_range⟩
+
+omit [Fact p.Prime] in
+/-- **`poly p a` is separable.** Its derivative is the constant `-1` (the `X ^ p` term
+contributes `(p : k) • X ^ (p - 1) = 0` since `CharP k p`), which is a unit, hence coprime to
+everything, in particular to `poly p a` itself. -/
+theorem poly_separable : (poly p a).Separable := by
+  have hderiv : (poly p a).derivative = C (-1 : k) := by
+    simp [poly_def, Polynomial.derivative_sub, Polynomial.derivative_X_pow,
+      Polynomial.derivative_X, Polynomial.derivative_C]
+  rw [Polynomial.separable_def, hderiv]
+  obtain ⟨v, hv⟩ := Polynomial.isUnit_C.mpr (isUnit_one.neg : IsUnit (-1 : k))
+  exact ⟨0, (↑v⁻¹ : Polynomial k), by rw [zero_mul, zero_add, ← hv]; exact v.inv_mul⟩
+
+/-- **The splitting field of `poly p a` is Galois over `k`.** Separable (`poly_separable`) plus
+the splitting field's automatic normality (`Polynomial.SplittingField.instNormal`) gives Galois,
+via `IsGalois.of_separable_splitting_field`. -/
+instance instIsGalois : IsGalois k (poly p a).SplittingField :=
+  IsGalois.of_separable_splitting_field (p := poly p a) poly_separable
 
 end ArtinSchreier
