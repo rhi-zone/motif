@@ -498,6 +498,228 @@ theorem map_minpoly_theta_irreducible :
     algebraMap K (v.adicCompletion K) c from rfl] at hgauss
   rwa [minpoly_theta_eq, eisPoly_map]
 
+/-! ### Field 2 of `IsTotallyRamified`: `finrank_eq`
+
+`theta` is a primitive element of `L / K` whose minimal polynomial's base change to `Kv` is
+irreducible, which is exactly the hypothesis of `Langlands.AdicCompletionPrimitiveElementDegree`'s
+generic criterion — so `[Lw : Kv] = [L : K] = p` and `Lw / Kv` is separable. -/
+
+theorem finrank_Kv_Lw_and_isSeparable :
+    Module.finrank (v.adicCompletion K) (w.adicCompletion L) = Module.finrank K L ∧
+      Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L) :=
+  IsDedekindDomain.HeightOneSpectrum.finrank_and_isSeparable_of_primitiveElement K L v w
+    isIntegral_theta adjoin_theta_eq_top map_minpoly_theta_irreducible
+
+instance : Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L) :=
+  finrank_Kv_Lw_and_isSeparable.2
+
+theorem finrank_Kv_Lw : Module.finrank (v.adicCompletion K) (w.adicCompletion L) = p := by
+  rw [finrank_Kv_Lw_and_isSeparable.1, finrank_K_L]
+
+theorem finrank_K₀_L₀ :
+    Module.finrank (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) = p := by
+  rw [IsIntegralClosure.rank (v.adicCompletionIntegers K) (v.adicCompletion K)
+    (w.adicCompletion L) (w.adicCompletionIntegers L), finrank_Kv_Lw]
+
+theorem finrank_eq :
+    Module.finrank (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) =
+      v.asIdeal.ramificationIdx' w.asIdeal := by
+  rw [finrank_K₀_L₀, ramificationIdx'_eq]
+
+/-! ### Field 1 of `IsTotallyRamified`: `map_maximalIdeal_eq`
+
+`Θ`, the image of `theta = ζ - 1` in `Lw`, is an *exact* uniformizer of `w.adicCompletionIntegers L`
+(`w.asIdeal = span {ζ - 1}` by definition of `w`), and `π₀` is an exact uniformizer of
+`v.adicCompletionIntegers K`. `Langlands.NormMap`'s `valuation_algebraMap_pow_eq` — the completed-
+level statement that `adicCompletionComap` multiplies valuations by `e` — then pins the valuation of
+`π₀`'s image at `exp (-p)` exactly, so `u := (image of π₀) / Θ ^ p` has valuation `1`, i.e. is a unit
+of `w.adicCompletionIntegers L`. The unit factor does not affect the ideal identity:
+`span {Θ ^ p * u} = span {Θ} ^ p = 𝔪_L ^ p = 𝔪_L ^ e`.
+
+Note this route needs no cyclotomic input beyond the already-established `e = p`: in particular it
+never has to identify `ζ ^ p - 1` with `(ζ - 1) ^ p` up to a unit by hand. -/
+
+theorem ζ_sub_one_ne_zero : (hζ.toInteger - 1 : 𝓞 L) ≠ 0 :=
+  (hζ.zeta_sub_one_prime (p := p) (k := 1)).ne_zero
+
+theorem intValuation_ζ_sub_one :
+    w.intValuation (hζ.toInteger - 1 : 𝓞 L) = WithZero.exp (-1 : ℤ) :=
+  w.intValuation_singleton ζ_sub_one_ne_zero rfl
+
+/-- `Θ`, the image of `theta = ζ - 1` in `w.adicCompletion L` — an exact uniformizer. -/
+noncomputable def Θ : w.adicCompletion L := algebraMap L (w.adicCompletion L) theta
+
+theorem valuation_Θ : Valued.v (Θ : w.adicCompletion L) = WithZero.exp (-1 : ℤ) := by
+  rw [Θ, show theta = algebraMap (𝓞 L) L (hζ.toInteger - 1) by rw [map_sub, map_one]; rfl,
+    show algebraMap L (w.adicCompletion L) (algebraMap (𝓞 L) L (hζ.toInteger - 1)) =
+      ((algebraMap (𝓞 L) L (hζ.toInteger - 1) : L) : w.adicCompletion L) from rfl,
+    IsDedekindDomain.HeightOneSpectrum.valuedAdicCompletion_eq_valuation',
+    w.valuation_of_algebraMap]
+  exact intValuation_ζ_sub_one
+
+theorem Θ_ne_zero : (Θ : w.adicCompletion L) ≠ 0 := by
+  intro h0
+  have hv := valuation_Θ
+  rw [h0, Valuation.map_zero] at hv
+  exact absurd hv.symm (by simp)
+
+theorem valuation_comap_π₀ :
+    Valued.v (adicCompletionComap K L v w (π₀ : v.adicCompletion K)) =
+      WithZero.exp (-(p : ℤ)) := by
+  rw [IsDedekindDomain.HeightOneSpectrum.valuation_algebraMap_pow_eq K L v w, valuation_π₀,
+    ramificationIdx'_eq, ← WithZero.exp_nsmul, nsmul_eq_mul, mul_neg_one]
+
+theorem valuation_Θ_pow : Valued.v ((Θ : w.adicCompletion L) ^ p) = WithZero.exp (-(p : ℤ)) := by
+  rw [map_pow, valuation_Θ, ← WithZero.exp_nsmul, nsmul_eq_mul, mul_neg_one]
+
+/-- `u`, the unit factor relating `π₀`'s image to `Θ ^ p`. -/
+noncomputable def u : w.adicCompletion L :=
+  adicCompletionComap K L v w (π₀ : v.adicCompletion K) / Θ ^ p
+
+theorem valuation_u : Valued.v (u : w.adicCompletion L) = 1 := by
+  rw [u, map_div₀, valuation_comap_π₀, valuation_Θ_pow, div_self (WithZero.exp_ne_zero)]
+
+theorem comap_π₀_eq :
+    adicCompletionComap K L v w (π₀ : v.adicCompletion K) = (Θ : w.adicCompletion L) ^ p * u := by
+  rw [u, mul_div_cancel₀ _ (pow_ne_zero _ Θ_ne_zero)]
+
+/-- `Θ`, viewed inside `w.adicCompletionIntegers L`. -/
+noncomputable def Θ₀ : w.adicCompletionIntegers L :=
+  ⟨Θ, by
+    rw [IsDedekindDomain.HeightOneSpectrum.mem_adicCompletionIntegers (𝓞 L) L w, valuation_Θ,
+      ← WithZero.exp_zero]
+    exact WithZero.exp_le_exp.mpr (by norm_num)⟩
+
+/-- `u`, viewed inside `w.adicCompletionIntegers L`. -/
+noncomputable def u₀ : w.adicCompletionIntegers L :=
+  ⟨u, by
+    rw [IsDedekindDomain.HeightOneSpectrum.mem_adicCompletionIntegers (𝓞 L) L w, valuation_u]⟩
+
+theorem u_ne_zero : (u : w.adicCompletion L) ≠ 0 := by
+  intro h0
+  have hv := valuation_u
+  rw [h0, Valuation.map_zero] at hv
+  exact absurd hv.symm (by simp)
+
+theorem u₀_isUnit : IsUnit (u₀ : w.adicCompletionIntegers L) := by
+  refine IsUnit.of_mul_eq_one
+    (⟨(u : w.adicCompletion L)⁻¹, by
+      rw [IsDedekindDomain.HeightOneSpectrum.mem_adicCompletionIntegers (𝓞 L) L w, map_inv₀,
+        valuation_u, inv_one]⟩) ?_
+  apply Subtype.ext
+  show (u : w.adicCompletion L) * (u : w.adicCompletion L)⁻¹ = 1
+  exact mul_inv_cancel₀ u_ne_zero
+
+theorem isUniformizer_Θ₀ :
+    Valuation.IsUniformizer Valued.v (Θ₀ : w.adicCompletion L) := by
+  rw [Valuation.IsUniformizer.iff,
+    show ((Θ₀ : w.adicCompletionIntegers L) : w.adicCompletion L) = Θ from rfl, valuation_Θ,
+    Valuation.IsRankOneDiscrete.generator_eq_exp_neg_one_of_surjective
+      (IsDedekindDomain.HeightOneSpectrum.valuedAdicCompletion_surjective L w)]
+  rfl
+
+theorem maximalIdeal_L₀_eq :
+    IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) =
+      Ideal.span {(Θ₀ : w.adicCompletionIntegers L)} :=
+  isUniformizer_Θ₀.is_generator
+
+theorem algebraMap_π₀_eq :
+    algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) π₀ =
+      (Θ₀ : w.adicCompletionIntegers L) ^ p * u₀ := by
+  apply Subtype.ext
+  rw [IsDedekindDomain.HeightOneSpectrum.coe_algebraMap_adicCompletionIntegers]
+  show adicCompletionComap K L v w (π₀ : v.adicCompletion K) = _
+  rw [comap_π₀_eq]
+  rfl
+
+theorem map_maximalIdeal_eq :
+    Ideal.map (algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L))
+        (IsLocalRing.maximalIdeal (v.adicCompletionIntegers K)) =
+      IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) ^
+        (v.asIdeal.ramificationIdx' w.asIdeal) := by
+  rw [maximalIdeal_eq_span_π₀, Ideal.map_span, Set.image_singleton, algebraMap_π₀_eq,
+    Ideal.span_singleton_mul_right_unit u₀_isUnit, ← Ideal.span_singleton_pow,
+    ← maximalIdeal_L₀_eq, ramificationIdx'_eq]
+
+/-! ### Field 3 of `IsTotallyRamified`: `exists_sub_algebraMap_mem_maximalIdeal`
+
+`f := v.asIdeal.inertiaDeg' w.asIdeal = 1` is already closed (`inertiaDeg'_eq`, obtained purely
+algebraically from the cyclotomic inertia-degree formulas via the tower bridge lemma). Since both
+residue rings are fields and the residue extension has degree exactly `1`, `algebraMap (𝓞 K ⧸
+v.asIdeal) (𝓞 L ⧸ w.asIdeal)` is surjective; this transports to the completed-integers level via
+`Langlands.AdicCompletionIntegersResidue`'s single-place density fact, exactly as in the template
+files. -/
+
+attribute [local instance] Ideal.Quotient.field
+
+theorem residue_surjective :
+    Function.Surjective (algebraMap ((𝓞 K) ⧸ v.asIdeal) ((𝓞 L) ⧸ w.asIdeal)) := by
+  haveI := v.isMaximal
+  haveI := w.isMaximal
+  have hfin : Module.finrank ((𝓞 K) ⧸ v.asIdeal) ((𝓞 L) ⧸ w.asIdeal) = 1 := by
+    rw [← Ideal.inertiaDeg'_algebraMap]; exact inertiaDeg'_eq
+  have h1 : (1 : (𝓞 L) ⧸ w.asIdeal) ≠ 0 := one_ne_zero
+  have hspan := (finrank_eq_one_iff_of_nonzero' (1 : (𝓞 L) ⧸ w.asIdeal) h1).mp hfin
+  intro y
+  obtain ⟨c', hc'⟩ := hspan y
+  exact ⟨c', by rw [← hc', Algebra.smul_def, mul_one]⟩
+
+/-- **The naturality square `𝓞 K → K₀ → L₀ = 𝓞 K → 𝓞 L → L₀`.** -/
+theorem algebraMap_R_K₀_L₀_eq (r : 𝓞 K) :
+    algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L)
+        (algebraMap (𝓞 K) (v.adicCompletionIntegers K) r) =
+      algebraMap (𝓞 L) (w.adicCompletionIntegers L) (algebraMap (𝓞 K) (𝓞 L) r) := by
+  apply Subtype.ext
+  rw [IsDedekindDomain.HeightOneSpectrum.coe_algebraMap_adicCompletionIntegers]
+  show IsDedekindDomain.HeightOneSpectrum.adicCompletionComap K L v w
+      (algebraMap (𝓞 K) (v.adicCompletionIntegers K) r : v.adicCompletion K) = _
+  rw [show (algebraMap (𝓞 K) (v.adicCompletionIntegers K) r : v.adicCompletion K)
+        = algebraMap K (v.adicCompletion K) (algebraMap (𝓞 K) K r) from rfl,
+    IsDedekindDomain.HeightOneSpectrum.adicCompletionComap_algebraMap]
+  show algebraMap L (w.adicCompletion L) (algebraMap K L (algebraMap (𝓞 K) K r)) =
+      algebraMap L (w.adicCompletion L) (algebraMap (𝓞 L) L (algebraMap (𝓞 K) (𝓞 L) r))
+  rw [← IsScalarTower.algebraMap_apply (𝓞 K) K L, ← IsScalarTower.algebraMap_apply (𝓞 K) (𝓞 L) L]
+
+theorem exists_sub_algebraMap_mem_maximalIdeal :
+    ∀ y : w.adicCompletionIntegers L, ∃ r : v.adicCompletionIntegers K,
+      y - algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) r ∈
+        IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) := by
+  intro y
+  obtain ⟨s, hs⟩ := w.exists_algebraMap_sub_mem_maximalIdeal y
+  obtain ⟨c', hc'⟩ := residue_surjective (Ideal.Quotient.mk w.asIdeal s)
+  obtain ⟨r, hr⟩ := Ideal.Quotient.mk_surjective c'
+  refine ⟨algebraMap (𝓞 K) (v.adicCompletionIntegers K) r, ?_⟩
+  have hmem : s - algebraMap (𝓞 K) (𝓞 L) r ∈ w.asIdeal := by
+    have heq : Ideal.Quotient.mk w.asIdeal (algebraMap (𝓞 K) (𝓞 L) r) =
+        Ideal.Quotient.mk w.asIdeal s := by
+      rw [← Ideal.Quotient.algebraMap_mk_of_liesOver (p := v.asIdeal) (P := w.asIdeal) r, hr, hc']
+    rwa [Ideal.Quotient.eq, ← neg_mem_iff, neg_sub] at heq
+  have hsc : (y : w.adicCompletionIntegers L) -
+      algebraMap (𝓞 L) (w.adicCompletionIntegers L) (algebraMap (𝓞 K) (𝓞 L) r) =
+      ((y : w.adicCompletionIntegers L) - algebraMap (𝓞 L) (w.adicCompletionIntegers L) s) +
+        algebraMap (𝓞 L) (w.adicCompletionIntegers L) (s - algebraMap (𝓞 K) (𝓞 L) r) := by
+    rw [map_sub]; ring
+  rw [algebraMap_R_K₀_L₀_eq, hsc]
+  refine (IsLocalRing.maximalIdeal (w.adicCompletionIntegers L)).add_mem hs ?_
+  have hval_lt : w.valuation L (algebraMap (𝓞 L) L (s - algebraMap (𝓞 K) (𝓞 L) r)) < 1 :=
+    (w.valuation_lt_one_iff_mem (s - algebraMap (𝓞 K) (𝓞 L) r)).mpr hmem
+  have hValued_lt : Valued.v (algebraMap (𝓞 L) (w.adicCompletionIntegers L)
+      (s - algebraMap (𝓞 K) (𝓞 L) r) : w.adicCompletion L) < 1 := by
+    rw [show (algebraMap (𝓞 L) (w.adicCompletionIntegers L)
+          (s - algebraMap (𝓞 K) (𝓞 L) r) : w.adicCompletion L) =
+        (algebraMap (𝓞 L) L (s - algebraMap (𝓞 K) (𝓞 L) r) : w.adicCompletion L) from rfl,
+      IsDedekindDomain.HeightOneSpectrum.valuedAdicCompletion_eq_valuation']
+    exact hval_lt
+  exact IsDedekindDomain.HeightOneSpectrum.mem_maximalIdeal_of_valued_lt_one w hValued_lt
+
+/-- **`IsTotallyRamified K L v w` for the cyclotomic instance** — a genuinely
+mixed-characteristic (`CharZero K`, residue characteristic `p`), wild (`p ∣ e = p`), Galois
+(`IsGalois K L`) totally ramified extension of local fields. -/
+theorem isTotallyRamified : IsDedekindDomain.HeightOneSpectrum.IsTotallyRamified K L v w where
+  map_maximalIdeal_eq := map_maximalIdeal_eq
+  finrank_eq := finrank_eq
+  exists_sub_algebraMap_mem_maximalIdeal := exists_sub_algebraMap_mem_maximalIdeal
+
 end Langlands.TotallyRamifiedCyclotomicConcreteExample
 
 end
