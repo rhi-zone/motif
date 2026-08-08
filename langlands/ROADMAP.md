@@ -6888,3 +6888,113 @@ separable, Galois, wildly ramified example needs an Artin–Schreier constructio
 Mathlib has zero irreducibility/Galois machinery" — is now closed as a standalone theory. The
 concrete-instance construction (this section's Priority 3, and §6o's still-open item (a) in its
 fuller Galois form) remains unstarted; it is the natural next step for whoever picks this thread up.
+
+## 6q. Nineteenth pass (2026-08-08): the concrete wild-Galois local-field instance — CLOSED,
+`IsTotallyRamified` fully assembled, sorry-free
+
+**Task.** Build §6p's Priority 3: a concrete `R S K L v w` instance exercising
+`ArtinSchreier.lean` to produce a genuinely wild (`p ∣ e`), Galois, *separable* `IsTotallyRamified`
+witness — the gap left open by `TotallyRamifiedWildConcreteExample` (wild but purely inseparable,
+hence provably not Galois), targeting `ROADMAP.md` §6n item (c).
+
+**Step 0 (premise check) — confirmed.** `ZMod.pow_card (x : ZMod p) : x ^ p = x` (Mathlib,
+`Mathlib.FieldTheory.Finite.Basic:589`) gives `x ^ p - x = 0` for every `x : ZMod p`, so
+`Set.range (fun x : ZMod p => x ^ p - x) = {0}` — every nonzero `a : ZMod p` gives an irreducible
+`ArtinSchreier.poly p a` over `k := ZMod p` itself. This confirmed the premise but also clarified
+what it *doesn't* give: an `a` living in the residue field `k` alone produces an extension with no
+pole anywhere, hence no ramification at any place of `R := k[X]` — the real construction needs `a`
+with an actual pole in `K := Frac(R)`, not merely a nonzero element of `k`.
+
+**Design decision — `S := integralClosure R L`, not a hand-built polynomial ring (a real
+tradeoff, resolved by direct analysis, not by anchoring on the docstring's first suggestion).**
+The two template files build `S` as a literal wrapper of `Polynomial k`, with `algebraMap R S`
+sending `X ↦ Y ^ e` — tractable only because `Y ↦ Y ^ e` is *itself* a finite polynomial covering
+map. This does not carry over to Artin–Schreier: the covering `Y ↦ Y ^ p - Y` is **unramified at
+every finite point of the affine line** (its derivative is the nonzero constant `-1`) and totally
+ramified only **at infinity** — a point with no `HeightOneSpectrum (k[X])` representative. Reaching
+a *finite* ramified place forces the parameter `a` to have a genuine pole there (`a := X⁻¹`, pole of
+order `1`, coprime to `p`, at `v = (X)`); but then the generator `θ` (`θ ^ p - θ = a`) is *not*
+integral over `R`, and no rescaled integral substitute (`Y := X · θ`, satisfying the monic relation
+`Y ^ p - X ^ (p-1) Y - X ^ (p-1) = 0`) can be presented as a fresh polynomial ring the way the
+templates' `S` was — proving that hand-built ring is a domain/Dedekind domain from scratch is as
+much work as the alternative actually taken. That alternative: build `L` as the splitting field of
+`ArtinSchreier.poly p a` directly over `K`, then take `S := integralClosure R L` and get
+`IsDedekindDomain S` / `Module.Finite R S` / `Module.Free R S` / `Module.finrank R S = Module.finrank
+K L` **for free** from Mathlib's general theory of integral closures of Dedekind domains in finite
+*separable* extensions (`Mathlib.RingTheory.DedekindDomain.IntegralClosure`) — separability
+(inherited from `IsGalois K L`, itself unconditional via `ArtinSchreier.instIsGalois`) is exactly the
+hypothesis unavailable in the purely-inseparable wild example, confirming the task's prediction that
+this removes the trace-form obstruction that blocked that file's `finrank_eq`.
+
+**The place `w` — obtained abstractly, not combinatorially.** Since `S` is no longer hand-built,
+`w : HeightOneSpectrum S` cannot be written down explicitly the way the templates' `(Y)` was. It is
+obtained via the general going-up theorem
+(`Ideal.exists_ideal_over_prime_of_isIntegral_of_isDomain`). This in turn meant the ramification
+index `e := v.asIdeal.ramificationIdx' w.asIdeal` had no definitional ideal-level formula to read off
+either — it was pinned to exactly `p` by a genuinely new argument: the global bound `e ≤ p`
+(`Ideal.ramificationIdx_le_finrank`, via the classical fundamental identity
+`Ideal.sum_ramification_inertia` restricted to the single term at `w`) combined with a
+completion-level valuation computation (the same ultrametric case-split used for the field-`K`
+irreducibility check, rerun on `thetaw := algebraMap L (w.adicCompletion L) theta` inside
+`w.adicCompletion L`) showing `e = m · p` for a positive integer `m`, forcing `m = 1`.
+
+**All three fields of `IsTotallyRamified` — CLOSED, sorry-free:**
+- **Field 1** (`map_maximalIdeal_eq`): no definitional ideal identity being available either, this
+  needed an honest algebraic identity `algebraMap Kv Lw xK = pi ^ p * u` (`pi := thetaw⁻¹`, an exact
+  uniformizer of `w`, and `u := (1 - pi ^ (p-1))⁻¹` a genuine unit), obtained by clearing
+  denominators in `thetaw ^ p - thetaw = algebraMap Kv Lw xK⁻¹` — the unit factor drops out at the
+  ideal level (`Ideal.span_singleton_mul_right_unit`).
+- **Field 2** (`finrank_eq`): `gPoly := ArtinSchreier.poly p (algebraMap K Kv a)` is irreducible over
+  `Kv` (same ultrametric argument as the `K`-level one, rerun with `Valued.v`), hence *is*
+  `minpoly Kv thetaw`, pinning `finrank Kv Kv⟮thetaw⟯ = p` exactly; the usual
+  finite-dimensional-hence-closed + dense-image-of-`L` argument gives `Kv⟮thetaw⟯ = Lw`, so
+  `finrank Kv Lw = p`, transported to the completed-integers level via `IsIntegralClosure.rank` —
+  **confirming the task's central prediction**: separability (available here, unlike the
+  inseparable wild example) avoids the trace-form wall entirely.
+- **Field 3** (`exists_sub_algebraMap_mem_maximalIdeal`): the residue degree
+  `f := v.asIdeal.inertiaDeg' w.asIdeal = 1`, obtained the same way as `e = p` (from `e · f ≤ p` with
+  `e = p` already known). Since both quotient rings are fields of degree-`1` extension,
+  `algebraMap (R ⧸ v.asIdeal) (S ⧸ w.asIdeal)` is surjective
+  (`finrank_eq_one_iff_of_nonzero'` applied to `1`), transported to the completed-integers level via
+  the same general single-place density fact + naturality-square argument the template files use.
+
+**A genuine Lean typeclass diamond, hit and resolved.** `Ideal.Quotient.field` is a `protected
+noncomputable abbrev`, not a global instance — so `Module.finrank (R ⧸ p) (S ⧸ P)` computed via the
+`Algebra`-from-`LiesOver` route (`Ideal.inertiaDeg'_algebraMap`) and via
+`finrank_eq_one_iff_of_nonzero'` (which needs `[Field K]`) picked *different, non-defeq* `Semiring`
+paths for the identical quotient ring, producing an opaque "application type mismatch" between two
+syntactically different but propositionally-equal instance chains. Fixed exactly the way Mathlib's
+own `Mathlib.NumberTheory.RamificationInertia.Basic` handles the same situation:
+`attribute [local instance] Ideal.Quotient.field` in this file, so every subsequent instance search
+for `Field (R ⧸ p)` resolves consistently through the same path.
+
+**Step 3 (`expEquiv` / `norm_exp_eq_exp_trace`) — structurally inapplicable, not a remaining gap.**
+`IsGalois K L` holds unconditionally, so this instance genuinely reaches the "wild + Galois"
+milestone. But `norm_exp_eq_exp_trace` additionally requires `[CharZero K] [CharZero L]`, and
+`expEquiv` is built on the same `NonarchimedeanExponential` machinery, whose `exp` series `∑ xⁿ/n!`
+needs characteristic `0` to make sense at all. This repo's exp/log thread targets
+**mixed-characteristic** local fields (finite extensions of `ℚ_p`); this concrete instance is
+**equal-characteristic** (`K` has `CharP K p`, being the function field `Frac(k[X])`) — inherent to
+using `k[X]` as the base Dedekind domain at all, not a choice that could have been made differently
+within this construction. Reaching a mixed-characteristic wild Galois instance to actually exercise
+`expEquiv` would need a different starting point (a genuine `p`-adic base ring), recorded here as the
+concrete next step for whoever picks up that thread, not attempted in this pass.
+
+**Verification.** `nix develop -c lake build Langlands`: clean, whole project (8733 jobs), only
+pre-existing linter warnings unrelated to this file. `grep sorry` on the new file: zero hits.
+
+**Commits:** `352e88f` (K-level field theory: valuation of `a`, `a_not_mem_range`, `L`, `IsGalois`,
+`theta`, `K⟮theta⟯ = L`), `27f0bf0` (`S := integralClosure R L`, its Dedekind/finite/free instances),
+`42e6f42` (`w` via going-up), `9b745d2` (global `e ≤ p` bound via
+`Ideal.sum_ramification_inertia`), `8f1f804` (`e = p` exactly, via completion-level valuation),
+`0b96e14` (field 2, `finrank_eq`), `bbc9cdd` (field 1, `map_maximalIdeal_eq`), `9dde999` (field 3 and
+the full `isTotallyRamified` assembly), `01a670b` (step-3 inapplicability docstring).
+
+**Net effect.** `Langlands.TotallyRamifiedArtinSchreierConcreteExample` is a complete, sorry-free,
+genuinely wild (`p ∣ e`), Galois, separable `IsTotallyRamified K L v w` instance — closing
+`ROADMAP.md` §6n item (c) and §6p's Priority 3. Combined with `TotallyRamifiedConcreteExample`
+(tame) and `TotallyRamifiedWildConcreteExample` (wild, inseparable, partial), this repo now has all
+three qualitatively distinct concrete `IsTotallyRamified` regimes represented, two of them complete.
+The remaining open thread from this instance specifically is exercising `expEquiv`/
+`norm_exp_eq_exp_trace` on a wild Galois example — confirmed to need a genuinely different,
+mixed-characteristic construction, not a continuation of this one.
