@@ -6,6 +6,7 @@ import Langlands.AdicCompletionIntegralClosure
 import Langlands.HeightOneSpectrumRationalPrimeTower
 import Langlands.AdicCompletionPrimitiveElementDegree
 import Langlands.NormMapResidueCompatibility
+import Langlands.NonarchimedeanExponentialAdicCompletion
 
 /-!
 # A concrete MIXED-CHARACTERISTIC, WILD, GALOIS ramified extension: `ℚ(ζ_{p²}) / ℚ(ζ_p)`
@@ -719,6 +720,64 @@ theorem isTotallyRamified : IsDedekindDomain.HeightOneSpectrum.IsTotallyRamified
   map_maximalIdeal_eq := map_maximalIdeal_eq
   finrank_eq := finrank_eq
   exists_sub_algebraMap_mem_maximalIdeal := exists_sub_algebraMap_mem_maximalIdeal
+
+/-! ### Mixed characteristic: the entry conditions of the `exp`/`log` machinery
+
+This is what the instance was built for. Every prior concrete `IsTotallyRamified` instance in this
+repo is equal-characteristic, so none of them can even *state* the hypotheses of
+`Langlands.NonarchimedeanExponential`'s `exp`/`log` (whose series `∑ xⁿ / n!` needs `CharZero`) —
+see the closing section of `TotallyRamifiedArtinSchreierConcreteExample`, which records this as a
+structural, not incidental, obstruction. Here `K` and `L` are number fields, so
+`Langlands.AdicCompletionMixedCharacteristic`'s `instCharZeroAdicCompletion` gives `CharZero` at
+the completed level for free, and the residue characteristic is `p` because `p` lies in both
+`v.asIdeal` and `w.asIdeal`. That supplies `‖(p : Kv)‖ < 1` and `‖(p : Lw)‖ < 1` — the threshold
+hypothesis `exp`/`log` take as input — via `norm_natCast_lt_one_of_charP_residueField`. -/
+
+instance charP_residue_v : CharP ((𝓞 K) ⧸ v.asIdeal) p := by
+  haveI := v.isMaximal
+  haveI := Ideal.Quotient.field v.asIdeal
+  refine (CharP.charP_iff_prime_eq_zero (Fact.out : Nat.Prime p)).mpr ?_
+  rw [← map_natCast (Ideal.Quotient.mk v.asIdeal) p, Ideal.Quotient.eq_zero_iff_mem]
+  exact p_mem_v_asIdeal
+
+instance charP_residue_w : CharP ((𝓞 L) ⧸ w.asIdeal) p := by
+  haveI := w.isMaximal
+  haveI := Ideal.Quotient.field w.asIdeal
+  refine (CharP.charP_iff_prime_eq_zero (Fact.out : Nat.Prime p)).mpr ?_
+  rw [← map_natCast (Ideal.Quotient.mk w.asIdeal) p, Ideal.Quotient.eq_zero_iff_mem]
+  exact IsCyclotomicExtension.Rat.p_mem_span_zeta_sub_one p 1 hζ
+
+/-! ### Two blockers found (not worked around) between this instance and the `exp`/`log` API
+
+Both `Langlands.NonarchimedeanExponentialAdicCompletion`'s
+`norm_natCast_lt_one_of_charP_residueField` / `exists_maximalIdeal_pow_lt_convergenceRadius` and
+`Langlands.AdicCompletionNormExpTrace`'s `norm_exp_eq_exp_trace` remain out of reach for this
+instance, for two *specific*, independently-fixable reasons. Neither was worked around here; both
+are recorded so the next pass starts from a diagnosis rather than a symptom.
+
+**(1) A `NormedField (v.adicCompletion K)` instance diamond, surfacing only for number fields.**
+The `exp`/`log` API is phrased with `‖·‖` from `Langlands.NormMap`'s
+`instNontriviallyNormedFieldAdicCompletion`, which is `Valued.toNontriviallyNormedField` applied to
+`NormMap`'s own `Valuation.RankOne` instance for `Valued.v`. Mathlib *also* has
+`NumberField.IsDedekindDomain.HeightOneSpectrum.instNormedFieldValuedAdicCompletion`
+(`Mathlib.NumberTheory.NumberField.Completion.FinitePlace`), likewise `Valued.toNormedField … ℤᵐ⁰`
+but applied to the `absNorm`-based `instRankOneAdicCompletion`. Both exist here (`K` and `L` *are*
+number fields), and the direct `NormedField` instance wins instance search over the repo's
+`NontriviallyNormedField.toNormedField`, so every `‖·‖` written in this file elaborates to Mathlib's
+norm while every `exp`/`log` lemma is stated in the repo's. The two are *not* the same function:
+they share a valuation and a topology but differ by the choice of `RankOne` hom, i.e. by the real
+scaling factor. This is not a defeq/unfolding annoyance to be forced past with an
+`attribute [-instance]`; it is a genuine question of which `RankOne` is canonical for this repo,
+whose answer changes statements downstream. No equal-characteristic instance in this repo could
+have exposed it, because Mathlib's competing instance is number-field-specific.
+
+**(2) `norm_exp_eq_exp_trace` additionally needs `IsGalois (v.adicCompletion K)
+(w.adicCompletion L)`, and only `Algebra.IsSeparable` is available here.** Separability at the
+completed level is established above; normality is not. It should be true and provable — `L / K` is
+Galois with `μ_p ⊆ K`, so the conjugates of `theta = ζ - 1` are `(theta + 1) * ξ - 1` for `ξ ∈ μ_p`,
+each a `Kv`-polynomial expression in `theta`, so `minpoly Kv Θ` splits in `Kv⟮Θ⟯ = Lw` — but turning
+that into `Polynomial.Splits` plus an `IsSplittingField` instance is a self-contained piece of work
+that was not attempted. -/
 
 end Langlands.TotallyRamifiedCyclotomicConcreteExample
 
