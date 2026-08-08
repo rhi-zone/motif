@@ -1,3 +1,5 @@
+import Mathlib.Data.ZMod.Basic
+import Mathlib.FieldTheory.Finite.Basic
 import Mathlib.FieldTheory.SplittingField.Construction
 import Mathlib.RingTheory.Polynomial.Vieta
 
@@ -118,5 +120,45 @@ theorem not_irreducible_of_mem_range (h : a ∈ Set.range (fun x : k => x ^ p - 
   · rw [isUnit_iff_degree_eq_zero, degree_eq_natDegree hgne, hgdeg] at hu
     have hpos : (0 : ℕ) < p - 1 := by omega
     exact absurd hu (by exact_mod_cast hpos.ne')
+
+omit [CharP k p] in
+/-- **The full root set, in any field where `poly p a` splits and has a root `θ`.** Every root of
+`poly p a` there is `θ + i` for `i` in the image of `ZMod p` (`isRoot_add_of_isRoot`), giving `p`
+distinct roots (`ZMod.castHom` into a field of characteristic `p` is injective); since `poly p a`
+splits, it has exactly `p` roots, so these are *all* of them. -/
+theorem roots_eq_image_add {L : Type*} [Field L] [Algebra k L] [CharP L p]
+    (hSplits : ((poly p a).map (algebraMap k L)).Splits)
+    {θ : L} (hθroot : ((poly p a).map (algebraMap k L)).IsRoot θ) :
+    ((poly p a).map (algebraMap k L)).roots =
+      (Finset.univ : Finset (ZMod p)).val.map
+        (fun j => θ + ZMod.castHom (dvd_refl p) L j) := by
+  set M := (poly p a).map (algebraMap k L) with hMdef
+  set ψ : ZMod p →+* L := ZMod.castHom (dvd_refl p) L with hψdef
+  set f : ZMod p → L := fun j => θ + ψ j with hfdef
+  have hMne : M ≠ 0 := Polynomial.map_ne_zero (poly_ne_zero p a)
+  have hMdeg : M.natDegree = p := (Polynomial.natDegree_map _).trans (natDegree_poly p a)
+  have hMcard : M.roots.card = p := by
+    have hc := Polynomial.splits_iff_card_roots.mp hSplits
+    rwa [hMdeg] at hc
+  have hψ_inj : Function.Injective ψ := ZMod.castHom_injective L
+  have hpow : ∀ j : ZMod p, ψ j ^ p = ψ j := fun j => by rw [← map_pow, ZMod.pow_card]
+  have hf_inj : Function.Injective f := fun i j hij => hψ_inj (add_left_cancel hij)
+  have hθaeval : aeval θ (poly p a) = 0 := by
+    rw [aeval_def, ← Polynomial.eval_map]; exact hθroot
+  have hf_root : ∀ j, M.IsRoot (f j) := by
+    intro j
+    show M.eval (f j) = 0
+    rw [hMdef, Polynomial.eval_map, ← Polynomial.aeval_def]
+    exact isRoot_add_of_isRoot hθaeval (hpow j)
+  have hle : (Finset.univ : Finset (ZMod p)).val.map f ≤ M.roots := by
+    have hNodup : ((Finset.univ : Finset (ZMod p)).val.map f).Nodup :=
+      Finset.univ.nodup.map hf_inj
+    rw [Multiset.le_iff_subset hNodup]
+    intro x hx
+    obtain ⟨j, -, rfl⟩ := Multiset.mem_map.mp hx
+    exact Polynomial.mem_roots'.mpr ⟨hMne, hf_root j⟩
+  have hcard_eq : ((Finset.univ : Finset (ZMod p)).val.map f).card = M.roots.card := by
+    rw [Multiset.card_map, Finset.card_val, Finset.card_univ, ZMod.card, hMcard]
+  exact (Multiset.eq_of_le_of_card_le hle hcard_eq.ge).symm
 
 end ArtinSchreier
