@@ -151,6 +151,72 @@ instance instIsDiscreteValuationRingValuationSubringAdicCompletion :
 
 end RankOne
 
+end IsDedekindDomain.HeightOneSpectrum
+
+section RankOneComparison
+
+/-! ### Two `RankOne` instances on the same discrete valuation are related by a fixed `rpow`
+
+`instRankOneValuedAdicCompletion` above fixes `e = 2`; Mathlib's own
+`NumberField.HeightOneSpectrum.instRankOneAdicCompletion` (`Mathlib.NumberTheory.NumberField.
+Completion.FinitePlace`) fixes `e = absNorm v.asIdeal` on the very same `Valued.v`. Both arise from
+`Valuation.IsRankOneDiscrete.rankOne`, whose underlying group homomorphism
+(`valueGroup₀_equiv_withZeroMulInt`) does not depend on `e` at all — only the final
+`WithZeroMulInt.toNNReal e` step does, and that step sends a generator to `e ^ n` for the same
+integer `n` regardless of `e`. Consequently the two `norm`s it induces are related pointwise by a
+fixed positive real power: this is the general fact making precise "same valuation, same topology,
+different real scaling" for *any* two `rankOne`-built instances on a discretely-valued field, not
+just the two competing instances on `v.adicCompletion F`. -/
+
+open scoped WithZero NNReal
+
+open Valuation Valuation.IsRankOneDiscrete in
+/-- **Two `RankOne` norms built by `Valuation.IsRankOneDiscrete.rankOne` from the same discrete
+valuation, at different base constants `e₁, e₂ > 1`, are related by a fixed `rpow`.**
+
+Proof sketch: writing `hom_{e}` for `(rankOne v he).hom`, `hom_e = WithZeroMulInt.toNNReal e ∘ φ`
+where `φ := valueGroup₀_equiv_withZeroMulInt v` does not depend on `e`; for `z ≠ 0`,
+`WithZeroMulInt.toNNReal e z = e ^ n` for the same integer `n` (independent of `e`), so
+`hom_{e₁} z = e₁ ^ n = (e₂ ^ n) ^ (log e₁ / log e₂) = (hom_{e₂} z) ^ (log e₁ / log e₂)`
+by comparing logarithms; the `z = 0` case is `0 = 0 ^ (log e₁ / log e₂)` since the exponent is
+nonzero. -/
+theorem Valuation.norm_rankOne_rpow {R : Type*} [Field R] (v : Valuation R ℤᵐ⁰)
+    [v.IsRankOneDiscrete] {e₁ e₂ : ℝ≥0} (he₁ : 1 < e₁) (he₂ : 1 < e₂) (x : R) :
+    @Valuation.norm R _ ℤᵐ⁰ _ v (rankOne v he₁) x
+      = (@Valuation.norm R _ ℤᵐ⁰ _ v (rankOne v he₂) x) ^ (Real.log e₁ / Real.log e₂) := by
+  rw [Valuation.norm_def, Valuation.norm_def]
+  set z := v.restrict x with hz
+  have hh1 : @RankOne.hom R ℤᵐ⁰ _ _ v (rankOne v he₁) z
+      = WithZeroMulInt.toNNReal (ne_of_gt (lt_trans zero_lt_one he₁))
+          (valueGroup₀_equiv_withZeroMulInt v z) := rfl
+  have hh2 : @RankOne.hom R ℤᵐ⁰ _ _ v (rankOne v he₂) z
+      = WithZeroMulInt.toNNReal (ne_of_gt (lt_trans zero_lt_one he₂))
+          (valueGroup₀_equiv_withZeroMulInt v z) := rfl
+  rw [hh1, hh2]
+  set w := valueGroup₀_equiv_withZeroMulInt v z with hw
+  have he1pos : (0 : ℝ) < (e₁ : ℝ) := NNReal.coe_pos.mpr (lt_trans zero_lt_one he₁)
+  have he2pos : (0 : ℝ) < (e₂ : ℝ) := NNReal.coe_pos.mpr (lt_trans zero_lt_one he₂)
+  have hl1 : (0 : ℝ) < Real.log e₁ := Real.log_pos (by exact_mod_cast he₁)
+  have hl2 : (0 : ℝ) < Real.log e₂ := Real.log_pos (by exact_mod_cast he₂)
+  by_cases hw0 : w = 0
+  · rw [WithZeroMulInt.toNNReal_pos_apply _ hw0, WithZeroMulInt.toNNReal_pos_apply _ hw0,
+      NNReal.coe_zero, Real.zero_rpow (div_ne_zero hl1.ne' hl2.ne')]
+  · rw [WithZeroMulInt.toNNReal_neg_apply _ hw0, WithZeroMulInt.toNNReal_neg_apply _ hw0]
+    set n : ℤ := (WithZero.unzero hw0).toAdd with hn
+    have hcast1 : ((e₁ ^ n : ℝ≥0) : ℝ) = (e₁ : ℝ) ^ n := by push_cast; ring
+    have hcast2 : ((e₂ ^ n : ℝ≥0) : ℝ) = (e₂ : ℝ) ^ n := by push_cast; ring
+    rw [hcast1, hcast2]
+    have hpos1 : (0 : ℝ) < (e₁ : ℝ) ^ n := zpow_pos he1pos n
+    have hpos2 : (0 : ℝ) < (e₂ : ℝ) ^ n := zpow_pos he2pos n
+    apply Real.log_injOn_pos (Set.mem_Ioi.mpr hpos1)
+      (Set.mem_Ioi.mpr (Real.rpow_pos_of_pos hpos2 _))
+    rw [Real.log_zpow, Real.log_rpow hpos2, Real.log_zpow]
+    field_simp
+
+end RankOneComparison
+
+namespace IsDedekindDomain.HeightOneSpectrum
+
 section IntegralClosure
 
 /-! ### Elements of a valuation-ring extension are integral over the base

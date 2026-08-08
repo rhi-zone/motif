@@ -29,6 +29,7 @@ import Langlands.ProfiniteCompletionUlift
 import Langlands.ProfiniteGrpUlift
 import Langlands.RamificationFiltration
 import Langlands.RamificationFiltrationAdicCompletion
+import Langlands.RankOneNormTransport
 import Langlands.ResidueField
 import Langlands.TotallyRamifiedArtinSchreierConcreteExample
 import Langlands.TotallyRamifiedConcreteExample
