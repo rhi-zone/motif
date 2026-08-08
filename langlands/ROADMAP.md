@@ -6998,3 +6998,114 @@ three qualitatively distinct concrete `IsTotallyRamified` regimes represented, t
 The remaining open thread from this instance specifically is exercising `expEquiv`/
 `norm_exp_eq_exp_trace` on a wild Galois example — confirmed to need a genuinely different,
 mixed-characteristic construction, not a continuation of this one.
+
+## 6r. Twentieth pass (2026-08-08): the mixed-characteristic cyclotomic instance — base-level
+scaffolding and the wild ramification numbers CLOSED; completed-level `IsGalois` and the full
+`IsTotallyRamified` assembly not attempted
+
+**Task.** Close the gap flagged at the end of §6q: every concrete `IsTotallyRamified` instance so
+far (`TotallyRamifiedConcreteExample`, `TotallyRamifiedWildConcreteExample`,
+`TotallyRamifiedArtinSchreierConcreteExample`) is equal-characteristic, so none can exercise the
+`CharZero`-only `AdicCompletionNormExpTrace.norm_exp_eq_exp_trace` /
+`NonarchimedeanExponentialUnitsIso.expEquiv` machinery. Build a genuinely mixed-characteristic,
+wild (`p ∣ e`), Galois instance using cyclotomic number fields `K := ℚ(ζ_p)`, `L := ℚ(ζ_{p²})`.
+Priorities, in order: (a) confirm the concrete numbers; (b) a general-purpose ramification/inertia
+translation bridge lemma, if the pattern is generic; (c) `v`/`w`/`IsGalois` at the base level; (d)
+`IsGalois` at the completed level; (e) full `IsTotallyRamified`.
+
+**Priority (a) — CLOSED.** Checked `Mathlib.NumberTheory.NumberField.Cyclotomic.Ideal` (recent
+Mathlib, previously unused in this repo): it has exactly the needed facts, uniformly in `p`, no
+small-`p` special-casing required on the number-theory side —
+`IsCyclotomicExtension.Rat.ncard_primesOver_of_prime`/`_of_prime_pow` (a unique prime above `p` in
+`ℚ(ζ_p)`/`ℚ(ζ_{p^(k+1)})`), `eq_span_zeta_sub_one_of_liesOver'`/`_of_liesOver` (that unique prime is
+the *explicit* ideal `span {ζ - 1}`, no going-up theorem needed), and
+`ramificationIdx_eq_of_prime`/`_of_prime_pow` (`p - 1`, resp. `p ^ k * (p - 1)`, exactly). For
+`K := ℚ(ζ_p) ⊆ L := ℚ(ζ_{p²})`, this gives `e(v/p) = p - 1`, `e(w/p) = p * (p - 1)`, hence
+(tower-multiplicativity) `e(w/v) = p` exactly — wild for *every* prime `p` uniformly, not just a
+lucky small case. `p = 2` is a degenerate choice for this file specifically (`K = ℚ(ζ_2) = ℚ`, an
+uninteresting corner of the general construction, though not wrong); `p = 3` is the smallest prime
+giving a genuinely nontrivial `K` (`ℚ(ζ_3) = ℚ(√-3)`, a quadratic field), so `p = 3` is used. No PID
+result (`Mathlib.NumberTheory.NumberField.Cyclotomic.PID`'s `three_pid`) is needed, since
+`IsDedekindDomain (𝓞 K)` is already automatic for every number field's ring of integers.
+
+**Priority (b) — CLOSED.** New file `Langlands/HeightOneSpectrumRationalPrimeTower.lean`: a
+generic (not cyclotomic-specific) bridge for any tower of number fields `K ⊆ L` with places `v`/`w`
+over a rational prime `p`, translating this repo's `HeightOneSpectrum`/`ramificationIdx'`/
+`inertiaDeg'` vocabulary into Mathlib's newer, Galois-orbit-based `Ideal.ramificationIdx`/
+`Ideal.inertiaDeg` (unprimed, relative-to-`ℤ`) vocabulary that `NumberField.Cyclotomic.Ideal`
+states its concrete formulas in. Composes two Mathlib pieces not previously chained in this repo:
+the primed/unprimed bridge (`Ideal.ramificationIdx'_eq_ramificationIdx`/
+`Ideal.inertiaDeg'_eq_inertiaDeg`) and tower multiplicativity of the primed invariants
+(`Ideal.ramificationIdx'_algebra_tower'`/`Ideal.inertiaDeg'_algebra_tower`). Two results:
+`ramificationIdx_int_eq_mul_ramificationIdx' : Ideal.ramificationIdx w.asIdeal ℤ =
+Ideal.ramificationIdx v.asIdeal ℤ * v.asIdeal.ramificationIdx' w.asIdeal` and the inertia-degree
+analogue. Fought through three Lean 4 elaboration quirks worth recording for future sessions: (1)
+`inferInstance` fails to find `CyclotomicField`'s `[CharZero K] : IsCyclotomicExtension {n} K
+(CyclotomicField n K)` instance even though the identical term typechecks when applied explicitly
+(no diagnosis found beyond "apply" silently failing in the trace; worked around everywhere by
+calling `CyclotomicField.isCyclotomicExtension n K` explicitly instead); (2) a `theorem` stated
+inside `namespace IsDedekindDomain.HeightOneSpectrum` silently drops section variables from its
+elaborated context if they don't appear in the stated *conclusion* type, even if the variable is
+needed by the proof and appears in other section-level instance hypotheses — surfaces as
+inscrutable "unknown identifier" errors deep in unrelated-looking terms; fixed with explicit
+`include`; (3) `include`/`omit ... in` cannot directly follow a doc comment (parses as "expected
+'lemma'"), but must precede it — `omit ... in` immediately followed by a docstring is fine, oddly
+asymmetric with bare `include` (no `in`), which needs no such care and can follow a docstring.
+
+**Priority (c) — CLOSED, and simpler than every prior instance file.** In
+`Langlands/TotallyRamifiedCyclotomicConcreteExample.lean`: `L := CyclotomicField (p ^ (1 + 1)) ℚ`
+(kept syntactically as `p ^ (1 + 1)`, not `p ^ 2`, to match Mathlib's `k = 1` prime-power lemmas
+without rewriting), `K := ℚ⟮ζₚ⟯` for `ζₚ := ζ ^ p` — an `IntermediateField ℚ L`, exactly the
+construction Mathlib's own `IsCyclotomicExtension.Rat.Galois.inertiaDegIn_ramificationIdxIn_aux`
+uses internally, giving `Algebra K L` for free. `IsGalois K L` is free: `IsGalois ℚ L`
+(`IsCyclotomicExtension.isGalois`, unconditional) plus Mathlib's `IsGalois.tower_top_intermediateField`
+(already a global instance — any intermediate field of a Galois extension is Galois over it) — no
+completed-level from-scratch construction needed at *this* level, unlike every field-level `IsGalois`
+in this repo so far. `v` and `w` are **explicit** ideals (`span {ζ_K - 1}` / `span {ζ - 1}`, `ζ_K` a
+primitive `p`-th root native to `K` itself rather than reusing the `L`-valued `ζₚ`, sidestepping an
+`algebraMap`-injectivity detour that isn't needed since every choice of primitive root gives the
+same ideal `v` by uniqueness) — no going-up theorem needed at all, unlike
+`TotallyRamifiedArtinSchreierConcreteExample` (whose `S` was not a hand-built ring, forcing an
+abstract existence argument). `w.asIdeal.LiesOver v.asIdeal` follows from uniqueness of the prime
+over `p` in `𝓞 K`: `w.asIdeal`'s comap to `𝓞 K` is itself prime and lies over `p` (transitivity of
+`Ideal.under`), so it must be `v.asIdeal`, the *only* such prime. Finally, `e := v.asIdeal.
+ramificationIdx' w.asIdeal = p` and `f := v.asIdeal.inertiaDeg' w.asIdeal = 1` are pinned down
+**purely algebraically** via priority (b)'s bridge lemma plus priority (a)'s formulas
+(`p * (p - 1) = (p - 1) * e` forces `e = p` by cancelling the common nonzero factor) — no
+completion-level valuation computation needed, unlike every prior instance file (each of which had
+to run an ultrametric case-split on the completed field to pin `e` down, since their `w` was not
+classified explicitly enough to read `e` off algebraically).
+
+**Priorities (d) and (e) — not attempted this pass.** What remains, concretely: `IsGalois
+(v.adicCompletion K) (w.adicCompletion L)` at the completed level. No generic transport lemma for
+"the completion of a Galois extension at a place is Galois" exists yet in this repo or in the
+Mathlib files checked (`RamificationInertia.HilbertTheory`/`.Galois` build genuinely different
+ideal/decomposition-field-level Hilbert theory, not adic-completion-level analytic Galois theory).
+`TotallyRamifiedArtinSchreierConcreteExample` built this from scratch via an explicit
+generator/minimal-polynomial/density argument (`adjoin_thetaw_eq_top` + `IsSeparable` transport);
+the same shape of argument should carry over here with `ζ` (or `ζₚ`) playing the role of the
+Artin–Schreier root `theta`, but this was not attempted — it is a substantial, self-contained piece
+of work in its own right (roughly half of §6q's effort was this step for the Artin–Schreier case).
+Once (d) closes, (e)'s three fields (`map_maximalIdeal_eq`, `finrank_eq`,
+`exists_sub_algebraMap_mem_maximalIdeal`) should follow the same overall shape as
+`TotallyRamifiedArtinSchreierConcreteExample`'s, adapted to `ζ`/`ζₚ` in place of `theta`.
+
+**Verification.** `nix develop -c lake build Langlands`: clean, whole project. `grep -rn sorry` on
+both new files (`Langlands/HeightOneSpectrumRationalPrimeTower.lean`,
+`Langlands/TotallyRamifiedCyclotomicConcreteExample.lean`): zero hits.
+
+**Commits:** `744bd4a` (`p`, `K`, `L` field-level setup), `7c58cf8` (the general
+`HeightOneSpectrumRationalPrimeTower` bridge lemma — priority (b)), `9a19f0e` (`IsGalois K L`,
+explicit `v` and `w`), `f72cecf` (`w.asIdeal.LiesOver v.asIdeal`, going-up-free), `04572dc`
+(`e = p` exactly, `f = 1`, via the bridge lemma — closing priority (c)).
+
+**Net effect.** Priorities (a)–(c) of the task fully closed, sorry-free; (d) and (e) — the
+completed-level `IsGalois` transport and the full `IsTotallyRamified` assembly — are the precise
+remaining gap, left honestly open rather than rushed. The general-purpose bridge lemma
+(`Langlands.HeightOneSpectrumRationalPrimeTower`) is reusable independent of this instance, and the
+explicit, going-up-free construction of `v`/`w`/`e`/`f` here is markedly simpler than any prior
+concrete instance file's — a direct consequence of recent Mathlib's `NumberField.Cyclotomic.Ideal`
+giving *explicit* unique primes and closed-form ramification data for cyclotomic fields, unlike the
+hand-built rings the tame/wild/Artin–Schreier instances needed. The natural next step for whoever
+picks up this thread is priority (d): building `IsGalois (v.adicCompletion K) (w.adicCompletion L)`
+via an explicit-generator argument analogous to `TotallyRamifiedArtinSchreierConcreteExample`'s.
