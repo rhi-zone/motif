@@ -6710,3 +6710,83 @@ task (c), both entirely unstarted, with (c) blocked on (a).
 **Commits:** `3189084` (`expHom`, `norm_eq_of_norm_sub_lt`), `d139f3e` (`expHom_injective`,
 `norm_exp_sub_one_sub_lt`), `fdffb92` (`norm_log_eq_of_lt_sq`, `logUnitsThreshold`), `48680a9`
 (`log_mem_maximalIdeal_pow`), `2f9eb56` (`expHom_surjective`, `expEquiv`).
+
+## 6o. Seventeenth pass (2026-08-08): item (a) attempted directly — two of three fields of
+`IsTotallyRamified` closed for a genuine wild instance; the third blocked on a real, newly-found
+mathematical gap, not a missing lemma name
+
+**Task.** Build item (a), the "only item with zero progress across sixteen passes": a concrete
+instance with residue characteristic `p ∣ e` (wild ramification), following
+`Langlands.TotallyRamifiedConcreteExample`'s pattern. New file:
+`Langlands/TotallyRamifiedWildConcreteExample.lean`, with `p := e := 2` (the simplest wild case,
+worked on the first attempt — no need to fall back to a larger prime). Registered in
+`Langlands.lean`.
+
+**What closed, verbatim or near-verbatim from the tame file, all sorry-free:** `S`
+(Dedekind-domain wrapper type), the algebra map `R →+* S` (`X ↦ Y ^ e` via `Polynomial.expand`),
+`Module.Finite R S` / `Module.IsTorsionFree R S` via the explicit `{Y ^ i : i < e}` basis,
+`Module.Finite K L` via `K⟮yL⟯ = ⊤`, `w LiesOver v`, `ramificationIdx'_eq = e`, the uniformizer
+facts (`xK`, `yLw`, their valuations, `xK₀`, `yLw₀`), **field 1** of `IsTotallyRamified`
+(`map_maximalIdeal_eq`), **field 3** (`exists_sub_algebraMap_mem_maximalIdeal`, reusing
+`AdicCompletionIntegersResidue`'s general density fact unchanged), and the *field-level* (not
+completed-integers-level) degree computation `finrank_Kv_Lw : Module.finrank (v.adicCompletion K)
+(w.adicCompletion L) = e` (via `Polynomial.X_pow_sub_C_irreducible_of_prime`, confirmed to have no
+characteristic restriction for `e` prime, plus `adjoin_yLw_eq_top`'s closed+dense argument, neither
+step needing separability). One bug fixed en route: the tame file's `xK_not_pow` sign convention
+(`e * log = -1`, not `= 1`) needed adjusting for the general-`e` case.
+
+**What did NOT close, and why — a genuine mathematical gap, not a naming/lookup miss.** The tame
+file's task brief (this pass's own, based on a line-by-line read before starting) asserted no field
+of `IsTotallyRamified` needs separability. That assessment was wrong for field 2
+(`finrank_eq`, at the *completed-integers* level `Module.finrank (v.adicCompletionIntegers K)
+(w.adicCompletionIntegers L) = e`): the tame file's route, `IsIntegralClosure.rank`, was checked
+against its *printed signature* (`[IsPrincipalIdealRing A] [IsTorsionFree A L]`, no
+`Algebra.IsSeparable`), which looked clean. Building this file surfaced that the printed signature
+is misleading — `IsIntegralClosure.rank` calls `.module_free`, which calls `.isNoetherian`, which is
+declared inside a `variable [Algebra.IsSeparable K L]` section in
+`Mathlib.RingTheory.DedekindDomain.IntegralClosure` (lines 146–199) and is therefore *compiled*
+with that instance as a hidden hypothesis, invisible in the doc-rendered signature. The reason is
+not a formalization accident: `.isNoetherian`'s proof builds a dual basis against the *trace form*
+(`traceForm_nondegenerate`), and the trace form of a purely inseparable extension is identically
+zero in characteristic `p` — the proof technique itself cannot apply here, not merely
+"not yet ported". `Langlands.AdicCompletionIntegralClosure`'s own docstring already flagged this
+exact restriction for `Module.Finite`/`Module.Free` of `adicCompletionIntegers`, unnoticed until
+this pass tried to actually use it.
+
+**Two viable, unbuilt routes identified for closing field 2** (documented in the file, above
+`exists_sub_algebraMap_mem_maximalIdeal`): (i) a compactness/density argument — `v.adicCompletionIntegers
+K` is compact (finite residue field + completeness + DVR, via Mathlib's
+`Valued.integer.compactSpace_iff_completeSpace_and_isDiscreteValuationRing_and_finite_residueField`
+or an analogue for `HeightOneSpectrum`), making the continuous image of `(v.adicCompletionIntegers
+K)^e` under `(a_i) ↦ ∑ a_i • yLw₀^i` compact hence closed, pinned to all of
+`w.adicCompletionIntegers L` by containing the dense image of `S`; or (ii) a completeness-based
+successive-approximation bootstrap using field 3's residue-lifting fact repeatedly, folding the
+resulting series back into `e` coefficients via the exact identity `yLw₀^e = algebraMap xK₀`.
+Linear independence of `{yLw₀^i : i < e}` is *not* the obstacle — `Polynomial.linearIndependent_pow`
+plus `LinearIndependent.restrict_scalars` gives it directly from `natDegree_minpoly_yLw`; only
+*surjectivity* (residue integrality, i.e. genuine "`O_L = O_K[π_L]`" content) is missing, and
+neither route is built, in Mathlib or this repo, in directly-usable form. Building either was
+assessed as comparable in scope to this repo's other from-scratch multi-pass threads (e.g. the
+sixteen-pass `expEquiv` line) and was not forced this pass, per the task's explicit instruction not
+to risk leaving the file broken or `sorry`-laden.
+
+**Net result:** `IsTotallyRamified` is **not** assembled for the wild instance this pass (2 of 3
+fields done, 1 genuinely blocked) — a real but partial milestone, reported as such rather than
+overstated. `nix develop -c lake build Langlands`: clean, whole project (8731 jobs, only
+pre-existing linter warnings). `#print axioms` on `map_maximalIdeal_eq`,
+`exists_sub_algebraMap_mem_maximalIdeal`, `finrank_Kv_Lw`, `ramificationIdx'_eq`:
+`[propext, Classical.choice, Quot.sound]` only, no `sorry`.
+
+**Independent, orthogonal limitation, noted for completeness even though field 2 is the actual
+blocker:** this instance (`Y^p - X`, purely inseparable in characteristic `p`) is not Galois, so
+even if field 2 closed, it could not exercise `IsTamelyRamified`, the tame capstone
+(`index_localNormMap_range_eq_of_isTotallyRamified`), or the Galois-dependent
+`norm_exp_eq_exp_trace`/`expEquiv` machinery from §6n item (c). A genuinely separable, Galois,
+wildly ramified example needs an Artin–Schreier construction (`X · Y^p - X · Y - 1`, Galois with
+group `ZMod p`), for which Mathlib has zero irreducibility/Galois machinery (confirmed absent again
+this pass) — unchanged from prior passes' assessment, out of scope here.
+
+**What remains, precisely:** (a) field 2 of `IsTotallyRamified` for the wild instance — one of the
+two routes above, a genuinely new, bounded but nontrivial piece of topological/valuation-theoretic
+machinery; (b)/(c) from §6n, unchanged, both still blocked on (a) in its fuller (Galois) form;
+Artin–Schreier machinery, still entirely unbuilt, still needed for a Galois wild example at all.
