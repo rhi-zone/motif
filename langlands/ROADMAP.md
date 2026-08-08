@@ -6608,3 +6608,105 @@ concrete mixed-characteristic instance, (b) packaging item 3 + `exp_add` into th
 that isomorphism using this pass's `norm_exp_eq_exp_trace` — the wild analogue of what
 `TotallyRamifiedNormIndex` does with residue-field multiplication in the tame case. None of (a)–(c)
 was attempted this pass, and (a) in particular is substantial and independent.
+
+## 6n. Sixteenth pass (2026-08-08): item (b) CLOSED — `U_A^{(i)} ≅ (𝔪_A^i, +)`, plus an import-audit
+finding (no action needed)
+
+**Part 1: the `langlands/Langlands/` import-graph audit.** Re-checked whether every `.lean` file
+under `langlands/Langlands/` is transitively reachable from `Langlands.lean`. Confirmed clean:
+`nix develop -c lake build Langlands` (8730 jobs) and an independent BFS over the import graph
+starting from `Langlands.lean`'s import list both show no orphaned/unbuilt files. The fifteenth
+pass's fix (importing `NonarchimedeanExponentialExtension`, `NonarchimedeanExpLogDegreeMatch`,
+`NonarchimedeanExponentialUnitsFiltration`, `PrimitiveElementFusion`) fully resolved the gap found
+then; nothing further needed here.
+
+**Part 2: the isomorphism, task was to close it, and it closed in full — no scope reduction from
+the suggested design.** New file `Langlands/NonarchimedeanExponentialUnitsIso.lean`. Headline
+statement:
+
+```
+noncomputable def expEquiv (hnorm : ‖(p : K)‖ < 1) {π : A}
+    (hπ : maximalIdeal A = Ideal.span ({π} : Set A)) (hπ0 : (π : K) ≠ 0)
+    (hπnorm : ‖(π : K)‖ < 1) {i : ℕ} (hthreshStrict : ‖(π : K)‖ ^ i < logUnitsThreshold K p) :
+    Multiplicative ↥(maximalIdeal A ^ i) ≃* ↥(ValuationSubring.principalUnitsPow A i)
+```
+
+i.e. `U_A^{(i)} ≅ (𝔪_A^i, +)` at the abstract `ValuationSubring` level of generality
+(`A`/`hA` from `Langlands.NonarchimedeanExponentialFiltration`'s convention), for `i` above a
+*strict* threshold `logUnitsThreshold K p := ‖p‖ ^ 2`. sorry-free; `#print axioms expEquiv`:
+`[propext, Classical.choice, Quot.sound]` only. Whole-project `lake build Langlands`: clean, 8730
+jobs.
+
+**What closed vs. what needed genuinely new work, against the task brief's suggested design:**
+
+* **The homomorphism (`expHom`).** Closed exactly as suggested: `exp_mem_principalUnitsPow`'s
+  existential refactored into `expUnit`/`expUnit_mem`/`expUnit_coe` (`Classical.choose` plus its two
+  spec projections), bundled into `expHom : Multiplicative ↥(𝔪_A^i) →* ↥(U_A^{(i)})`. Both
+  `map_one'`/`map_mul'` reduce, via a `Subtype.ext`/`Units.ext`/`Subtype.ext` chain (equality of
+  units is equality of `A`-values is equality of `K`-images, since `A` is literally a subtype of
+  `K`), to `exp_zero`/`exp_add` directly — needed no `log`, exactly as anticipated. First-try clean
+  build.
+* **Injectivity.** Closed via the suggested route, needing one genuinely new lemma not previously in
+  this repo or found in Mathlib: `norm_eq_of_norm_sub_lt` (`‖a - b‖ < ‖b‖ → ‖a‖ = ‖b‖`, the
+  ultrametric "isosceles triangle" principle — proved from scratch, six lines, from
+  `IsUltrametricDist.norm_add_le_max`). The tail bound the brief sketched
+  (`norm_exp_sub_one_sub_lt`: `‖exp z - 1 - z‖ < ‖z‖` for `z ≠ 0` below `expUnitsThreshold K p`)
+  worked exactly as described, using `expUnitsThreshold K p = convergenceRadius K p ^ 2` exactly
+  (`convergenceRadius_sq_eq_expUnitsThreshold`, a direct `rpow` identity) rather than approximately —
+  the brief's suspicion that a strict variant of the threshold would suffice was correct and needed
+  no further loosening.
+* **Surjectivity — the log-landing lemma, the one piece flagged as real risk, closed in full.** Built
+  `norm_log_eq_of_lt_sq` (`‖z‖ < logUnitsThreshold K p → ‖log hnorm z‖ = ‖z‖` exactly, `z = 0` trivial
+  via a new `log_zero`) by the same tail-bound + isosceles-triangle technique as the injectivity
+  side, using `log`'s own per-term bound (`norm_pow_div_natCast_le`) which — unlike `exp`'s — needs
+  no `rpow` exponent adjustment, so `logUnitsThreshold K p := ‖p‖ ^ 2` is a **plain natural-number
+  square**, simpler than `expUnitsThreshold`'s `rpow`. `log_mem_maximalIdeal_pow` then converts this
+  into genuine `A`-element landing (`mem_maximalIdeal_pow_of_norm_le`), with **no level shift**,
+  exactly as the brief wanted. One extra fact the brief didn't anticipate needing: `‖y₀‖ <
+  expLogCompositionRadius K p` is required to invoke `exp_log_eq_one_add` at the very last step of
+  surjectivity (to identify `exp (log y₀) = 1 + y₀`), so a third exponent-comparison lemma
+  (`logUnitsThreshold_le_expLogCompositionRadius`, same `rpow`-monotonicity technique as
+  `logUnitsThreshold_le_expUnitsThreshold`) was needed to confirm the single strict hypothesis
+  `‖π‖^i < logUnitsThreshold K p` covers all three thresholds (`expUnitsThreshold`,
+  `logUnitsThreshold` itself, `expLogCompositionRadius`) simultaneously. It does:
+  `logUnitsThreshold K p` is the smallest of the three (its `rpow` exponent, `2`, is the largest of
+  the three candidate exponents `2/(p-1)`, `2`, `p/(p-1)`, and `‖p‖ < 1` makes larger exponents give
+  smaller values), so one hypothesis suffices throughout — matching the brief's guess.
+* **No design deviation was forced.** Every piece the brief flagged as "genuinely new work, budget
+  real effort" (the isosceles-triangle principle, the self-relative injectivity tail bound, the
+  no-shift log landing lemma) closed on the first or second build attempt once stated correctly; the
+  only iteration needed was fixing cast-associativity mismatches (`↑(↑uA - 1)` vs `↑↑uA - 1`,
+  resolved by naming `y0 : A := (uA:A) - 1` once and reusing it) and an `omit ... in` clause
+  ordering bug (must precede the doc-comment, per this repo's own documented caveat) — both
+  mechanical, not mathematical.
+
+**Precise remaining state toward the wild-case norm-group index theorem** (mirrors the fifteenth
+pass's (a)–(c), updated):
+
+(a) **A genuine concrete mixed-characteristic instance** — unchanged, still entirely unbuilt. This
+    remains the only one of the original five items to see zero progress across all sixteen passes.
+(b) **The isomorphism `U_L^{(i)} ≅ (𝔪_L^i, +)`** — **CLOSED this pass**, at the abstract
+    `ValuationSubring` level (`expEquiv`). Not yet done: specializing it to the concrete
+    `HeightOneSpectrum`/`adicCompletionIntegers` setting `TotallyRamifiedNormIndex` and
+    `AdicCompletionNormExpTrace` actually work in — mechanical given (a)'s instance data, but
+    unattempted, since (a) itself doesn't exist yet.
+(c) **Running the index computation through `expEquiv` via `norm_exp_eq_exp_trace`** — entirely
+    unstarted this pass (the task brief flagged this as out of scope unless (b) closed with real
+    time left, and explicitly warned against forcing it). `TotallyRamifiedNormIndex.lean` was read
+    for its assembly pattern (embedding-range lemmas bridging `K₀ˣ`-level index formulas up to the
+    ambient `(v.adicCompletion K)ˣ`-level index) but no wild-case analogue was written. This is
+    real, substantial remaining work: it needs `expEquiv` transported across the norm/trace formula,
+    then threaded through the same kind of units-index bookkeeping `TotallyRamifiedNormIndex` does
+    for the tame case, and is blocked on (a) for a setting where `IsTotallyRamified`/wild
+    ramification actually has a non-trivial instance to run on.
+
+**Net effect.** All five of the wild case's originally-scoped analytic items are now closed or
+substantially closed (2, 3, 5, 6, 7 fully; 4 partially, unchanged since the fourteenth pass), and the
+new packaging item this pass targeted (item (b) above) is fully closed too. What stands between here
+and the actual wild-case norm-group index theorem is no longer any open analytic question — it is
+purely the concrete-instance-construction task (a) and the mechanical-but-substantial index-wiring
+task (c), both entirely unstarted, with (c) blocked on (a).
+
+**Commits:** `3189084` (`expHom`, `norm_eq_of_norm_sub_lt`), `d139f3e` (`expHom_injective`,
+`norm_exp_sub_one_sub_lt`), `fdffb92` (`norm_log_eq_of_lt_sq`, `logUnitsThreshold`), `48680a9`
+(`log_mem_maximalIdeal_pow`), `2f9eb56` (`expHom_surjective`, `expEquiv`).
