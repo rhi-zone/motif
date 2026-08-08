@@ -4,6 +4,8 @@ import Langlands.TotallyRamifiedValuationExtension
 import Langlands.AdicCompletionIntegersResidue
 import Langlands.AdicCompletionIntegralClosure
 import Langlands.HeightOneSpectrumRationalPrimeTower
+import Langlands.AdicCompletionPrimitiveElementDegree
+import Langlands.NormMapResidueCompatibility
 
 /-!
 # A concrete MIXED-CHARACTERISTIC, WILD, GALOIS ramified extension: `ℚ(ζ_{p²}) / ℚ(ζ_p)`
@@ -371,6 +373,130 @@ theorem minpoly_theta_eq : minpoly K theta = eisPoly c := by
   have hmin := minpoly.min K theta hq haq
   rwa [Polynomial.degree_eq_natDegree (minpoly.ne_zero isIntegral_theta),
     natDegree_minpoly_theta] at hmin
+
+/-! ### `c - 1` is an exact uniformizer at `v`
+
+`c` is a primitive `p`-th root of unity **in `K`**, so `IsCyclotomicExtension.Rat.
+eq_span_zeta_sub_one_of_liesOver'` (applied to the prime `v.asIdeal`, which lies over the rational
+prime `p`) says `v.asIdeal = span {γ - 1}` for `γ := hc.toInteger` — *exactly*, not merely up to a
+power. Note this does not touch the already-closed definition of `v` (built from a possibly
+different primitive root `ζ_K`): the lemma applies to every primitive `p`-th root of `K` alike. -/
+
+/-- `γ := hc.toInteger : 𝓞 K`, the algebraic integer underlying `c`. -/
+noncomputable def γ : 𝓞 K := hc.toInteger
+
+theorem γ_sub_one_ne_zero : (γ - 1 : 𝓞 K) ≠ 0 := (hc.zeta_sub_one_prime' (p := p)).ne_zero
+
+theorem v_asIdeal_eq_span : v.asIdeal = Ideal.span {(γ - 1 : 𝓞 K)} :=
+  IsCyclotomicExtension.Rat.eq_span_zeta_sub_one_of_liesOver' p K hc v.asIdeal
+
+theorem intValuation_γ_sub_one : v.intValuation (γ - 1 : 𝓞 K) = WithZero.exp (-1 : ℤ) :=
+  v.intValuation_singleton γ_sub_one_ne_zero v_asIdeal_eq_span
+
+/-! ### The Eisenstein setup over `𝒪 := v.adicCompletionIntegers K` -/
+
+/-- `π₀`, the image of the uniformizer `γ - 1` in `𝒪 := v.adicCompletionIntegers K`. -/
+noncomputable def π₀ : v.adicCompletionIntegers K :=
+  algebraMap (𝓞 K) (v.adicCompletionIntegers K) (γ - 1)
+
+/-- `c₀`, the image of `γ` in `𝒪`. -/
+noncomputable def c₀ : v.adicCompletionIntegers K :=
+  algebraMap (𝓞 K) (v.adicCompletionIntegers K) γ
+
+theorem c₀_sub_one : c₀ - 1 = π₀ := by rw [π₀, map_sub, map_one, c₀]
+
+theorem valuation_π₀ :
+    Valued.v (π₀ : v.adicCompletion K) = WithZero.exp (-1 : ℤ) := by
+  rw [π₀, IsDedekindDomain.HeightOneSpectrum.algebraMap_adicCompletionIntegers_apply,
+    IsDedekindDomain.HeightOneSpectrum.valuedAdicCompletion_eq_valuation',
+    v.valuation_of_algebraMap]
+  exact intValuation_γ_sub_one
+
+theorem π₀_ne_zero : (π₀ : v.adicCompletionIntegers K) ≠ 0 := by
+  intro h0
+  have := valuation_π₀
+  rw [show ((π₀ : v.adicCompletionIntegers K) : v.adicCompletion K) = 0 by rw [h0]; rfl,
+    Valuation.map_zero] at this
+  exact absurd this.symm (by simp)
+
+theorem isUniformizer_π₀ :
+    Valuation.IsUniformizer Valued.v (π₀ : v.adicCompletion K) := by
+  rw [Valuation.IsUniformizer.iff, valuation_π₀,
+    Valuation.IsRankOneDiscrete.generator_eq_exp_neg_one_of_surjective
+      (IsDedekindDomain.HeightOneSpectrum.valuedAdicCompletion_surjective K v)]
+  rfl
+
+theorem maximalIdeal_eq_span_π₀ :
+    IsLocalRing.maximalIdeal (v.adicCompletionIntegers K) =
+      Ideal.span {(π₀ : v.adicCompletionIntegers K)} :=
+  isUniformizer_π₀.is_generator
+
+theorem π₀_mem_maximalIdeal :
+    (π₀ : v.adicCompletionIntegers K) ∈
+      IsLocalRing.maximalIdeal (v.adicCompletionIntegers K) := by
+  rw [maximalIdeal_eq_span_π₀]
+  exact Ideal.mem_span_singleton_self _
+
+/-- `p = 3` lies in `v.asIdeal`: `(γ - 1) ^ (p - 1)` is associated to `p`
+(`IsCyclotomicExtension.Rat.associated_zeta_sub_one_pow_prime`), so `γ - 1` divides `p`. -/
+theorem p_mem_v_asIdeal : ((p : ℕ) : 𝓞 K) ∈ v.asIdeal := by
+  have hassoc := IsCyclotomicExtension.Rat.associated_zeta_sub_one_pow_prime p hc
+  rw [v_asIdeal_eq_span, Ideal.mem_span_singleton]
+  refine dvd_trans (dvd_pow_self _ (by decide : p - 1 ≠ 0)) hassoc.dvd
+
+theorem three_mem_maximalIdeal :
+    (3 : v.adicCompletionIntegers K) ∈
+      IsLocalRing.maximalIdeal (v.adicCompletionIntegers K) := by
+  have hcast : (3 : v.adicCompletionIntegers K) =
+      algebraMap (𝓞 K) (v.adicCompletionIntegers K) ((p : ℕ) : 𝓞 K) := by
+    rw [show ((p : ℕ) : 𝓞 K) = (3 : 𝓞 K) from rfl, map_ofNat]
+  refine IsDedekindDomain.HeightOneSpectrum.mem_maximalIdeal_of_valued_lt_one v ?_
+  rw [hcast, IsDedekindDomain.HeightOneSpectrum.algebraMap_adicCompletionIntegers_apply,
+    IsDedekindDomain.HeightOneSpectrum.valuedAdicCompletion_eq_valuation',
+    v.valuation_lt_one_iff_mem]
+  exact p_mem_v_asIdeal
+
+theorem eisPoly_c₀_isEisensteinAt :
+    (eisPoly c₀).IsEisensteinAt (IsLocalRing.maximalIdeal (v.adicCompletionIntegers K)) := by
+  refine (eisPoly_monic c₀).isEisensteinAt_of_mem_of_notMem
+    (IsLocalRing.maximalIdeal.isMaximal _).ne_top ?_ ?_
+  · intro n hn
+    rw [eisPoly_natDegree] at hn
+    interval_cases n
+    · rw [eisPoly_coeff_zero, show (1 : v.adicCompletionIntegers K) - c₀ = -π₀ by
+        rw [← c₀_sub_one]; ring]
+      exact neg_mem π₀_mem_maximalIdeal
+    · rw [eisPoly_coeff_one]; exact three_mem_maximalIdeal
+    · rw [eisPoly_coeff_two]; exact three_mem_maximalIdeal
+  · rw [eisPoly_coeff_zero, maximalIdeal_eq_span_π₀, Ideal.span_singleton_pow,
+      Ideal.mem_span_singleton]
+    rintro ⟨t, ht⟩
+    have hfac : (π₀ : v.adicCompletionIntegers K) * (-1 - π₀ * t) = 0 := by
+      have h1 : (1 : v.adicCompletionIntegers K) - c₀ = -π₀ := by rw [← c₀_sub_one]; ring
+      rw [h1] at ht
+      linear_combination ht
+    rcases mul_eq_zero.mp hfac with h | h
+    · exact π₀_ne_zero h
+    · refine absurd π₀_mem_maximalIdeal ?_
+      rw [IsLocalRing.mem_maximalIdeal, mem_nonunits_iff, not_not]
+      exact IsUnit.of_mul_eq_one (-t) (by linear_combination h)
+
+/-- **The base-changed polynomial is irreducible over `𝒪`** — Eisenstein at the maximal ideal. -/
+theorem eisPoly_c₀_irreducible : Irreducible (eisPoly c₀) :=
+  eisPoly_c₀_isEisensteinAt.irreducible (IsLocalRing.maximalIdeal.isMaximal _).isPrime
+    (eisPoly_monic c₀).isPrimitive (by rw [eisPoly_natDegree]; norm_num)
+
+/-- **Irreducibility over the completion `Kv := v.adicCompletion K`**, by Gauss's lemma
+(`Polynomial.Monic.irreducible_iff_irreducible_map_fraction_map`, applicable since `𝒪` is
+integrally closed with fraction field `Kv`). -/
+theorem map_minpoly_theta_irreducible :
+    Irreducible ((minpoly K theta).map (algebraMap K (v.adicCompletion K))) := by
+  have hgauss : Irreducible ((eisPoly c₀).map
+      (algebraMap (v.adicCompletionIntegers K) (v.adicCompletion K))) :=
+    ((eisPoly_monic c₀).irreducible_iff_irreducible_map_fraction_map).mp eisPoly_c₀_irreducible
+  rw [eisPoly_map, show algebraMap (v.adicCompletionIntegers K) (v.adicCompletion K) c₀ =
+    algebraMap K (v.adicCompletion K) c from rfl] at hgauss
+  rwa [minpoly_theta_eq, eisPoly_map]
 
 end Langlands.TotallyRamifiedCyclotomicConcreteExample
 
