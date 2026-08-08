@@ -298,6 +298,80 @@ theorem adjoin_theta_eq_top : IntermediateField.adjoin K ({theta} : Set L) = ⊤
   | add y z _ _ ihy ihz => exact (IntermediateField.adjoin K ({theta} : Set L)).add_mem ihy ihz
   | mul y z _ _ ihy ihz => exact (IntermediateField.adjoin K ({theta} : Set L)).mul_mem ihy ihz
 
+/-! ### The shifted polynomial `(X + 1) ^ p - C a`, in expanded form
+
+Kept in the *expanded* form `X ^ 3 + C 3 * X ^ 2 + C 3 * X + C (1 - a)` (`p = 3`) rather than as
+`(X + 1) ^ p - C a`, so that its coefficients — the data the Eisenstein criterion consumes — are
+directly readable, while `eisPoly_eq_shift` recovers the conceptual form for the `aeval` computation.
+Stated over an arbitrary commutative ring so that the *same* polynomial can be used over `K`
+(where it is `minpoly K theta`), over `v.adicCompletionIntegers K` (where it is Eisenstein), and
+over `v.adicCompletion K` (where Gauss's lemma delivers irreducibility). -/
+
+/-- `eisPoly a = (X + 1) ^ p - C a`, expanded. -/
+noncomputable def eisPoly {A : Type*} [CommRing A] (a : A) : Polynomial A :=
+  Polynomial.X ^ 3 + Polynomial.C 3 * Polynomial.X ^ 2 + Polynomial.C 3 * Polynomial.X
+    + Polynomial.C (1 - a)
+
+variable {A B : Type*} [CommRing A] [CommRing B]
+
+theorem eisPoly_eq_shift (a : A) :
+    eisPoly a = (Polynomial.X + 1) ^ p - Polynomial.C a := by
+  simp only [eisPoly, map_sub, map_one, map_ofNat, p]
+  ring
+
+theorem eisPoly_monic (a : A) : (eisPoly a).Monic := by
+  unfold eisPoly
+  monicity!
+
+theorem eisPoly_natDegree [Nontrivial A] (a : A) : (eisPoly a).natDegree = 3 := by
+  unfold eisPoly
+  compute_degree!
+
+theorem eisPoly_degree [Nontrivial A] (a : A) : (eisPoly a).degree = 3 := by
+  rw [Polynomial.degree_eq_natDegree (eisPoly_monic a).ne_zero, eisPoly_natDegree]
+  rfl
+
+theorem eisPoly_map (f : A →+* B) (a : A) : (eisPoly a).map f = eisPoly (f a) := by
+  simp only [eisPoly, Polynomial.map_add, Polynomial.map_mul, Polynomial.map_pow, Polynomial.map_X,
+    Polynomial.map_C, Polynomial.map_ofNat, Polynomial.map_sub, Polynomial.map_one, map_sub,
+    map_one, map_ofNat]
+
+theorem eisPoly_coeff_zero (a : A) : (eisPoly a).coeff 0 = 1 - a := by
+  simp [eisPoly]
+
+theorem eisPoly_coeff_one (a : A) : (eisPoly a).coeff 1 = 3 := by
+  simp [eisPoly, Polynomial.coeff_one]
+
+theorem eisPoly_coeff_two (a : A) : (eisPoly a).coeff 2 = 3 := by
+  simp [eisPoly, Polynomial.coeff_one]
+
+/-! ### `minpoly K theta = eisPoly c` -/
+
+theorem aeval_theta_eisPoly : Polynomial.aeval theta (eisPoly c) = 0 := by
+  rw [eisPoly_eq_shift]
+  simp only [map_sub, map_pow, map_add, Polynomial.aeval_X, Polynomial.aeval_one,
+    Polynomial.aeval_C, algebraMap_c]
+  show (theta + 1) ^ p - ζₚ = 0
+  rw [show theta + 1 = ζ by rw [theta]; ring]
+  rw [ζₚ, sub_self]
+
+theorem isIntegral_theta : IsIntegral K theta :=
+  ⟨eisPoly c, eisPoly_monic c, aeval_theta_eisPoly⟩
+
+theorem natDegree_minpoly_theta : (minpoly K theta).natDegree = 3 := by
+  have h := IntermediateField.adjoin.finrank isIntegral_theta
+  rw [adjoin_theta_eq_top,
+    LinearEquiv.finrank_eq (IntermediateField.topEquiv (F := K) (E := L)).toLinearEquiv,
+    finrank_K_L] at h
+  exact h.symm
+
+theorem minpoly_theta_eq : minpoly K theta = eisPoly c := by
+  refine (minpoly.unique K theta (eisPoly_monic c) aeval_theta_eisPoly fun q hq haq => ?_).symm
+  rw [eisPoly_degree]
+  have hmin := minpoly.min K theta hq haq
+  rwa [Polynomial.degree_eq_natDegree (minpoly.ne_zero isIntegral_theta),
+    natDegree_minpoly_theta] at hmin
+
 end Langlands.TotallyRamifiedCyclotomicConcreteExample
 
 end
