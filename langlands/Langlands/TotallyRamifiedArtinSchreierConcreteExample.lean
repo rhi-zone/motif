@@ -114,6 +114,8 @@ affine line and ramifies only at infinity — not representable as a `HeightOneS
 /-- The Artin–Schreier parameter: `a := X⁻¹ ∈ K`. -/
 def a : K := (algebraMap R K (Polynomial.X : R))⁻¹
 
+theorem a_def : a = (algebraMap R K (Polynomial.X : R))⁻¹ := rfl
+
 theorem valuation_a : v.valuation K a = WithZero.exp (1 : ℤ) := by
   rw [a, map_inv₀, valuation_x, ← WithZero.exp_neg, neg_neg]
 
@@ -329,6 +331,108 @@ theorem e_le_p : v.asIdeal.ramificationIdx' w.asIdeal ≤ p := by
       ≤ v.asIdeal.ramificationIdx' w.asIdeal * v.asIdeal.inertiaDeg' w.asIdeal :=
         Nat.le_mul_of_pos_right _ hf_pos
     _ ≤ p := ef_le_p
+
+/-! ### Pinning `e = p` exactly, via a completion-level valuation computation
+
+`theta ^ p - theta = a`, and `a`'s image in `Kv := v.adicCompletion K` is `xK⁻¹` for the uniformizer
+`xK` of `v` — so, writing `thetaw := algebraMap L (w.adicCompletion L) theta`,
+`thetaw ^ p - thetaw = algebraMap Kv Lw xK⁻¹`, whose `Lw`-valuation is `exp e` (`e` the ramification
+index, via `valuation_algebraMap_pow_eq`). The same ultrametric case-split as `a_not_mem_range` (now
+run in `Lw` instead of `K`) shows `Valued.v thetaw = exp m` for a positive integer `m` with
+`m * p = e`; combined with `e ≤ p` (`e_le_p`), this forces `m = 1`, i.e. `e = p` exactly. -/
+
+open scoped WithZero
+
+/-- `xK`, the image of `x := algebraMap R K X` inside `v.adicCompletion K`. -/
+def xK : v.adicCompletion K := algebraMap K (v.adicCompletion K) (algebraMap R K (Polynomial.X : R))
+
+theorem valuation_xK : Valued.v xK = WithZero.exp (-1 : ℤ) := by
+  show Valued.v (algebraMap K (v.adicCompletion K) (algebraMap R K (Polynomial.X : R))) = _
+  rw [show algebraMap K (v.adicCompletion K) (algebraMap R K (Polynomial.X : R))
+      = ((algebraMap R K (Polynomial.X : R) : K) : v.adicCompletion K) from rfl,
+    IsDedekindDomain.HeightOneSpectrum.valuedAdicCompletion_eq_valuation',
+    IsDedekindDomain.HeightOneSpectrum.valuation_of_algebraMap]
+  exact v.intValuation_singleton Polynomial.X_ne_zero rfl
+
+theorem xK_ne_zero : xK ≠ 0 := by
+  intro h0
+  have := valuation_xK
+  rw [h0, map_zero] at this
+  exact WithZero.exp_ne_zero this.symm
+
+/-- `thetaw`, the image of `theta` inside `w.adicCompletion L`. -/
+def thetaw : w.adicCompletion L := algebraMap L (w.adicCompletion L) theta
+
+theorem theta_pow_sub_theta : (theta : L) ^ p - theta = algebraMap K L a :=
+  sub_eq_zero.mp (by simpa [ArtinSchreier.poly_def] using aeval_theta)
+
+theorem thetaw_pow_sub_thetaw :
+    (thetaw : w.adicCompletion L) ^ p - thetaw =
+      algebraMap (v.adicCompletion K) (w.adicCompletion L) xK⁻¹ := by
+  have h1 : (thetaw : w.adicCompletion L) ^ p - thetaw =
+      algebraMap L (w.adicCompletion L) (algebraMap K L a) := by
+    show algebraMap L (w.adicCompletion L) theta ^ p - algebraMap L (w.adicCompletion L) theta = _
+    rw [← map_pow, ← map_sub, theta_pow_sub_theta]
+  rw [h1]
+  have h2 : algebraMap K L a = (algebraMap K L (algebraMap R K (Polynomial.X : R)))⁻¹ := by
+    have h3 := congrArg (algebraMap K L) a_def
+    rwa [map_inv₀] at h3
+  rw [h2, map_inv₀, map_inv₀]
+  congr 1
+  exact (IsDedekindDomain.HeightOneSpectrum.adicCompletionComap_algebraMap K L v w
+    (algebraMap R K (Polynomial.X : R))).symm
+
+theorem valuation_algebraMap_xK_inv :
+    Valued.v (algebraMap (v.adicCompletion K) (w.adicCompletion L) xK⁻¹) =
+      WithZero.exp (v.asIdeal.ramificationIdx' w.asIdeal : ℤ) := by
+  rw [map_inv₀, map_inv₀]
+  show (Valued.v (IsDedekindDomain.HeightOneSpectrum.adicCompletionComap K L v w xK))⁻¹ = _
+  rw [IsDedekindDomain.HeightOneSpectrum.valuation_algebraMap_pow_eq K L v w xK,
+    valuation_xK, ← WithZero.exp_nsmul, nsmul_eq_mul, mul_neg_one, ← WithZero.exp_neg, neg_neg]
+
+/-- **`e := v.asIdeal.ramificationIdx' w.asIdeal` equals `p` exactly.** `thetaw` cannot be
+`w`-integral (else `thetaw ^ p - thetaw` would be too, but it has valuation `exp e ≥ exp 1 > 1`), so
+`Valued.v thetaw = exp m` for some `m ≥ 1`; then `Valued.v (thetaw ^ p - thetaw) = exp (p * m)` (the
+dominant-term case of the ultrametric inequality), forcing `p * m = e`. Since `e ≤ p` (`e_le_p`) and
+`m ≥ 1`, this forces `m = 1`, i.e. `e = p`. -/
+theorem e_eq_p : v.asIdeal.ramificationIdx' w.asIdeal = p := by
+  set e := v.asIdeal.ramificationIdx' w.asIdeal with hedef
+  have he_pos : 0 < e := by
+    haveI := v.isMaximal
+    exact Nat.pos_iff_ne_zero.mpr (Ideal.IsDedekindDomain.ramificationIdx'_ne_zero_of_liesOver
+      w.asIdeal v.ne_bot)
+  have hrhs : Valued.v (thetaw ^ p - thetaw) = WithZero.exp (e : ℤ) := by
+    rw [thetaw_pow_sub_thetaw, valuation_algebraMap_xK_inv]
+  by_cases hle : Valued.v (thetaw : w.adicCompletion L) ≤ 1
+  · have hp_le : Valued.v (thetaw ^ p) ≤ 1 := by
+      rw [map_pow]; exact pow_le_one₀ zero_le hle
+    have hsub_le : Valued.v (thetaw ^ p - thetaw) ≤ 1 :=
+      le_trans (Valuation.map_sub _ _ _) (max_le hp_le hle)
+    rw [hrhs] at hsub_le
+    exact absurd hsub_le (not_le.mpr (WithZero.exp_lt_exp.mpr (by exact_mod_cast he_pos)))
+  · push Not at hle
+    set m : ℤ := WithZero.log (Valued.v (thetaw : w.adicCompletion L)) with hmdef
+    have hvθ : Valued.v (thetaw : w.adicCompletion L) = WithZero.exp m := (WithZero.exp_log (by
+      rintro h0; rw [h0] at hle; exact absurd hle (by simp))).symm
+    have hm_pos : 0 < m := by
+      rw [hvθ] at hle
+      exact WithZero.exp_lt_exp.mp (by simpa using hle)
+    have hpow : Valued.v (thetaw ^ p) = WithZero.exp (p * m : ℤ) := by
+      rw [map_pow, hvθ, ← WithZero.exp_nsmul, nsmul_eq_mul]
+    have hlt : Valued.v (thetaw : w.adicCompletion L) < Valued.v (thetaw ^ p) := by
+      rw [hvθ, hpow]
+      apply WithZero.exp_lt_exp.mpr
+      have hp2 : (2 : ℤ) ≤ p := by exact_mod_cast (Fact.out : p.Prime).two_le
+      nlinarith
+    have hsub_eq : Valued.v (thetaw ^ p - thetaw) = Valued.v (thetaw ^ p) :=
+      Valuation.map_sub_eq_of_lt_left _ hlt
+    rw [hrhs, hpow] at hsub_eq
+    have hpm : (p : ℤ) * m = e := (WithZero.exp_injective hsub_eq).symm
+    have hp2 : (2 : ℤ) ≤ p := by exact_mod_cast (Fact.out : p.Prime).two_le
+    have he_le : (e : ℤ) ≤ p := by exact_mod_cast e_le_p
+    have hm1 : m = 1 := by nlinarith
+    have : (e : ℤ) = p := by rw [← hpm, hm1, mul_one]
+    exact_mod_cast this
 
 end Langlands.TotallyRamifiedArtinSchreierConcreteExample
 
