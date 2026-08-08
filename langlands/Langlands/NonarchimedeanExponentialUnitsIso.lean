@@ -199,4 +199,118 @@ noncomputable def expHom (hnorm : ‖(p : K)‖ < 1) {π : A}
       exact_mod_cast this
     rw [hsum, exp_add hnorm hxnorm hynorm]
 
+/-! ## Step 2: injectivity — `exp hnorm z = 1 ∧ z ≠ 0` is impossible below a strict threshold -/
+
+omit hA [IsUltrametricDist K] [CompleteSpace K] in
+/-- `convergenceRadius K p < 1`: a strictly-positive-exponent power of a norm `< 1` stays `< 1`. -/
+theorem convergenceRadius_lt_one (hnorm : ‖(p : K)‖ < 1) : convergenceRadius K p < 1 := by
+  have hp0 : (0 : ℝ) < ‖(p : K)‖ := norm_natCast_pos
+  have hexp0 : (0 : ℝ) < ((p : ℝ) - 1)⁻¹ := by
+    have h2 : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hp.out.two_le
+    have : (0:ℝ) < (p:ℝ) - 1 := by linarith
+    positivity
+  exact Real.rpow_lt_one hp0.le hnorm hexp0
+
+omit hA [IsUltrametricDist K] [CompleteSpace K] in
+/-- `convergenceRadius K p ^ 2 = expUnitsThreshold K p`: the units threshold is exactly the square
+of `exp`'s own convergence radius, matching `rpow` exponents `2 * (1/(p-1)) = 2/(p-1)`. -/
+theorem convergenceRadius_sq_eq_expUnitsThreshold (_hnorm : ‖(p : K)‖ < 1) :
+    convergenceRadius K p ^ (2 : ℕ) = expUnitsThreshold K p := by
+  have hp0 : (0 : ℝ) < ‖(p : K)‖ := norm_natCast_pos
+  unfold expUnitsThreshold convergenceRadius
+  rw [← Real.rpow_natCast (‖(p : K)‖ ^ (((p : ℝ) - 1)⁻¹)) 2, ← Real.rpow_mul hp0.le]
+  congr 1
+  ring
+
+omit hA in
+/-- **The self-relative tail bound behind injectivity.** For `z ≠ 0` with `‖z‖ <
+expUnitsThreshold K p`, `‖exp hnorm z - 1 - z‖ < ‖z‖` — the degree-`≥ 2` tail of the exponential
+series is strictly smaller than `‖z‖` itself (not merely `→ 0`), because `expUnitsThreshold` is
+*exactly* `d ^ 2` for `d := convergenceRadius K p` (`convergenceRadius_sq_eq_expUnitsThreshold`):
+setting `ρ := ‖z‖ / d`, `norm_pow_div_factorial_le` gives `‖z^k/k!‖ ≤ ρ^k ≤ ρ^2` for `k ≥ 2`
+(`ρ < d < 1`), and `ρ^2 = ‖z‖^2/d^2 < ‖z‖` is exactly the threshold hypothesis (`‖z‖ < d^2`),
+using `‖z‖ > 0`. -/
+theorem norm_exp_sub_one_sub_lt (hnorm : ‖(p : K)‖ < 1) {z : K} (hz : z ≠ 0)
+    (hzlt : ‖z‖ < expUnitsThreshold K p) :
+    ‖exp hnorm z - 1 - z‖ < ‖z‖ := by
+  have hp0 : (0 : ℝ) < ‖(p : K)‖ := norm_natCast_pos
+  have hzpos : 0 < ‖z‖ := norm_pos_iff.mpr hz
+  set d : ℝ := convergenceRadius K p with hd
+  have hd0 : 0 < d := Real.rpow_pos_of_pos hp0 _
+  have hd1 : d < 1 := convergenceRadius_lt_one hnorm
+  have hdsq : d ^ (2 : ℕ) = expUnitsThreshold K p := convergenceRadius_sq_eq_expUnitsThreshold hnorm
+  have hzltd2 : ‖z‖ < d ^ 2 := by rw [hdsq]; exact hzlt
+  set ρ : ℝ := ‖z‖ / d with hρ
+  have hρ0 : 0 ≤ ρ := div_nonneg hzpos.le hd0.le
+  have hρltd : ρ < d := by rw [hρ, div_lt_iff₀ hd0]; rw [sq] at hzltd2; linarith
+  have hρlt1 : ρ < 1 := hρltd.trans hd1
+  have hρsq_lt : ρ ^ 2 < ‖z‖ := by
+    have heq : ρ ^ 2 = ‖z‖ ^ 2 / d ^ 2 := by rw [hρ, div_pow]
+    rw [heq, div_lt_iff₀ (by positivity)]
+    have : ‖z‖ ^ 2 = ‖z‖ * ‖z‖ := sq ‖z‖
+    rw [this]
+    exact mul_lt_mul_of_pos_left hzltd2 hzpos
+  have hd2ltd : d ^ 2 < d := by
+    calc d ^ 2 = d * d := sq d
+      _ < d * 1 := mul_lt_mul_of_pos_left hd1 hd0
+      _ = d := mul_one d
+  have hx : ‖z‖ < d := hzltd2.trans hd2ltd
+  have hsum := hasSum_exp hnorm hx
+  have hshift : HasSum (fun k => z ^ (k + 2) / ((k + 2).factorial : K))
+      (exp hnorm z - ∑ j ∈ Finset.range 2, z ^ j / (j.factorial : K)) :=
+    (hasSum_nat_add_iff' 2).mpr hsum
+  have hsum2 : ∑ j ∈ Finset.range 2, z ^ j / (j.factorial : K) = 1 + z := by
+    simp [Finset.sum_range_succ]
+  rw [hsum2] at hshift
+  have heq : exp hnorm z - (1 + z) = ∑' k, z ^ (k + 2) / ((k + 2).factorial : K) := hshift.tsum_eq.symm
+  have hgoal_eq : exp hnorm z - 1 - z = exp hnorm z - (1 + z) := by ring
+  rw [hgoal_eq, heq]
+  refine (IsUltrametricDist.norm_tsum_le _).trans_lt (lt_of_le_of_lt (ciSup_le fun k => ?_) hρsq_lt)
+  have hbound : ‖z ^ (k + 2) / ((k + 2).factorial : K)‖ ≤ ρ ^ (k + 2) := by
+    rw [hρ]
+    exact norm_pow_div_factorial_le hnorm z (k + 2)
+  refine hbound.trans ?_
+  exact pow_le_pow_of_le_one hρ0 hρlt1.le (by omega)
+
+include hA in
+/-- **`expHom` is injective**, for `i` above a *strict* variant of the threshold
+(`‖π‖^i < expUnitsThreshold K p`, sharpening `exp_mem_principalUnitsPow`'s `≤`). Reduces (via the
+same `Equiv.injective`/`Subtype.ext` chain as `expHom`'s own definitional equalities) to: `exp hnorm
+z = 1` and `z ≠ 0` are incompatible for `‖z‖ < expUnitsThreshold K p`. `norm_exp_sub_one_sub_lt`
+gives `‖(exp hnorm z - 1) - z‖ < ‖z‖`; since `exp hnorm z - 1 = 0` this identifies `‖z‖ = ‖-z‖ = ‖z‖`
+... rather, `norm_eq_of_norm_sub_lt` applied to `a := exp hnorm z - 1 = 0`, `b := z` gives `0 = ‖z‖`,
+forcing `z = 0`, contradiction. -/
+theorem expHom_injective (hnorm : ‖(p : K)‖ < 1) {π : A}
+    (hπ : maximalIdeal A = Ideal.span ({π} : Set A)) (hπ0 : (π : K) ≠ 0)
+    (hπnorm : ‖(π : K)‖ < 1) {i : ℕ} (hthresh : ‖(π : K)‖ ^ i ≤ expUnitsThreshold K p)
+    (hthreshStrict : ‖(π : K)‖ ^ i < expUnitsThreshold K p) :
+    Function.Injective (expHom (A := A) (hA := hA) hnorm hπ hπ0 hπnorm hthresh) := by
+  rw [injective_iff_map_eq_one]
+  intro z hz1
+  apply Multiplicative.toAdd.injective
+  apply Subtype.ext
+  apply Subtype.ext
+  show ((Multiplicative.toAdd z : ↥(maximalIdeal A ^ i)).1 : K) = ((0 : A) : K)
+  have hz0 : ((0 : A) : K) = (0 : K) := rfl
+  rw [hz0]
+  have hz1A : ((expHom (A := A) (hA := hA) hnorm hπ hπ0 hπnorm hthresh z : Aˣ) : A) = 1 := by
+    have := congrArg (fun w : ↥(ValuationSubring.principalUnitsPow A i) => (w : Aˣ)) hz1
+    simpa using congrArg (fun u : Aˣ => (u : A)) this
+  have hz1K : ((expUnit A hA hnorm hπ hπ0 hπnorm hthresh (Multiplicative.toAdd z).2 : A) : K)
+      = ((1 : A) : K) :=
+    congrArg (fun a : A => (a : K)) hz1A
+  rw [expUnit_coe] at hz1K
+  have hz1K' : exp hnorm ((Multiplicative.toAdd z : ↥(maximalIdeal A ^ i)).1 : K) = 1 := by
+    simpa using hz1K
+  set w : K := ((Multiplicative.toAdd z : ↥(maximalIdeal A ^ i)).1 : K) with hw
+  by_contra hwne
+  have hwmem : (Multiplicative.toAdd z : ↥(maximalIdeal A ^ i)).1 ∈ maximalIdeal A ^ i :=
+    (Multiplicative.toAdd z).2
+  have hwnorm : ‖w‖ ≤ ‖(π : K)‖ ^ i := norm_le_pow_of_mem_maximalIdeal_pow A hA hπ hwmem
+  have hwlt : ‖w‖ < expUnitsThreshold K p := lt_of_le_of_lt hwnorm hthreshStrict
+  have htail := norm_exp_sub_one_sub_lt hnorm hwne hwlt
+  rw [hz1K'] at htail
+  simp only [sub_self, zero_sub, norm_neg] at htail
+  exact absurd htail (lt_irrefl _)
+
 end NonarchimedeanExponential
