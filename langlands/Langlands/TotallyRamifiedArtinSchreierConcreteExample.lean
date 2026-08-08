@@ -1,6 +1,7 @@
 import Langlands.AdicCompletionIntegersResidue
 import Langlands.ArtinSchreier
 import Langlands.TotallyRamifiedNormIndex
+import Mathlib.NumberTheory.RamificationInertia.Basic
 
 /-!
 # A concrete WILD, SEPARABLE, GALOIS ramified extension: an Artin–Schreier extension of `k(X)`
@@ -238,6 +239,8 @@ instance : Module.IsTorsionFree R L := .trans_faithfulSMul R K L
 /-- `S := integralClosure R L`, the ring of integers of `L` relative to `R`. -/
 abbrev S : Type := integralClosure R L
 
+instance : IsFractionRing S L := IsIntegralClosure.isFractionRing_of_finite_extension R K L S
+
 instance : IsDedekindDomain S := integralClosure.isDedekindDomain_fractionRing R L
 
 instance : Module.Finite R S := IsIntegralClosure.finite R K L S
@@ -296,6 +299,36 @@ def w : HeightOneSpectrum S where
 theorem w_comap_eq : w.asIdeal.comap (algebraMap R S) = v.asIdeal := exists_Q.choose_spec.2
 
 instance : w.asIdeal.LiesOver v.asIdeal := ⟨w_comap_eq.symm⟩
+
+/-! ### The ramification/inertia bound `e · f ≤ p`, from the global fundamental identity
+
+`Ideal.sum_ramification_inertia` (`∑ e_i f_i = [L : K]` over all primes over `v`) restricted to the
+single term at `w` gives `e · f ≤ p`; in particular `e ≤ p`. This is the *only* handle available on
+`e := v.asIdeal.ramificationIdx' w.asIdeal` here — unlike the template files, there is no explicit
+ideal-level formula `Ideal.map (algebraMap R S) v.asIdeal = w.asIdeal ^ e` to read `e` off directly,
+since `w` was obtained abstractly. -/
+
+theorem ef_le_p :
+    v.asIdeal.ramificationIdx' w.asIdeal * v.asIdeal.inertiaDeg' w.asIdeal ≤ p := by
+  classical
+  haveI := v.isMaximal
+  have hmem : w.asIdeal ∈ IsDedekindDomain.primesOverFinset v.asIdeal S :=
+    (IsDedekindDomain.mem_primesOverFinset_iff v.ne_bot _).mpr ⟨w.isPrime, inferInstance⟩
+  have hsum := Ideal.sum_ramification_inertia S K L v.ne_bot
+  rw [← Finset.add_sum_erase _ _ hmem] at hsum
+  have hle : v.asIdeal.ramificationIdx' w.asIdeal * v.asIdeal.inertiaDeg' w.asIdeal ≤
+      Module.finrank K L := by
+    rw [← hsum]; exact Nat.le_add_right _ _
+  rwa [finrank_K_L] at hle
+
+theorem e_le_p : v.asIdeal.ramificationIdx' w.asIdeal ≤ p := by
+  have hf_pos : 0 < v.asIdeal.inertiaDeg' w.asIdeal := by
+    haveI := v.isMaximal
+    exact Nat.pos_iff_ne_zero.mpr (Ideal.inertiaDeg'_ne_zero v.asIdeal w.asIdeal)
+  calc v.asIdeal.ramificationIdx' w.asIdeal
+      ≤ v.asIdeal.ramificationIdx' w.asIdeal * v.asIdeal.inertiaDeg' w.asIdeal :=
+        Nat.le_mul_of_pos_right _ hf_pos
+    _ ≤ p := ef_le_p
 
 end Langlands.TotallyRamifiedArtinSchreierConcreteExample
 
