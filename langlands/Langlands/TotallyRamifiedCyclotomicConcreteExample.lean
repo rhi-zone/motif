@@ -235,6 +235,69 @@ theorem inertiaDeg'_eq : v.asIdeal.inertiaDeg' w.asIdeal = 1 := by
   rw [inertiaDeg_w, inertiaDeg_v] at hb
   omega
 
+/-! ### `theta := ζ - 1`, a primitive element of `L / K` which is also a uniformizer
+
+The completed-level separability/degree argument (`Langlands.AdicCompletionPrimitiveElementDegree`)
+needs a primitive element of `L / K` whose minimal polynomial *stays irreducible* after base change
+to `Kv := v.adicCompletion K`. `ζ` itself is a primitive element (`minpoly K ζ = X ^ p - C c`, with
+`c : K` the copy of `ζₚ = ζ ^ p` inside `K`), but its minimal polynomial is **not** Eisenstein at
+`v`: its constant term `-c` is a root of unity, hence a unit at `v`. The shift `theta := ζ - 1`
+fixes exactly this: `minpoly K theta = (X + 1) ^ p - C c` has constant term `1 - c`, and `c - 1`
+generates `v.asIdeal` *exactly* (`IsCyclotomicExtension.Rat.eq_span_zeta_sub_one_of_liesOver'`,
+applied to `c`, itself a primitive `p`-th root of unity in `K`), so the constant term has valuation
+exactly the uniformizer value — the Eisenstein condition. -/
+
+/-- `theta := ζ - 1`, the primitive element used throughout the completed-level argument. -/
+noncomputable def theta : L := ζ - 1
+
+/-- `c : K`, the copy of `ζₚ = ζ ^ p` living inside `K = ℚ⟮ζₚ⟯` itself. -/
+noncomputable def c : K := IntermediateField.AdjoinSimple.gen ℚ ζₚ
+
+theorem algebraMap_c : algebraMap K L c = ζₚ := IntermediateField.AdjoinSimple.algebraMap_gen ℚ ζₚ
+
+theorem hc : IsPrimitiveRoot c p :=
+  IsPrimitiveRoot.of_map_of_injective (f := algebraMap K L) (by rw [algebraMap_c]; exact hζₚ)
+    (algebraMap K L).injective
+
+/-! ### The degrees: `[L : ℚ] = 6`, `[K : ℚ] = 2`, hence `[L : K] = p = 3` -/
+
+instance : NeZero (p ^ (1 + 1)) := ⟨by decide⟩
+
+instance : NeZero p := ⟨by decide⟩
+
+theorem finrank_ℚ_L : Module.finrank ℚ L = 6 := by
+  rw [IsCyclotomicExtension.Rat.finrank (p ^ (1 + 1)) L]; decide
+
+theorem finrank_ℚ_K : Module.finrank ℚ K = 2 := by
+  rw [IsCyclotomicExtension.Rat.finrank p K]; decide
+
+theorem finrank_K_L : Module.finrank K L = p := by
+  have h := Module.finrank_mul_finrank ℚ K L
+  rw [finrank_ℚ_K, finrank_ℚ_L] at h
+  show Module.finrank K L = 3
+  omega
+
+/-! ### `theta` is a primitive element: `K⟮theta⟯ = ⊤` -/
+
+theorem adjoin_theta_eq_top : IntermediateField.adjoin K ({theta} : Set L) = ⊤ := by
+  have hθ : theta ∈ IntermediateField.adjoin K ({theta} : Set L) :=
+    IntermediateField.subset_adjoin _ _ rfl
+  have hζmem : ζ ∈ IntermediateField.adjoin K ({theta} : Set L) := by
+    have h := (IntermediateField.adjoin K ({theta} : Set L)).add_mem hθ
+      (IntermediateField.one_mem _)
+    simpa [theta] using h
+  rw [eq_top_iff]
+  rintro x -
+  have hx : x ∈ Algebra.adjoin ℚ ({ζ} : Set L) :=
+    (IsCyclotomicExtension.adjoin_primitive_root_eq_top (A := ℚ) (B := L) hζ) ▸ Algebra.mem_top
+  induction hx using Algebra.adjoin_induction with
+  | mem y hy => rw [Set.mem_singleton_iff.mp hy]; exact hζmem
+  | algebraMap r =>
+    rw [IsScalarTower.algebraMap_apply ℚ K L]
+    exact IntermediateField.algebraMap_mem _ _
+  | add y z _ _ ihy ihz => exact (IntermediateField.adjoin K ({theta} : Set L)).add_mem ihy ihz
+  | mul y z _ _ ihy ihz => exact (IntermediateField.adjoin K ({theta} : Set L)).mul_mem ihy ihz
+
 end Langlands.TotallyRamifiedCyclotomicConcreteExample
 
 end
