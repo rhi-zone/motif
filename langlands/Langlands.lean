@@ -7,6 +7,7 @@ import Langlands.CyclicGaloisSubfields
 import Langlands.CyclicSubgroups
 import Langlands.FiniteIndexNormalSubgroupMulEquiv
 import Langlands.FiniteIndexSubgroupsZ
+import Langlands.HeightOneSpectrumRationalPrimeTower
 import Langlands.HenselianResidueLift
 import Langlands.IdeleGroup
 import Langlands.MonogenicIntegralClosure
@@ -32,13 +33,13 @@ import Langlands.ResidueField
 import Langlands.TotallyRamifiedArtinSchreierConcreteExample
 import Langlands.TotallyRamifiedConcreteExample
 import Langlands.TotallyRamifiedCyclotomicConcreteExample
-import Langlands.TotallyRamifiedWildConcreteExample
 import Langlands.TotallyRamifiedEisenstein
 import Langlands.TotallyRamifiedNormIndex
 import Langlands.TotallyRamifiedNormRange
 import Langlands.TotallyRamifiedNormResidue
 import Langlands.TotallyRamifiedNormResidueImage
 import Langlands.TotallyRamifiedNormSurjective
+import Langlands.TotallyRamifiedWildConcreteExample
 import Langlands.TowerBundle
 import Langlands.TwoGeneratorMonogenic
 import Langlands.ValueGroupCyclic
