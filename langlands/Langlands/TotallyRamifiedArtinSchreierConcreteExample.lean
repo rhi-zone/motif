@@ -1,0 +1,227 @@
+import Langlands.AdicCompletionIntegersResidue
+import Langlands.ArtinSchreier
+import Langlands.TotallyRamifiedNormIndex
+
+/-!
+# A concrete WILD, SEPARABLE, GALOIS ramified extension: an Artin–Schreier extension of `k(X)`
+
+Targets `ROADMAP.md` §6n item (c): a wild instance of `IsTotallyRamified` with actual Galois
+structure, closing the gap left open by `Langlands.TotallyRamifiedWildConcreteExample` (which is
+wild but purely inseparable, hence provably not Galois — see that file's closing docstring, which
+first proposed the Artin–Schreier route pursued here).
+
+## Design: why `S := integralClosure R L`, not a literal polynomial-ring `S`
+
+Both `Langlands.TotallyRamifiedConcreteExample` (tame) and `TotallyRamifiedWildConcreteExample`
+(wild, inseparable) build `S` as a literal wrapper of `Polynomial k`, with `algebraMap R S` sending
+`X ↦ Y ^ e` — tractable because `Y ↦ Y ^ e` is *itself* a polynomial map `k[X] → k[Y]`, automatically
+finite, free, and (since `k[Y]` is a fresh polynomial ring) automatically a PID.
+
+This does not carry over to a genuine Artin–Schreier extension. The Artin–Schreier map
+`Y ↦ Y ^ p - Y` is a *global* polynomial covering of the affine line that is **unramified at every
+finite point** (its derivative is the nonzero constant `-1`, so it is everywhere étale on the
+affine line) and totally ramified only **at infinity** — a point with no `HeightOneSpectrum (k[X])`
+representative. Reaching a *finite* ramified place requires the Artin–Schreier parameter `a` to have
+an actual pole there, e.g. `a := X⁻¹` (pole of order `1`, coprime to `p`, at `X = 0`), and then the
+generator `theta` with `theta ^ p - theta = a` is **not** integral over `R = k[X]` — `S` cannot be presented as a
+literal polynomial ring in one variable this way (see the abandoned computation in an earlier pass
+of this file's design, recorded in `ROADMAP.md`: the "obvious" integral substitute `Y := X · theta`
+satisfies the monic relation `Y ^ p - X ^ (p-1) * Y - X ^ (p-1) = 0`, but proving *that* ring is a
+domain / Dedekind domain from scratch, rather than inheriting it from a fresh polynomial ring, is
+exactly as much work as the route actually taken below).
+
+The route taken instead: build `L` as the splitting field of `ArtinSchreier.poly p a` directly over
+`K := FractionRing R` (using `ArtinSchreier.irreducible_iff`, unconditional `ArtinSchreier.
+instIsGalois`, and `ArtinSchreier.finrank_splittingField_eq`), then take
+**`S := integralClosure R L`** and get `IsDedekindDomain S` / `Module.Finite R S` / `Module.Free R S`
+/ the rank identity `Module.finrank R S = Module.finrank K L` **for free** from Mathlib's general
+theory of integral closures of Dedekind domains in finite *separable* extensions
+(`Mathlib.RingTheory.DedekindDomain.IntegralClosure`) — separability (`ArtinSchreier.poly_separable`,
+inherited from `IsGalois`) is exactly the hypothesis that was *unavailable* in the purely-inseparable
+wild example and blocked its `finrank_eq`. This confirms the expectation stated in the task
+description: separability removes the trace-form obstruction that blocked the earlier file.
+
+The place `w` lying over `v := (X)` is obtained abstractly (`Ideal.
+exists_ideal_over_prime_of_isIntegral_of_isDomain`, a general going-up fact — since `S` is no
+longer a hand-built ring, `w` cannot be written down combinatorially the way it was in the two
+template files). The ramification index at this specific `w` is then pinned down not by a
+definitional ideal identity (unavailable, since there is no explicit formula for `w.asIdeal`) but by
+a direct valuation computation on the completions, combined with the global bound
+`Ideal.ramificationIdx_le_finrank` (`e ≤ [L : K] = p`) and the classical fundamental identity
+`Ideal.sum_ramification_inertia` (`e · f ≤ [L : K] = p`, restricting the sum to the single term at
+`w`) to pin both `e = p` and `f = 1` exactly.
+
+## Status
+
+See the closing section of this file and `ROADMAP.md` §6q for the precise account of what closed.
+-/
+
+noncomputable section
+
+open IsDedekindDomain IsLocalRing Polynomial
+
+namespace Langlands.TotallyRamifiedArtinSchreierConcreteExample
+
+/-! ### The base field, `R := k[X]`, `K := Frac(R)`, and `v` at `(X)` -/
+
+/-- The residue characteristic, and also the ramification index of the Artin–Schreier extension
+below: `p = 3`, an odd prime (no lemma used here needs oddness, but it keeps this instance
+visibly distinct from the purely inseparable wild example's `p = 2`). -/
+abbrev p : ℕ := 3
+
+instance : Fact (Nat.Prime p) := ⟨by decide⟩
+
+/-- The base/residue field `k := ZMod p`. -/
+abbrev k : Type := ZMod p
+
+/-- `R := k[X]`. -/
+abbrev R : Type := Polynomial k
+
+instance : IsDedekindDomain R := IsPrincipalIdealRing.isDedekindDomain R
+
+/-- `K := Frac(R)`. -/
+abbrev K : Type := FractionRing R
+
+instance charP_R : CharP R p := Polynomial.charP
+
+instance charP_K : CharP K p := IsFractionRing.charP R p
+
+/-- `v`, the place of `R = k[X]` at `X`. -/
+def v : HeightOneSpectrum R where
+  asIdeal := Ideal.span {Polynomial.X}
+  isPrime := (Ideal.span_singleton_prime Polynomial.X_ne_zero).mpr Polynomial.prime_X
+  ne_bot := by simp
+
+theorem x_ne_zero : algebraMap R K (Polynomial.X : R) ≠ 0 :=
+  fun h => Polynomial.X_ne_zero
+    (IsFractionRing.injective R K (h.trans (map_zero (algebraMap R K)).symm))
+
+/-- **The `v`-adic valuation of `X` is exactly the uniformizer value `exp (-1)`.** `v.asIdeal` is
+`(X)` by definition, so this is `intValuation_singleton` transported to `K` via
+`valuation_of_algebraMap`. -/
+theorem valuation_x : v.valuation K (algebraMap R K (Polynomial.X : R)) = WithZero.exp (-1 : ℤ) := by
+  rw [v.valuation_of_algebraMap]
+  exact v.intValuation_singleton Polynomial.X_ne_zero rfl
+
+/-! ### `a := X⁻¹ : K`, the Artin–Schreier parameter with a simple pole at `v`
+
+`a` has `v`-adic valuation `exp (1 : ℤ)` — a genuine pole, of order `1` (coprime to `p` trivially).
+This is what forces the extension `K(theta)/K` (`theta ^ p - theta = a`) to ramify at `v`, unlike the
+"everywhere-finite" choice `a := X` (whose Artin–Schreier extension is unramified on the whole
+affine line and ramifies only at infinity — not representable as a `HeightOneSpectrum R`). -/
+
+/-- The Artin–Schreier parameter: `a := X⁻¹ ∈ K`. -/
+def a : K := (algebraMap R K (Polynomial.X : R))⁻¹
+
+theorem valuation_a : v.valuation K a = WithZero.exp (1 : ℤ) := by
+  rw [a, map_inv₀, valuation_x, ← WithZero.exp_neg, neg_neg]
+
+open scoped WithZero
+
+/-- **`a` is not of the form `theta ^ p - theta` for any `theta : K`.** Case-split on whether `theta` is
+`v`-integral (`v.valuation K theta ≤ 1`): if so, `theta ^ p - theta` is `v`-integral too (ultrametric), but `a`
+is not (`valuation_a`, `exp 1 > 1`) — contradiction. If not, `v.valuation K theta = exp m` for some
+`m ≥ 1`, and since `v.valuation K (theta ^ p) = exp (p * m)` strictly exceeds `v.valuation K theta = exp m`
+(as `m ≥ 1` and `p ≥ 2`), the ultrametric inequality is an equality picking out the larger term:
+`v.valuation K (theta ^ p - theta) = exp (p * m)`. Equating with `v.valuation K a = exp 1` forces `p * m = 1`,
+impossible for `p ≥ 2`, `m ≥ 1`. -/
+theorem a_not_mem_range : a ∉ Set.range (fun x : K => x ^ p - x) := by
+  rintro ⟨theta, hθ'⟩
+  have hθ : theta ^ p - theta = a := hθ'
+  have hθ0 : theta ≠ 0 := by
+    rintro rfl
+    simp only [zero_pow (Fact.out : p.Prime).ne_zero, sub_zero] at hθ
+    exact (WithZero.exp_ne_zero (a := (1 : ℤ))) (by rw [← valuation_a, ← hθ, map_zero])
+  by_cases hle : v.valuation K theta ≤ 1
+  · have hp_le : v.valuation K (theta ^ p) ≤ 1 := by
+      rw [map_pow]; exact pow_le_one₀ zero_le hle
+    have hsub_le : v.valuation K (theta ^ p - theta) ≤ 1 :=
+      le_trans (Valuation.map_sub _ _ _) (max_le hp_le hle)
+    rw [hθ, valuation_a] at hsub_le
+    exact absurd hsub_le (not_le.mpr (WithZero.exp_lt_exp.mpr (by norm_num)))
+  · push Not at hle
+    set m : ℤ := WithZero.log (v.valuation K theta) with hmdef
+    have hvθ : v.valuation K theta = WithZero.exp m := (WithZero.exp_log (by
+      rintro h0; rw [h0] at hle; exact absurd hle (by simp))).symm
+    have hm_pos : 0 < m := by
+      rw [hvθ] at hle
+      exact WithZero.exp_lt_exp.mp (by simpa using hle)
+    have hpow : v.valuation K (theta ^ p) = WithZero.exp (p * m : ℤ) := by
+      rw [map_pow, hvθ, ← WithZero.exp_nsmul, nsmul_eq_mul]
+    have hlt : v.valuation K theta < v.valuation K (theta ^ p) := by
+      rw [hvθ, hpow]
+      apply WithZero.exp_lt_exp.mpr
+      have hp2 : (2 : ℤ) ≤ p := by exact_mod_cast (Fact.out : p.Prime).two_le
+      nlinarith
+    have hsub_eq : v.valuation K (theta ^ p - theta) = v.valuation K (theta ^ p) :=
+      Valuation.map_sub_eq_of_lt_left _ hlt
+    rw [hθ, valuation_a, hpow] at hsub_eq
+    have hpm : (p : ℤ) * m = 1 := WithZero.exp_injective hsub_eq.symm
+    have hp2 : (2 : ℤ) ≤ p := by exact_mod_cast (Fact.out : p.Prime).two_le
+    nlinarith
+
+/-! ### `L`, the splitting field of the Artin–Schreier polynomial `X ^ p - X - C a`
+
+`poly p a` is irreducible over `K` (`a_not_mem_range` plus `ArtinSchreier.irreducible_iff`), so
+`ArtinSchreier.finrank_splittingField_eq` gives `[L : K] = p` exactly, and `ArtinSchreier.
+instIsGalois` (unconditional) gives `IsGalois K L` — hence, via Mathlib's `IsGalois` class,
+`Algebra.IsSeparable K L` for free. This separability is exactly what
+`TotallyRamifiedWildConcreteExample` lacked, and what its closing docstring predicted would let a
+genuinely Artin–Schreier example avoid the trace-form obstruction that blocked its `finrank_eq`. -/
+
+theorem hirr : Irreducible (ArtinSchreier.poly p a) := ArtinSchreier.irreducible_iff.mpr a_not_mem_range
+
+/-- `L := ` the splitting field of the Artin–Schreier polynomial `X ^ p - X - C a`. -/
+abbrev L : Type := (ArtinSchreier.poly p a).SplittingField
+
+instance : IsGalois K L := ArtinSchreier.instIsGalois
+
+theorem finrank_K_L : Module.finrank K L = p := ArtinSchreier.finrank_splittingField_eq hirr
+
+/-- `theta : L`, a chosen root of `poly p a` in its splitting field. -/
+theorem exists_root : ∃ theta : L, Polynomial.aeval theta (ArtinSchreier.poly p a) = 0 := by
+  have hsplits : ((ArtinSchreier.poly p a).map (algebraMap K L)).Splits :=
+    Polynomial.SplittingField.splits (ArtinSchreier.poly p a)
+  have hdeg : ((ArtinSchreier.poly p a).map (algebraMap K L)).degree ≠ 0 := by
+    rw [Polynomial.degree_map, Polynomial.degree_eq_natDegree (ArtinSchreier.poly_ne_zero p a),
+      ArtinSchreier.natDegree_poly]
+    exact_mod_cast (Fact.out : p.Prime).ne_zero
+  obtain ⟨theta, hθ⟩ := hsplits.exists_eval_eq_zero hdeg
+  exact ⟨theta, by rw [Polynomial.aeval_def, ← Polynomial.eval_map]; exact hθ⟩
+
+/-- `theta`, a fixed root of `poly p a` in `L`. -/
+noncomputable def theta : L := exists_root.choose
+
+theorem aeval_theta : Polynomial.aeval (theta : L) (ArtinSchreier.poly p a) = 0 := exists_root.choose_spec
+
+/-- **`theta` generates `L` over `K`.** `K⟮theta⟯` has `K`-dimension `p` (`poly p a`, irreducible and monic,
+is its minimal polynomial), matching `[L : K] = p` exactly, so `K⟮theta⟯ = L`. -/
+theorem adjoin_θ_eq_top : IntermediateField.adjoin K ({theta} : Set L) = ⊤ := by
+  have hInt : IsIntegral K theta := ⟨ArtinSchreier.poly p a, ArtinSchreier.poly_monic p a, aeval_theta⟩
+  have hminpoly : ArtinSchreier.poly p a = minpoly K theta :=
+    minpoly.eq_of_irreducible_of_monic hirr aeval_theta (ArtinSchreier.poly_monic p a)
+  have hfinrank_adj :
+      Module.finrank K (IntermediateField.adjoin K ({theta} : Set L) : IntermediateField K L) = p
+      := by
+    rw [IntermediateField.adjoin.finrank hInt, ← hminpoly, ArtinSchreier.natDegree_poly]
+  have hrank_top : Module.finrank K (⊤ : IntermediateField K L) = p := by
+    rw [LinearEquiv.finrank_eq (IntermediateField.topEquiv (F := K) (E := L)).toLinearEquiv]
+    exact finrank_K_L
+  exact IntermediateField.eq_of_le_of_finrank_eq le_top (by rw [hfinrank_adj, hrank_top])
+
+theorem a_ne_zero : a ≠ 0 := by
+  intro h0
+  have hva := valuation_a
+  rw [h0, map_zero] at hva
+  exact WithZero.exp_ne_zero hva.symm
+
+theorem theta_ne_zero : (theta : L) ≠ 0 := by
+  intro hθ0
+  have h0 : Polynomial.aeval (0 : L) (ArtinSchreier.poly p a) = 0 := hθ0 ▸ aeval_theta
+  have h1 : algebraMap K L a = 0 := by
+    simpa [ArtinSchreier.poly_def, zero_pow (Fact.out : p.Prime).ne_zero] using h0
+  exact a_ne_zero ((algebraMap K L).injective (h1.trans (map_zero _).symm))
+
+end Langlands.TotallyRamifiedArtinSchreierConcreteExample
+
+end
