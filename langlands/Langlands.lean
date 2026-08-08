@@ -31,6 +31,7 @@ import Langlands.RamificationFiltrationAdicCompletion
 import Langlands.ResidueField
 import Langlands.TotallyRamifiedArtinSchreierConcreteExample
 import Langlands.TotallyRamifiedConcreteExample
+import Langlands.TotallyRamifiedCyclotomicConcreteExample
 import Langlands.TotallyRamifiedWildConcreteExample
 import Langlands.TotallyRamifiedEisenstein
 import Langlands.TotallyRamifiedNormIndex
