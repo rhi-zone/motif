@@ -222,6 +222,50 @@ theorem theta_ne_zero : (theta : L) ≠ 0 := by
     simpa [ArtinSchreier.poly_def, zero_pow (Fact.out : p.Prime).ne_zero] using h0
   exact a_ne_zero ((algebraMap K L).injective (h1.trans (map_zero _).symm))
 
+/-! ### `S := integralClosure R L`
+
+Unlike the tame/wild template files, `S` is *not* built as a hand-wrapped polynomial ring: since
+`L / K` is a finite **separable** extension (inherited from `IsGalois K L`) and `R` is a Dedekind
+domain, Mathlib's general theory of integral closures
+(`Mathlib.RingTheory.DedekindDomain.IntegralClosure`) gives `IsDedekindDomain`, `Module.Finite`,
+`Module.Free`, and the rank identity `Module.finrank R S = Module.finrank K L` directly — no
+hand-built ring structure needed. This is exactly the point of departure from
+`TotallyRamifiedWildConcreteExample`, where the extension's inseparability made this route
+(via `IsIntegralClosure.rank`, which needs `Algebra.IsSeparable`) unavailable. -/
+
+instance : Module.IsTorsionFree R L := .trans_faithfulSMul R K L
+
+/-- `S := integralClosure R L`, the ring of integers of `L` relative to `R`. -/
+abbrev S : Type := integralClosure R L
+
+instance : IsDedekindDomain S := integralClosure.isDedekindDomain_fractionRing R L
+
+instance : Module.Finite R S := IsIntegralClosure.finite R K L S
+
+instance : Module.Free R S := IsIntegralClosure.module_free R K L S
+
+instance : Algebra.IsIntegral R S := Algebra.IsIntegral.of_finite R S
+
+instance : Module.IsTorsionFree R S := IsIntegralClosure.isTorsionFree R L
+
+theorem finrank_R_S : Module.finrank R S = p := by
+  rw [IsIntegralClosure.rank R K L S, finrank_K_L]
+
+theorem algebraMap_R_S_injective : Function.Injective (algebraMap R S) := by
+  have hRL : Function.Injective (algebraMap R L) := by
+    rw [IsScalarTower.algebraMap_eq R K L]
+    exact (algebraMap K L).injective.comp (IsFractionRing.injective R K)
+  have heq : algebraMap S L ∘ algebraMap R S = algebraMap R L := by
+    ext x; exact (IsScalarTower.algebraMap_apply R S L x).symm
+  exact Function.Injective.of_comp (heq ▸ hRL)
+
+instance : NoZeroSMulDivisors R S where
+  eq_zero_or_eq_zero_of_smul_eq_zero {r x} h := by
+    rw [Algebra.smul_def] at h
+    rcases mul_eq_zero.mp h with h1 | h1
+    · exact Or.inl (algebraMap_R_S_injective (h1.trans (map_zero (algebraMap R S)).symm))
+    · exact Or.inr h1
+
 end Langlands.TotallyRamifiedArtinSchreierConcreteExample
 
 end
