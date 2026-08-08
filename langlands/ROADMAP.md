@@ -7218,3 +7218,129 @@ argument, Gauss's lemma — rather than re-deriving it, and should re-check the 
 shortcut for field 1 before falling back to the full uniformizer-algebra-identity computation
 (Artin–Schreier's `algebraMap_xK_eq` pattern), since if it exists it would sidestep a nontrivial chunk
 of the remaining work.
+
+## 6t. Twenty-second pass (2026-08-09): `IsTotallyRamified` CLOSED for the mixed-characteristic
+cyclotomic instance — priorities (d) and (e) of §6r fully done, sorry-free; two specific blockers
+between the instance and the `exp`/`log` API found and diagnosed rather than worked around
+
+**Task.** Execute §6s's Part 2 design: (1) completed-level separability/`finrank` for the cyclotomic
+instance via `theta := ζ - 1` and the Eisenstein/Gauss route; (2) assemble the three
+`IsTotallyRamified` fields; (3) stretch goal: exercise
+`NonarchimedeanExponentialUnitsIso.expEquiv` / `AdicCompletionNormExpTrace.norm_exp_eq_exp_trace`.
+
+**Priority (1) — CLOSED, exactly along §6s's design, with two adjustments.** The design held up
+under implementation; every lemma name in it was re-verified against Mathlib before use, and the
+chain worked as predicted. What was built, in order:
+
+* `theta := ζ - 1`; `c : K` the copy of `ζₚ = ζ ^ p` inside `K = ℚ⟮ζₚ⟯`, realized as
+  `IntermediateField.AdjoinSimple.gen ℚ ζₚ` (so `algebraMap K L c = ζₚ` is
+  `AdjoinSimple.algebraMap_gen`, no bookkeeping), and `hc : IsPrimitiveRoot c p` by
+  `IsPrimitiveRoot.of_map_of_injective`.
+* The degrees, all concrete since `p = 3`: `[L : ℚ] = totient 9 = 6` and `[K : ℚ] = totient 3 = 2`
+  by `IsCyclotomicExtension.Rat.finrank` + `decide`, hence `[L : K] = 3 = p` by
+  `Module.finrank_mul_finrank`. **Adjustment 1:** `omega` cannot see through the `abbrev p : ℕ := 3`
+  in the conclusion, so the goal has to be `show`n as `= 3` first.
+* `IntermediateField.adjoin K {theta} = ⊤`, by `Algebra.adjoin_induction` from
+  `IsCyclotomicExtension.adjoin_primitive_root_eq_top` (`Algebra.adjoin ℚ {ζ} = ⊤`), using
+  `ζ = theta + 1`. **Adjustment 2:** `intro x _` after `rw [eq_top_iff]` leaves the anonymous
+  `x ∈ ⊤` hypothesis in scope, which `induction` then generalizes over, so every induction
+  hypothesis comes back as `y ∈ ⊤ → y ∈ K⟮theta⟯` instead of `y ∈ K⟮theta⟯` — an error whose message
+  points at the `add_mem`/`mul_mem` call sites, not at the `intro`. `rintro x -` fixes it.
+* `eisPoly a`, the shifted polynomial `(X + 1) ^ p - C a`, deliberately *defined* in expanded form
+  (`X ^ 3 + C 3 * X ^ 2 + C 3 * X + C (1 - a)`) so its coefficients are directly readable for the
+  Eisenstein criterion, with `eisPoly_eq_shift` recovering the conceptual form for the `aeval`
+  computation. Stated over an arbitrary `CommRing`, so the *same* polynomial serves over `K`, over
+  `𝒪 := v.adicCompletionIntegers K`, and over `Kv := v.adicCompletion K`, with `eisPoly_map`
+  (`(eisPoly a).map f = eisPoly (f a)`) tying the three together. `Monic` and `natDegree = 3` both
+  fall to `monicity!` / `compute_degree!`.
+* `minpoly K theta = eisPoly c`, via `minpoly.unique` (note: it concludes `p = minpoly A x`, not the
+  other way round) plus the degree count `natDegree (minpoly K theta) = [K⟮theta⟯ : K] = [L : K] = 3`.
+* `v.asIdeal = span {γ - 1}` for `γ := hc.toInteger`, by
+  `IsCyclotomicExtension.Rat.eq_span_zeta_sub_one_of_liesOver' p K hc v.asIdeal` — as §6s predicted,
+  this applies to *any* primitive `p`-th root of `K`, so nothing about the already-closed `v` (built
+  from a different primitive root `ζ_K`) had to be touched. Hence `intValuation_singleton` gives
+  `v.intValuation (γ - 1) = exp (-1)` and `π₀ := algebraMap (𝓞 K) 𝒪 (γ - 1)` is an *exact*
+  uniformizer of `𝒪` (`Valuation.IsUniformizer.is_generator`).
+* `(eisPoly c₀).IsEisensteinAt (maximalIdeal 𝒪)` via
+  `Polynomial.Monic.isEisensteinAt_of_mem_of_notMem`: the two middle coefficients are `3`, which is
+  in `𝔪` because `IsCyclotomicExtension.Rat.associated_zeta_sub_one_pow_prime` makes `(γ - 1) ^ (p-1)`
+  associated to `p` (so `γ - 1 ∣ p`, so `p ∈ v.asIdeal`, so valuation `< 1`); the constant term is
+  `1 - c₀ = -π₀`, which is in `𝔪 = span {π₀}` but not in `𝔪 ^ 2 = span {π₀ ^ 2}` (else `π₀` would be
+  a unit). Then `Polynomial.IsEisensteinAt.irreducible` over `𝒪`, and
+  `Polynomial.Monic.irreducible_iff_irreducible_map_fraction_map` (Gauss) lifts to `Kv`. Every
+  instance the two lemmas need (`IsDomain 𝒪`, `IsIntegrallyClosed 𝒪`, `IsFractionRing 𝒪 Kv`) was
+  already in `Langlands.NormMapResidueCompatibility`, exactly as §6s expected.
+* One call to `AdicCompletionPrimitiveElementDegree.finrank_and_isSeparable_of_primitiveElement`
+  then delivers `[Lw : Kv] = [L : K] = p` and `Algebra.IsSeparable Kv Lw`. The §6s generalization
+  paid off precisely as intended: this step is three lines.
+
+**Priority (2) — CLOSED, all three fields, sorry-free.** `#print axioms
+Langlands.TotallyRamifiedCyclotomicConcreteExample.isTotallyRamified` reports only `propext`,
+`Classical.choice`, `Quot.sound`.
+
+* `finrank_eq`: `IsIntegralClosure.rank` down to `K₀ / L₀`, then `ramificationIdx'_eq` (`e = p`,
+  already closed in §6r).
+* `map_maximalIdeal_eq`: **the ideal-power-cancellation shortcut §6s flagged was not needed, and
+  neither was the cyclotomic algebra it would have replaced.** `Langlands.NormMap`'s
+  `valuation_algebraMap_pow_eq` — the completed-level statement that `adicCompletionComap`
+  multiplies valuations by `e` — pins `Valued.v (image of π₀) = exp (-p)` outright from the
+  already-known `e = p`. Since `Θ` (the image of `theta = ζ - 1`) is an exact uniformizer of `L₀`
+  (`w.asIdeal = span {ζ - 1}` *by definition of* `w`), `u := (image of π₀) / Θ ^ p` has valuation
+  exactly `1`, i.e. is a unit of `L₀`, and the rest is the Artin–Schreier file's
+  `span {Θ ^ p * u} = span {Θ} ^ p` bookkeeping. This never has to identify `ζ ^ p - 1` with
+  `(ζ - 1) ^ p` up to a unit by hand, and never has to cancel ideal powers. Recording this because
+  §6s left the shortcut question open: *neither* branch it named was the right one — the cheapest
+  route was an existing repo lemma, not a Mathlib cancellation lemma and not the ideal-level
+  factorization.
+* `exists_sub_algebraMap_mem_maximalIdeal`: mirrors the Artin–Schreier file line for line, starting
+  from the already-closed `inertiaDeg'_eq` (`f = 1`).
+
+**Priority (3) — partially exercised; two blockers found and left standing, deliberately.** What
+*did* close: `CharP ((𝓞 K) ⧸ v.asIdeal) p` and `CharP ((𝓞 L) ⧸ w.asIdeal) p`, which through
+`AdicCompletionMixedCharacteristic.instCharPResidueFieldAdicCompletionIntegers` make this the first
+instance in the repo whose *completed* level is genuinely mixed-characteristic — the whole point of
+building it. What did not, and why:
+
+1. **A `NormedField (v.adicCompletion K)` instance diamond that only a number-field instance can
+   expose.** The `exp`/`log` API is phrased with `‖·‖` from `Langlands.NormMap`'s
+   `instNontriviallyNormedFieldAdicCompletion` (`Valued.toNontriviallyNormedField` applied to
+   `NormMap`'s own `Valuation.RankOne` for `Valued.v`). Mathlib also has
+   `NumberField.IsDedekindDomain.HeightOneSpectrum.instNormedFieldValuedAdicCompletion`
+   (`Mathlib.NumberTheory.NumberField.Completion.FinitePlace`), likewise `Valued.toNormedField … ℤᵐ⁰`
+   but applied to the `absNorm`-based `instRankOneAdicCompletion`. Both are in scope here, and the
+   direct `NormedField` instance beats the repo's `NontriviallyNormedField.toNormedField` in
+   instance search, so every `‖·‖` written in the concrete file elaborates to Mathlib's norm while
+   every `exp`/`log` lemma is stated in the repo's. **These are not the same function** — same
+   valuation and topology, different `RankOne` hom, hence different real scaling. An
+   `attribute [-instance]` was tried once and did not dislodge it; rather than keep trying variants,
+   this was diagnosed and stopped: which `RankOne` is canonical for this repo is a design decision
+   with downstream statement consequences, not something to force past locally. No
+   equal-characteristic instance could have surfaced this, since Mathlib's competing instance is
+   number-field-specific.
+2. **`norm_exp_eq_exp_trace` additionally requires `IsGalois (v.adicCompletion K)
+   (w.adicCompletion L)`; only `Algebra.IsSeparable` is available.** Normality at the completed level
+   should be true and provable — `L / K` is Galois with `μ_p ⊆ K`, so the conjugates of `theta` are
+   `(theta + 1) * ξ - 1` for `ξ ∈ μ_p`, each a `Kv`-polynomial expression in `theta`, hence
+   `minpoly Kv Θ` splits in `Kv⟮Θ⟯ = Lw` — but converting that into `Polynomial.Splits` plus an
+   `IsSplittingField` instance is self-contained work that was not attempted. Note this is a
+   *different* gap from the `IsGalois K L` at the base level, which is free here (§6r).
+
+   Both are recorded in a dedicated section of the concrete file itself, not only here.
+
+**Verification.** `nix develop -c lake build Langlands`: clean, whole project (8736/8736 jobs).
+`grep -rn sorry Langlands/TotallyRamifiedCyclotomicConcreteExample.lean`: zero hits (the only file
+touched this pass). `#print axioms` on `isTotallyRamified`: the three standard axioms only.
+
+**Commits:** `b12962a` (`theta := ζ - 1` as primitive element, and the degrees), `aff8c54`
+(`minpoly K (ζ - 1) = (X + 1)^p - C c`), `20c95ed` (Eisenstein + Gauss: the minpoly stays
+irreducible over the completion), `a9f2e20` (`IsTotallyRamified` CLOSED — all three fields),
+`2817861` (residue characteristic `p` at both places; the two blockers recorded).
+
+**Net effect.** §6r's priorities (d) and (e) are closed: `IsTotallyRamified K L v w` now holds,
+sorry-free, for a genuinely mixed-characteristic (`CharZero K`, residue characteristic `p`), wild
+(`p ∣ e = p`), Galois-at-the-base-level instance — the headline gap §6n/§6q left open, since every
+prior concrete instance was equal-characteristic. Only one file was touched, and only additively.
+The next session picking up the `exp`/`log` thread should start from blocker (1) above, because it
+is a repo-wide design question (which `RankOne` on `adicCompletion` is canonical) that will recur
+for *every* number-field-based instance, not a quirk of this one; blocker (2) is comparatively
+routine and local.
