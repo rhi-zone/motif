@@ -6790,3 +6790,101 @@ this pass) — unchanged from prior passes' assessment, out of scope here.
 two routes above, a genuinely new, bounded but nontrivial piece of topological/valuation-theoretic
 machinery; (b)/(c) from §6n, unchanged, both still blocked on (a) in its fuller (Galois) form;
 Artin–Schreier machinery, still entirely unbuilt, still needed for a Galois wild example at all.
+
+## 6p. Eighteenth pass (2026-08-08): Artin–Schreier theory built from scratch — irreducibility
+criterion and cyclic-Galois structure both CLOSED; concrete wild-Galois local-field instance not
+attempted
+
+**Task.** Build Artin–Schreier theory for `f_a := X^p - X - C a` over a field `k` of characteristic
+`p`, confirmed (again) to have zero prior Mathlib coverage (grep still finds only the one-line
+comment in `Mathlib.FieldTheory.KummerExtension`). Three priorities, in order: (1) the
+irreducibility criterion `Irreducible f_a ↔ a ∉ range(x ↦ x^p - x)`; (2) separability/normality/
+cyclic-Galois-group structure for the splitting field when `f_a` is irreducible; (3, stretch) a
+concrete wild-Galois local-field `IsTotallyRamified` instance analogous to
+`TotallyRamifiedWildConcreteExample.lean`, using an Artin–Schreier polynomial in place of `Y^p - X`
+to get genuine wild ramification with a Galois extension (the missing piece flagged at the end of
+§6o). New file `Langlands/ArtinSchreier.lean`, registered in `Langlands.lean`.
+
+**Priority 1 — CLOSED.** `ArtinSchreier.poly p a := X^p - X - C a`, its monicity/degree-`p` facts,
+and:
+- `isRoot_add_of_isRoot` : if `θ` is a root and `i^p = i`, so is `θ + i` (freshman's-dream
+  `add_pow_char`).
+- `roots_eq_image_add` : in any field `L` where `poly p a` splits and has a root `θ`, its full
+  root multiset is exactly `{θ + i : i ∈ image of ZMod p in L}` — established via
+  `ZMod.castHom`-injectivity giving `p` distinct roots from `isRoot_add_of_isRoot`, pinned to *all*
+  the roots by matching `splits_iff_card_roots`'s cardinality count.
+- `not_irreducible_of_mem_range` (easy direction): `a = θ^p - θ`, `θ : k` gives a linear factor
+  over `k` itself, hence reducibility (degree `p ≥ 2`).
+- `irreducible_of_not_mem_range` (hard direction, by contrapositive): given `poly p a = g * h'`
+  with neither factor a unit, `Polynomial.roots_mul` splits `M`'s (`M` := `poly p a` mapped into
+  the splitting field `L`) root count between `g.map` and `h'.map` exactly along their degrees
+  (both individual `card_roots'` bounds forced to equality by the sum matching `natDegree_mul`),
+  pinning `card(g.map.roots) = d := g.natDegree`. Vieta
+  (`Polynomial.multiset_prod_X_sub_C_coeff_card_pred`) expresses `g.map`'s `(d-1)`-coefficient as
+  `-(sum of its roots)`; writing that root multiset as the image of a size-`d` `u : Multiset (ZMod
+  p)` under `θ + ZMod.castHom _ L` turns this into a single linear equation for `θ` with
+  coefficients pulled back to `k` (`RingHom.ext_zmod` matches the two canonical maps `ZMod p → k`
+  and `ZMod p → L`; `d` invertible in `k` since `0 < d < p` and `p` prime). Solving pins `θ` into
+  the image of `algebraMap k L`, giving `θ = algebraMap k L θ₀` for `θ₀ : k` with `θ₀^p - θ₀ = a`
+  (`Polynomial.aeval_algebraMap_eq_zero_iff_of_injective` pulls the root property back to `k`).
+- `irreducible_iff` : the two directions combined.
+
+This closed with roughly the shape the task brief's "suggested proof shape" sketched, but the
+Vieta/coefficient-extraction step needed considerably more machinery than the brief's one-paragraph
+sketch implied (submultiset-to-Finset-image bookkeeping via `Function.invFun` +
+`Function.leftInverse_invFun`, plus the two-canonical-maps matching via `RingHom.ext_zmod`) — real,
+multi-session-caliber formalization work as flagged, closed in one pass here.
+
+**Priority 2 — CLOSED, including the "stretch" cyclic-order-`p` conclusion.**
+- `poly_separable` : the derivative of `poly p a` is the constant `-1` (the `X^p` term's
+  derivative `(p : k) • X^(p-1)` vanishes by `CharP k p`), a unit, hence trivially coprime to
+  `poly p a`.
+- `instIsGalois` : `IsGalois k (poly p a).SplittingField`, from `poly_separable` plus the splitting
+  field's automatic normality, via `IsGalois.of_separable_splitting_field`. Holds unconditionally —
+  no irreducibility hypothesis needed for this part.
+- `finrank_splittingField_eq` (needs `Irreducible (poly p a)`) : `Module.finrank k
+  (poly p a).SplittingField = p`. A root `θ` has `minpoly k θ = poly p a`
+  (`minpoly.eq_of_irreducible_of_monic`, using irreducibility + monicity + the root), giving
+  `finrank k k⟮θ⟯ = p` (`IntermediateField.adjoin.finrank`). Every other root `θ + i` has `i` in the
+  `k`-rational image of `ZMod p` (same `RingHom.ext_zmod` matching as above), hence already lies in
+  `k⟮θ⟯`; since `L` is generated over `k` by the full root set
+  (`Polynomial.SplittingField.adjoin_rootSet`), `k⟮θ⟯ = ⊤`, i.e. `k⟮θ⟯ = L`.
+- `isCyclic_gal` (needs `Irreducible (poly p a)`) : `IsCyclic Gal((poly p a).SplittingField / k)`.
+  Simpler than the task brief's suggested route (explicitly naming the generator `σ : θ ↦ θ + 1`
+  and computing its order): `Nat.card Gal(L/k) = Module.finrank k L = p`
+  (`IsGalois.card_aut_eq_finrank` + `finrank_splittingField_eq`), and **every group of prime order
+  is cyclic** (`isCyclic_of_prime_card`) — no need to exhibit a generator by hand.
+
+**Priority 3 — not attempted.** Per the task's explicit instruction ("only attempt this if
+priorities 1 and 2 close with meaningful time left... a precise, honest non-attempt is a fine
+outcome and explicitly preferred over a rushed or sorry-laden attempt"), and given priorities 1–2
+already represent a full pass's worth of substantial formalization, this was not started. What it
+would need, concretely, based on `TotallyRamifiedWildConcreteExample.lean`'s pattern: a Dedekind
+domain `S` built from an Artin–Schreier polynomial (e.g. `Y^p - Y - X⁻¹` or similar, over
+`R := k[X]`, `k := ZMod p`, chosen so the extension is both wildly ramified at the relevant place
+*and* the fiber polynomial is irreducible via `irreducible_iff` above), the usual
+`Module.Finite`/`w LiesOver v`/`ramificationIdx'_eq` setup, and then all three fields of
+`IsTotallyRamified` — field 2 in particular is exactly the blocker flagged unresolved in §6o for the
+purely-inseparable wild example, and there is no reason to expect it easier here; it may in fact be
+easier, since `Algebra.IsSeparable` (which `IsIntegralClosure.rank`'s route to field 2 secretly
+needs, per §6o's finding) is now genuinely *available* for a genuinely Galois Artin–Schreier
+extension, unlike the inseparable `Y^p - X` case — but this is unverified, not attempted, and stated
+here only as the concrete next step, not a result.
+
+**Verification.** `nix develop -c lake build Langlands`: clean, whole project (8732 jobs), only
+pre-existing linter warnings unrelated to this file. `#print axioms` on
+`not_irreducible_of_mem_range`, `irreducible_of_not_mem_range`, `irreducible_iff`,
+`poly_separable`, `instIsGalois`, `finrank_splittingField_eq`, `isCyclic_gal`: all
+`[propext, Classical.choice, Quot.sound]` only — no `sorry` anywhere in the file.
+
+**Commits:** `7f8ae48` (`poly`, monic/degree facts, `isRoot_add_of_isRoot`,
+`not_irreducible_of_mem_range`), `e18513e` (`roots_eq_image_add`), `7e5f2d4`
+(`irreducible_of_not_mem_range`, `irreducible_iff` — priority 1 complete), `95895bf`
+(`poly_separable`, `instIsGalois`), `f8d4a42` (`finrank_splittingField_eq`), `50055c7`
+(`isCyclic_gal` — priority 2 complete).
+
+**Net effect.** The Galois wild-ramification gap flagged at the very end of §6o — "a genuinely
+separable, Galois, wildly ramified example needs an Artin–Schreier construction... for which
+Mathlib has zero irreducibility/Galois machinery" — is now closed as a standalone theory. The
+concrete-instance construction (this section's Priority 3, and §6o's still-open item (a) in its
+fuller Galois form) remains unstarted; it is the natural next step for whoever picks this thread up.
