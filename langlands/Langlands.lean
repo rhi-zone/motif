@@ -18,6 +18,7 @@ import Langlands.NonarchimedeanExponentialFiltration
 import Langlands.NonarchimedeanExponentialHasSum
 import Langlands.NonarchimedeanExponentialRingHom
 import Langlands.NonarchimedeanExponentialUnitsFiltration
+import Langlands.NonarchimedeanExponentialUnitsIso
 import Langlands.NonarchimedeanSigmaSummability
 import Langlands.NonarchimedeanUnconditionalSummability
 import Langlands.PowerSeriesExpLog
