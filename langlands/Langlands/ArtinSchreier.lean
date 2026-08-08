@@ -389,4 +389,13 @@ theorem finrank_splittingField_eq (hirr : Irreducible (poly p a)) :
     exact (IntermediateField.topEquiv (F := k) (E := L)).symm.toLinearEquiv.finrank_eq
   rw [this, hfinrank_adj]
 
+/-- **The Galois group of the splitting field of an irreducible `poly p a` is cyclic of order
+`p`.** `Nat.card Gal(L/k) = Module.finrank k L = p` (`IsGalois.card_aut_eq_finrank`,
+`finrank_splittingField_eq`), and every group of prime order is cyclic. -/
+theorem isCyclic_gal (hirr : Irreducible (poly p a)) :
+    IsCyclic (Gal((poly p a).SplittingField/k)) :=
+  isCyclic_of_prime_card
+    ((IsGalois.card_aut_eq_finrank k (poly p a).SplittingField).trans
+      (finrank_splittingField_eq hirr))
+
 end ArtinSchreier
