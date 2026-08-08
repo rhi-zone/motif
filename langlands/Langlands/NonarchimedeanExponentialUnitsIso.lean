@@ -403,4 +403,30 @@ theorem norm_log_eq_of_lt_sq (hnorm : ‖(p : K)‖ < 1) {z : K}
     exact pow_le_pow_of_le_one hρ0 hρlt1.le (by omega)
   exact norm_eq_of_norm_sub_lt htail
 
+include hA in
+/-- **`log` lands in `𝔪_A^i`, with no level shift.** For `x ∈ 𝔪_A^i` and `‖π‖^i` strictly below
+`logUnitsThreshold K p`, `log hnorm (x : K)` is itself the coercion of an `A`-element of `𝔪_A^i`.
+Combines `norm_le_pow_of_mem_maximalIdeal_pow` (bounding `‖(x:K)‖ ≤ ‖π‖^i`) with
+`norm_log_eq_of_lt_sq` (identifying `‖log hnorm (x:K)‖ = ‖(x:K)‖` exactly, so the bound transfers
+with **no shift**) and `mem_maximalIdeal_pow_of_norm_le` (converting the resulting norm bound back
+into ideal membership). -/
+theorem log_mem_maximalIdeal_pow (hnorm : ‖(p : K)‖ < 1) {π : A}
+    (hπ : maximalIdeal A = Ideal.span ({π} : Set A)) (hπ0 : (π : K) ≠ 0)
+    (hπnorm : ‖(π : K)‖ < 1) {i : ℕ} (hthresh : ‖(π : K)‖ ^ i < logUnitsThreshold K p)
+    {x : A} (hx : x ∈ maximalIdeal A ^ i) :
+    ∃ y : A, y ∈ maximalIdeal A ^ i ∧ (y : K) = log hnorm (x : K) := by
+  have hxnorm : ‖(x : K)‖ ≤ ‖(π : K)‖ ^ i := norm_le_pow_of_mem_maximalIdeal_pow A hA hπ hx
+  have hxltthresh : ‖(x : K)‖ < logUnitsThreshold K p := lt_of_le_of_lt hxnorm hthresh
+  have hlogeq : ‖log hnorm (x : K)‖ = ‖(x : K)‖ := norm_log_eq_of_lt_sq hnorm hxltthresh
+  have hlognorm : ‖log hnorm (x : K)‖ ≤ ‖(π : K)‖ ^ i := hlogeq ▸ hxnorm
+  have hlogA : log hnorm (x : K) ∈ A := by
+    apply (hA _).mpr
+    calc ‖log hnorm (x : K)‖ ≤ ‖(π : K)‖ ^ i := hlognorm
+      _ ≤ 1 := pow_le_one₀ (norm_nonneg _) hπnorm.le
+  set y : A := ⟨log hnorm (x : K), hlogA⟩ with hydef
+  refine ⟨y, ?_, rfl⟩
+  apply mem_maximalIdeal_pow_of_norm_le A hA hπ0 hπ
+  show ‖(y : K)‖ ≤ ‖(π : K)‖ ^ i
+  simpa [hydef] using hlognorm
+
 end NonarchimedeanExponential
