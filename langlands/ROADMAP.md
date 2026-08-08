@@ -7344,3 +7344,94 @@ The next session picking up the `exp`/`log` thread should start from blocker (1)
 is a repo-wide design question (which `RankOne` on `adicCompletion` is canonical) that will recur
 for *every* number-field-based instance, not a quirk of this one; blocker (2) is comparatively
 routine and local.
+
+## 6u. Twenty-third pass (2026-08-09): closes blocker (1) — the `NormedField`/`RankOne` diamond,
+as general repo-wide infra, not a one-off around the concrete example
+
+**Task.** §6t's blocker (1): a `NormedField (v.adicCompletion K)` instance diamond between this
+repo's `Langlands.NormMap.instNontriviallyNormedFieldAdicCompletion` (`e := 2`) and Mathlib's
+`NumberField.HeightOneSpectrum.instNormedFieldValuedAdicCompletion` (`e := absNorm v.asIdeal`),
+diagnosed but not fixed. Blocker (2) (`IsGalois` at the completed level) was explicitly out of
+scope, per the task brief, and remains untouched.
+
+**Root cause, confirmed at the Lean level (not re-derived from the §6t diagnosis alone).** A
+scratch reproduction (`#synth NormedField (v.adicCompletion K)` with both instances in scope,
+Mathlib's `HeightOneSpectrum.instNormedFieldValuedAdicCompletion` wins) confirmed the diamond is
+real and exactly as described. Then, directly against this project's vendored Mathlib:
+
+* `Valued.toNormedField`/`Valued.toNontriviallyNormedField`
+  (`Mathlib.Topology.Algebra.Valued.NormedValued`) set `toUniformSpace := Valued.toUniformSpace`
+  as a field of the record — literally the ambient `Valued` instance's own uniform space,
+  *independent of `hv : RankOne val.v`*. Since both competing instances here apply this
+  construction to the *same* ambient `Valued (v.adicCompletion K) ℤᵐ⁰`, their `toUniformSpace`
+  fields are the identical term: checked directly by `rfl` for both concrete instances (no
+  `PseudoMetricSpace.ext`-level argument needed, confirmed by a passing `example : ... = ... := rfl`
+  in a scratch file, later deleted).
+* `Valuation.IsRankOneDiscrete.rankOne {e} (he : 1 < e) : v.RankOne`
+  (`Mathlib.RingTheory.Valuation.Discrete.RankOne`) builds `hom' := (WithZeroMulInt.toNNReal e).comp
+  φ` where `φ := valueGroup₀_equiv_withZeroMulInt v` does **not** depend on `e`; `WithZeroMulInt.
+  toNNReal e` sends a nonzero `z` to `e ^ n` for the *same* integer `n` regardless of `e`. So for
+  two `rankOne`-built instances at `e₁, e₂`, `hom₁ x = e₁ ^ n = (e₂ ^ n) ^ (log e₁ / log e₂) =
+  (hom₂ x) ^ (log e₁ / log e₂)` — a fixed positive `rpow` relating the two norms pointwise, proved
+  in full (case-split on `n`'s existence, i.e. on whether the restricted value is `0`).
+
+**Conclusion: this is a pure norm-scaling diamond, not a topology diamond** — genuinely different
+from the pass-18–22 `HenselianValuation` `UniformSpaceTransport` situation (two `NormedField`s with
+*unrelated*, non-defeq `UniformSpace`s, needing `PseudoMetricSpace.ext` to unify them first). Here
+the shared topology is free; the only content is showing the `choose`n limits
+`NonarchimedeanExponential.exp`/`log` extract from Cauchy sequences (via `cauchySeq_tendsto_of_
+complete`, relative to whichever `NormedField` instance is in scope) agree across the two
+instances despite being extracted through different `norm`s — via `tendsto_nhds_unique` on the one
+shared topology, since the underlying numerical sequence (`∑ xⁿ/n!`, etc.) is instance-independent.
+
+**What was built, as general infra (not scoped to the cyclotomic file or to `e := 2`/`absNorm`
+specifically):**
+
+* `Langlands.NormMap`, new section `RankOneComparison` (right after the existing `RankOne`
+  section, same file): `Valuation.norm_rankOne_rpow` — for *any* discretely-valued `v : Valuation R
+  ℤᵐ⁰` and any two `rankOne`-built `RankOne` instances at `e₁, e₂ > 1`, `v.norm₁ x = (v.norm₂ x) ^
+  (log e₁ / log e₂)`. Fully general over `R`/`v`; no `HeightOneSpectrum`/`adicCompletion` content.
+* `Langlands/RankOneNormTransport.lean` (new file, since it needs
+  `Langlands.NonarchimedeanExponential` which `NormMap.lean` does not otherwise depend on):
+  * `tendsto_nhds_unique_of_topologicalSpace_eq` — a fully general `Filter.Tendsto`/`nhds`
+    combinator, no valuation/norm content at all: a sequence's limit is independent of which of two
+    *equal* topologies is used to compute it.
+  * `NonarchimedeanExponential.exp_eq_of_rankOne` / `.log_eq_of_rankOne` — for *any* `Valued K Γ₀`
+    and *any* two `RankOne (Valued.v)` instances (not restricted to `rankOne`-built ones, nor to
+    `e := 2`/`absNorm`), `exp`/`log` agree on the intersection of their convergence domains. This is
+    the shape of every future diamond of this kind — any concrete instance mixing this repo's
+    `NormMap` machinery with a Mathlib construction that registers its own competing `RankOne`.
+  * `NonarchimedeanExponential.norm_lt_convergenceRadius_iff_of_rankOne` — specifically for the two
+    `rankOne`-built instances, membership in `exp`'s convergence domain is instance-independent (an
+    `rpow`-monotonicity corollary of `Valuation.norm_rankOne_rpow`), so a convergence-domain
+    hypothesis established under one instance discharges the corresponding hypothesis of
+    `exp_eq_of_rankOne` under the other without redoing the geometric-series estimate.
+
+**Does this unblock combining `norm_exp_eq_exp_trace` with Mathlib's cyclotomic machinery for the
+concrete example? Partially — the diamond itself is closed, but blocker (2) still blocks the actual
+invocation.** `exp_eq_of_rankOne` and `norm_lt_convergenceRadius_iff_of_rankOne` together give
+everything needed to interpret `exp`/`log` values and their convergence-domain hypotheses under
+either instance interchangeably; nothing about `Algebra.norm`/`Algebra.trace` (used by
+`norm_exp_eq_exp_trace`) depends on the ambient `NormedField` instance at all, so those parts of the
+statement are unaffected by the diamond regardless. But `norm_exp_eq_exp_trace` also requires
+`IsGalois (v.adicCompletion K) (w.adicCompletion L)` — blocker (2), explicitly out of scope for this
+pass and still open — so the concrete cyclotomic file's `exp`/`log` exercise cannot actually run yet;
+wiring the new transport lemmas into that file was not attempted here, since there would be nothing
+downstream to exercise them with until blocker (2) closes.
+
+**Verification.** `nix develop -c lake build Langlands`: clean, whole project (8737/8737 jobs).
+`grep -rn sorry Langlands/NormMap.lean Langlands/RankOneNormTransport.lean`: zero hits. The
+scratch-reproduction file used for steps 1(a)/(b) of the task (confirming the diamond and the
+`toUniformSpace` equality) was deleted after use, per this repo's established practice.
+
+**Commit:** `fcd55e2` (`Valuation.norm_rankOne_rpow` in `NormMap.lean`; new file
+`RankOneNormTransport.lean` with the `Tendsto`/`nhds` combinator and the three `exp`/`log`/
+convergence-radius transport lemmas).
+
+**Net effect.** Blocker (1) of §6t is closed as general, repo-wide infra: any future concrete
+number-field instance that mixes this repo's `NormMap` machinery with a Mathlib construction
+registering a competing `RankOne` on the same `adicCompletion` can invoke `exp_eq_of_rankOne`/
+`log_eq_of_rankOne`/`norm_lt_convergenceRadius_iff_of_rankOne` directly, without re-deriving the
+`toUniformSpace`-sharing argument or the `rpow` relation. Blocker (2) (`IsGalois` at the completed
+level) is the sole remaining gap before the cyclotomic concrete example's `exp`/`log` exercise
+(§6t priority (3)) can actually run.
