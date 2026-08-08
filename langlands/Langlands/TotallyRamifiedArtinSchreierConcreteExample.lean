@@ -745,6 +745,96 @@ theorem map_maximalIdeal_eq :
     Ideal.span_singleton_mul_right_unit u₀_isUnit,
     ← Ideal.span_singleton_pow, ← maximalIdeal_L₀_eq, e_eq_p]
 
+/-! ### Field 3 of `IsTotallyRamified`: `exists_sub_algebraMap_mem_maximalIdeal`
+
+The residue extension `R ⧸ v.asIdeal → S ⧸ w.asIdeal` is trivial (`f := v.asIdeal.inertiaDeg'
+w.asIdeal = 1`), obtained the same way as `e = p`: from `ef_le_p` (`e · f ≤ p`) with `e = p` already
+known, `p · f ≤ p` forces `f ≤ 1`, and `f ≥ 1` always (`Ideal.inertiaDeg'_ne_zero`). Since both
+quotients are fields and the residue extension has degree exactly `1`, `algebraMap (R ⧸ v.asIdeal)
+(S ⧸ w.asIdeal)` is surjective (`finrank_eq_one_iff_of_nonzero'` applied to `1`); this is the
+`S`-level analogue of the completed-integers-level statement `IsTotallyRamified` actually needs, and
+transports to it via `Langlands.AdicCompletionIntegersResidue`'s general single-place density fact
+exactly as in the template files. -/
+
+theorem f_eq_one : v.asIdeal.inertiaDeg' w.asIdeal = 1 := by
+  haveI := v.isMaximal
+  have hf_pos : 0 < v.asIdeal.inertiaDeg' w.asIdeal :=
+    Nat.pos_iff_ne_zero.mpr (Ideal.inertiaDeg'_ne_zero v.asIdeal w.asIdeal)
+  have hef := ef_le_p
+  rw [e_eq_p] at hef
+  have hp_pos : 0 < p := (Fact.out : p.Prime).pos
+  have hle : v.asIdeal.inertiaDeg' w.asIdeal ≤ 1 :=
+    Nat.le_of_mul_le_mul_left (by rwa [mul_one]) hp_pos
+  omega
+
+attribute [local instance] Ideal.Quotient.field
+
+theorem residue_surjective :
+    Function.Surjective (algebraMap (R ⧸ v.asIdeal) (S ⧸ w.asIdeal)) := by
+  haveI := v.isMaximal
+  haveI := w.isMaximal
+  have hfin : Module.finrank (R ⧸ v.asIdeal) (S ⧸ w.asIdeal) = 1 := by
+    rw [← Ideal.inertiaDeg'_algebraMap]; exact f_eq_one
+  have h1 : (1 : S ⧸ w.asIdeal) ≠ 0 := one_ne_zero
+  have hspan := (finrank_eq_one_iff_of_nonzero' (1 : S ⧸ w.asIdeal) h1).mp hfin
+  intro y
+  obtain ⟨c, hc⟩ := hspan y
+  exact ⟨c, by rw [← hc, Algebra.smul_def, mul_one]⟩
+
+/-- **The naturality square `R → K₀ → L₀ = R → S → L₀`.** -/
+theorem algebraMap_R_K₀_L₀_eq (r : R) :
+    algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L)
+        (algebraMap R (v.adicCompletionIntegers K) r) =
+      algebraMap S (w.adicCompletionIntegers L) (algebraMap R S r) := by
+  apply Subtype.ext
+  rw [IsDedekindDomain.HeightOneSpectrum.coe_algebraMap_adicCompletionIntegers]
+  show IsDedekindDomain.HeightOneSpectrum.adicCompletionComap K L v w
+      (algebraMap R (v.adicCompletionIntegers K) r : v.adicCompletion K) = _
+  rw [show (algebraMap R (v.adicCompletionIntegers K) r : v.adicCompletion K)
+        = algebraMap K (v.adicCompletion K) (algebraMap R K r) from rfl,
+    IsDedekindDomain.HeightOneSpectrum.adicCompletionComap_algebraMap]
+  show algebraMap L (w.adicCompletion L) (algebraMap K L (algebraMap R K r)) =
+      algebraMap L (w.adicCompletion L) (algebraMap S L (algebraMap R S r))
+  rw [← IsScalarTower.algebraMap_apply R K L, ← IsScalarTower.algebraMap_apply R S L]
+
+theorem exists_sub_algebraMap_mem_maximalIdeal :
+    ∀ y : w.adicCompletionIntegers L, ∃ r : v.adicCompletionIntegers K,
+      y - algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) r ∈
+        IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) := by
+  intro y
+  obtain ⟨s, hs⟩ := w.exists_algebraMap_sub_mem_maximalIdeal y
+  obtain ⟨c, hc⟩ := residue_surjective (Ideal.Quotient.mk w.asIdeal s)
+  obtain ⟨r, hr⟩ := Ideal.Quotient.mk_surjective c
+  refine ⟨algebraMap R (v.adicCompletionIntegers K) r, ?_⟩
+  have hmem : s - algebraMap R S r ∈ w.asIdeal := by
+    have heq : Ideal.Quotient.mk w.asIdeal (algebraMap R S r) = Ideal.Quotient.mk w.asIdeal s := by
+      rw [← Ideal.Quotient.algebraMap_mk_of_liesOver (p := v.asIdeal) (P := w.asIdeal) r, hr, hc]
+    rwa [Ideal.Quotient.eq, ← neg_mem_iff, neg_sub] at heq
+  have hsc : (y : w.adicCompletionIntegers L) -
+      algebraMap S (w.adicCompletionIntegers L) (algebraMap R S r) =
+      ((y : w.adicCompletionIntegers L) - algebraMap S (w.adicCompletionIntegers L) s) +
+        algebraMap S (w.adicCompletionIntegers L) (s - algebraMap R S r) := by
+    rw [map_sub]; ring
+  rw [algebraMap_R_K₀_L₀_eq, hsc]
+  refine (IsLocalRing.maximalIdeal (w.adicCompletionIntegers L)).add_mem hs ?_
+  have hval_lt : w.valuation L (algebraMap S L (s - algebraMap R S r)) < 1 :=
+    (w.valuation_lt_one_iff_mem (s - algebraMap R S r)).mpr hmem
+  have hValued_lt : Valued.v (algebraMap S (w.adicCompletionIntegers L)
+      (s - algebraMap R S r) : w.adicCompletion L) < 1 := by
+    rw [show (algebraMap S (w.adicCompletionIntegers L) (s - algebraMap R S r) :
+        w.adicCompletion L) = (algebraMap S L (s - algebraMap R S r) : w.adicCompletion L) from rfl,
+      IsDedekindDomain.HeightOneSpectrum.valuedAdicCompletion_eq_valuation']
+    exact hval_lt
+  exact IsDedekindDomain.HeightOneSpectrum.mem_maximalIdeal_of_valued_lt_one w hValued_lt
+
+/-- **`IsTotallyRamified K L v w` for this concrete instance.** Assembled from `map_maximalIdeal_eq`,
+`finrank_eq`, and `exists_sub_algebraMap_mem_maximalIdeal` above — a genuine wild (`p ∣ e`),
+Galois (`IsGalois K L`), *separable* Artin–Schreier extension, closing `ROADMAP.md` §6n item (c). -/
+theorem isTotallyRamified : IsDedekindDomain.HeightOneSpectrum.IsTotallyRamified K L v w where
+  map_maximalIdeal_eq := map_maximalIdeal_eq
+  finrank_eq := finrank_eq
+  exists_sub_algebraMap_mem_maximalIdeal := exists_sub_algebraMap_mem_maximalIdeal
+
 end Langlands.TotallyRamifiedArtinSchreierConcreteExample
 
 end
