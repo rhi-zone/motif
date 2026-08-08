@@ -835,6 +835,32 @@ theorem isTotallyRamified : IsDedekindDomain.HeightOneSpectrum.IsTotallyRamified
   finrank_eq := finrank_eq
   exists_sub_algebraMap_mem_maximalIdeal := exists_sub_algebraMap_mem_maximalIdeal
 
+/-! ### Step 3 (`expEquiv` / `norm_exp_eq_exp_trace`): structurally inapplicable, not merely hard
+
+`IsGalois K L` holds unconditionally here (`ArtinSchreier.instIsGalois`), so this instance *is*
+genuinely Galois — the milestone `ROADMAP.md` §6n item (c) asks for. But
+`Langlands.AdicCompletionNormExpTrace.norm_exp_eq_exp_trace` additionally requires
+`[CharZero K] [CharZero L]` (see its signature), and
+`Langlands.NonarchimedeanExponentialUnitsIso.expEquiv` is built on the same `NonarchimedeanExponential`
+machinery, whose `exp` series `∑ xⁿ / n!` is only well-defined when division by `n!` makes sense for
+all `n` — i.e. genuinely needs characteristic `0` (or at least characteristic `> n` for every `n`
+appearing, which fails identically for *every* `n ≥ p` in any characteristic-`p` field). This
+repo's exp/log thread targets **mixed-characteristic** local fields (finite extensions of `ℚ_p`,
+characteristic `0` with residue characteristic `p`) — exactly the classical setting where the
+`p`-adic exponential converges.
+
+This concrete instance is **equal-characteristic**: `K := FractionRing (k[X])` has `CharP K p`
+(`charP_K`), not `CharZero K` — it is a function field, not a `p`-adic field. This is not an
+accident of this particular choice of `R`; it is inherent to using `k[X]` (`k` a field of
+characteristic `p`) as the base Dedekind domain at all. Reaching a *mixed*-characteristic wild
+Galois instance (needed to actually exercise `expEquiv`/`norm_exp_eq_exp_trace`) would require
+starting from a genuine `p`-adic base ring (e.g. `ℤ_p` or the ring of integers of a finite extension
+of `ℚ_p`) with an Artin–Schreier-*style* wildly ramified extension built over it — a different, and
+non-trivial, construction problem in its own right, not a continuation of this file's approach.
+**Conclusion: step 3 does not apply to this instance by construction, not because of any remaining
+proof difficulty** — `IsTotallyRamified` (step 2) is the complete, correct milestone this file
+delivers. -/
+
 end Langlands.TotallyRamifiedArtinSchreierConcreteExample
 
 end
