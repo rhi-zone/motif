@@ -7109,3 +7109,112 @@ giving *explicit* unique primes and closed-form ramification data for cyclotomic
 hand-built rings the tame/wild/Artin–Schreier instances needed. The natural next step for whoever
 picks up this thread is priority (d): building `IsGalois (v.adicCompletion K) (w.adicCompletion L)`
 via an explicit-generator argument analogous to `TotallyRamifiedArtinSchreierConcreteExample`'s.
+
+## 6s. Twenty-first pass (2026-08-09): the Artin–Schreier separability argument generalized and
+extracted (CLOSED, refactored in); priority (d)'s completed-level irreducibility fact designed and
+lemma-verified but NOT implemented — an honest stop short of the full assembly
+
+**Task.** Continue §6r's remaining gap: (1) assess whether
+`TotallyRamifiedArtinSchreierConcreteExample`'s completed-level `Algebra.IsSeparable (v.adicCompletion
+K) (w.adicCompletion L)` argument generalizes to a standalone lemma, refactoring both files onto it if
+so; (2) build `IsGalois`/`Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)` for the
+cyclotomic instance; (3) assemble `IsTotallyRamified`'s three fields; (4) stretch goal: exercise
+`expEquiv`/`norm_exp_eq_exp_trace`.
+
+**Part 1 — CLOSED.** Read the Artin–Schreier file's completion-level block (`gPoly` through the
+`Algebra.IsSeparable` instance, its lines ~499–598) closely. Its structure turned out to be fully
+generic: it only uses that `theta : L` is a primitive element (`IntermediateField.adjoin K {theta} =
+⊤`), that `theta` is integral over `K`, that `Algebra.IsSeparable K L` holds, and that
+`(minpoly K theta).map (algebraMap K (v.adicCompletion K))` is irreducible — nothing about the
+Artin–Schreier polynomial `X ^ p - X - a` itself is used by the density/finrank/separability-transport
+argument (`adjoin_thetaw_eq_top`'s closed-and-dense argument, the `minpoly.eq_of_irreducible`
+identification, the `IntermediateField.isSeparable_adjoin_simple_iff_isSeparable` +
+`AlgEquiv.Algebra.isSeparable` transport). Extracted as new file **`Langlands/
+AdicCompletionPrimitiveElementDegree.lean`**:
+`IsDedekindDomain.HeightOneSpectrum.finrank_and_isSeparable_of_primitiveElement` — general
+hypotheses `(hInt : IsIntegral K theta) (htop : IntermediateField.adjoin K {theta} = ⊤) [Algebra.
+IsSeparable K L] (hirr : Irreducible ((minpoly K theta).map (algebraMap K (v.adicCompletion K))))`,
+conclusion `Module.finrank (v.adicCompletion K) (w.adicCompletion L) = Module.finrank K L ∧
+Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)`. `TotallyRamifiedArtinSchreierConcreteExample.lean`
+was refactored to consume it (low risk, attempted and succeeded): its ~150-line from-scratch block
+collapsed to ~25 lines (`isIntegral_theta`, `minpoly_K_theta_eq` — identifying `minpoly K theta` with
+`ArtinSchreier.poly p a` via the already-proved `hirr`/`aeval_theta`, `map_minpoly_K_theta_eq_gPoly` —
+a four-`Polynomial.map_*` rewrite identifying the base change with the already-irreducible `gPoly`,
+then one call to the new lemma). Rebuilt clean, sorry-free, no regressions. One genuine Lean-mechanics
+finding worth recording: declaring `gPoly`/`thetaw` as separate top-level `def`s sharing a `variable
+(K L) (v) (w)` block with a later `{theta}` causes Lean's auto-included-section-variable inference to
+assign each declaration a *different, individually-computed* argument list (only the variables each
+declaration's stated type/body actually mentions, in original declaration order) — `gPoly` ended up
+needing `(K L v theta)`, `thetaw` needing only `(L w theta)`, an inconsistency invisible until
+call-site type-mismatch errors. Fixed by consolidating into one theorem with internal `set`-bound
+locals instead of separate section-variable-based top-level defs, sidestepping the ambiguity entirely.
+
+**Part 2 — designed and lemma-verified, NOT implemented.** Investigated the "does Mathlib already have
+completion-of-a-Galois-extension-is-Galois" question directly (task's suggestion): confirmed (as
+suspected in §6r) that `Mathlib.NumberTheory.RamificationInertia.Galois` is ideal/decomposition-group
+Hilbert theory, not adic-completion-level; loogle turned up nothing of the needed shape either. Derived
+a concrete, checked plan instead, specific to this instance (not a further generalization — the
+irreducibility fact genuinely needs cyclotomic-specific input): with `theta := ζ - 1` (a uniformizer of
+`L`, not `ζ` itself — the shift matters), `minpoly K theta = (X + 1) ^ p - C c` where `c : K` is the
+`K`-coercion of `ζₚ := ζ ^ p` (`minpoly.sub_algebraMap` plus a `IntermediateField.adjoin.finrank`
+degree count, no separate irreducibility needed at the *base* level). The needed hypothesis for the
+generic lemma, `Irreducible (((X + 1) ^ p - C c).map (algebraMap K (v.adicCompletion K)))`, is exactly
+**Eisenstein-ness at `v`**: the shifted polynomial's non-leading coefficients are the binomial
+coefficients `p.choose i` (`0 < i < p`), each divisible by `p` (`Nat.Prime.dvd_choose_self`) hence
+valuation `< 1` (since `p ∈ v.asIdeal`, from `LiesOver`), and its constant term is `1 - c = -(c - 1)`,
+which has valuation *exactly* the uniformizer value (not `< 1` twice) because `c` is itself a primitive
+`p`-th root of unity in `K` and `v.asIdeal = span {c - 1}` **exactly**
+(`IsCyclotomicExtension.Rat.eq_span_zeta_sub_one_of_liesOver'`, applicable to *any* primitive `p`-th
+root of `K`, not just the file's existing `ζ_K` — so this does not need to touch or re-derive anything
+about the already-closed `v`). This is a real, checkable instance of `Polynomial.IsEisensteinAt`
+(`Mathlib.RingTheory.Polynomial.Eisenstein.Basic`; `.irreducible` needs `IsDomain`, `𝓟.IsPrime`,
+`IsPrimitive`, `0 < natDegree` — all available for `v.adicCompletionIntegers K`, already `IsDomain`/
+`IsIntegrallyClosed`/`IsFractionRing`-instanced by `Langlands.NormMapResidueCompatibility`), followed
+by Gauss's lemma (`Polynomial.Monic.irreducible_iff_irreducible_map_fraction_map`, needing
+`IsIntegrallyClosed`, also already instanced) to lift irreducibility from the valuation *ring*
+`v.adicCompletionIntegers K` to the completion field `v.adicCompletion K` itself. Every lemma name in
+this chain was individually confirmed to exist via loogle/grep (see this pass's tool-call history);
+none of it was implemented in `.lean` code this pass. **Separately investigated and ruled out as a
+shortcut**: an ideal-power-cancellation route for field 1 (`map_maximalIdeal_eq`) using the *absolute*
+factorization `IsCyclotomicExtension.Rat.map_eq_span_zeta_sub_one_pow` at both `K` and `L` combined
+with tower functoriality (`Ideal.map_pow`) — algebraically sound (`map(v.asIdeal)^{p-1} =
+w.asIdeal^{p(p-1)} = (w.asIdeal ^ p)^{p-1}` forces `map(v.asIdeal) = w.asIdeal^p` by injectivity of
+`I ↦ I^n` on ideals of a Dedekind domain), but no such cancellation lemma was found in Mathlib in the
+time available, so this remains unconfirmed as a genuine shortcut rather than a fallback to the
+uniformizer-algebra-identity route `TotallyRamifiedArtinSchreierConcreteExample` used for its analogous
+field.
+
+**Part 3 (assembly) and part 4 (stretch) — not attempted**, blocked on part 2's implementation.
+
+**Why stopped here.** The task itself scoped this thread as "comparable to a full Artin–Schreier
+thread, ~2 passes," with this pass's starting point already at the harder half. Part 1 (the
+generalization) was mechanical, low-risk, and fully verified — done. Part 2's *design* is concrete and
+individually lemma-checked, but its *implementation* (building the Eisenstein polynomial explicitly
+over `v.adicCompletionIntegers K`, the two valuation computations for `c - 1`'s image at the base and
+completed level, the Gauss's-lemma lift, and reconciling the result with the generic lemma's exact
+hypothesis shape) is a substantial, multi-step proof in its own right — realistically a full further
+pass, not a tail end of this one. Given the project's hard constraints (no `sorry` ever, no guessing,
+stop-and-diagnose on repeated errors rather than push through), and that this pass had already hit and
+carefully diagnosed one nontrivial Lean-mechanics pitfall (the section-variable auto-inclusion
+ambiguity above), continuing to force the Eisenstein construction under continued time pressure risked
+exactly the rushed, error-prone chaining the project's lean-proof-writing skill warns against. Banking
+the verified generalization and a lemma-checked plan was judged the better stopping point than a
+partially-debugged, uncommitted Eisenstein block.
+
+**Verification.** `nix develop -c lake build Langlands`: clean, whole project (8736/8736 jobs).
+`grep -rn sorry` on `Langlands/AdicCompletionPrimitiveElementDegree.lean` and
+`Langlands/TotallyRamifiedArtinSchreierConcreteExample.lean`: zero hits.
+`Langlands/TotallyRamifiedCyclotomicConcreteExample.lean` untouched this pass (still exactly as §6r
+left it).
+
+**Commits:** `17af6b9` (`feat(langlands): extract generic primitive-element separability/degree lemma
+at a completion`), `78f6bcb` (`refactor(langlands): Artin-Schreier file consumes the generic
+primitive-element lemma`).
+
+**Net effect.** The reusable generalization is done and in use by two files (one now, one pending);
+`TotallyRamifiedCyclotomicConcreteExample.lean` still needs priorities (d) and (e) from §6r. The next
+session should start directly from Part 2's design above — `theta := ζ - 1`, the Eisenstein-at-`v`
+argument, Gauss's lemma — rather than re-deriving it, and should re-check the ideal-power-cancellation
+shortcut for field 1 before falling back to the full uniformizer-algebra-identity computation
+(Artin–Schreier's `algebraMap_xK_eq` pattern), since if it exists it would sidestep a nontrivial chunk
+of the remaining work.
