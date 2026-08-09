@@ -7435,3 +7435,125 @@ registering a competing `RankOne` on the same `adicCompletion` can invoke `exp_e
 `toUniformSpace`-sharing argument or the `rpow` relation. Blocker (2) (`IsGalois` at the completed
 level) is the sole remaining gap before the cyclotomic concrete example's `exp`/`log` exercise
 (§6t priority (3)) can actually run.
+
+## 6v. Twenty-fourth pass (2026-08-09): **MILESTONE — blocker (2) closed, and the wild-case
+exp/log machinery runs end-to-end against a genuine mixed-characteristic, wild, Galois instance
+for the first time in this repo's entire exp/log thread (§6f–§6u)**
+
+**Task.** Close §6t's blocker (2) (`IsGalois (v.adicCompletion K) (w.adicCompletion L)`, only
+`Algebra.IsSeparable` available), then instantiate `AdicCompletionNormExpTrace.norm_exp_eq_exp_trace`
+/ `NonarchimedeanExponentialUnitsIso.expEquiv` against the cyclotomic instance; if that succeeds,
+assess whether an actual wild-case norm-group index computation (mirroring
+`TotallyRamifiedNormIndex`'s tame-case pattern) is in reach.
+
+**Blocker (2) — CLOSED, as a generalization of `AdicCompletionPrimitiveElementDegree`, not a
+one-off in the concrete file.** The file's existing `finrank_and_isSeparable_of_primitiveElement`
+already carried a primitive element `theta` whose minimal polynomial stays irreducible after base
+change to `Kv`; its internal density argument (`Kv⟮thetaw⟯ = ⊤`) was extracted into a standalone
+`adjoin_thetaw_eq_top`, then reused by a new `isGalois_of_primitiveElement`, which additionally
+takes `[Normal K L]` (free for the cyclotomic instance, since `IsGalois K L` already holds) and
+concludes the *full* `IsGalois (v.adicCompletion K) (w.adicCompletion L)`:
+
+* `Normal.splits ‹Normal K L› theta` gives `minpoly K theta` splitting over `L`.
+* The commuting square `algebraMap Kv Lw ∘ algebraMap K Kv = algebraMap L Lw ∘ algebraMap K L`
+  (`RingHom.ext` against `NormMap`'s `adicCompletionComap_algebraMap`, identifying `algebraMap Kv
+  Lw` with `adicCompletionComap` via `RingHom.algebraMap_toAlgebra`) pushes that splitting to
+  `gPoly := (minpoly K theta).map (algebraMap K Kv)` splitting over `Lw`
+  (`Polynomial.Splits.map` + `Polynomial.map_map`).
+* Since `thetaw` (a root of `gPoly`) already generates all of `Lw` over `Kv` (`adjoin_thetaw_eq_top`,
+  converted from `IntermediateField` to `Subalgebra` form via
+  `IntermediateField.adjoin_simple_toSubalgebra_of_isAlgebraic`), `Lw` is a splitting field of
+  `gPoly` over `Kv` (`Polynomial.IsSplittingField`, both fields — `splits'` and `adjoin_rootSet'` —
+  assembled directly), giving `Normal Kv Lw` via `Normal.of_isSplittingField`.
+* Combined with the already-established `Algebra.IsSeparable Kv Lw`, `IsGalois Kv Lw` follows by
+  the anonymous constructor (`IsGalois` extends both as instance-fields).
+
+Landed in `Langlands/AdicCompletionPrimitiveElementDegree.lean` (commit `b9937d8`), then
+instantiated as `isGalois_Kv_Lw` in the concrete file with three lines (the same three hypotheses
+`finrank_Kv_Lw_and_isSeparable` already needed: `isIntegral_theta`, `adjoin_theta_eq_top`,
+`map_minpoly_theta_irreducible`).
+
+**The exp/log payoff — CLOSED.** `IsDedekindDomain.HeightOneSpectrum.
+exists_maximalIdeal_pow_norm_exp_eq_exp_trace` (`AdicCompletionNormExpTrace.lean`) is instantiated
+against `K L v w p` with `hnormK`/`hnormL` (`norm_natCast_lt_one_of_charP_residueField` applied to
+`v`/`w`), giving: some explicit filtration level `i₀` has `N_{L_w/K_v}(exp x) = exp(Tr_{L_w/K_v}
+x)` for *every* `x ∈ 𝔪_{L_w}^i`, `i ≥ i₀` — no further hypotheses on `x`. This is the actual payoff
+of the entire exp/log sub-thread (§6f–§6u) plus both concrete-example efforts (Artin–Schreier and
+cyclotomic): the first time the wild-case norm/trace formula is exercised against a real
+mixed-characteristic (`CharZero K`, residue characteristic `p`), wild (`p ∣ e = p`), Galois
+instance, rather than stated only in the abstract.
+
+**The diamond (blocker (1), §6t/§6u) turned out not to need `RankOneNormTransport` here.**
+Re-examining it precisely: `norm_natCast_lt_one_of_charP_residueField` and
+`exists_maximalIdeal_pow_norm_exp_eq_exp_trace` are both proved *generically*, over abstract
+Dedekind domains with **no `NumberField` hypothesis in scope at their definition sites** — so every
+`‖·‖` inside them resolves, once and for all at compile time of those generic files, to this repo's
+own `NormedField` instance (Mathlib's competing `absNorm`-based instance requires `[NumberField _]`,
+which is simply not available in that generic context, so there is no ambiguity to resolve there).
+The diamond only bites `‖·‖` written *fresh*, in a file where the concrete `K`/`L` are *already*
+known to be number fields — exactly this concrete file. The fix actually used: state `hnormK`,
+`hnormL`, and the final theorem as `def`s with **no type ascription at all** (`def hnormK :=
+norm_natCast_lt_one_of_charP_residueField (F := K) v p`), so their types are inferred entirely from
+the already-elaborated (repo-instance) RHS rather than re-elaborated fresh against whatever wins
+instance search at the call site. `theorem` cannot do this (Lean resolves a theorem's header type
+before its body, so `_` in a theorem header cannot be filled from the proof), hence `def` plus
+`set_option linter.defProp false` to silence the resulting (correct, but unwanted here) linter
+nudge to use `theorem`. `RankOneNormTransport`'s `exp_eq_of_rankOne`/`norm_lt_convergenceRadius_iff_
+of_rankOne` remain available and correct for the (different, harder) situation where two *genuinely
+different* norm bounds need to be compared or transported across the diamond explicitly — not
+needed here since only one instance's `‖·‖` is ever touched, just carefully never re-elaborated.
+
+**An unrelated, orthogonal parser hazard, found and fixed in passing.** Adding the
+`AdicCompletionNormExpTrace` import (needed to reach `exists_maximalIdeal_pow_norm_exp_eq_exp_trace`)
+transitively pulls in `Mathlib.RingTheory.PowerSeries.Substitution`, whose `name_power_vars X₀, X₁
+over R` command registers `over` as a reserved parser token *repo-wide, for any file importing it,
+however indirectly* — a standard but obscure Lean 4 hazard (a `syntax`/macro's atoms become global
+keywords once elaborated, breaking unescaped uses of the same spelling as a plain identifier
+anywhere downstream). This broke the concrete file's own two `Ideal.LiesOver` instances
+(`... where over := ...`, pre-existing, unrelated to this pass's actual content), diagnosed by
+bisecting the import chain to the exact triggering file and confirmed with a two-line standalone
+reproduction. Fixed by escaping the field name as `«over»` (Lean 4's standard guillemet escape for
+identifiers that collide with a reserved token) in both instances.
+
+**Verification.** `nix develop -c lake build Langlands`: clean, whole project (8737/8737 jobs).
+`grep -rn sorry` on both touched files: zero hits.
+`#print axioms Langlands.TotallyRamifiedCyclotomicConcreteExample.exists_maximalIdeal_pow_norm_exp_eq_exp_trace`
+and `... .isGalois_Kv_Lw`: both only `propext`, `Classical.choice`, `Quot.sound`.
+
+**Commits:** `b9937d8` (`AdicCompletionPrimitiveElementDegree.lean`: `adjoin_thetaw_eq_top`
+extracted, `isGalois_of_primitiveElement` added), `f4167b3` (concrete file: `isGalois_Kv_Lw`
+instance, `hnormK`/`hnormL`/`exists_maximalIdeal_pow_norm_exp_eq_exp_trace`, the `«over»` fix, and
+updated closing documentation replacing the old "two blockers" section).
+
+**What remains — `expEquiv` and the index computation are NOT reached this pass.**
+`NonarchimedeanExponentialUnitsIso.expEquiv` (the `U_A^{(i)} ≅ (𝔪_A^i, +)` isomorphism) was not
+instantiated against this instance, and consequently no wild-case norm-group index computation was
+attempted. Diagnosed why, precisely, rather than left unexamined: `expEquiv` needs an *explicit*
+uniformizer `π` (`Θ₀` here) together with `hπnorm : ‖(π : K)‖ < 1` and a threshold
+`hthreshStrict : ‖π‖ ^ i < logUnitsThreshold K p` for a *concrete* `i` — unlike
+`exists_maximalIdeal_pow_norm_exp_eq_exp_trace`, which could be consumed as a fully pre-built
+generic proof term with no fresh `‖·‖` of our own, these two hypotheses are facts *about our
+specific `Θ₀`* that do not already exist anywhere generic, so they must be freshly established in
+this number-field-visible file. Two sub-obstacles, neither attempted yet:
+1. `Valued.toNormedField.norm_lt_one_iff` (the natural route from `valuation_Θ : Valued.v Θ =
+   WithZero.exp (-1)` to a norm bound) is *itself* generalized over the ambient `RankOne` instance
+   (`{hv : Valuation.RankOne val.v}` inside `Mathlib.Topology.Algebra.Valued.NormedValued`'s
+   `toNormedField` namespace, not fixed at Mathlib's own compile time) — so invoking it fresh here
+   hits the diamond squarely and needs `(hv := IsDedekindDomain.HeightOneSpectrum.
+   instRankOneValuedAdicCompletion w)` supplied explicitly, unlike this pass's hypotheses which
+   sidestepped the issue by never re-elaborating a repo-instance fact at all.
+2. Even with (1) resolved, `hthreshStrict` needs a genuine numeric bound (`i` large enough that
+   `‖Θ₀‖ ^ i < ‖p‖ ^ 2`, i.e. relating the uniformizer's normalized valuation to `p`'s absolute
+   ramification `e(w/p) = p(p-1) = 6`), which is either a concrete `omega`/`norm_num` computation
+   once the valuations are pinned down, or — more in keeping with this repo's existing
+   `exists_maximalIdeal_pow_...`-style pattern — a fully generic *existential* wrapper (`∃ i₀, ∀ i ≥
+   i₀, ‖π‖ ^ i < logUnitsThreshold K p`, buildable from `exists_pow_lt_of_lt_one` plus
+   `logUnitsThreshold`'s positivity, entirely generically, no `NumberField` needed) that a future
+   pass could add to `NonarchimedeanExponentialUnitsIso.lean` or an adjacent file, then consume here
+   the same "leave the type to be inferred" way as this pass's `hnormK`/`hnormL`.
+
+**Net effect.** The task's primary milestone — exercising the exp/log machinery end-to-end against
+a real mixed-characteristic wild Galois instance — is met. The secondary stretch goals (`expEquiv`
+instantiation, the actual index number) are diagnosed to the point of a concrete next-pass plan but
+not attempted, per the task's explicit instruction to treat the first milestone as the one that
+matters even if the index computation isn't reached.
