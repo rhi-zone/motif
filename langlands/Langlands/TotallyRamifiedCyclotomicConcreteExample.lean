@@ -190,22 +190,27 @@ concretely to begin with). -/
 instance isPrime_comap_w : (w.asIdeal.comap (algebraMap (𝓞 K) (𝓞 L))).IsPrime :=
   Ideal.IsPrime.comap _
 
--- `«over»`, not `over`: `Mathlib.RingTheory.PowerSeries.Substitution` (pulled in transitively by
--- this file's `AdicCompletionNormExpTrace` import, needed for the `exp`/`log` payoff below)
--- registers `over` as a reserved token via its `name_power_vars ... over R` macro, so the plain
--- field-name spelling no longer parses in *any* file that imports it, even far from the
--- `PowerSeries` code itself — escaping with guillemets is the standard Lean 4 workaround.
+-- `Ideal.LiesOver` is a single-field class (`class LiesOver : Prop where over : ...`), so its
+-- anonymous constructor `⟨_⟩` builds an instance without ever writing the field name `over` as an
+-- identifier. That sidesteps a real (if narrow) Lean 4 parser hazard: this file transitively
+-- imports `AdicCompletionNormExpTrace`, which pulls in `Mathlib.RingTheory.PowerSeries.Substitution`,
+-- which (via `Mathlib.Tactic.Ring.NamePowerVars`'s `name_power_vars ... over R` command syntax)
+-- registers `over` as a token in the global parser token trie. Lean's token trie has no local/scoped
+-- variant yet (this is a documented, intentional limitation of the current design, not a Mathlib
+-- bug — see `Lean.Parser.TokenTable`), so once `over` is a token *anywhere* in a file's transitive
+-- imports, it can no longer be lexed as a plain identifier in that file — not even as a structure
+-- field label. The anonymous-constructor form below is the genuine fix (no token is ever spelled);
+-- `«over» := ...` guillemet-escaping would also compile but is unnecessary here.
 instance liesOver_comap_w : (w.asIdeal.comap (algebraMap (𝓞 K) (𝓞 L))).LiesOver
-    (Ideal.span {(p : ℤ)}) where
-  «over» := by
-    rw [Ideal.over_def w.asIdeal (Ideal.span {(p : ℤ)}), ← Ideal.under_under (A := ℤ) (B := 𝓞 K)]
+    (Ideal.span {(p : ℤ)}) :=
+  ⟨by rw [Ideal.over_def w.asIdeal (Ideal.span {(p : ℤ)}),
+      ← Ideal.under_under (A := ℤ) (B := 𝓞 K)]⟩
 
 theorem comap_w_eq_v :
     w.asIdeal.comap (algebraMap (𝓞 K) (𝓞 L)) = v.asIdeal :=
   IsCyclotomicExtension.Rat.eq_span_zeta_sub_one_of_liesOver' p K hζ_K _
 
-instance : w.asIdeal.LiesOver v.asIdeal where
-  «over» := comap_w_eq_v.symm
+instance : w.asIdeal.LiesOver v.asIdeal := ⟨comap_w_eq_v.symm⟩
 
 /-! ### `e := v.asIdeal.ramificationIdx' w.asIdeal = p` and `f := v.asIdeal.inertiaDeg' w.asIdeal
 = 1`, via the general bridge lemma (`Langlands.HeightOneSpectrumRationalPrimeTower`) and

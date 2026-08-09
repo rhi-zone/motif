@@ -7503,17 +7503,28 @@ of_rankOne` remain available and correct for the (different, harder) situation w
 different* norm bounds need to be compared or transported across the diamond explicitly — not
 needed here since only one instance's `‖·‖` is ever touched, just carefully never re-elaborated.
 
-**An unrelated, orthogonal parser hazard, found and fixed in passing.** Adding the
-`AdicCompletionNormExpTrace` import (needed to reach `exists_maximalIdeal_pow_norm_exp_eq_exp_trace`)
-transitively pulls in `Mathlib.RingTheory.PowerSeries.Substitution`, whose `name_power_vars X₀, X₁
-over R` command registers `over` as a reserved parser token *repo-wide, for any file importing it,
-however indirectly* — a standard but obscure Lean 4 hazard (a `syntax`/macro's atoms become global
-keywords once elaborated, breaking unescaped uses of the same spelling as a plain identifier
-anywhere downstream). This broke the concrete file's own two `Ideal.LiesOver` instances
-(`... where over := ...`, pre-existing, unrelated to this pass's actual content), diagnosed by
-bisecting the import chain to the exact triggering file and confirmed with a two-line standalone
-reproduction. Fixed by escaping the field name as `«over»` (Lean 4's standard guillemet escape for
-identifiers that collide with a reserved token) in both instances.
+**An unrelated, orthogonal parser hazard, found in passing and later fixed properly (not just
+escaped).** Adding the `AdicCompletionNormExpTrace` import (needed to reach
+`exists_maximalIdeal_pow_norm_exp_eq_exp_trace`) transitively pulls in
+`Mathlib.RingTheory.PowerSeries.Substitution` → `Mathlib.Tactic.Ring.NamePowerVars`, whose
+`syntax (name := namePowerVarsOver) "name_power_vars" (ppSpace ident),+ " over " term : command`
+registers `" over "` as a token in Lean's parser token trie. That trie is a single table per
+compiled environment with no local/scoped variant — confirmed via Lean community sources
+(leanprover-community Zulip, "local token sets will eventually be needed" — i.e. a known,
+documented *current limitation* of the design, not a Mathlib bug or oversight), so once `over`
+is a token anywhere in a file's transitive imports, that file can no longer lex `over` as a plain
+identifier — including as a structure field label — for the rest of that file. This is scoped to
+files that actually import the triggering chain (directly or transitively): confirmed by checking
+`HeightOneSpectrumRationalPrimeTower.lean`, which uses unescaped `over := by` and does **not**
+import this chain, and builds fine — contrary to the original "repo-wide" characterization in the
+originating commit (`f4167b3`), the effect is per-file, gated by that file's own import closure.
+The concrete file's own two `Ideal.LiesOver` instances (`... where over := ...`, pre-existing,
+unrelated to this pass's actual content) hit this. Originally patched by escaping the field name as
+`«over»`; a follow-up pass replaced that with the real fix: `Ideal.LiesOver` is a single-field
+class (`class LiesOver : Prop where over : p = P.under A`), so its anonymous constructor `⟨_⟩`
+builds the same instance without ever spelling the token `over` as an identifier at all — no
+escaping needed, and arguably more idiomatic Lean than naming a single field regardless of the
+token collision.
 
 **Verification.** `nix develop -c lake build Langlands`: clean, whole project (8737/8737 jobs).
 `grep -rn sorry` on both touched files: zero hits.
