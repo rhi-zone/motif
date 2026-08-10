@@ -7,6 +7,7 @@ import Langlands.HeightOneSpectrumRationalPrimeTower
 import Langlands.AdicCompletionPrimitiveElementDegree
 import Langlands.NormMapResidueCompatibility
 import Langlands.NonarchimedeanExponentialAdicCompletion
+import Langlands.NonarchimedeanExponentialUnitsIso
 import Langlands.AdicCompletionNormExpTrace
 
 /-!
@@ -821,6 +822,52 @@ instance. -/
 def exists_maximalIdeal_pow_norm_exp_eq_exp_trace :=
   IsDedekindDomain.HeightOneSpectrum.exists_maximalIdeal_pow_norm_exp_eq_exp_trace K L v w p
     hnormK hnormL
+
+/-! ### `expEquiv`, run against this same concrete instance: the units isomorphism
+
+`NonarchimedeanExponentialUnitsIso.expEquiv` packages `exp`'s injectivity, surjectivity, and
+homomorphism law into the actual group isomorphism `U_{L_w}^{(i)} ≅ (𝔪_{L_w}^i, +)`, instantiated at
+`A := w.adicCompletionIntegers L` (definitionally a `ValuationSubring (w.adicCompletion L)`), `π :=
+Θ₀`, `p := 3`. Every piece it needs is already in hand except the uniformizer's norm bound and the
+threshold index, both supplied by the same "leave the type to be inferred" `def` discipline as
+`hnormK`/`hnormL` above, drawing on the two generic lemmas added alongside this pass
+(`norm_lt_one_of_isUniformizer`, `exists_pow_lt_logUnitsThreshold`) so that no fresh `‖·‖` type
+ascription is ever written in this file. -/
+
+set_option linter.defProp false in
+/-- `‖Θ₀‖ < 1`, from `isUniformizer_Θ₀`, via the generic `norm_lt_one_of_isUniformizer` — no fresh
+`‖·‖` type ascription (see the module docstring's diamond discussion). -/
+def hπnorm_Θ := IsDedekindDomain.HeightOneSpectrum.norm_lt_one_of_isUniformizer w isUniformizer_Θ₀
+
+set_option linter.defProp false in
+/-- Existence of some `i₀` above which `‖Θ₀‖ ^ i < logUnitsThreshold (w.adicCompletion L) p` — the
+threshold `expEquiv` needs, obtained existentially (an explicit closed-form `i₀` is unnecessary for
+instantiating the isomorphism). -/
+def exists_i₀_lt_logUnitsThreshold :=
+  IsDedekindDomain.HeightOneSpectrum.exists_pow_lt_logUnitsThreshold w (p := p) hπnorm_Θ
+
+/-- The concrete threshold index extracted from `exists_i₀_lt_logUnitsThreshold`. -/
+noncomputable def i₀ := exists_i₀_lt_logUnitsThreshold.choose
+
+set_option linter.defProp false in
+/-- `∀ i ≥ i₀, ‖Θ₀‖ ^ i < logUnitsThreshold (w.adicCompletion L) p`, the defining property of `i₀`. -/
+def hi₀_spec := exists_i₀_lt_logUnitsThreshold.choose_spec
+
+set_option linter.defProp false in
+/-- The strict threshold bound at `i := i₀` itself, exactly what `expEquiv` wants. -/
+def hthreshStrict_i₀ := hi₀_spec i₀ le_rfl
+
+/-- **Capstone: `U_{L_w}^{(i₀)} ≅ (𝔪_{L_w}^{i₀}, +)`, instantiated against the concrete
+mixed-characteristic wild Galois instance `K = ℚ(ζ_3) ⊆ L = ℚ(ζ_9)`.** The first time the entire
+`exp`/`log` machinery of this repo — mutual inverse (`exp_log_eq_one_add`), filtration landing
+(`exp_mem_principalUnitsPow`), norm/trace compatibility
+(`exists_maximalIdeal_pow_norm_exp_eq_exp_trace` above), AND the units isomorphism (`expEquiv`) — is
+exercised end to end against one real concrete instance. -/
+noncomputable def expEquiv_w :
+    Multiplicative ↥(IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) ^ i₀) ≃*
+      ↥(ValuationSubring.principalUnitsPow (w.adicCompletionIntegers L) i₀) :=
+  IsDedekindDomain.HeightOneSpectrum.expEquiv w p hnormL maximalIdeal_L₀_eq Θ_ne_zero hπnorm_Θ
+    hthreshStrict_i₀
 
 /-! ### Status: both blockers closed, the `exp`/`log` machinery runs end-to-end
 

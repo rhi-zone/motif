@@ -1,5 +1,6 @@
 import Langlands.AdicCompletionMixedCharacteristic
 import Langlands.NonarchimedeanExponentialFiltration
+import Langlands.NonarchimedeanExponentialUnitsIso
 
 /-!
 # Instantiating the exponential/logarithm's convergence domain for `v.adicCompletionIntegers F`
@@ -168,6 +169,39 @@ theorem exists_maximalIdeal_pow_lt_logConvergenceRadius :
   exact exists_forall_mem_maximalIdeal_pow_norm_lt_logConvergenceRadius (v.adicCompletionIntegers F)
     (mem_adicCompletionIntegers_iff_norm_le_one v)
     (norm_natCast_lt_one_of_charP_residueField v p) hπ hπnorm
+
+omit [CharP (ResidueField (v.adicCompletionIntegers F)) p] in
+/-- **The concrete instantiation of `NonarchimedeanExponential.exists_pow_lt_logUnitsThreshold` for
+`v.adicCompletion F`.** Some `i₀` has `‖π‖ ^ i < logUnitsThreshold (v.adicCompletion F) p` for every
+`i ≥ i₀`, given `‖π‖ < 1`. Baking `K := v.adicCompletion F` at THIS (`NumberField`-free) file's
+elaboration site, rather than leaving `K` fully generic, is what keeps this diamond-free when
+consumed at a `NumberField`-visible call site: `[NormedField K]` is resolved once here — uniquely,
+since only this repo's own instance is reachable from this file — rather than re-resolved (and
+ambiguously so) at the call site. -/
+theorem exists_pow_lt_logUnitsThreshold {π : v.adicCompletion F} (hπnorm : ‖π‖ < 1) :
+    ∃ i₀ : ℕ, ∀ i ≥ i₀, ‖π‖ ^ i < NonarchimedeanExponential.logUnitsThreshold (v.adicCompletion F) p :=
+  NonarchimedeanExponential.exists_pow_lt_logUnitsThreshold hπnorm
+
+/-- **The concrete instantiation of `NonarchimedeanExponential.expEquiv` for
+`v.adicCompletionIntegers F`.** `U^{(i)} ≅ (𝔪^i, +)`, for a uniformizer `π` of
+`v.adicCompletionIntegers F` and `i` above the strict `logUnitsThreshold` threshold. As with
+`exists_pow_lt_logUnitsThreshold` above, baking `A := v.adicCompletionIntegers F` (hence `K :=
+v.adicCompletion F`) at THIS `NumberField`-free file's elaboration site — rather than leaving
+`expEquiv`'s `A`/`K` fully generic — is exactly what keeps this diamond-free when consumed at a
+`NumberField`-visible call site: `[NormedField K]` and `A`'s own `ValuationSubring K` structure are
+both resolved once here (unambiguously), rather than re-resolved at the call site, where a fresh
+`(A := ...)` on the *generic* `expEquiv` would force eager `[NormedField K]` instance search there
+and risk picking Mathlib's competing `absNorm`-based instance instead of this repo's. -/
+noncomputable def expEquiv (hnorm : ‖(p : v.adicCompletion F)‖ < 1)
+    {π : v.adicCompletionIntegers F}
+    (hπ : maximalIdeal (v.adicCompletionIntegers F) = Ideal.span ({π} : Set (v.adicCompletionIntegers F)))
+    (hπ0 : (π : v.adicCompletion F) ≠ 0) (hπnorm : ‖(π : v.adicCompletion F)‖ < 1) {i : ℕ}
+    (hthreshStrict :
+      ‖(π : v.adicCompletion F)‖ ^ i < NonarchimedeanExponential.logUnitsThreshold (v.adicCompletion F) p) :
+    Multiplicative ↥(maximalIdeal (v.adicCompletionIntegers F) ^ i) ≃*
+      ↥(ValuationSubring.principalUnitsPow (v.adicCompletionIntegers F) i) :=
+  NonarchimedeanExponential.expEquiv (A := v.adicCompletionIntegers F)
+    (hA := mem_adicCompletionIntegers_iff_norm_le_one v) hnorm hπ hπ0 hπnorm hthreshStrict
 
 end IsDedekindDomain.HeightOneSpectrum
 
