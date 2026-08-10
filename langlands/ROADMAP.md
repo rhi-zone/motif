@@ -7836,3 +7836,93 @@ index number, the below-the-break case, and the concrete instance's numeric diff
 all **not yet formalized** — real, substantial, but mechanical follow-on work (no open mathematical
 question remains in the route itself), scoped precisely enough that a future pass can execute
 directly rather than re-derive the mathematics.
+
+## 6y. Twenty-seventh pass (2026-08-11): the trace-image formula `Tr(𝔪_B^i) = 𝔪_A^⌊(i+d)/e⌋`
+closed as a real theorem, generically for DVR AKLB extensions and at adic completions
+
+**Task.** Execute §6x's worked-out route in Lean: turn `Tr_{L_w/K_v}(𝔪_{L_w}^i) =
+𝔪_{K_v}^{⌊(i+d)/e⌋}` from a Mathlib-checked plan into a `sorry`-free theorem.
+
+**Result: closed.** `Langlands/AdicCompletionTraceSurjectivity.lean` (new, wired into
+`Langlands.lean`), `lake build Langlands` clean at 8739/8739 jobs, `#print axioms` on both
+headline theorems: only `propext, Classical.choice, Quot.sound`.
+
+* `DiscreteValuationTrace.map_trace_coeSubmodule_maximalIdeal_pow` — the generic statement, for an
+  AKLB extension `(A, K, L, B)` in which `A` and `B` are both discrete valuation rings:
+  ```
+  Submodule.map ((Algebra.trace K L).restrictScalars A)
+      (Submodule.restrictScalars A (coeSubmodule L (maximalIdeal B ^ i)))
+    = coeSubmodule K (maximalIdeal A ^ ((i + d) / e))
+  ```
+  from hypotheses `he0 : e ≠ 0`, `hd : differentIdeal A B = maximalIdeal B ^ d`, and
+  `he : Ideal.map (algebraMap A B) (maximalIdeal A) = maximalIdeal B ^ e`. No
+  `IsTotallyRamified`, no residue-characteristic and no monogenicity hypothesis; `/` is
+  natural-number division, i.e. the floor.
+* `IsDedekindDomain.HeightOneSpectrum.map_trace_coeSubmodule_maximalIdeal_pow_adicCompletion` — the
+  instantiation at a pair of adic completions, with `he` supplied by §6x's
+  `map_maximalIdeal_eq_maximalIdeal_pow_ramificationIdx'` and `he0` by
+  `Ideal.IsDedekindDomain.ramificationIdx'_ne_zero_of_liesOver`, so `e` is literally
+  `v.asIdeal.ramificationIdx' w.asIdeal`.
+
+**Route, as actually executed** (§6x's plan held up; every lemma name was re-verified against
+Mathlib rather than recalled):
+
+1. `exists_algebraMap_eq_zpow_iff` — in a DVR `R` with uniformizer `π` and fraction field `F`,
+   `(algebraMap R F π) ^ n` (`n : ℤ`) is in the image of `R` iff `0 ≤ n`. This is the only place
+   discreteness enters, and it is what converts every containment below into an integer
+   inequality. Both later "compare two ideal powers" steps reuse it.
+2. `map_trace_spanSingleton_zpow_le_one_iff` — `differentialIdeal_le_fractionalIdeal_iff`
+   instantiated at `I := π_B ^ (-n)` (so `I⁻¹ = π_B ^ n`, via `FractionalIdeal.spanSingleton_inv`),
+   giving `Tr(π_B^n · B) ⊆ A ↔ -n ≤ d`.
+3. `map_trace_spanSingleton_zpow_le_coeSubmodule_iff` — the `π_A^{-j}`-scaled form,
+   `Tr(π_B^n · B) ⊆ 𝔪_A^j ↔ j·e ≤ n + d`. The scaling is `K`-linearity of the trace applied
+   elementwise (`map_trace_spanSingleton_le_iff` reduces both containments to `∀ b : B, …`); the
+   unit ambiguity between `algebraMap A L π_A` and `π_B ^ e` — the thing §6x flagged as needing a
+   `zpow`-level version of the ideal-power lemma — is absorbed once, as a single `spanSingleton`
+   equality, rather than as a new fractional-ideal `zpow` lemma.
+4. The headline equality by sandwiching: the image is contained in `𝔪_A^{j₀}` and not in
+   `𝔪_A^{j₀+1}` for `j₀ = (i+d)/e`; being contained in `A` it equals `coeSubmodule K I` for an
+   ideal `I` of `A` (`Submodule.map_comap_eq_self`), nonzero by the non-containment, hence
+   `𝔪_A^k` (`IsDiscreteValuationRing.ideal_eq_span_pow_irreducible`), and
+   `coeSubmodule_maximalIdeal_pow_le_iff` forces `k = j₀`.
+
+**§6x item 1c resolved by construction, not by finding a Mathlib naturality lemma.** The statement
+is phrased throughout with `Submodule.map ((Algebra.trace K L).restrictScalars A)`, i.e. with the
+`K`-linear trace restricted to `A`-linearity. The image is then *manifestly* an `A`-submodule of
+`K`, and step 3 at `j = 0` places it inside `A` — so the question of whether the bundled integral
+trace `Algebra.trace A B : B →ₗ[A] A` agrees with `Algebra.trace K L` never has to be answered.
+That naturality fact was neither located in Mathlib nor derived; it is simply not needed for this
+formulation.
+
+**Supporting lemmas landed in the same file** (all general, no repo-specific shortcuts):
+`mem_coeSubmodule_maximalIdeal_pow_iff`, `coeSubmodule_maximalIdeal_pow_le_iff`,
+`map_trace_spanSingleton_le_iff`, `exists_differentIdeal_eq_maximalIdeal_pow`, and — on the
+adic-completion side — `algebraMap_adicCompletionIntegers_injective` plus the instance
+`Module.IsTorsionFree (v.adicCompletionIntegers K) (w.adicCompletionIntegers L)`, which was the one
+instance the AKLB instantiation needed and the repo did not yet have.
+
+**What did NOT close, precisely.**
+
+1. **`d` is a hypothesis, not derived.** `exists_differentIdeal_eq_maximalIdeal_pow` produces
+   `∃ d, differentIdeal A B = 𝔪_B ^ d` only from `differentIdeal A B ≠ ⊥`. Mathlib's
+   `differentIdeal_ne_bot` needs `[Module.Finite A B]` and `[Algebra.IsSeparable (FractionRing A)
+   (FractionRing B)]`; transporting the repo's `Algebra.IsSeparable K_v L_w` to the `FractionRing`
+   form (the `Algebra.IsSeparable.of_equiv_equiv` manoeuvre `Different.lean`'s own
+   `coeSubmodule_differentIdeal` performs) was not attempted, so both headline theorems take
+   `hd : differentIdeal A B = maximalIdeal B ^ d` as an explicit hypothesis. This is a real gap for
+   anyone wanting a hypothesis-free corollary, and it is purely mechanical.
+2. **No number for the concrete `K = ℚ(ζ_3) ⊆ L = ℚ(ζ_9)` instance** — unchanged from §6x item 5.
+   `d` for that instance is still uncomputed in Lean; §6x's `d = 6` remains an unverified
+   back-of-envelope figure, not a certified one.
+3. **The transport to a norm-group statement (§6x item 2) was not attempted.** With the trace
+   formula now in hand, `expEquiv_w` (§6w) and `norm_exp_eq_exp_trace` (§6v) are what would turn it
+   into `N_{L_w/K_v}(U_{L_w}^{(i)}) = U_{K_v}^{(j₀)}` above the `expEquiv_w` threshold. Unchanged,
+   and now the immediate next step: item 1 of §6x is closed, so nothing blocks it but the work.
+4. **`TotallyRamifiedNormIndex.lean`'s `Subgroup.relIndex` bridging and the below-the-break case**
+   are untouched — unchanged from §6x items 3 and 4.
+
+**Net effect.** §6x's route is no longer a plan: the trace-image equality is a theorem, stated
+generically enough (any DVR AKLB extension, ramification and different exponents as hypotheses)
+that it is not tied to this repo's adic completions, and instantiated at them anyway. The remaining
+distance to an actual wild-case norm-group index is items 1–4 above, of which only item 3 carries
+new mathematical content.
