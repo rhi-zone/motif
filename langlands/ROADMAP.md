@@ -7926,3 +7926,67 @@ generically enough (any DVR AKLB extension, ramification and different exponents
 that it is not tied to this repo's adic completions, and instantiated at them anyway. The remaining
 distance to an actual wild-case norm-group index is items 1–4 above, of which only item 3 carries
 new mathematical content.
+
+## 6z. Twenty-eighth pass (2026-08-11): the trace-image formula transported across `exp` — the
+norm-group *equality* `N_{L_w/K_v}(U_{L_w}^{(i)}) = U_{K_v}^{(⌊(i+d)/e⌋)}` closed
+
+**Task.** §6y item 3 (= §6x item 2), the one remaining piece carrying new mathematical content:
+turn the additive trace-image equality into a statement about norm groups, using `expEquiv`/
+`expEquiv_w` and `norm_exp_eq_exp_trace`.
+
+**Result: closed.** `Langlands/AdicCompletionNormGroupImage.lean` (new, wired into
+`Langlands.lean`), `lake build Langlands` clean at 8740/8740 jobs, `#print axioms` on both headline
+theorems: only `propext, Classical.choice, Quot.sound`.
+
+* `IsDedekindDomain.HeightOneSpectrum.map_principalUnitsPow_normUnitsK₀_eq` — the equality, with
+  every threshold as an explicit hypothesis:
+  ```
+  Subgroup.map (normUnitsK₀ K L v w) (ValuationSubring.principalUnitsPow L₀ i)
+    = ValuationSubring.principalUnitsPow K₀ ((i + d) / v.asIdeal.ramificationIdx' w.asIdeal)
+  ```
+  an **equality of subgroups of `K₀ˣ`**, not a containment and not merely an index. Hypotheses:
+  `hd : differentIdeal K₀ L₀ = 𝔪_{L₀} ^ d`; uniformizers `π_K`, `π_L`; `i` and `(i+d)/e` each
+  strictly above `logUnitsThreshold`; and `hexp`, the norm/trace compatibility on `𝔪_{L₀}^i`.
+* `IsDedekindDomain.HeightOneSpectrum.exists_map_principalUnitsPow_normUnitsK₀_eq` — the packaged
+  form, `∃ i₀, ∀ i ≥ i₀, …`, with every threshold produced internally (the two
+  `exists_pow_lt_logUnitsThreshold`s and `exists_maximalIdeal_pow_norm_exp_eq_exp_trace`'s level;
+  the `K`-side threshold is reached because `e ≠ 0` makes `(i+d)/e` grow with `i`, so
+  `i ≥ i_K · e` suffices). Adds only `[IsGalois K_v L_w]`, inherited from `norm_exp_eq_exp_trace`.
+
+**Route, as executed.** Both directions of the subgroup equality reduce to a single computation
+(`key` in the proof): if `u_L ∈ L₀ˣ` and `u_K ∈ K₀ˣ` satisfy `u_L = exp x` and `u_K = exp a` in the
+ambient fields with `Tr x = a`, then `N(u_L) = u_K`. That is `algebraMap_norm_eq_norm_algebraMap`
+(the ring norm `K₀`-level and the field norm agree), then `norm_exp_eq_exp_trace`, then injectivity
+of `algebraMap K₀ K_v`. The `⊆` direction feeds `key` the *containment* half of §6y's trace formula
+(applied to the `x` produced by `exp`'s surjectivity onto `U_{L₀}^{(i)}`); the `⊇` direction feeds
+it the *surjectivity* half — which is exactly why §6y's theorem had to be an equality rather than a
+bound for this pass to work at all.
+
+**One supporting lemma landed, general** (`Langlands/NonarchimedeanExponentialUnitsIso.lean`):
+`NonarchimedeanExponential.exists_mem_maximalIdeal_pow_coe_eq_exp`, the element-form reading of
+`expEquiv`/`expHom_surjective` (every `u ∈ U_A^{(i)}` is `exp` of an element of `𝔪_A^i`), stated in
+`exp_mem_principalUnitsPow`'s orientation so the two compose at the level of `K` with no
+`Multiplicative`/`Subtype` bookkeeping at the call site. `expEquiv` itself is used only through
+these two element-level halves.
+
+**What did NOT close, precisely — unchanged from §6y except where noted.**
+
+1. **`d` is still a hypothesis, not derived** (§6y item 1). The norm-group theorems inherit
+   `hd : differentIdeal K₀ L₀ = 𝔪_{L₀} ^ d` verbatim; deriving it needs the `FractionRing`-transport
+   of `Algebra.IsSeparable`, still unattempted.
+2. **No number for the concrete `K = ℚ(ζ_3) ⊆ L = ℚ(ζ_9)` instance** (§6y item 2). `d` for that
+   instance is still uncomputed in Lean, and `expEquiv_w` was *not* used — the pass ran at the
+   generic adic-completion level throughout, where `expEquiv`'s hypotheses are all available
+   generically, so the concrete instantiation was not needed and was not done. §6x's `d = 6`
+   remains an unverified back-of-envelope figure.
+3. **The `i₀` is existential, not explicit.** It is `max (max i_L i_N) (i_K · e)` internally, but
+   each of the three inputs is itself existential, so no closed form is available.
+4. **No index number.** Converting this equality into `[U_{K_v} : N_{L_w/K_v}(L_w^×)]` still needs
+   `TotallyRamifiedNormIndex.lean`'s `Subgroup.relIndex` bridging machinery (tame-specific
+   throughout) generalized or re-derived, *and* the below-the-break levels `i < i₀`, which this
+   theorem says nothing about. Unchanged from §6x items 3 and 4.
+
+**Net effect.** §6x's item-2 gap is closed: the exp/log thread now delivers what it was built for —
+a computed norm group, exactly, at the top of the filtration, in the wild case. What separates this
+from a wild-case *index* formula is no longer the multiplicative transport (done) but the two
+flanking pieces: the low filtration levels, and the `relIndex` bookkeeping.
