@@ -38,6 +38,7 @@ import Langlands.ResidueField
 import Langlands.TotallyRamifiedArtinSchreierConcreteExample
 import Langlands.TotallyRamifiedConcreteExample
 import Langlands.TotallyRamifiedCyclotomicConcreteExample
+import Langlands.TotallyRamifiedCyclotomicNormIndex
 import Langlands.TotallyRamifiedEisenstein
 import Langlands.TotallyRamifiedNormIndex
 import Langlands.TotallyRamifiedNormRange
