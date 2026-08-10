@@ -17,6 +17,9 @@ that file's module docstring.
 
 * `IsDedekindDomain.HeightOneSpectrum.range_units_map_algebraMap_adicCompletionIntegers_eq` : the
   generic embedding-range lemma, proved once and instantiated at both `K` and `L`.
+* `IsDedekindDomain.HeightOneSpectrum.index_localNormMap_range_eq_index_normUnitsK₀_of_isTotallyRamified`
+  : the field-level norm index equals the `K₀ˣ`-level norm index, exactly, under
+  `IsTotallyRamified` alone — no `IsTamelyRamified`. Applies to wild totally ramified extensions.
 -/
 
 noncomputable section
@@ -284,6 +287,36 @@ theorem inf_units_eq_units_map (h : IsTotallyRamified K L v w) {πL : w.adicComp
     refine ⟨⟨x, hxy⟩, ?_⟩
     rw [← hxy]
     exact localNormMap_mem_units K L v w hxmem
+
+omit [Algebra.IsIntegral R S] in
+/-- **The totally ramified norm-group index equals the `K₀ˣ`-level norm-group index, exactly, with
+NO tameness hypothesis.** `[(v.adicCompletion K)ˣ : MonoidHom.range (localNormMap K L v w)] =
+[K₀ˣ : MonoidHom.range (normUnitsK₀ K L v w)]`.
+
+This is `sup_units_eq_top` and `inf_units_eq_units_map` (both `IsTotallyRamified`-only, no
+`IsTamelyRamified`) chased through the same `Subgroup.relIndex` algebra as
+`index_localNormMap_range_eq_of_isTotallyRamified` below, stopped one rewrite short of that
+theorem's final step: `index_normUnitsK₀_range_eq_of_isTotallyRamified` (which *does* need
+`IsTamelyRamified`) is never invoked. Consequently this holds for the wild case too — e.g. the
+concrete `K = ℚ_3(ζ_3) ⊆ L = ℚ_3(ζ_9)` instance
+(`Langlands.TotallyRamifiedCyclotomicConcreteExample`), where `e = p = 3` is genuinely wild. -/
+theorem index_localNormMap_range_eq_index_normUnitsK₀_of_isTotallyRamified
+    (h : IsTotallyRamified K L v w) {πL : w.adicCompletionIntegers L} (hπL : Irreducible πL) :
+    (MonoidHom.range (localNormMap K L v w)).index =
+      (MonoidHom.range (normUnitsK₀ K L v w)).index := by
+  set G := MonoidHom.range (localNormMap K L v w) with hGdef
+  set U_K := (v.adicCompletionIntegers K).units with hUKdef
+  haveI hGnormal : G.Normal := G.normal_of_isMulCommutative
+  have hstep1 : G ⊔ U_K = ⊤ := sup_units_eq_top K L v w h hπL
+  have hstep2 : G ⊓ U_K = (w.adicCompletionIntegers L).units.map (localNormMap K L v w) :=
+    inf_units_eq_units_map K L v w h hπL
+  have hidx : G.index = G.relIndex U_K := by
+    rw [← Subgroup.relIndex_top_right (H := G), ← hstep1, Subgroup.relIndex_sup_left]
+  rw [hidx, ← Subgroup.inf_relIndex_right, hstep2, units_map_localNormMap_eq_map_normUnitsK₀ K L v w,
+    show U_K = Subgroup.map (embedK K v) ⊤ from
+      (range_embedK_eq K v).symm.trans (MonoidHom.range_eq_map _),
+    Subgroup.relIndex_map_map_of_injective _ _ (embedK_injective K v),
+    Subgroup.relIndex_top_right]
 
 omit [Algebra.IsIntegral R S] in
 /-- **Task 3: the totally ramified norm-group index.** `[(v.adicCompletion K)ˣ :
