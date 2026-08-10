@@ -8132,3 +8132,128 @@ discriminant exponent `p^{n-1}(pn - n - 1)` of `ℚ(ζ_9)` and `1` that of `ℚ(
    blocked on §6z item 3, not on `d`.
 3. **Everything in §6aa's "did NOT close" list is unchanged**, in particular the valuation-side
    index factor and the below-the-break filtration levels.
+
+## 6ac. Thirty-first pass (2026-08-11): the totally-ramified norm index freed of tameness, and a
+capstone divisibility bound for the concrete wild instance — the generic valuation-of-norm formula
+attempted and blocked
+
+**Task.** Three items, in order: (1) land the tameness-free consequence of `sup_units_eq_top` /
+`inf_units_eq_units_map` already observed to hold under `IsTotallyRamified` alone; (2) attempt the
+generic `v(N_{L/K}(x)) = f · w(x)` valuation-of-norm formula via `Ideal.relNorm`; (3) wire whatever
+closed into a genuine numeric result for the concrete wild instance `K = ℚ_3(ζ_3) ⊆ L = ℚ_3(ζ_9)`.
+
+**Item 1: closed.** `Langlands/TotallyRamifiedNormIndex.lean`,
+`index_localNormMap_range_eq_index_normUnitsK₀_of_isTotallyRamified` (commit `350f19a`):
+
+```
+(h : IsTotallyRamified K L v w) {πL : w.adicCompletionIntegers L} (hπL : Irreducible πL) :
+    (MonoidHom.range (localNormMap K L v w)).index =
+      (MonoidHom.range (normUnitsK₀ K L v w)).index
+```
+
+Proved by re-running exactly `index_localNormMap_range_eq_of_isTotallyRamified`'s `relIndex`
+chase (`sup_units_eq_top`, `inf_units_eq_units_map`, `units_map_localNormMap_eq_map_normUnitsK₀`,
+`Subgroup.relIndex_map_map_of_injective`) but stopped one rewrite short — the final step of that
+theorem, `index_normUnitsK₀_range_eq_of_isTotallyRamified`, is the *only* place `IsTamelyRamified`
+enters the whole chain, and it is simply not invoked here. No new proof technique; the content of
+this pass was confirming (by reading `TotallyRamifiedNormSurjective.lean`'s `htame` usages, per the
+task brief) that `sup_units_eq_top`/`inf_units_eq_units_map` genuinely carry no hidden tameness
+dependency, then landing the stopped-short corollary.
+
+**Item 3 (done ahead of item 2, since it only needed item 1): closed, as a genuine bound, not an
+equality.** New file `Langlands/TotallyRamifiedCyclotomicNormIndex.lean` (commit `a46f0ec`),
+wired into `Langlands.lean`. `lake build Langlands` clean at 8744/8744 jobs; `#print axioms` on
+every new theorem in both this pass's files: only `propext, Classical.choice, Quot.sound`.
+
+* `Langlands.TotallyRamifiedCyclotomicConcreteExample.index_localNormMap_range_eq_index_normUnitsK₀`
+  : item 1 instantiated at the concrete wild instance (`isTotallyRamified`, plus
+  `irreducible_Θ₀ : Irreducible Θ₀` from `maximalIdeal_L₀_eq`), giving
+  `[(v.adicCompletion K)ˣ : N(L_wˣ)] = [K₀ˣ : N(L₀ˣ)]` **exactly** for this instance — genuinely
+  free of tameness, even though `e = p = 3` here.
+* `nat_card_residueFieldK₀_eq` / `nat_card_residueFieldK₀_units_eq` / `nat_card_residueFieldL₀_eq`
+  : `#κ_{K₀} = #κ_{L₀} = 3`, `#κ_{K₀}ˣ = 2`, computed via `Ideal.pow_inertiaDeg` (`3 ^
+  (v.asIdeal.inertiaDeg ℤ) = Ideal.absNorm v.asIdeal`, with the exponent `1` from the already-closed
+  `inertiaDeg_v`/`inertiaDeg_w`), `Ideal.absNorm_apply`/`Submodule.cardQuot_apply` to read this off
+  as `Nat.card (𝓞 K ⧸ v.asIdeal)`, and `residueFieldQuotientRingEquiv` to transport to
+  `Nat.card (ResidueField K₀)`; `Nat.card_units` (`Nat.card αˣ = Nat.card α - 1` for a
+  `GroupWithZero`) for the unit-group count.
+* `exists_index_normUnitsK₀_dvd` — **the capstone**: `∃ j : ℕ, [K₀ˣ : N(L₀ˣ)] ∣ 2 * 3 ^ j ∧
+  [U_{K_v} : N(L_wˣ) ⊓ U_{K_v}] ∣ 2 * 3 ^ j`, by feeding `AdicCompletionNormGroupIndex`'s
+  `exists_index_dvd_index_principalUnitsPow` the certified `d = 6`
+  (`CyclotomicDifferentExponent.differentIdeal_eq`) and expanding
+  `ValuationSubring.index_principalUnitsPow` against the residue-field counts above. Combined with
+  the previous bullet, **`[(v.adicCompletion K)ˣ : N(L_wˣ)] ∣ 2 · 3^j` for some existential `j`** —
+  a genuine, machine-checked divisibility bound on a *wild* local norm index for a real
+  mixed-characteristic concrete instance. This is the first numeric constraint this repo has ever
+  produced on a wild-case field-level norm index. It is a bound, not the number: `j` is existential
+  (inherited from `exists_map_principalUnitsPow_normUnitsK₀_eq`'s threshold, itself existential —
+  see §6z), and nothing here converts the divisibility to an equality.
+
+**Item 2: attempted, blocked before any Lean was written — recorded here as a diagnosed gap, not a
+guess.** The route sketched in the task brief was checked piece by piece against Mathlib and this
+repo:
+
+* `Ideal.relNorm`, `Ideal.relNorm_singleton`, `Ideal.relNorm_eq_pow_of_isMaximal` (needs
+  `[PerfectField (FractionRing R)]`) all resolve at `R := K₀ := v.adicCompletionIntegers K`,
+  `S := L₀ := w.adicCompletionIntegers L`: `PerfectField (FractionRing K₀)` is automatic
+  (`CharZero K₀` ⟹ `CharZero (FractionRing K₀)` ⟹ `PerfectField.ofCharZero`), and does **not**
+  require bridging `FractionRing K₀` to `v.adicCompletion K` — the theorem is stated purely in
+  terms of the ideals of `K₀`/`L₀`, with `FractionRing K₀` appearing only as a resolved-by-instance
+  hypothesis, sidestepping exactly the `FractionRing`-transport obstacle that has blocked deriving
+  `d` generically since §6y.
+* `Algebra.intNorm K₀ L₀ = Algebra.norm K₀` already holds in this repo
+  (`NormMapResidueCompatibility.algebraMap_norm_eq_norm_algebraMap`'s proof uses
+  `Algebra.intNorm_eq_norm` directly), so `relNorm K₀ (span {x}) = span {Algebra.norm K₀ x}` for
+  `x : L₀`, and `algebraMap_norm_eq_norm_algebraMap` already bridges `Algebra.norm K₀ x` to the
+  field-level `Algebra.norm (v.adicCompletion K) (algebraMap x)` used by `localNormMap`. Both of
+  these pieces are *already in the repo*, not newly derived.
+* **What blocks**: `relNorm_eq_pow_of_isMaximal` gives `relNorm K₀ 𝔪_{L₀} = 𝔪_{K₀} ^
+  (𝔪_{L₀}.inertiaDeg K₀)`, an exponent stated in terms of `Ideal.inertiaDeg` **at the completed
+  level** (`𝔪_{L₀}.inertiaDeg K₀ = Module.finrank (ResidueField K₀) (ResidueField L₀)`, by
+  `Ideal.inertiaDeg_eq_of_isMaximal`, using the already-instance `(maximalIdeal L₀).LiesOver
+  (maximalIdeal K₀)` from `ResidueFieldNorm.lean`'s `IsLocalHom` instance). What the formula needs
+  is that this completed-level exponent *equals* `f := v.asIdeal.inertiaDeg' w.asIdeal`, the
+  quantity established generically at the base Dedekind-domain level
+  (`Ideal.inertiaDeg'_eq_inertiaDeg` + `Ideal.inertiaDeg_eq_of_isMaximal` give `f = Module.finrank
+  (R ⧸ v.asIdeal) (S ⧸ w.asIdeal)`). Bridging these two — `Module.finrank (ResidueField K₀)
+  (ResidueField L₀) = Module.finrank (R ⧸ v.asIdeal) (S ⧸ w.asIdeal)` — needs the residue-field ring
+  equivalence `residueFieldQuotientRingEquiv` (already in the repo, used throughout this pass for
+  the cardinality computations) to be shown *compatible with the algebra structure*, i.e. that it
+  intertwines the completed-level residue algebra map `ResidueField K₀ → ResidueField L₀` with the
+  base-level one `R ⧸ v.asIdeal → S ⧸ w.asIdeal` — an `AlgEquiv`-level naturality statement that is
+  not in the repo and was not attempted. This is the exact residue-degree analogue of the
+  ramification-index bridge `map_maximalIdeal_eq_maximalIdeal_pow_ramificationIdx'` that §6x/§6y
+  already had to build from scratch for `e` — itself a real, multi-step piece of work in its own
+  pass — and no shortcut avoiding an equivalent construction was found. Beyond that single
+  bridging lemma, the remaining route (ideal-span-exponent bookkeeping connecting `Ideal.span {x} =
+  𝔪_{L₀}^{w(x)}` to `Valued.v x`, reusing the pattern from
+  `AdicCompletionTraceSurjectivity.exists_algebraMap_eq_zpow_iff`, plus extending from `L₀ \ {0}` to
+  all of `L^×` by multiplicativity) was assessed as mechanical but was not attempted either, since
+  it depends on the bridging lemma above.
+
+**Not a guess, not written as code.** No `sorry`, no placeholder theorem was created for item 2 —
+the assessment above is diagnostic only (Mathlib/repo lookups, no Lean written), matching this
+task's stop-on-diagnosed-blocker instruction. **Item 3's capstone bound does not depend on item 2
+closing** — it was obtained entirely from item 1 plus the pre-existing wild-case machinery of §6z/
+§6aa.
+
+**What did NOT close, precisely.**
+
+1. The generic `v(N(x)) = f · w(x))` formula: blocked on the inertia-degree-at-completions
+   bridge described above (item 2). Every other ingredient (`relNorm`, `intNorm = norm`,
+   `PerfectField` resolution, `IsLocalHom`/`LiesOver` at the maximal ideal) is already available,
+   confirmed by direct lookup rather than assumed.
+2. The capstone bound (`exists_index_normUnitsK₀_dvd`) is a **divisibility**, `[K_vˣ : N(L_wˣ)] ∣
+   2 · 3^j`, not an equality, and `j` is existential — unchanged in kind from §6aa/§6z; this pass
+   supplies the first concrete numbers (`2`, `3`, `d = 6`) into that shape but does not tighten the
+   shape itself.
+3. The valuation-side factor of `index_range_localNormMap_eq_mul`
+   (`[K_vˣ : N(L_wˣ) ⊔ U_{K_v}]`, classically `f`) is *not* separately computed by this pass for the
+   concrete instance as a standalone number — it is absorbed for free into
+   `index_localNormMap_range_eq_index_normUnitsK₀`'s equality (the sup-with-units argument shows
+   it is `1` without ever naming it), so no explicit "`f = 1` therefore valuation factor `= 1`"
+   theorem exists; only the end-to-end equality does.
+4. Everything in §6aa's/§6ab's "did NOT close" lists not superseded above is unchanged, in
+   particular the below-the-break filtration levels (`N(U_{L₀})` vs. `N(U_{L₀}^{(i)})` for `i` below
+   the `exp`/`log` threshold) and `d` remaining a hypothesis in the fully generic (non-concrete)
+   theorems.
