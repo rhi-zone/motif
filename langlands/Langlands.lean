@@ -1,6 +1,7 @@
 import Langlands.AdicCompletionIntegersResidue
 import Langlands.AdicCompletionNormExpTrace
 import Langlands.AdicCompletionTraceBound
+import Langlands.AdicCompletionTraceSurjectivity
 import Langlands.ArtinSchreier
 import Langlands.Basic
 import Langlands.CyclicGaloisSubfields
