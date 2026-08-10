@@ -354,6 +354,24 @@ theorem logUnitsThreshold_le_expUnitsThreshold (hnorm : ‖(p : K)‖ < 1) :
   rw [← Real.rpow_natCast ‖(p : K)‖ 2]
   exact Real.rpow_le_rpow_of_exponent_ge hp0 hnorm.le hexple
 
+omit hA [IsUltrametricDist K] [CompleteSpace K] in
+/-- **A threshold `i₀` above which `‖π‖ ^ i` is strictly below `logUnitsThreshold K p`**, for any
+`π : K` with `‖π‖ < 1`: since `‖π‖ ^ i → 0`, some `i₀` has `‖π‖ ^ i₀ < logUnitsThreshold K p`
+(`exists_pow_lt_of_lt_one`), and by antitonicity of `i ↦ ‖π‖ ^ i` (`‖π‖ ≤ 1`), the same bound holds
+for every `i ≥ i₀`. Mirrors `NonarchimedeanExponentialFiltration.exists_maximalIdeal_pow_le_convergenceRadius`,
+but for `logUnitsThreshold` and for a bare `π : K` (no ambient `ValuationSubring A` needed) — this
+is exactly the piece `expEquiv`'s `{i : ℕ}`/`hthreshStrict` hypotheses need, supplied generically
+here so instantiating it against a concrete `NumberField`-visible `K` never has to write a fresh
+`‖·‖` fact with an explicit type ascription (the diamond-avoidance discipline: see
+`ROADMAP.md` §6u/§6v). -/
+theorem exists_pow_lt_logUnitsThreshold {π : K} (hπnorm : ‖π‖ < 1) :
+    ∃ i₀ : ℕ, ∀ i ≥ i₀, ‖π‖ ^ i < logUnitsThreshold K p := by
+  have h0 : (0 : ℝ) < logUnitsThreshold K p := by
+    unfold logUnitsThreshold
+    exact pow_pos norm_natCast_pos 2
+  obtain ⟨i₀, hi₀⟩ := exists_pow_lt_of_lt_one h0 hπnorm
+  exact ⟨i₀, fun i hi => lt_of_le_of_lt (pow_le_pow_of_le_one (norm_nonneg _) hπnorm.le hi) hi₀⟩
+
 omit hA in
 /-- **`log` matches `‖·‖` exactly, below the strict threshold** (the no-shift landing bound):
 for `z` with `‖z‖ < logUnitsThreshold K p`, `‖log hnorm z‖ = ‖z‖`. Trivial at `z = 0` (`log_zero`);

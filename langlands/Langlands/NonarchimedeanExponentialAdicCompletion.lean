@@ -103,6 +103,18 @@ theorem mem_adicCompletionIntegers_iff_norm_le_one (x : v.adicCompletion F) :
   rw [mem_adicCompletionIntegers A F v, Valued.toNormedField.norm_le_one_iff]
 
 open scoped Valued in
+/-- **A uniformizer's norm is `< 1`**, phrased directly from `Valuation.IsUniformizer` (no need to
+first extract the norm bound through `exists_isUniformizer_valued`'s existential): the same one-line
+argument as `exists_uniformizer` uses internally (`Valued.toNormedField.norm_lt_one_iff`), extracted
+as a standalone reusable fact so a *concrete* uniformizer already in hand (e.g. one constructed by
+hand in a `NumberField`-visible file, where writing a fresh `‖·‖` type ascription risks the
+`NormedField` instance diamond — see `ROADMAP.md` §6u/§6v) can get its norm bound without going
+through `exists_uniformizer`'s existential at all. -/
+theorem norm_lt_one_of_isUniformizer {π : v.adicCompletion F}
+    (hπ : Valuation.IsUniformizer (Valued.v : Valuation _ ℤᵐ⁰) π) : ‖π‖ < 1 :=
+  Valued.toNormedField.norm_lt_one_iff.mpr hπ.val_lt_one
+
+open scoped Valued in
 /-- **A uniformizer of `v.adicCompletionIntegers F`, as an element of that subring, with norm
 `< 1` and generating its maximal ideal.** Packages `exists_isUniformizer_valued` into the exact
 shape `NonarchimedeanExponentialFiltration`'s theorems need. -/
