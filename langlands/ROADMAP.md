@@ -7990,3 +7990,80 @@ these two element-level halves.
 a computed norm group, exactly, at the top of the filtration, in the wild case. What separates this
 from a wild-case *index* formula is no longer the multiplicative transport (done) but the two
 flanking pieces: the low filtration levels, and the `relIndex` bookkeeping.
+
+## 6aa. Twenty-ninth pass (2026-08-11): the `relIndex` bridging done for the wild case — the
+units-side factor of the norm index bounded and proved finite; the valuation-side factor isolated,
+not computed
+
+**Task.** Mirror `TotallyRamifiedNormIndex.lean`'s `Subgroup.relIndex` bridging (its Task 3) for the
+wild case, using §6z's norm-group *equality* `N(U_{L₀}^{(i)}) = U_{K₀}^{((i+d)/e)}` in place of the
+tame symbol-map argument, and land whatever index statement is honestly reachable.
+
+**Finding, before any code: the tame Task-3 inputs do not transfer, and the reason is
+mathematical, not a proof-engineering obstacle.** `TotallyRamifiedNormIndex` computes
+`[K_vˣ : N(L_wˣ)]` on the nose from two facts, both resting on the same uniformizer decomposition:
+`sup_units_eq_top` (`N(L_wˣ) ⊔ U_{K_v} = ⊤`, because under `IsTotallyRamified` the norm of an
+`L₀`-uniformizer is a `K₀`-uniformizer, so the norm group already meets every valuation class) and
+`inf_units_eq_units_map` (`N(L_wˣ) ⊓ U_{K_v} = N(U_{L₀})`). Without total ramification the
+valuations of norms form `f · v(K_vˣ)` (`f` the residue degree), so `sup_units_eq_top` is *false*
+in general — the wild index acquires a valuation-side factor that no amount of `relIndex` algebra
+recovers from §6z's units-level equality. What survives unconditionally is one containment,
+`N(U_{L₀}^{(i)}) ≤ N(L_wˣ) ⊓ U_{K_v}`, which bounds the units-side factor only.
+
+**What closed, `sorry`-free** (`lake build Langlands` clean at 8742/8742 jobs; `#print axioms` on
+all six headline theorems: only `propext, Classical.choice, Quot.sound`).
+
+* `Langlands/PrincipalUnitsFiltrationIndex.lean` (new, general, no adic completions):
+  `ValuationSubring.index_principalUnitsPow` — `[Aˣ : U_A^{(j+1)}] = #κ_Aˣ · (#κ_A)^j` for any
+  valuation subring `A` of a field, by telescoping the graded pieces §Phase-2b already built
+  (`principalUnitsGradedEquiv`, `principalUnitsPow_one`) through `Subgroup.relIndex_mul_index`.
+  Unconditional on finiteness of `κ_A`: with `Nat.card`/`Subgroup.index` both `0` on infinite
+  objects, the two sides degenerate together. Supporting:
+  `index_principalUnitsPow_one`, `relIndex_principalUnitsPow_succ`,
+  `index_principalUnitsPow_ne_zero`.
+* `Langlands/AdicCompletionNormGroupIndex.lean` (new, wired into `Langlands.lean`):
+  * `relIndex_range_localNormMap_units_dvd_index_map_normUnitsK₀` — **the wild bridging lemma**,
+    and the most general thing here: for *any* subgroup `X ≤ L₀ˣ`,
+    `[U_{K_v} : N(L_wˣ) ⊓ U_{K_v}]` divides `[K₀ˣ : N(X)]`. No tameness, no `IsTotallyRamified`,
+    no exponential, no hypothesis on `X` — it is pure `relIndex` algebra over the commuting square
+    `localNormMap ∘ embedL = embedK ∘ normUnitsK₀` plus `embedK` injectivity.
+  * `exists_index_dvd_index_principalUnitsPow` — the wild instantiation: for some `j`, both
+    `[K₀ˣ : N(L₀ˣ)]` and `[U_{K_v} : N(L_wˣ) ⊓ U_{K_v}]` divide `#κ_{K₀}ˣ · (#κ_{K₀})^j`, obtained
+    by feeding §6z's equality into the bridging lemma at a deep enough `i` (chosen `≥ e` so that
+    `(i+d)/e ≥ 1`).
+  * `index_ne_zero_of_finite_residueField` — **the qualitative headline**: with `κ_{K₀}` finite,
+    `N(L₀ˣ) ≤ K₀ˣ` has finite index and so does `N(L_wˣ) ⊓ U_{K_v}` inside `U_{K_v}`, in the wild
+    case, with no tameness hypothesis. This is the units-side half of local class field theory's
+    finiteness input.
+  * `index_range_localNormMap_eq_mul` — the honest bookkeeping of what is missing:
+    `[K_vˣ : N(L_wˣ)] = [K_vˣ : N(L_wˣ) ⊔ U_{K_v}] · [U_{K_v} : N(L_wˣ) ⊓ U_{K_v}]`, stated
+    unconditionally for any place pair, isolating the valuation-side factor as a single named
+    quantity.
+
+**What did NOT close, precisely.**
+
+1. **The full index number `[K_vˣ : N(L_wˣ)]` is not computed, and two independent pieces are
+   missing.** (a) The valuation-side factor `[K_vˣ : N(L_wˣ) ⊔ U_{K_v}]` of
+   `index_range_localNormMap_eq_mul` — classically the residue degree `f`, and `1` in the tame
+   totally-ramified case by `sup_units_eq_top`. Proving it equals `f` needs the image of
+   `v ∘ N_{L_w/K_v}` on `L_wˣ` identified as `f · v(K_vˣ)`, which is not in this repo. (b) The
+   units-side factor is only bounded, not computed, because the bound comes from
+   `N(U_{L₀}^{(i)})` for `i` above the `exp`/`log` threshold; `N(U_{L₀})` may be strictly larger,
+   and the gap is exactly the below-the-break levels `i < i₀` (unchanged from §6x item 4 /
+   §6z item 4, still not started).
+2. **`d` remains a hypothesis** (§6y item 1, §6z item 1), inherited verbatim.
+3. **No number for the concrete `K = ℚ(ζ_3) ⊆ L = ℚ(ζ_9)` instance** (§6z item 2), unchanged. The
+   bound here is stated existentially in `j` anyway, so instantiating it numerically would need
+   both `d` and an explicit threshold.
+4. **The bound is a divisibility, not an equality, even on the units side.** Both directions of the
+   `relIndex` argument were examined: `N(L_wˣ) ⊓ U_{K_v} = N(U_{L₀})` (the tame
+   `inf_units_eq_units_map`) would follow from "a norm that is a unit comes from a unit", i.e. from
+   `v(N(x)) = f · w(x)`-type multiplicativity — the same missing fact as item 1(a). So items 1(a)
+   and 4 are one gap, not two.
+
+**Net effect.** The `relIndex` bridging is no longer a tame-only tool: the bridging lemma landed
+here is hypothesis-free in `X` and tameness-free, and combined with §6z it yields the first
+wild-case finiteness statement for a local norm group in this repo. The remaining distance to a
+wild index *formula* is now cleanly two named quantities — the valuation-side factor and the
+below-the-break filtration levels — neither of which is blocked by the multiplicative transport
+that occupied §6v–§6z.
