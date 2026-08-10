@@ -39,6 +39,9 @@ automatically once `Algebra.adjoin R {a} = ⊤` is known, with no separate pigeo
 * `LocalField.adjoin_eq_top_of_map_mkQ_eq_top` : for `R` local, `S` a finite `R`-algebra, `a : S`,
   if the image of `Algebra.adjoin R {a}` in `S ⧸ (maximalIdeal R • ⊤)` is all of that quotient,
   then `Algebra.adjoin R {a} = ⊤`.
+* `LocalField.adjoin_singleton_eq_top_of_forall_sub_mem_span` : the totally-ramified specialization,
+  in the form the residue data actually arrives in — if every `s : S` is congruent to a scalar mod
+  `ϖ` and some power `ϖ ^ e` already lies in `𝔪_R S`, then `ϖ` generates `S` over `R`.
 
 ## Status update (twenty-sixth pass)
 
@@ -136,5 +139,53 @@ theorem adjoin_eq_top_of_adjoin_quotient_eq_top {R S : Type*} [CommRing R] [IsLo
     rw [← map_aeval_eq_aeval_map (ψ := Ideal.Quotient.mk _)
       (φ := Ideal.Quotient.mk (maximalIdeal R)) rfl] at hp
     exact hp.symm
+
+open Polynomial IsLocalRing in
+/-- **Monogenicity from a residue-surjectivity hypothesis and a single power.** For `R` local and
+`S` a finite `R`-algebra, if every `s : S` is congruent to (the image of) a scalar modulo `ϖ`, and
+some power `ϖ ^ e` already lies in `𝔪_R S`, then `ϖ` generates `S` as an `R`-algebra.
+
+This is the shape the totally ramified case supplies: `hres` is surjectivity of the residue map
+`R → S ⧸ (ϖ)` (for `S` local with `𝔪_S = (ϖ)`, exactly trivial residue extension) and `he` is the
+ramification identity `𝔪_R S = 𝔪_S ^ e = (ϖ ^ e)`. Neither hypothesis mentions a valuation, a
+discrete valuation ring, or an Eisenstein polynomial, so the lemma applies verbatim at completions,
+at localizations, and at abstract local rings alike.
+
+The proof is the classical `ϖ`-adic expansion: `hres` peels one coefficient at a time, giving
+`s ≡ aeval ϖ q mod (ϖ ^ n)` for every `n` and a suitable `q : R[X]`; taking `n = e` puts the
+remainder in `𝔪_R • ⊤`, and Nakayama (`Submodule.le_of_le_smul_of_le_jacobson_bot`, the same engine
+as `adjoin_eq_top_of_map_mkQ_eq_top` above) upgrades that to equality. -/
+theorem adjoin_singleton_eq_top_of_forall_sub_mem_span {R S : Type*} [CommRing R] [IsLocalRing R]
+    [CommRing S] [Algebra R S] [Module.Finite R S] {ϖ : S}
+    (hres : ∀ s : S, ∃ r : R, s - algebraMap R S r ∈ Ideal.span {ϖ})
+    {e : ℕ} (he : ϖ ^ e ∈ Ideal.map (algebraMap R S) (maximalIdeal R)) :
+    Algebra.adjoin R ({ϖ} : Set S) = ⊤ := by
+  have key : ∀ (n : ℕ) (s : S), ∃ q : R[X], s - aeval ϖ q ∈ Ideal.span {ϖ ^ n} := by
+    intro n
+    induction n with
+    | zero => intro s; exact ⟨0, by simp⟩
+    | succ n ih =>
+      intro s
+      obtain ⟨q, hq⟩ := ih s
+      obtain ⟨t, ht⟩ := Ideal.mem_span_singleton'.mp hq
+      obtain ⟨r, hr⟩ := hres t
+      obtain ⟨t', ht'⟩ := Ideal.mem_span_singleton'.mp hr
+      refine ⟨q + C r * X ^ n, Ideal.mem_span_singleton'.mpr ⟨t', ?_⟩⟩
+      simp only [map_add, map_mul, map_pow, aeval_C, aeval_X]
+      have hts : t = t' * ϖ + algebraMap R S r := by rw [ht']; ring
+      have hs : s = t * ϖ ^ n + aeval ϖ q := by rw [ht]; ring
+      rw [hs, hts]
+      ring
+  rw [← Algebra.toSubmodule_eq_top]
+  refine le_antisymm le_top (Submodule.le_of_le_smul_of_le_jacobson_bot
+    (Module.finite_def.mp inferInstance) (IsLocalRing.maximalIdeal_le_jacobson ⊥) ?_)
+  intro s _
+  obtain ⟨q, hq⟩ := key e s
+  rw [Ideal.smul_top_eq_map]
+  refine Submodule.mem_sup.mpr ⟨aeval ϖ q, ?_, s - aeval ϖ q, ?_, by ring⟩
+  · rw [Subalgebra.mem_toSubmodule, Algebra.adjoin_singleton_eq_range_aeval]
+    exact ⟨q, rfl⟩
+  · rw [Submodule.restrictScalars_mem]
+    exact Ideal.span_le.mpr (Set.singleton_subset_iff.mpr he) hq
 
 end LocalField

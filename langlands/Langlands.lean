@@ -8,6 +8,7 @@ import Langlands.ArtinSchreier
 import Langlands.Basic
 import Langlands.CyclicGaloisSubfields
 import Langlands.CyclicSubgroups
+import Langlands.CyclotomicDifferentExponent
 import Langlands.FiniteIndexNormalSubgroupMulEquiv
 import Langlands.FiniteIndexSubgroupsZ
 import Langlands.HeightOneSpectrumRationalPrimeTower
