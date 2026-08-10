@@ -8067,3 +8067,68 @@ wild-case finiteness statement for a local norm group in this repo. The remainin
 wild index *formula* is now cleanly two named quantities — the valuation-side factor and the
 below-the-break filtration levels — neither of which is blocked by the multiplicative transport
 that occupied §6v–§6z.
+
+## 6ab. Thirtieth pass (2026-08-11): the concrete different exponent computed — `d = 6` for
+`K = ℚ(ζ_3) ⊆ L = ℚ(ζ_9)`, the back-of-envelope figure now certified
+
+**Task.** §6x item 5 / §6y item 2 / §6z item 2 / §6aa item 3, unchanged across four passes: compute
+the different exponent `d` for the concrete mixed-characteristic wild Galois instance, replacing
+§6x's explicitly-unverified `d = 6` with either a theorem or a different number.
+
+**Result: closed, and the number *is* `6`.** `Langlands/CyclotomicDifferentExponent.lean` (new,
+wired into `Langlands.lean`), `lake build Langlands` clean at 8743/8743 jobs, `#print axioms` on the
+headline theorem and on the new general lemma: only `propext, Classical.choice, Quot.sound`.
+
+* `Langlands.TotallyRamifiedCyclotomicConcreteExample.differentIdeal_eq` :
+  `differentIdeal (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) =
+  IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) ^ 6`.
+
+**Route, as executed** (§6x's sketch held up in outline; the two steps it left hand-wavy — "up to
+the unit `ζ^2` and Eisenstein-monic bookkeeping" and "`v_L(3) = e · v_K(3) = e·(p-1)`" — were both
+replaced by facts read off actual Mathlib/repo statements, not re-derived by hand):
+
+1. **The conductor is trivial**, so `conductor_mul_differentIdeal` computes the different outright
+   rather than only bounding it (`aeval_derivative_mem_differentIdeal` alone gives `d ≤ 6`, and no
+   matching lower bound was available — `pow_sub_one_dvd_differentIdeal` only gives `d ≥ e - 1 = 2`).
+   Triviality is `𝒪_{L_w} = 𝒪_{K_v}[Θ₀]` (`adjoin_Θ₀_eq_top`), which needs no Eisenstein input at
+   all: it follows from the two ramification fields of the already-proved `IsTotallyRamified`
+   instance (residue surjectivity and `𝔪_{K_v} 𝒪_{L_w} = 𝔪_{L_w} ^ e`) via a new general lemma,
+   `LocalField.adjoin_singleton_eq_top_of_forall_sub_mem_span` (landed in
+   `Langlands/NakayamaMonogenic.lean`, its natural home): for `R` local and `S` a finite
+   `R`-algebra, if every `s : S` is congruent to a scalar mod `ϖ` and some `ϖ ^ e` lies in `𝔪_R S`,
+   then `Algebra.adjoin R {ϖ} = ⊤`. The proof is the `ϖ`-adic expansion plus the same Nakayama
+   engine (`Submodule.le_of_le_smul_of_le_jacobson_bot`) the file's existing criteria use — no
+   valuation, no DVR, no Eisenstein polynomial in the statement.
+2. **`minpoly 𝒪_{K_v} Θ₀ = eisPoly c₀`** (`minpoly_Θ₀_eq`), by descending the completed-level
+   minimal polynomial — pinned by the instance file's existing Eisenstein irreducibility
+   `map_minpoly_theta_irreducible` — along `minpoly.isIntegrallyClosed_eq_field_fractions` and
+   injectivity of the coefficient map.
+3. **`f'(Θ₀) = 3 (Θ₀ + 1) ^ 2 = 3 ζ_9 ^ 2`**, and `Θ₀ + 1` is literally the image of `hζ.toInteger`
+   (`Θ₀_add_one_eq`), a root of unity, hence a unit — so the ideal collapses to `span {3}` with no
+   valuation estimate needed for that factor.
+4. **`span {(3 : 𝒪_{L_w})} = 𝔪_{L_w} ^ 6`.** The `e·(p-1)` tower reasoning of §6x was not needed:
+   Mathlib's `IsCyclotomicExtension.Rat.map_eq_span_zeta_sub_one_pow` gives
+   `span {(3 : 𝓞 L)} = w.asIdeal ^ [ℚ(ζ_9) : ℚ] = w.asIdeal ^ 6` already at the number-field level,
+   and `finrank_ℚ_L = 6` was already in the instance file. Transporting to the completion is the
+   same uniformizer/unit-factor pattern (`u₃`, `u₃₀_isUnit`, `three_eq_Θ₀_pow_mul`) the instance
+   file already uses for `π₀`.
+
+**Independent cross-check of the number** (recorded because §6x's figure was a guess and agreeing
+with a guess is weak evidence): `6 = v_{L_w}(3) = e(L_w / ℚ_3) = φ(9)`, and the tower formula
+`d(L_w/ℚ_3) = d(L_w/K_v) + e(L_w/K_v) · d(K_v/ℚ_3)` reads `9 = 6 + 3 · 1`, with `9` the classical
+discriminant exponent `p^{n-1}(pn - n - 1)` of `ℚ(ζ_9)` and `1` that of `ℚ(ζ_3)`.
+
+**What did NOT close.**
+
+1. **`d` is still a hypothesis in the *generic* theorems** (§6y item 1, §6z item 1, §6aa item 2).
+   This pass computes `d` for one concrete instance; it does not derive `differentIdeal A B =
+   𝔪_B ^ d` hypothesis-free at the generic adic-completion level, which still needs the
+   `FractionRing`-transport of `Algebra.IsSeparable` for `differentIdeal_ne_bot`. Unchanged.
+2. **The concrete instance's theorems were not re-instantiated with `d = 6` plugged in.**
+   `differentIdeal_eq` is exactly the shape `map_trace_coeSubmodule_maximalIdeal_pow_adicCompletion`
+   and `map_principalUnitsPow_normUnitsK₀_eq` take as `hd`, so the substitution is now mechanical,
+   but it was not performed — the remaining thresholds in those statements (the `expEquiv_w` level
+   and the norm/trace-compatibility level) are existential, so a fully numeric corollary is still
+   blocked on §6z item 3, not on `d`.
+3. **Everything in §6aa's "did NOT close" list is unchanged**, in particular the valuation-side
+   index factor and the below-the-break filtration levels.
