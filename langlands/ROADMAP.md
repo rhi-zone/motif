@@ -7568,3 +7568,121 @@ a real mixed-characteristic wild Galois instance — is met. The secondary stret
 instantiation, the actual index number) are diagnosed to the point of a concrete next-pass plan but
 not attempted, per the task's explicit instruction to treat the first milestone as the one that
 matters even if the index computation isn't reached.
+
+## 6w. Twenty-fifth pass (2026-08-10): **CAPSTONE — `expEquiv` instantiated against the concrete
+cyclotomic instance; the entire exp/log machinery now runs end to end for the first time**
+
+**Task.** Close §6v's remaining item: instantiate `NonarchimedeanExponentialUnitsIso.expEquiv` (the
+`U_A^{(i)} ≅ (𝔪_A^i, +)` group isomorphism) against `A := w.adicCompletionIntegers L`, `π := Θ₀`,
+`p := 3` in `TotallyRamifiedCyclotomicConcreteExample.lean`. Then, with remaining budget, assess
+(don't force) whether the actual wild-case norm-group index number is in reach.
+
+**`expEquiv` — CLOSED as `expEquiv_w`, but not via the "leave the type to be inferred" trick alone.**
+The two generic hypotheses `expEquiv` needed beyond what §6v already had:
+
+* `hπnorm_Θ : ‖Θ₀‖ < 1` — closed via a new generic lemma `norm_lt_one_of_isUniformizer`
+  (`NonarchimedeanExponentialAdicCompletion.lean`), extracted verbatim from the one-line argument
+  already inlined in `exists_uniformizer` (`Valued.toNormedField.norm_lt_one_iff.mpr
+  hπ.val_lt_one`), so §6v's diagnosed sub-obstacle (1) turned out not to need an explicit `(hv :=
+  ...)` after all — the existing `Valued.toNormedField.norm_lt_one_iff` route worked directly once
+  isolated in a `NumberField`-free file.
+* `hthreshStrict_i₀ : ‖Θ₀‖ ^ i₀ < logUnitsThreshold (w.adicCompletion L) p` for some concrete `i₀` —
+  closed via a new generic existential `exists_pow_lt_logUnitsThreshold`
+  (`NonarchimedeanExponentialUnitsIso.lean`), exactly the pattern §6v's sub-obstacle (2) sketched:
+  mirrors `exists_maximalIdeal_pow_le_convergenceRadius` but for `logUnitsThreshold` and a bare `π :
+  K` (no ambient `ValuationSubring` needed).
+
+**The actual new obstacle, not anticipated by §6v's diagnosis: applying the fully generic
+`NonarchimedeanExponential.expEquiv`/`exists_pow_lt_logUnitsThreshold` directly at the concrete call
+site — even via the established "`def` with inferred type" discipline — still hit the diamond.**
+Root-caused precisely (not worked around): the "leave the type to be inferred" trick works when
+*every* piece pinning the ambient `NormedField K` instance comes from an already-elaborated
+(repo-instance-baked) term. But `expEquiv`'s own signature takes `A : ValuationSubring K` as an
+explicit argument, and `w.adicCompletionIntegers L` — while definitionally a `ValuationSubring
+(w.adicCompletion L)` — carries **no baked `NormedField` instance of its own** (it's built from the
+`Valued` structure, not from `NormedField`). Supplying `(A := w.adicCompletionIntegers L)` therefore
+forces Lean to resolve `[NormedField (w.adicCompletion L)]` fresh, right there, before any
+already-pinned-instance hypothesis argument (`hnormL`, `hπnorm_Θ`, ...) gets a chance to fix it by
+unification — and confirmed empirically (build errors showing `HeightOneSpectrum.
+instNormedFieldValuedAdicCompletion` in the *expected* type slot) that this resolves to Mathlib's
+competing instance, not this repo's, regardless of argument order in the call. The same issue hit
+`exists_pow_lt_logUnitsThreshold` even with zero `ValuationSubring` argument involved: supplying `p`
+via `(p := p)` (needed since `p` doesn't appear in `hπnorm_Θ`'s type and so can't be inferred by
+unification) was itself enough to trigger eager instance resolution for `[NormedField K]` ahead of
+unifying `K` from the `hπnorm` argument.
+
+**The fix: move the diamond-avoidance one level out, mirroring `norm_natCast_lt_one_of_charP_
+residueField`'s own mechanism rather than trying to out-order the generic theorems' argument
+lists.** Added two `HeightOneSpectrum`-specialized wrappers to `NonarchimedeanExponentialAdicCompletion.lean`
+(`NumberField`-free, so `‖·‖`/`[NormedField (v.adicCompletion F)]` resolves to a *single* candidate
+there, no re-search possible):
+* `exists_pow_lt_logUnitsThreshold {π : v.adicCompletion F} (hπnorm : ‖π‖ < 1) : ∃ i₀, ∀ i ≥ i₀, ‖π‖
+  ^ i < logUnitsThreshold (v.adicCompletion F) p` — a thin wrapper around the generic version,
+  stated as a `theorem` with its type written out explicitly (safe here, since there's no ambiguity
+  to write into).
+* `expEquiv (hnorm : ...) {π : v.adicCompletionIntegers F} (hπ : ...) (hπ0 : ...) (hπnorm : ...) {i}
+  (hthreshStrict : ...) : Multiplicative ↥(maximalIdeal (v.adicCompletionIntegers F) ^ i) ≃*
+  ↥(ValuationSubring.principalUnitsPow (v.adicCompletionIntegers F) i)` — likewise a thin wrapper
+  around `NonarchimedeanExponential.expEquiv (A := v.adicCompletionIntegers F) (hA := ...)`,
+  elaborated once in this file with the `[NormedField K]` instance uniquely resolved.
+
+Both wrappers, once compiled, are **fixed terms** with the correct instance already baked in — so
+applying them at the concrete (`NumberField`-visible) call site is just ordinary first-order
+unification on plain data (`v`, `F`, proof terms), no fresh instance search at all, the same
+mechanism that already made `norm_natCast_lt_one_of_charP_residueField` diamond-free in §6v. This is
+a strictly more general technique than §6v's "`def` with inferred type" trick: that trick suffices
+when the *only* type-fixing information comes from already-baked hypothesis arguments; this file's
+new wrappers are needed whenever some argument (an explicit `ValuationSubring`, an explicit-but-
+otherwise-unconstrained numeral like `p`) would otherwise force eager, ambiguous instance
+resolution before unification has a chance to pin the instance down.
+
+`TotallyRamifiedCyclotomicConcreteExample.lean` then instantiates the two wrappers with the same
+`def`-with-inferred-type discipline as §6v (`hπnorm_Θ`, `exists_i₀_lt_logUnitsThreshold`, `i₀ :=
+....choose`, `hi₀_spec`, `hthreshStrict_i₀`), and assembles `expEquiv_w :
+Multiplicative ↥(maximalIdeal (w.adicCompletionIntegers L) ^ i₀) ≃*
+↥(ValuationSubring.principalUnitsPow (w.adicCompletionIntegers L) i₀)` as a `theorem`-style `def`
+with its type written out explicitly — safe here since the type only mentions ideal-power/
+`ValuationSubring` structure, never a bare `‖·‖`.
+
+**Verification.** `nix develop -c lake build Langlands`: clean, whole project (8737/8737 jobs), no
+new warnings. `grep -rn sorry` on all three touched files: zero hits.
+`#print axioms Langlands.TotallyRamifiedCyclotomicConcreteExample.expEquiv_w`: only `propext`,
+`Classical.choice`, `Quot.sound`.
+
+**Commits:** `398dc34` (`NonarchimedeanExponentialAdicCompletion.lean`: `norm_lt_one_of_isUniformizer`;
+`NonarchimedeanExponentialUnitsIso.lean`: `exists_pow_lt_logUnitsThreshold`, both fully generic),
+`693bb69` (`NonarchimedeanExponentialAdicCompletion.lean`: the two `HeightOneSpectrum`-specialized
+wrappers `exists_pow_lt_logUnitsThreshold`/`expEquiv`; `TotallyRamifiedCyclotomicConcreteExample.lean`:
+`hπnorm_Θ` through `expEquiv_w`, plus the closing-documentation update).
+
+**Net effect — the capstone.** With `expEquiv_w` closed, this repo's entire `exp`/`log` machinery
+— mutual inverse (`exp_log_eq_one_add`), filtration landing (`exp_mem_principalUnitsPow`),
+norm/trace compatibility (`exists_maximalIdeal_pow_norm_exp_eq_exp_trace`, §6v), and now the units
+isomorphism (`expEquiv`) — has been exercised end to end against one real concrete
+mixed-characteristic wild Galois instance (`K = ℚ(ζ_3) ⊆ L = ℚ(ζ_9)`) for the first time. This
+closes the entire §6f–§6w exp/log thread's headline exercise.
+
+**Item 4 (wild-case norm-group index number) — assessed, deferred, not attempted; here is exactly
+why.** `TotallyRamifiedNormIndex.lean`'s headline result,
+`index_localNormMap_range_eq_of_isTotallyRamified`, computes `[(v.adicCompletion K)ˣ :
+MonoidHom.range (localNormMap K L v w)] = gcd(e, #κ[K]ˣ)` — but its statement takes `(htame :
+IsTamelyRamified K L v w)` as an explicit hypothesis, and its proof (`inf_units_eq_units_map`,
+`sup_units_eq_top`, and the underlying `index_normUnitsK₀_range_eq_of_isTotallyRamified` from
+`TotallyRamifiedNormResidueImage.lean`) is built on tame-specific machinery throughout (uniformizer
+`zpow` decompositions whose injectivity argument relies on the *residue-level* norm map being
+essentially the tame symbol map). The concrete instance here has `e = p = 3`, i.e. `p ∣ e`
+(wild), so `IsTamelyRamified K L v w` does not hold and `index_localNormMap_range_eq_of_isTotallyRamified`
+cannot be invoked, full stop — not a plumbing gap but the actual open mathematical content the
+`exp`/`log` machinery (norm/trace compatibility + `expEquiv`) was built to eventually replace this
+formula with, in the wild case. What *is* available after this pass: `expEquiv_w` (the additive-side
+isomorphism) and `exists_maximalIdeal_pow_norm_exp_eq_exp_trace` (norm/trace compatibility on
+`𝔪_{L_w}^i`, `i ≥ i₀`) — exactly the two ingredients a wild-case index argument would transport
+through (mapping the multiplicative filtration index problem onto the additive/trace side, where
+`Tr_{L_w/K_v}` is `K_v`-linear and possibly more tractable). What is *not* available and was not
+attempted: any formula or argument for what a wild-case norm-group index actually *equals*, any
+statement of what the additive-side transported problem itself reduces to, or any of the
+`Subgroup.relIndex` bridging machinery `TotallyRamifiedNormIndex.lean` uses to go from a `K₀ˣ`-level
+statement up to the ambient-field index (that machinery is tame-specific in its current form and
+would need to be either generalized or re-derived from scratch for the wild case). This is
+genuinely open research content, not a short follow-up — a dedicated pass, not a continuation of
+this one, is the honest scoping.

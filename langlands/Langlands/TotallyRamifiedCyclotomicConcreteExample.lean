@@ -898,15 +898,34 @@ field of `gPoly` over `Kv` (`thetaw` alone already generates `Lw`, `adjoin_theta
 `isGalois_Kv_Lw` above.
 
 **The payoff.** `exists_maximalIdeal_pow_norm_exp_eq_exp_trace` above is the first time in this
-repo's entire `exp`/`log` thread (`ROADMAP.md` §6f–§6u) that `AdicCompletionNormExpTrace`'s wild-case
+repo's entire `exp`/`log` thread (`ROADMAP.md` §6f–§6v) that `AdicCompletionNormExpTrace`'s wild-case
 norm/trace formula is exercised against a genuine mixed-characteristic (`CharZero K`, residue
 characteristic `p`), wild (`p ∣ e = p`), Galois instance — every earlier concrete instance in this
-repo was equal-characteristic and could not even state the hypotheses. Not attempted here:
-instantiating `NonarchimedeanExponentialUnitsIso.expEquiv` (the `U_A^{(i)} ≅ (𝔪_A^i, +)`
-isomorphism) against this instance, and the actual wild-case norm-group index computation
-mirroring `TotallyRamifiedNormIndex`'s tame-case pattern — both are the natural next steps, and
-`expEquiv`'s threshold hypotheses are of exactly the same "leave the type to be inferred" shape as
-`hnormK`/`hnormL` above, so the same diamond-avoidance approach should carry over directly. -/
+repo was equal-characteristic and could not even state the hypotheses.
+
+**Capstone (this pass, `ROADMAP.md` §6w).** `expEquiv_w` above instantiates
+`NonarchimedeanExponentialUnitsIso.expEquiv` (the `U_A^{(i)} ≅ (𝔪_A^i, +)` isomorphism) against this
+same concrete instance, at `A := w.adicCompletionIntegers L`, `π := Θ₀`. This was the last
+unexercised piece of the entire `exp`/`log` machinery: with `expEquiv_w` closed, mutual inverse,
+filtration landing, norm/trace compatibility, AND the units isomorphism have all now been run end
+to end against one real concrete mixed-characteristic wild Galois instance. Instantiating it needed
+two new `HeightOneSpectrum`-specialized wrappers in `NonarchimedeanExponentialAdicCompletion.lean`
+(`exists_pow_lt_logUnitsThreshold`, `expEquiv`) rather than the generic
+`NonarchimedeanExponential.expEquiv` applied directly with the "leave the type to be inferred" `def`
+trick alone: the generic version's `A : ValuationSubring K` argument forces `[NormedField K]`
+concrete (and hence re-resolved, ambiguously, against Mathlib's competing instance) before any
+already-pinned-instance hypothesis argument gets a chance to fix it via unification, so the
+diamond-avoidance had to move one level out, to a wrapper baked in a `NumberField`-free file — the
+same mechanism `norm_natCast_lt_one_of_charP_residueField` already used, just applied to a
+richer-typed conclusion.
+
+**Not attempted: the actual wild-case norm-group index computation**, mirroring
+`TotallyRamifiedNormIndex`'s tame-case pattern (transporting the index formula to the
+additive/trace side via `norm_exp_eq_exp_trace` + `expEquiv_w`). `TotallyRamifiedNormIndex.lean` is
+long and bridges `K₀ˣ`-level index formulas up to the ambient-field index; assessed but not
+attempted in this pass — see `ROADMAP.md` §6w for the precise state of what's available (`expEquiv_w`,
+`exists_maximalIdeal_pow_norm_exp_eq_exp_trace`) versus what a dedicated pass would still need to
+build (the index-formula transport itself). -/
 
 end Langlands.TotallyRamifiedCyclotomicConcreteExample
 
