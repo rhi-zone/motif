@@ -7686,3 +7686,153 @@ statement up to the ambient-field index (that machinery is tame-specific in its 
 would need to be either generalized or re-derived from scratch for the wild case). This is
 genuinely open research content, not a short follow-up — a dedicated pass, not a continuation of
 this one, is the honest scoping.
+
+## 6x. Twenty-sixth pass (2026-08-11): the wild-case norm-group index — the trace-surjectivity
+route worked out precisely against Mathlib's `differentIdeal` machinery; one generic lemma closed,
+the full index theorem scoped but not completed
+
+**Task.** §6w left the wild-case norm-group index (`[U_{K_v} : N_{L_w/K_v}(U_{L_w})]`, the wild
+analogue of `TotallyRamifiedNormIndex`'s `gcd(e, #κ[K]ˣ)` formula) as assessed-but-not-attempted.
+This pass's job: work out whether `Tr_{L_w/K_v}` restricted to `𝔪_{L_w}^i` (the filtration level
+`expEquiv_w` operates at) surjects onto `𝔪_{K_v}^j` for a matching `j` — the additive-side fact the
+whole exp/log thread was built to transport a norm-group computation through — using whatever
+Mathlib machinery actually exists (checked, not assumed), and instantiate a real number for the
+concrete `K = ℚ(ζ_3) ⊆ L = ℚ(ζ_9)` example if it closes.
+
+**Finding: Mathlib has exactly the right tool, `Mathlib.RingTheory.DedekindDomain.Different`, and
+the AKLB (`A K L B`) framework it's stated in matches this repo's `(v.adicCompletionIntegers K,
+v.adicCompletion K, w.adicCompletion L, w.adicCompletionIntegers L)` literally** — confirmed by
+direct instance-resolution probe (a scratch file, discarded after checking, not part of the
+codebase), not by inspection alone: `differentIdeal (v.adicCompletionIntegers K)
+(w.adicCompletionIntegers L)` elaborates with **zero extra instances** beyond what this repo
+already provides (`instIsIntegralClosureAdicCompletionIntegers`,
+`instModuleFiniteAdicCompletionIntegers`, `instModuleFreeAdicCompletionIntegers` from
+`AdicCompletionIntegralClosure.lean`, plus `Algebra.IsSeparable (v.adicCompletion K)
+(w.adicCompletion L)` already required throughout this thread). `IsDedekindDomain
+(v.adicCompletionIntegers K)`/`IsIntegrallyClosed`/`IsFractionRing` all resolve automatically (a
+DVR is a PID is a Dedekind domain, `IsPrincipalIdealRing.isDedekindDomain`, already an instance in
+Mathlib).
+
+**The mathematical route, worked out in full and checked against the actual Mathlib statements
+(not from memory of the classical theory alone):**
+
+Write `A := v.adicCompletionIntegers K`, `B := w.adicCompletionIntegers L`, `e :=
+v.asIdeal.ramificationIdx' w.asIdeal`, and let `d` be the different exponent —
+`differentIdeal A B = maximalIdeal B ^ d`, which exists since `differentIdeal A B ≠ ⊥`
+(`differentIdeal_ne_bot`, needs `Algebra.IsSeparable`, already in hand) and every nonzero ideal of
+a DVR is a power of its maximal ideal (`IsDiscreteValuationRing.ideal_eq_span_pow_irreducible`,
+confirmed present in Mathlib via `loogle`).
+
+1. **Containment, both directions, from `differentialIdeal_le_fractionalIdeal_iff`.** This Mathlib
+   lemma states `differentIdeal A B ≤ I ↔ ((I⁻¹ : Submodule B L).restrictScalars A).map (trace K
+   L) ≤ 1` for a `FractionalIdeal`. Instantiating `I := (𝔪_L^i)⁻¹` (so `I⁻¹ = 𝔪_L^i` via
+   `inv_inv`) turns the right side into "`Tr(𝔪_L^i) ⊆ A`" and the left side into a comparison of
+   fractional ideal powers of `𝔪_L`, `𝔪_L^d ≤ 𝔪_L^{-i}`, i.e. `d ≥ -i` — reproducing, unconditionally,
+   this repo's own already-proved fact `AdicCompletionTraceBound.trace_mem_adicCompletionIntegers`
+   (`Tr(𝔬_L) ⊆ 𝔬_K`). To get the *sharper*, `𝔪_K^j`-level statement, scale by `𝔪_K^{-j}` before
+   applying the same lemma: `Tr(𝔪_L^i) ⊆ 𝔪_K^j ⟺ Tr(𝔪_K^{-j} · 𝔪_L^i) ⊆ A` (`K`-linearity of trace
+   pulls the scalar `𝔪_K^{-j} ⊆ K` through) `⟺ Tr(𝔪_L^{i - je}) ⊆ A` (using **this pass's new
+   generic lemma**, §6x below, to identify `𝔪_K^{-j} · B = 𝔪_L^{-je}` as fractional ideals — the
+   `Ideal.map` statement raised to a `ℤ`-power) `⟺ 𝔪_L^d ≤ 𝔪_L^{je - i}` (the same
+   `differentialIdeal_le_fractionalIdeal_iff` step, now at level `i - je`) `⟺ d ≥ je - i ⟺ j ≤ (i +
+   d)/e`. Since every step is an *iff* (not merely "if"), this pins the exact truth value at every
+   `j`, not just an upper bound: `Tr(𝔪_L^i) ⊆ 𝔪_K^j` holds **exactly** for `j ≤ ⌊(i+d)/e⌋`, and
+   fails for `j = ⌊(i+d)/e⌋ + 1`.
+2. **Surjectivity reduces to a single-witness existence claim, not a separate deep theorem.**
+   `Tr(𝔪_L^i)` is an `A`-submodule of `A` (trace is `A`-linear on the `A`-module `𝔪_L^i`, landing in
+   `A` by step 1 with `j = 0`), hence itself equal to `𝔪_K^k` for some `k`
+   (`IsDiscreteValuationRing.ideal_eq_span_pow_irreducible` again, now applied to the *image*
+   ideal rather than to `differentIdeal`). Step 1's two facts — `Tr(𝔪_L^i) ⊆ 𝔪_K^{j₀}` true,
+   `⊆ 𝔪_K^{j₀+1}` false, for `j₀ := ⌊(i+d)/e⌋` — pin `k = j₀` exactly (an `A`-submodule of `A`
+   contained in `𝔪_K^{j₀}` but not in `𝔪_K^{j₀+1}` must equal `𝔪_K^{j₀}`, since ideals of a DVR are
+   totally ordered by valuation). **So `Tr_{L_w/K_v}(𝔪_{L_w}^i) = 𝔪_{K_v}^{⌊(i+d)/e⌋}` exactly** —
+   the containment argument alone, run at both `j₀` and `j₀+1`, already forces equality; no separate
+   "tightness"/density argument is needed beyond what `differentialIdeal_le_fractionalIdeal_iff`
+   already supplies as an iff.
+
+This **answers the task's core question affirmatively**: yes, `Tr_{L/K}` restricted to `𝔪_L^i`
+surjects onto `𝔪_K^j` for the matching `j = ⌊(i+d)/e⌋`, and the reason is exactly the one the task
+description anticipated (trace stays well-behaved additively where the norm degenerates
+multiplicatively) — but sharpened: it isn't merely "computable," it's forced to equality by the
+different ideal's role as the exact boundary of the trace pairing, with no separate genericity
+argument needed.
+
+**What closed this pass, as actual Lean code (`Langlands/AdicCompletionRamificationIdeal.lean`,
+`sorry`-free, `lake build Langlands` clean, 8737/8737 jobs).**
+`IsDedekindDomain.HeightOneSpectrum.map_maximalIdeal_eq_maximalIdeal_pow_ramificationIdx'` : `𝔪_{K_v}
+· 𝒪_{L_w} = 𝔪_{L_w}^e`, **generically, with no `IsTotallyRamified` hypothesis** — every concrete
+`IsTotallyRamified` instance in this repo (`TotallyRamifiedConcreteExample`,
+`TotallyRamifiedWildConcreteExample`, `TotallyRamifiedArtinSchreierConcreteExample`,
+`TotallyRamifiedCyclotomicConcreteExample`) re-derives this by hand for its own explicit
+uniformizer; this file extracts the argument once, for an arbitrary uniformizer produced
+existentially (`NonarchimedeanExponentialAdicCompletion.exists_isUniformizer_valued`), so it
+applies at *any* place, not just totally ramified ones — needed above (step 1) to translate the
+`𝔪_{K_v}`-scaling into a `𝔪_{L_w}`-scaling. `#print axioms`: only `propext, Classical.choice,
+Quot.sound`.
+
+**What did NOT close this pass, and precisely why — the honest gap.**
+
+1. **The formula `Tr(𝔪_L^i) = 𝔪_K^{⌊(i+d)/e⌋}` itself is not yet a theorem in this repo.** The route
+   above is checked against real Mathlib declarations (`differentIdeal`,
+   `differentialIdeal_le_fractionalIdeal_iff`, `IsDiscreteValuationRing.ideal_eq_span_pow_irreducible`
+   all confirmed to exist with the stated signatures, and the AKLB instantiation confirmed to
+   typecheck against this repo's existing instances) but has not been threaded end-to-end in Lean.
+   The remaining work is real but mechanical: (a) instantiate `differentialIdeal_le_fractionalIdeal_iff`
+   at `I := (𝔪_L^i)⁻¹` and at the `𝔪_K^{-j}`-scaled variant, both `FractionalIdeal`-level
+   manipulations in the API style `Different.lean` itself uses throughout (dense with `coeIdeal`/
+   `coeSubmodule`/`restrictScalars` coercion bookkeeping — the file's own proofs run 5-15 lines per
+   step for exactly this reason); (b) the `𝔪_K^{-j} · B = 𝔪_L^{-je}` identification needs this
+   pass's new ideal-power lemma raised from `Ideal.map` (nonneg powers) to a `FractionalIdeal`
+   `zpow` statement; (c) the final "`A`-submodule of `A` sandwiched between containment/non-containment
+   in consecutive `𝔪_K` powers equals the ideal exactly" step, applied to the *image* `Submodule.map
+   (Algebra.trace A B) ...` rather than to `differentIdeal` itself as `Different.lean`'s own lemmas
+   do — needs checking that this image is genuinely an `A`-submodule of `A` (i.e. that
+   `Algebra.trace A B : B →ₗ[A] A`, the *bundled* integral-level trace available via
+   `Module.Free`/`Module.Finite A B`, agrees with `Algebra.trace K L` restricted and coerced through
+   `algebraMap A K` — a naturality fact not yet located in Mathlib nor derived here).
+2. **The transport back to a norm-group statement (task step 2) is not attempted.** With the trace
+   formula in hand, `expEquiv_w` (§6w) and `norm_exp_eq_exp_trace`/
+   `exists_maximalIdeal_pow_norm_exp_eq_exp_trace` (`AdicCompletionNormExpTrace.lean`, §6v) would
+   transport `N_{L_w/K_v}(U_{L_w}^{(i)})` — a multiplicative index-`1` statement (`exp` is a group
+   isomorphism `U_L^{(i)} ≅ 𝔪_L^i` above the threshold, so the norm restricted to `U_L^{(i)}`
+   corresponds under `exp`/`log` to the *trace*, which is now known to be surjective onto `𝔪_K^{j₀}`
+   exactly) directly into "`N_{L_w/K_v}(U_{L_w}^{(i)}) = U_{K_v}^{(j₀)}` for `i ≥ i₀` (the `expEquiv_w`
+   threshold)" — a genuinely new, computable *equality*, not just an index number, for the top of the
+   filtration. This is real content beyond item 1 (turning a trace fact into a units fact through
+   `expEquiv`/`norm_exp_eq_exp_trace`) and was not attempted.
+3. **`TotallyRamifiedNormIndex.lean`'s `Subgroup.relIndex` bridging machinery (Task 3 there) is
+   tame-specific throughout** (its uniformizer `zpow`-decomposition argument for `sup_units_eq_top`/
+   `inf_units_eq_units_map` uses the norm being essentially the tame symbol map on residue-graded
+   pieces) and was not touched. Even with item 2 closed, assembling a full `[U_{K_v} :
+   N_{L_w/K_v}(L_w^×)]` **index number** in the wild case needs this bridging machinery either
+   generalized or re-derived — unattempted, unchanged from §6w's assessment.
+4. **The "below the ramification break" case is out of scope for this pass, as flagged when the
+   wild case was first scoped** (§6t/§6u): the `exp`/`log`/trace argument above only applies to
+   filtration levels `i ≥ i₀`, the threshold `expEquiv_w` needs. What happens to
+   `N_{L_w/K_v}(U_{L_w}^{(i)})` for `i < i₀` needs a separate, different argument (a finite case
+   analysis on the low filtration levels, flagged as needing its own scoping since it was first
+   raised) — not started, not scoped further this pass beyond re-confirming it is genuinely
+   separate content from the trace-surjectivity route above (the two arguments attack disjoint
+   ranges of `i`, so neither substitutes for the other).
+5. **No number was computed for the concrete `K = ℚ(ζ_3) ⊆ L = ℚ(ζ_9)` instance.** Beyond item 1's
+   gap, getting an actual number needs the different exponent `d` computed explicitly for this
+   instance — in reach via `aeval_derivative_mem_differentIdeal`/`conductor_mul_differentIdeal`
+   applied to `theta`'s Eisenstein minimal polynomial `eisPoly c₀ = (X+1)^3 - c₀` (already fully
+   explicit in `TotallyRamifiedCyclotomicConcreteExample.lean`, so the derivative `3(X+1)^2`
+   evaluated at `theta` is a concrete valuation computation: `3(theta+1)^2 = 3ζ^2`, and `d = v_L(3) +
+   2·v_L(ζ) = v_L(3)`, itself `e · v_K(3) = e·(p-1) = 3·2 = 6` using `p_mem_v_asIdeal`/
+   `ramificationIdx_v`'s already-established facts, so `d = 6` is very plausibly the answer by hand
+   — but this was not run through Lean this pass, and is marked here as an unverified back-of-envelope
+   number, not a certified one).
+
+**Net effect.** The task's central mathematical question — does `Tr_{L/K}` surject onto the matching
+`𝔪_K^j` above the threshold — is answered **yes**, with an exact formula (`j = ⌊(i+d)/e⌋`) and a
+precise, Mathlib-verified route to a full proof, not a guess: every lemma name and signature in the
+route above was read from the actual Mathlib source this pass, not recalled from memory of the
+classical theory. One genuinely new, general-purpose theorem closed and committed
+(`map_maximalIdeal_eq_maximalIdeal_pow_ramificationIdx'`). The full trace-surjectivity theorem, its
+transport to a norm-group statement via `expEquiv_w`, the `Subgroup.relIndex` bridging to an actual
+index number, the below-the-break case, and the concrete instance's numeric different exponent are
+all **not yet formalized** — real, substantial, but mechanical follow-on work (no open mathematical
+question remains in the route itself), scoped precisely enough that a future pass can execute
+directly rather than re-derive the mathematics.
