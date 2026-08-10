@@ -522,4 +522,29 @@ noncomputable def expEquiv (hnorm : ‖(p : K)‖ < 1) {π : A}
         (hthreshStrict.trans_le (logUnitsThreshold_le_expUnitsThreshold hnorm)),
       expHom_surjective (A := A) (hA := hA) hnorm hπ hπ0 hπnorm hthreshStrict⟩
 
+include hA in
+/-- **`expEquiv`'s surjectivity, in element form.** Every `u ∈ U_A^{(i)}` is `exp` of an element of
+`𝔪_A^i` — the unbundled reading of `expEquiv`/`expHom_surjective`, and the exact converse of
+`exp_mem_principalUnitsPow` (whose orientation of the defining equation it matches). Stated this way
+it composes directly with facts about `exp` at the level of `K`, with no `Multiplicative`/`Subtype`
+bookkeeping at the call site. -/
+theorem exists_mem_maximalIdeal_pow_coe_eq_exp (hnorm : ‖(p : K)‖ < 1) {π : A}
+    (hπ : maximalIdeal A = Ideal.span ({π} : Set A)) (hπ0 : (π : K) ≠ 0)
+    (hπnorm : ‖(π : K)‖ < 1) {i : ℕ} (hthreshStrict : ‖(π : K)‖ ^ i < logUnitsThreshold K p)
+    {u : Aˣ} (hu : u ∈ ValuationSubring.principalUnitsPow A i) :
+    ∃ x : A, x ∈ maximalIdeal A ^ i ∧ ((u : A) : K) = exp hnorm (x : K) := by
+  set hthresh : ‖(π : K)‖ ^ i ≤ expUnitsThreshold K p :=
+    (hthreshStrict.trans_le (logUnitsThreshold_le_expUnitsThreshold hnorm)).le with hthreshdef
+  obtain ⟨z, hz⟩ :=
+    expHom_surjective (A := A) (hA := hA) hnorm hπ hπ0 hπnorm hthreshStrict ⟨u, hu⟩
+  refine ⟨(Multiplicative.toAdd z : ↥(maximalIdeal A ^ i)).1, (Multiplicative.toAdd z).2, ?_⟩
+  have hA1 : ((expHom (A := A) (hA := hA) hnorm hπ hπ0 hπnorm hthresh z : Aˣ) : A) = (u : A) := by
+    have := congrArg (fun t : ↥(ValuationSubring.principalUnitsPow A i) => (t : Aˣ)) hz
+    simpa using congrArg (fun t : Aˣ => (t : A)) this
+  have hK1 : ((expUnit A hA hnorm hπ hπ0 hπnorm hthresh (Multiplicative.toAdd z).2 : A) : K)
+      = ((u : A) : K) :=
+    congrArg (fun a : A => (a : K)) hA1
+  rw [expUnit_coe] at hK1
+  exact hK1.symm
+
 end NonarchimedeanExponential
