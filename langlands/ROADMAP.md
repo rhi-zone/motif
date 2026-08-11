@@ -9427,3 +9427,131 @@ next move, not attempted in this pass: specialize the two-variable case `L(X, Y)
 now-closed `subst_phi_eq_phi_subst`/uniqueness to make this well-defined), then build the
 isogeny/endomorphism structure `ℱ_π ⊗ O` on top of it — the next genuinely new stage of the
 Lubin-Tate thread, not yet scoped in detail.
+
+## 11. Phase 2c, fifth pass (2026-08-12): the 2-variable functional equation lemma / formal group
+law `F_π` — investigated, NOT attempted; infrastructure survey and precise go/no-go call
+
+Continuation of `§7`–`§10`. The task for this pass was to build the genuinely 2-variable
+functional equation lemma — `F_π(X, Y) : MvPowerSeries (Fin 2) O` with `F_π ≡ X + Y (mod deg 2)`
+and `f.subst F_π = F_π.subst (f, f)` (i.e. `f` substituted into *each* variable of `F_π`
+separately) — and, if tractable, its commutativity/associativity and packaging as Mathlib's
+`FormalGroup R`. No `.lean` file was edited this pass; the work was a scoped Mathlib-API
+investigation followed by a go/no-go call, per this task's own explicit brief ("don't force it if
+comparable in size to the whole functional equation lemma effort just completed").
+
+**What was confirmed, with citations (no code written, so nothing here is "proved" — these are
+facts about what exists in the checked-out Mathlib, read directly from the source files).**
+
+* **`FormalGroup R` already exists in Mathlib** —
+  `.lake/packages/mathlib/Mathlib/RingTheory/FormalGroup/Basic.lean` (added by Mathlib PR #38052,
+  "`F(X,0)=X` and `F(0,X)=X`", per `git log` on the vendored package, June 2026) — with exactly the
+  structure the task's step 3 asked about packaging into: `toPowerSeries : MvPowerSeries (Fin 2) R`,
+  `zero_constantCoeff`, `lin_coeff_X`/`lin_coeff_Y` (both `= 1`, i.e. the linear part is forced to
+  be exactly `X + Y`), and `assoc : F.subst ![F.subst ![Y₀,Y₁], Y₂] = F.subst ![Y₀, F.subst
+  ![Y₁,Y₂]]` (a single literal 3-variable power series identity, not a schema quantified over
+  arbitrary substitutands). Mathlib itself then proves, generically for *any* `FormalGroup`:
+  `FormalGroup.assoc'` — transports the one `assoc` field to *arbitrary* admissible substitutands
+  `f₀ f₁ f₂` via `subst_comp_subst_apply` and the `Fin 3`-ambient embedding lemmas
+  `HasSubst.cons_subst_zero_left`/`cons_subst_zero_right` (`Substitution.lean:377-384`) — and
+  `FormalGroup.comm'` (transports a `FormalGroup.IsComm` witness, `F = F.subst ![X₁,X₀]`,
+  similarly). Mathlib also already builds `FormalGroup.Point σ` (an `AddMonoid`, `AddCommMonoid`
+  under `IsComm`) and worked examples `𝔾ₐ`, `𝔾ₘ`, and a `map` functor along ring homs. **This
+  means step 3 of the task brief (packaging) is not a task for this repo at all** — if `F_π` is
+  ever built satisfying `zero_constantCoeff`/`lin_coeff_X`/`lin_coeff_Y`/`assoc`, wrapping it as a
+  `FormalGroup O` term is a direct constructor application, and commutativity/associativity-for-
+  arbitrary-substitutands come for free from `comm'`/`assoc'` without a fresh 3-variable argument —
+  **only the single 2-variable `assoc` identity (`F_π` composed with itself once) needs to be
+  proved by hand**, not a full n-ary functional equation lemma as the task brief's framing
+  anticipated. This significantly *reduces* the scope of what "attempt the full construction" would
+  require, relative to the brief's own estimate.
+* **`MvPowerSeries.truncTotal_subst`** (`Substitution.lean:614-624`, building on
+  `truncTotal_subst_eq_truncTotal_subst_truncTotal_of_le` etc. at lines 528-613): for `a : σ →
+  MvPowerSeries τ S` with `HasSubst a` and every `a i` having zero constant term,
+  `truncTotal k (f.subst a) = ((f.truncTotal k).subst (fun i ↦ (a i).truncTotal k)).truncTotal k`
+  — total-degree truncation commutes with substitution on *both* sides simultaneously. This is the
+  multivariate analogue of *both* `LubinTate.coeff_subst_eq_of_dvd_sub` (Fact 1, inner truncation)
+  *and* `coeff_subst_eq_of_dvd_sub_left` (Fact 1-outer) from `§10` combined into a single Mathlib
+  lemma, rather than two lemmas that had to be proved by hand there.
+* **`MvPowerSeries.rescale_homogeneous_eq_smul`** (`Substitution.lean:710-716`): for `f`
+  homogeneous of degree `n` (`∀ d ∈ f.support, d.degree = n`), `rescale (Function.const σ r) f = r ^
+  n • f` — i.e. substituting `r • X_i` for every variable of a degree-`n` homogeneous piece scales
+  it by `r ^ n`. This is the natural candidate multivariate analogue of `§10`'s Fact 4
+  (`coeff_pow_self_of_coeff_zero_eq_zero`, the leading-coefficient identity), since it directly
+  captures how `f(X) ≈ πX` acts on a homogeneous piece.
+* **`MvPowerSeries.Order.lean`** carries a `weightedOrder`/`order` API structurally parallel to the
+  univariate `PowerSeries.order` API `§10` leaned on (`order_le`, `coeff_of_lt_order`,
+  `nat_le_order`, `le_order`, `le_order_pow_of_constantCoeff_eq_zero`, `le_order_mul`) — confirmed
+  present, no gap here.
+* **`HasSubst.cons_subst_zero_left`/`cons_subst_zero_right`** (`Substitution.lean:377-384`) are, as
+  the task brief anticipated, exactly infrastructure Mathlib built anticipating formal-group-law
+  substitution — they supply `HasSubst` for the `Fin 3`-indexed substitution maps needed to embed
+  `F_π`'s own two variables into a three-variable ambient ring (used directly by `assoc'` above).
+
+**The actual remaining gap, precisely.** None of the above lemmas produce `F_π` itself — they are
+truncation/order/rescaling *bookkeeping* lemmas, not a construction. Building `F_π` still requires
+redoing `§9`'s recursive coefficient construction (`phiState`/`phiCoeff`/`phiPartialSum`) in the
+multivariate, total-degree-indexed setting: a recursion producing, for each total degree `n`, the
+full degree-`n` homogeneous component of `F_π` (an element of the `(n+1)`-dimensional space spanned
+by monomials `X^i Y^{n-i}`, not a single scalar as in the univariate case). Structurally, by
+`rescale_homogeneous_eq_smul`, the leading-order part of the recursive equation *does* decouple
+monomial-by-monomial into the same scalar linear equation `π · c - π ^ n · c = (known)` solved `n+1`
+times per degree rather than once — this is a genuine, load-bearing structural fact, not a guess,
+since it follows directly from the homogeneity/rescaling lemma above — but three concrete pieces of
+work remain unbuilt and unverified, each comparable in kind to a `§10`-sized sub-effort:
+
+1. A multivariate analogue of Fact 2 (`coeff_subst_add_C_mul_X_pow`, the linear-correction identity
+   for extending a substitutand by one new top-degree term) that accounts for `f`'s own *higher*-
+   degree terms (its `X ^ q` part) acting on a genuinely two-variable substitutand — `rescale_
+   homogeneous_eq_smul` only captures the *linear* leading-order behavior (`f(X) ≈ πX`), not the
+   correction from `f`'s higher-order part composed multivariately. No Mathlib lemma found covering
+   this; it would need to be built from `coeff_subst`/`Finsupp.prod` bookkeeping analogous to `§10`'s
+   Fact 2′ (`coeff_pow_add_C_mul_X_pow_sub_coeff_pow`), now over `σ →₀ ℕ` exponents rather than a
+   single `ℕ`.
+2. The recursive definition itself, total-degree-indexed and producing a `(σ →₀ ℕ) → O` (or
+   per-degree `Fin (n+1) → O`) value at each step rather than a single `O` value — `§10`'s own
+   engineering notes (`§10` item 1 of its "Lean-engineering notes") already flag that
+   `Finset.sum`-buried recursive calls defeat Lean's termination checker in the *univariate* case,
+   requiring the `phiState`-bundling workaround; the multivariate case adds an extra index dimension
+   throughout every occurrence of that pattern, not merely once.
+3. Re-deriving the residue-field congruence argument (`§10`'s `map_residue_subst_eq_map_residue_
+   subst`/`uniformizer_dvd_coeff_subst_sub_subst`, the fact that `π` always divides the per-degree
+   obstruction, which is what makes each step's linear equation solvable) in the multivariate
+   setting — plausible via the same Frobenius argument (`pow_residueCard_eq_subst_X_pow` should have
+   a direct multivariate analogue, since it is ring-generic in `h`), but not checked in this pass.
+
+None of (1)-(3) is a one-line consequence of a Mathlib lemma found so far; each is new algebraic
+content of a scope comparable to one of `§10`'s four standalone facts, now with an added monomial-
+index dimension threaded through. Taken together, this is assessed — on the basis of the concrete
+citations above, not a vague size impression — as comparable to or exceeding the four-pass
+`§7`-`§10` effort that closed the univariate lemma, matching the task brief's own explicit "don't
+force it" threshold. **Not attempted this pass**, per that brief's explicit permission; no `.lean`
+file was touched and nothing sorry-containing or broken was created or committed.
+
+**A separate, unverified alternate route flagged (not resolved).** `§10`'s own closing note
+proposed a different construction, `F_π(X, Y) := φ_f(φ_f⁻¹(X) + φ_f⁻¹(Y))`, built from the
+*already-closed* 1-variable lemma applied with `g(Z) := π·Z` (avoiding multivariate recursion
+entirely, in the style of Honda's / Hazewinkel's functional-equation formulation of formal group
+laws). This was **not verified against the closed lemma's actual hypotheses in this pass**: `g(Z) :=
+π·Z` does **not** satisfy `IsLubinTatePoly π q g` (its residue-field reduction is `0`, not `Z^q`),
+so `subst_phi_eq_phi_subst`/`eq_of_coeff_zero_eq_zero_of_coeff_one_eq_of_subst_eq` as stated and
+closed in `§10` do **not** directly supply a `φ_f` of this shape — the closed lemma's `hg` hypothesis
+is not met. Whether some variant of the functional equation lemma with weaker hypotheses on `g`
+(matching Honda's actual theorem, which is stated over a different, more general class of series)
+would supply this `φ_f`, and whether that route is smaller in scope than the direct multivariate
+construction above, is an open question this pass did not resolve — flagged here as a concrete
+branch point for a future pass to investigate before committing to either route, rather than left
+as the previous roadmap entry's unexamined assumption.
+
+**What remains open.** Same overall target as `§10` left it: `F_π`, its commutativity/associativity,
+the isogeny/endomorphism structure, and the connection to the reciprocity map. This pass narrows the
+target concretely: (a) `FormalGroup` packaging is free once `F_π` exists (Mathlib-provided, cited
+above) — associativity-for-arbitrary-substitutands and commutativity-for-arbitrary-substitutands do
+not need fresh multivariate functional-equation-lemma work, only the single `assoc` field and an
+`IsComm` witness for the literal 2-variable `F_π`; (b) building `F_π` itself needs items (1)-(3)
+above, either via the direct multivariate recursive route (structurally sized like a `§7`-`§10`
+repeat) or via resolving the `φ_f`/Honda-style alternate route flagged above (unscoped, hypotheses
+not yet checked); (c) no Mathlib lemma was found that already builds a Lubin-Tate-style multivariate
+functional equation lemma or formal group law from a `ℱ_π`-style hypothesis set — `FormalGroup` is
+purely structural/algebraic (its `assoc`/`comm` fields are *inputs*, not consequences derived from
+some deeper hypothesis), so the number-theoretic content of `F_π`'s existence is entirely this
+repo's to build.
