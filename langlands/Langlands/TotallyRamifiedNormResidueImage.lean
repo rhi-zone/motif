@@ -1,3 +1,4 @@
+import Langlands.PrincipalUnitsFiltration
 import Langlands.TotallyRamifiedNormResidue
 import Langlands.TotallyRamifiedNormSurjective
 import Langlands.UnitGroupModPrincipalUnitsSurjective
@@ -205,6 +206,53 @@ theorem finite_residueField_base : Finite (ResidueField (v.adicCompletionInteger
       (ResidueField (w.adicCompletionIntegers L)))
     (algebraMap (ResidueField (v.adicCompletionIntegers K))
       (ResidueField (w.adicCompletionIntegers L))).injective
+
+omit [Algebra.IsIntegral R S] [Finite (ResidueField (w.adicCompletionIntegers L))] in
+/-- **The level-`1` principal units, together with the norm group, already exhaust `K₀ˣ` —
+whenever the ramification index is coprime to `#κ_{K₀}ˣ`, with NO tameness hypothesis.**
+
+`N_{L/K}(L₀ˣ) ⊔ U_{K₀}^{(1)} = ⊤`, i.e. `MonoidHom.range (normUnitsK₀ K L v w) ⊔
+ValuationSubring.principalUnitsPow (v.adicCompletionIntegers K) 1 = ⊤`.
+
+Route: `residueNormUnits = φ.comp (normUnitsK₀ K L v w)` for `φ := Units.map (residue K₀).toMonoidHom`,
+so `range_residueNormUnits_eq_of_isTotallyRamified` (no tameness) gives `Subgroup.map φ
+(range (normUnitsK₀ K L v w)) = range (powMonoidHom e)`. When `e` is coprime to `#κ_{K₀}ˣ`, the
+`e`-th-power map on the finite cyclic group `κ_{K₀}ˣ` is surjective
+(`IsCyclic.index_powMonoidHom_range` gives index `gcd(e, #κ_{K₀}ˣ) = 1`), so this is `⊤`. Then
+`Subgroup.comap_map_eq` (general, no surjectivity needed) turns `comap φ ⊤ = range (normUnitsK₀) ⊔
+ker φ` into `⊤ = range (normUnitsK₀) ⊔ ker φ`, and `ker φ = U_{K₀}^{(1)}` by `principalUnitsPow_one`.
+
+This is the ring-level analogue of `TotallyRamifiedNormIndex.sup_units_eq_top`, reached by a
+completely different route (residue-level surjectivity of the norm rather than the uniformizer
+decomposition), and — unlike that lemma — genuinely restricted to instances where the coprimality
+holds; nothing here claims it in general. -/
+theorem sup_normUnitsK₀_principalUnitsPow_one_eq_top_of_isTotallyRamified
+    (h : IsTotallyRamified K L v w) [Finite (ResidueField (v.adicCompletionIntegers K))]
+    (hcop : Nat.Coprime (v.asIdeal.ramificationIdx' w.asIdeal)
+        (Nat.card (ResidueField (v.adicCompletionIntegers K))ˣ)) :
+    MonoidHom.range (normUnitsK₀ K L v w) ⊔
+        ValuationSubring.principalUnitsPow (v.adicCompletionIntegers K) 1 = ⊤ := by
+  haveI hfinKu : Finite (ResidueField (v.adicCompletionIntegers K))ˣ :=
+    Finite.of_injective Units.val Units.val_injective
+  have hmap : Subgroup.map (Units.map (residue (v.adicCompletionIntegers K)).toMonoidHom)
+      (MonoidHom.range (normUnitsK₀ K L v w)) =
+      MonoidHom.range (powMonoidHom (v.asIdeal.ramificationIdx' w.asIdeal) :
+        (ResidueField (v.adicCompletionIntegers K))ˣ →*
+          (ResidueField (v.adicCompletionIntegers K))ˣ) := by
+    rw [← MonoidHom.range_comp]
+    exact range_residueNormUnits_eq_of_isTotallyRamified K L v w h
+  have hidx1 : (MonoidHom.range (powMonoidHom (v.asIdeal.ramificationIdx' w.asIdeal) :
+      (ResidueField (v.adicCompletionIntegers K))ˣ →*
+        (ResidueField (v.adicCompletionIntegers K))ˣ)).index = 1 := by
+    rw [IsCyclic.index_powMonoidHom_range, Nat.gcd_comm]
+    exact hcop.gcd_eq_one
+  have htop : MonoidHom.range (powMonoidHom (v.asIdeal.ramificationIdx' w.asIdeal) :
+      (ResidueField (v.adicCompletionIntegers K))ˣ →*
+        (ResidueField (v.adicCompletionIntegers K))ˣ) = ⊤ := Subgroup.index_eq_one.mp hidx1
+  have hcomap := Subgroup.comap_map_eq (Units.map (residue (v.adicCompletionIntegers K)).toMonoidHom)
+    (MonoidHom.range (normUnitsK₀ K L v w))
+  rw [hmap, htop, Subgroup.comap_top, ← ValuationSubring.principalUnitsPow_one] at hcomap
+  exact hcomap.symm
 
 omit [Algebra.IsIntegral R S] in
 /-- **The index formula, at the `K₀ˣ` level.** Under `IsTotallyRamified` and `IsTamelyRamified`,
