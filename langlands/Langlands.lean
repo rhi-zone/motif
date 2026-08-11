@@ -17,6 +17,7 @@ import Langlands.FiniteIndexSubgroupsZ
 import Langlands.HeightOneSpectrumRationalPrimeTower
 import Langlands.HenselianResidueLift
 import Langlands.IdeleGroup
+import Langlands.LubinTate
 import Langlands.MonogenicIntegralClosure
 import Langlands.MonogenicMaximalOrder
 import Langlands.NonarchimedeanCauchyProduct

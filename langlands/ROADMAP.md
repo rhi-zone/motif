@@ -8964,3 +8964,89 @@ each show only `propext, Classical.choice, Quot.sound`.
 for `K = ℚ_3(ζ_3) ⊆ L = ℚ_3(ζ_9)`; the true value is not computed, and — barring one of (a)/(b)/(c)
 above — is not reachable from this repo's current toolkit without a substantial new piece of theory,
 not a session-scale gap. `∣`, not `=`, is the honest final state of this thread.
+
+## 7. Phase 2c, first pass: the Lubin-Tate route opened — defining congruences and existence of a
+`f_π`, with the real deep content of the theory located precisely and left honestly open
+
+Phases 2/2a/2b (all `§6*` above) pursued the cohomological route to local class field theory. This
+pass opens a *second*, independent route: Lubin-Tate theory, the ramified/hard half of local CFT
+and — unlike the cohomological route — the object that connects to representation-theoretic / local
+Langlands machinery, which is this project's eventual destination. New file
+`Langlands/LubinTate.lean`; zero prior "lubin" content existed anywhere in this repo or the vendored
+Mathlib checkout.
+
+**What is proved.** For a discrete valuation ring `O` (`CommRing O`, `IsDomain O`,
+`IsDiscreteValuationRing O`) with finite residue field, fixed uniformizer `π : O`, and
+`q := Nat.card (ResidueField O)`:
+
+* `LubinTate.IsLubinTatePoly (π : O) (q : ℕ) (f : O⟦X⟧) : Prop` — the two defining congruences:
+  `coeff 0 f = 0 ∧ coeff 1 f = π` (i.e. `f ≡ πX mod deg 2`) and
+  `PowerSeries.map (residue O) f = X ^ q` (i.e. `f ≡ X^q mod π`, stated via reducing every
+  coefficient along the residue homomorphism, matching this repo's existing
+  `IsLocalRing.residue`/`ResidueField` vocabulary rather than introducing new machinery for it).
+* `LubinTate.exists_isLubinTatePoly {π : O} (hπ : Irreducible π) : ∃ f : O⟦X⟧, IsLubinTatePoly π
+  (residueCard O) f` — existence, via the explicit witness `basicPoly π q := π•X + X^q`
+  (`LubinTate.basicPoly`), proved sorry-free via direct coefficient computation
+  (`coeff_zero_basicPoly`, `coeff_one_basicPoly`, `map_residue_basicPoly`) plus
+  `Finite.one_lt_card` for `q ≥ 2` (needed so the `X^q` term at `q ≥ 2` doesn't interfere with the
+  degree-`0`/`1` congruence).
+* `LubinTate.not_isLubinTatePoly_uniqueness {π : O} (hπ : Irreducible π) (hπ0 : π ≠ 0) {q : ℕ}
+  (hq2 : 2 ≤ q) : ∃ f g : O⟦X⟧, IsLubinTatePoly π q f ∧ IsLubinTatePoly π q g ∧ f ≠ g` — a direct
+  counterexample (`basicPoly π q` vs. `basicPoly π q + C π * X^2`, distinguished at their
+  degree-`2` coefficient by exactly `π ≠ 0`) showing no uniqueness statement can hold from the two
+  congruences alone.
+
+`#print axioms` on `exists_isLubinTatePoly` and `not_isLubinTatePoly_uniqueness` shows only
+`propext, Classical.choice, Quot.sound`; no `sorry` anywhere in `LubinTate.lean`; `lake build` clean
+across the whole repo (`8748` jobs, only pre-existing unrelated warnings, no new ones).
+
+**The central finding of this pass: the task as originally scoped placed the expected difficulty in
+the wrong place, and re-locating it precisely is itself the deliverable.** The task brief expected
+existence of `f_π` to be a genuine Hensel-style successive-approximation argument ("comparable in
+depth to the `exp`/`log` thread... solving a linear equation in `O` per degree"), with uniqueness
+"up to exactly the two stated congruence conditions" as a natural follow-on. Neither is
+mathematically accurate for `f_π` itself:
+
+* **Existence is easy, not deep.** `basicPoly π q := π•X + X^q` satisfies both congruences by
+  direct, degree-local coefficient computation — no completeness of `O`, no limiting process, no
+  induction over degrees is used anywhere in `exists_isLubinTatePoly`'s proof. This is not an
+  artifact of under-trying: it is the standard textbook example (Serre, *Local Fields* Ch. IV;
+  Lubin–Tate 1965 itself uses exactly this polynomial in examples), and the two congruences, taken
+  as literally stated, simply do not constrain `f` enough to force a nontrivial construction.
+* **Uniqueness "up to the two stated congruences" is false**, not merely unproved — see
+  `not_isLubinTatePoly_uniqueness` above for a direct two-line counterexample (`π•X^2` is an
+  admissible perturbation of any `f ∈ ℱ_π` since it vanishes to order `≥ 2` and is itself a multiple
+  of `π`). No weakened-but-true replacement is substituted for it; the honest finding is that this
+  item, as scoped, does not hold and was not attempted.
+
+The genuine deep content of Lubin-Tate theory — where completeness of `O` and a real
+degree-by-degree Hensel/successive-approximation argument actually are needed, and which is
+comparable in scope to this repo's `exp`/`log` thread — is the **functional equation lemma**: given
+`f, g ∈ ℱ_π` (for the same or different uniformizers) and a linear starting form, there is a
+*unique* power series `φ` (one- or two-variable, depending on the specialization) with `φ ≡` that
+linear form `(mod deg 2)` intertwining `f` and `g` (`f ∘ φ = φ ∘ g` in the one-variable case,
+`φ(F(X,Y)) = F(φ X, φ Y)`-style in the two-variable case that produces the associated formal group
+law `F_π`). This lemma is built by solving one linear equation in `O` per total-degree step,
+feasible at each step precisely because `f`'s `πX`/`X^q` congruences make that step's linear map on
+`O` invertible — genuinely the content the task brief anticipated, just located one level away from
+`f_π`'s own existence. Specializing the lemma to `f = g` (with the identity as the linear starting
+data) produces `F_π`, the formal group law of `f_π` (this pass's item 4/stretch goal), as a
+downstream corollary of the lemma rather than a separate construction.
+
+**What is explicitly NOT established, and why this pass stopped here.** The functional equation
+lemma itself — the one piece of real mathematical depth in this thread — is not attempted in this
+pass. It needs substantial fresh infrastructure this repo does not yet have for two-variable formal
+power series: `MvPowerSeries.subst`-based composition/substitution at the level `FormalGroup`
+(`Mathlib.RingTheory.FormalGroup.Basic`) already sets up as a shell, a total-degree induction
+principle for `O⟦X⟧`/`O⟦X,Y⟧` coefficient recursions (nothing precedent in this repo does induction
+on total degree of a multivariate power series; `PrincipalUnitsSuccessiveApproximation.lean`'s
+successive-approximation pattern is Cauchy-sequence/valuation-based, not degree-filtration-based,
+and is not a direct template), and a fresh per-degree solvability argument for the linear equation
+`f`'s congruences make invertible. This is a session-scale-or-larger undertaking on its own, not a
+one-lemma glue job, and was not started rather than left partially built and unproved.
+
+**Remaining gap, precisely.** `Langlands/LubinTate.lean` establishes the ambient definitions and
+existence of *a* Lubin-Tate polynomial, correctly scoped down from a false uniqueness target. The
+functional equation lemma, the associated formal group law `F_π` with `f_π` as an endomorphism, and
+everything built on top of those (division points, the Lubin-Tate tower, the local reciprocity map
+via the Lubin-Tate route) remain entirely unattempted future work.
