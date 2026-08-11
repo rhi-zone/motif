@@ -1,4 +1,7 @@
 import Langlands.AdicCompletionNormGroupImage
+import Langlands.AdicCompletionUnitsValuationHom
+import Langlands.AdicCompletionValuationNorm
+import Langlands.FiniteIndexSubgroupsZ
 import Langlands.PrincipalUnitsFiltrationIndex
 import Langlands.TotallyRamifiedNormIndex
 
@@ -27,15 +30,23 @@ different, and the conclusion is weaker in a way that is intrinsic, not an artif
   decomposition.
 
 Neither is available here. Without total ramification the valuations of norms form the subgroup
-`f · v(K_vˣ)` (`f` the residue degree), so `N(L_wˣ) ⊔ U_{K_v} = ⊤` is simply false in general, and
-the index acquires a valuation-side factor that this file does not compute. What *is* available
-unconditionally is the containment `N(U_{L₀}^{(i)}) ≤ N(L_wˣ) ⊓ U_{K_v}`, which bounds the
-units-side factor. So the results below are stated as the two honest pieces:
+`f · v(K_vˣ)` (`f` the residue degree), so `N(L_wˣ) ⊔ U_{K_v} = ⊤` is simply false in general
+(unless `f = 1`) — but the valuation-side factor `[K_vˣ : N(L_wˣ) ⊔ U_{K_v}]` itself **is** computed
+here, exactly, as `f` (`index_sup_units_eq_inertiaDeg'`), via the valuation-of-norm formula
+(`Langlands.AdicCompletionValuationNorm.valued_localNormMap_eq_pow`) pushed through the surjective
+`MonoidHom (v.adicCompletion K)ˣ →* ℤᵐ⁰ˣ` built from `Valued.v`
+(`Langlands.AdicCompletionUnitsValuationHom.valuationUnitsHom`) and the index-comap identity for
+surjective homs. What is *not* available is `inf_units_eq_units_map`'s exact computation of
+`N(L_wˣ) ⊓ U_{K_v}`; only the containment `N(U_{L₀}^{(i)}) ≤ N(L_wˣ) ⊓ U_{K_v}` holds
+unconditionally, which bounds the units-side factor. So the results below are stated as:
 
+* the valuation-side factor `[K_vˣ : N(L_wˣ) ⊔ U_{K_v}] = f` — **exact**, unconditionally
+  (`index_sup_units_eq_inertiaDeg'`);
 * the **relative** index `[U_{K_v} : N(L_wˣ) ⊓ U_{K_v}]` — the units-side factor — is *divisible
-  into* the index of a filtration level, hence finite;
+  into* the index of a filtration level, hence finite, but not computed exactly;
 * the total index `[K_vˣ : N(L_wˣ)]` factors as (valuation-side) · (units-side)
-  (`index_range_localNormMap_eq_mul`), with only the second factor bounded here.
+  (`index_range_localNormMap_eq_mul`), with the first factor now known exactly (`= f`) and the
+  second bounded, not computed, here.
 
 ## Main results
 
@@ -50,21 +61,29 @@ units-side factor. So the results below are stated as the two honest pieces:
   index*, and so does `N(L_wˣ) ⊓ U_{K_v}` inside `U_{K_v}`, in the wild case, with no tameness
   hypothesis.
 * `IsDedekindDomain.HeightOneSpectrum.index_range_localNormMap_eq_mul` : the factorization
-  `[K_vˣ : N(L_wˣ)] = [K_vˣ : N(L_wˣ) ⊔ U_{K_v}] · [U_{K_v} : N(L_wˣ) ⊓ U_{K_v}]`, isolating the
-  valuation-side factor this file does not compute.
+  `[K_vˣ : N(L_wˣ)] = [K_vˣ : N(L_wˣ) ⊔ U_{K_v}] · [U_{K_v} : N(L_wˣ) ⊓ U_{K_v}]`.
+* `IsDedekindDomain.HeightOneSpectrum.index_sup_units_eq_inertiaDeg'` : the valuation-side factor,
+  computed exactly: `[K_vˣ : N(L_wˣ) ⊔ U_{K_v}] = v.asIdeal.inertiaDeg' w.asIdeal`, with no tameness
+  hypothesis.
+* `IsDedekindDomain.HeightOneSpectrum.index_range_localNormMap_eq_inertiaDeg'_mul_relIndex` :
+  `index_range_localNormMap_eq_mul` and `index_sup_units_eq_inertiaDeg'` combined,
+  `[K_vˣ : N(L_wˣ)] = f · [U_{K_v} : N(L_wˣ) ⊓ U_{K_v}]`.
 
 ## Scope
 
 `d` remains a hypothesis, inherited from `Langlands.AdicCompletionTraceSurjectivity`. Filtration
-levels below the `exp`/`log` threshold are untouched, which is exactly why the results here are
-divisibilities rather than equalities: `N(U_{L₀})` may be strictly larger than `N(U_{L₀}^{(i)})`,
-and nothing here computes the gap. The valuation-side factor
-`[K_vˣ : N(L_wˣ) ⊔ U_{K_v}]` (classically the residue degree `f`) is likewise not computed.
+levels below the `exp`/`log` threshold are untouched, which is exactly why the units-side results
+here are divisibilities rather than equalities: `N(U_{L₀})` may be strictly larger than
+`N(U_{L₀}^{(i)})`, and nothing here computes that gap. The valuation-side factor
+`[K_vˣ : N(L_wˣ) ⊔ U_{K_v}]` **is** now computed exactly, as `f`
+(`index_sup_units_eq_inertiaDeg'`) — the remaining gap in this file is entirely on the units side.
 -/
 
 noncomputable section
 
 open IsDedekindDomain IsLocalRing
+
+open scoped WithZero
 
 namespace IsDedekindDomain.HeightOneSpectrum
 
@@ -214,6 +233,65 @@ theorem index_range_localNormMap_eq_mul :
   haveI : G.Normal := G.normal_of_isMulCommutative
   rw [mul_comm, ← Subgroup.relIndex_sup_left (H := U) (K := G),
     Subgroup.relIndex_mul_index le_sup_left]
+
+omit [Algebra.IsIntegral R S] [FiniteDimensional (v.adicCompletion K) (w.adicCompletion L)]
+  [CharZero L] in
+/-- **The valuation-side factor of the norm-group index, computed exactly.**
+`[K_vˣ : N_{L_w/K_v}(L_wˣ) ⊔ U_{K_v}] = v.asIdeal.inertiaDeg' w.asIdeal`, with no tameness
+hypothesis — the factor `TotallyRamifiedNormIndex.sup_units_eq_top` computes as `1` under
+`IsTotallyRamified`, and which `index_range_localNormMap_eq_mul` otherwise leaves uncomputed.
+
+Route: `φ := valuationUnitsHom K v : K_vˣ →* ℤᵐ⁰ˣ` is surjective with kernel `U_{K_v}`
+(`Langlands.AdicCompletionUnitsValuationHom`), so `N(L_wˣ) ⊔ U_{K_v} = comap φ (map φ (N(L_wˣ)))`
+(`Subgroup.comap_map_eq`), and its index equals `(map φ (N(L_wˣ))).index`
+(`Subgroup.index_comap_of_surjective`). The valuation-of-norm formula
+(`valued_localNormMap_eq_pow`) identifies `φ ∘ localNormMap` with `(powMonoidHom f) ∘ ψ` for
+`ψ := valuationUnitsHom L w` (also surjective), so `map φ (N(L_wˣ)) = range (powMonoidHom f :
+ℤᵐ⁰ˣ →* ℤᵐ⁰ˣ)` (`MonoidHom.range_comp` twice). Transporting that range's index along the `MulEquiv`
+`WithZero.unitsWithZeroEquiv : ℤᵐ⁰ˣ ≃* Multiplicative ℤ` (`MulEquiv.map_range_powMonoidHom`,
+`Subgroup.index_map_of_bijective`) reduces it to
+`Langlands.FiniteIndexSubgroupsZ.MonoidHom.index_range_powMonoidHom_multiplicativeInt`, which gives
+exactly `f`. -/
+theorem index_sup_units_eq_inertiaDeg' :
+    (MonoidHom.range (localNormMap K L v w) ⊔ (v.adicCompletionIntegers K).units).index =
+      v.asIdeal.inertiaDeg' w.asIdeal := by
+  set f := v.asIdeal.inertiaDeg' w.asIdeal with hf
+  set φ := valuationUnitsHom K v with hφ
+  set ψ := valuationUnitsHom L w with hψ
+  have hφsurj : Function.Surjective φ := valuationUnitsHom_surjective K v
+  have hψsurj : Function.Surjective ψ := valuationUnitsHom_surjective L w
+  have hcomp : φ.comp (localNormMap K L v w) = (powMonoidHom f).comp ψ := by
+    ext a
+    simp only [MonoidHom.comp_apply, powMonoidHom_apply, Units.val_pow_eq_pow_val]
+    show Valued.v (Algebra.norm (v.adicCompletion K) (a : w.adicCompletion L)) =
+      (Valued.v (a : w.adicCompletion L)) ^ f
+    exact valued_localNormMap_eq_pow K L v w a
+  have hsup : MonoidHom.range (localNormMap K L v w) ⊔ (v.adicCompletionIntegers K).units
+      = Subgroup.comap φ (Subgroup.map φ (MonoidHom.range (localNormMap K L v w))) := by
+    rw [Subgroup.comap_map_eq, valuationUnitsHom_ker K v]
+  rw [hsup,
+    Subgroup.index_comap_of_surjective
+      (H := Subgroup.map φ (MonoidHom.range (localNormMap K L v w))) hφsurj,
+    ← MonoidHom.range_comp, hcomp, MonoidHom.range_comp, ψ.range_eq_top_of_surjective hψsurj,
+    ← MonoidHom.range_eq_map]
+  set e : ℤᵐ⁰ˣ ≃* Multiplicative ℤ := WithZero.unitsWithZeroEquiv with he
+  have hidx := Subgroup.index_map_equiv (H := MonoidHom.range (powMonoidHom f : ℤᵐ⁰ˣ →* ℤᵐ⁰ˣ)) e
+  rw [MulEquiv.map_range_powMonoidHom e f] at hidx
+  rw [← hidx, MonoidHom.index_range_powMonoidHom_multiplicativeInt]
+
+omit [Algebra.IsIntegral R S] [FiniteDimensional (v.adicCompletion K) (w.adicCompletion L)]
+  [CharZero L] in
+/-- **The norm-group index, with its valuation-side factor made explicit.**
+`[K_vˣ : N(L_wˣ)] = f · [U_{K_v} : N(L_wˣ) ⊓ U_{K_v}]`, `f := v.asIdeal.inertiaDeg' w.asIdeal` —
+`index_range_localNormMap_eq_mul`'s two-factor decomposition with the (previously uncomputed)
+first factor substituted by `index_sup_units_eq_inertiaDeg'`. The remaining factor,
+`[U_{K_v} : N(L_wˣ) ⊓ U_{K_v}]`, is the units-side quantity this file only bounds
+(`exists_index_dvd_index_principalUnitsPow`), not computes. -/
+theorem index_range_localNormMap_eq_inertiaDeg'_mul_relIndex :
+    (MonoidHom.range (localNormMap K L v w)).index =
+      v.asIdeal.inertiaDeg' w.asIdeal *
+        (MonoidHom.range (localNormMap K L v w)).relIndex (v.adicCompletionIntegers K).units := by
+  rw [index_range_localNormMap_eq_mul, index_sup_units_eq_inertiaDeg']
 
 end IsDedekindDomain.HeightOneSpectrum
 
