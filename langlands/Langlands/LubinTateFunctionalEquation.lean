@@ -447,6 +447,56 @@ theorem pi_mul_one_sub_pow_mul_phiCoeff (hπ : Irreducible π) (a : O)
   simp only [phiCoeff, phiPartialSum, phiState]
   exact pi_mul_mul_unit_inv_mul_choose _ _
 
+@[simp] theorem phiPartialSum_zero (hπ : Irreducible π) (a : O)
+    (hf : IsLubinTatePoly π (residueCard O) f) (hg : IsLubinTatePoly π (residueCard O) g) :
+    phiPartialSum hπ a hf hg 0 = 0 := by
+  simp [phiPartialSum, phiState]
+
+/-- **The coefficient-agreement invariant tying `phiPartialSum` to `phiCoeff`.** For every degree
+`n`, the partial sum `phiPartialSum n` agrees with `phiCoeff` on coefficients `0, …, n`, and is
+identically `0` beyond degree `n` — the latter is what lets the degree-`(d+2)` recursive step
+(which only inspects `phiPartialSum (d+1)`, not the not-yet-defined `phiCoeff (d+2)`) still see
+the correct value at every coefficient index. Proved by induction on `n` matching `phiState`'s own
+recursion shape (`0`, `1`, `d + 2`). -/
+theorem coeff_phiPartialSum (hπ : Irreducible π) (a : O)
+    (hf : IsLubinTatePoly π (residueCard O) f) (hg : IsLubinTatePoly π (residueCard O) g)
+    (n m : ℕ) :
+    coeff m (phiPartialSum hπ a hf hg n) = if m ≤ n then phiCoeff hπ a hf hg m else 0 := by
+  induction n with
+  | zero =>
+    rw [phiPartialSum_zero, map_zero]
+    rcases m with _ | m
+    · simp
+    · simp
+  | succ n ih =>
+    rcases n with _ | d
+    · rcases m with _ | _ | m
+      · simp
+      · simp
+      · simp
+    · rw [phiPartialSum_succ_succ, map_add, coeff_C_mul, coeff_X_pow]
+      rcases Nat.lt_trichotomy m (d + 2) with hmd | hmd | hmd
+      · rw [ih, if_pos (by omega : m ≤ d + 1), if_neg (by omega : m ≠ d + 2),
+          if_pos (by omega : m ≤ d + 1 + 1)]
+        ring
+      · rw [ih, if_neg (by omega : ¬ m ≤ d + 1), if_pos hmd, if_pos (by omega : m ≤ d + 1 + 1), hmd]
+        ring
+      · rw [ih, if_neg (by omega : ¬ m ≤ d + 1), if_neg (by omega : m ≠ d + 2),
+          if_neg (by omega : ¬ m ≤ d + 1 + 1)]
+        ring
+
+/-- The corollary of `coeff_phiPartialSum` used to invoke the two truncation-invariance lemmas: the
+fully assembled `φ := PowerSeries.mk (phiCoeff hπ a hf hg)` and the degree-`n` partial sum agree on
+coefficients `0, …, n`. -/
+theorem X_pow_dvd_phi_sub_phiPartialSum (hπ : Irreducible π) (a : O)
+    (hf : IsLubinTatePoly π (residueCard O) f) (hg : IsLubinTatePoly π (residueCard O) g)
+    (n : ℕ) :
+    (X : O⟦X⟧) ^ (n + 1) ∣
+      (PowerSeries.mk (phiCoeff hπ a hf hg) - phiPartialSum hπ a hf hg n) := by
+  rw [X_pow_dvd_iff]
+  intro m hm
+  rw [map_sub, PowerSeries.coeff_mk, coeff_phiPartialSum, if_pos (by omega), sub_self]
+
 end LubinTate
 
 end
