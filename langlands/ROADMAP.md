@@ -8491,3 +8491,113 @@ and turning `∣` into `=`, which would need either resolving the `exp`/`log` th
 without the tame case's uniformizer trick. Neither attempted here. The concrete numeric example
 remains blocked on the unrelated `logUnitsThreshold` bound, as diagnosed in §6ad.
 
+
+## 6af. Thirty-fourth pass (2026-08-11): the `logUnitsThreshold` numeral closed — `i₀ := 13`; the
+capstone field-level index still blocked, on a newly-precise obstruction
+
+**Task.** §6ae's diagnosis, precisely: pin `TotallyRamifiedCyclotomicConcreteExample`'s
+`i₀ := exists_i₀_lt_logUnitsThreshold.choose` (a `Classical.choose` witness) to a concrete numeral,
+re-point `expEquiv_w` at it, and — if reachable without new mathematics — propagate into
+`TotallyRamifiedCyclotomicNormIndex`'s `∃ j, [K₀ˣ : N(L₀ˣ)] ∣ 2 * 3 ^ j` divisibility bound, and
+from there into `AdicCompletionNormGroupIndex`'s now-exact valuation-side factor, toward a genuine
+closed-form `[K_vˣ : N(L_wˣ)]`.
+
+**`i₀ := 13` closed exactly, no `Classical.choose`.** Two pieces, verified against the actual Lean
+definitions (not assumed from the task brief's framing):
+
+1. `Valued.toNormedField.norm_lt_iff : ‖x‖ < ‖x'‖ ↔ val.v x < val.v x'` — already present in
+   Mathlib (`Topology/Algebra/Valued/NormedValued.lean`), for *any* rank-one `Valued` field,
+   regardless of which base `e` the `RankOne` instance uses. This is exactly the reduction the task
+   asked to "find or build" — it needed only finding, not building: `‖·‖` is order-equivalent to
+   `Valued.v` unconditionally, because `RankOne.hom` is `StrictMono` by definition (no `rpow`/`e`
+   dependence enters an *order* comparison, only a *scale* one — `Valuation.norm_rankOne_rpow`,
+   §6u's diamond-closing lemma, is the scale statement; this pass needed only the order one, already
+   in Mathlib under a different name than guessed).
+2. A new generic lemma, `IsDedekindDomain.HeightOneSpectrum.lt_logUnitsThreshold_iff_valued_lt`
+   (`NonarchimedeanExponentialAdicCompletion.lean`, `NumberField`-free elaboration site — the same
+   diamond-avoidance discipline as `exists_pow_lt_logUnitsThreshold`/
+   `norm_natCast_lt_one_of_charP_residueField`): `‖π‖ ^ i < logUnitsThreshold (v.adicCompletion F) p
+   ↔ Valued.v π ^ i < Valued.v ((p:ℕ) : v.adicCompletion F) ^ 2`, by distributing the outer powers
+   via `norm_pow` and applying (1).
+
+For the concrete instance, `Valued.v (Θ₀ : w.adicCompletion L) = WithZero.exp (-1)` was already in
+hand (`valuation_Θ`); the missing piece was `Valued.v ((3:ℕ) : w.adicCompletion L)` — the valuation
+of the *rational prime*, not a uniformizer. Closed via:
+
+* `vZ : HeightOneSpectrum ℤ`, the place of `ℤ` at the rational prime `p` (`asIdeal := span {(p:ℤ)}`).
+* Mathlib's `IsDedekindDomain.HeightOneSpectrum.intValuation_liesOver` (a file — `NumberTheory/
+  RamificationInertia/Valuation.lean` — not previously used anywhere in this repo, found by
+  grepping Mathlib for `intValuation`+`ramificationIdx` together rather than hand-deriving from
+  ideal-factorization primitives): `v.intValuation x ^ (v.asIdeal.ramificationIdx' w.asIdeal) =
+  w.intValuation (algebraMap A B x)`, applied at `A := ℤ`, `B := 𝓞 L`, `v := vZ`, `w := w`,
+  `x := (p:ℤ)`.
+* `vZ.asIdeal.ramificationIdx' w.asIdeal = p ^ 1 * (p - 1)` (`ramificationIdx'_vZ_w`), via Mathlib's
+  `Ideal.ramificationIdx'_eq_ramificationIdx` bridged to the file's already-proved `ramificationIdx_w
+  : Ideal.ramificationIdx w.asIdeal ℤ = p ^ 1 * (p - 1)` — confirming, not merely assuming, that this
+  absolute ramification-index fact was genuinely available as a Lean fact (it was: proved in an
+  earlier pass via `IsCyclotomicExtension.Rat.ramificationIdx_eq_of_prime_pow`).
+* Chaining these gives `intValuation_w_p` (algebraic) and `valued_w_p` (transported through the
+  completion via `valuedAdicCompletion_eq_valuation'`/`valuation_of_algebraMap`, following
+  `valuation_Θ`'s exact `show ... from rfl` idiom for bridging the completion's coercion, since
+  `norm_cast` alone does not recognize the `WithVal`-wrapped completion coercion as a registered
+  cast): `Valued.v ((p:ℕ) : w.adicCompletion L) = WithZero.exp (-(p * (p - 1)))` — `exp(-6)` for
+  `p = 3`.
+
+`i₀ := 13` (`TotallyRamifiedCyclotomicConcreteExample.lean`) then follows from
+`WithZero.exp_lt_exp` applied to `-13 < -2 * 6 = -12`, via `lt_logUnitsThreshold_iff_valued_lt`.
+`expEquiv_w` now instantiates at this literal `13`, not an opaque `Classical.choose` witness. `lake
+build` clean; `#print axioms expEquiv_w` and `#print axioms hthreshStrict_i₀` show only `propext,
+Classical.choice, Quot.sound` (the ordinary axioms, no `sorryAx`). Commit `ee23c56`.
+
+**What did NOT close: the field-level index, and — precisely, for the first time — why.**
+
+`TotallyRamifiedCyclotomicNormIndex`'s `∃ j, [K₀ˣ : N(L₀ˣ)] ∣ 2 * 3 ^ j` was **not** attempted to be
+tightened, after tracing its dependency chain and finding a **second, independent, and harder**
+existential blocking it — not the one `i₀ := 13` closes. `exists_index_dvd_index_principalUnitsPow`
+(`AdicCompletionNormGroupIndex.lean`) draws its `j` from
+`exists_map_principalUnitsPow_normUnitsK₀_eq` (`AdicCompletionNormGroupImage.lean`), whose threshold
+`i₀` is a `max` of **three** separate existential witnesses:
+
+1. `iL`, from `exists_pow_lt_logUnitsThreshold w` at some (unspecified) uniformizer of `w` — the
+   same shape of bound as `i₀ := 13` above, and closeable the same way (any uniformizer has
+   `Valued.v` valuation `exp(-1)`, so the identical numeral `13` applies regardless of which
+   specific uniformizer the existential picked).
+2. `iK`, the K-side analogue of (1) — closeable the same way, with `e_K := v.asIdeal.ramificationIdx'`
+   over `ℚ` `= p - 1 = 2` in place of `e_L = 6`, giving a smaller concrete numeral. Not computed this
+   pass (see below — it would not have unblocked anything by itself).
+3. **`iN`, from `exists_maximalIdeal_pow_norm_exp_eq_exp_trace`'s threshold construction
+   (`AdicCompletionNormExpTrace.lean`) — genuinely not reducible to `Valued.v` arithmetic.** Reading
+   its proof: the threshold is built from `exists_delta_of_continuous`, an ε/δ statement
+   (`Metric.continuous_iff`) applied to each Galois automorphism `σ : L_w ≃ₐ[K_v] L_w` and to
+   `algebraMap K_v L_w`, then combined via `Finset.univ.sup`. `Metric.continuous_iff` asserts
+   existence of a `δ` for a given `ε` with **no formula for `δ` in terms of `ε`** — Mathlib's
+   generic continuity API does not track a modulus of continuity. Making `iN` concrete would require
+   an actual **operator-norm (Lipschitz-constant) bound for Galois conjugation and for the trace map
+   on this specific extension `L_w / K_v`** — a genuine new quantitative estimate (e.g. from an
+   explicit matrix/basis representation of `Gal(L_w/K_v)`'s action, or a discriminant-type bound),
+   not present anywhere in this repo and not a bookkeeping exercise.
+
+Since `j` is existential only through this `max` of three thresholds, pinning (1) and (2) alone (as
+`i₀ := 13` did for `expEquiv_w`'s different, narrower use of the same `logUnitsThreshold` bound)
+would not have produced a concrete `j` — (3) blocks regardless. Computing (2) alone was skipped as
+not worth the effort without (3): it would not have changed the reported outcome (`j` still
+existential), and this pass's effort was better spent precisely diagnosing (3) than partially
+closing (1)/(2) cosmetically.
+
+**Phase 2b overview, updated.** The `logUnitsThreshold` numeral gap flagged in §6ad/§6ae as "the
+one remaining, precisely located obstruction" for the concrete instance turned out to be exactly
+that — closed cleanly, with no new mathematical content, purely by finding the right existing
+Mathlib order lemma (`Valued.toNormedField.norm_lt_iff`) and one previously-unused Mathlib
+ramification/valuation bridge (`intValuation_liesOver`). But closing it exposed a **second,
+independent, and genuinely harder** obstruction one layer up the dependency chain — a quantitative
+continuity estimate for Galois conjugation and trace, needed by
+`exists_maximalIdeal_pow_norm_exp_eq_exp_trace`'s threshold, that nothing in this repo computes and
+that is not reducible to the `Valued.v`/`WithZero.exp` integer arithmetic this pass used. This is
+the concrete, scoped starting point for whoever picks up the field-level index closure next: either
+(a) derive an explicit operator-norm bound for `Gal(L_w/K_v)`'s action and the trace map on this
+specific degree-`3` totally-ramified extension, or (b) find a different route to
+`norm_exp_eq_exp_trace`'s hypotheses that avoids the generic ε/δ continuity argument entirely (e.g.
+a direct estimate exploiting the extension's small, explicit Eisenstein presentation already in
+`TotallyRamifiedCyclotomicConcreteExample.lean`). Both are genuine mathematical work, not Lean
+bookkeeping, and out of this pass's scope. `TotallyRamifiedCyclotomicNormIndex`'s divisibility bound
+and `AdicCompletionNormGroupIndex`'s `relIndex` factor are otherwise unchanged from §6ae.
