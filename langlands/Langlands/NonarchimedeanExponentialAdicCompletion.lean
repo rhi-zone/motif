@@ -145,6 +145,23 @@ theorem exists_maximalIdeal_pow_norm_lt {ε : ℝ} (hε : 0 < ε) :
     (mem_adicCompletionIntegers_iff_norm_le_one v) hπ hx) ?_
   exact lt_of_le_of_lt (pow_le_pow_of_le_one (norm_nonneg _) hπnorm.le hi) hi₀
 
+/-- **The concrete-witness core of `exists_maximalIdeal_pow_norm_lt`.** Same conclusion shape, but
+taking a concrete uniformizer `π` and an explicit `i₀` with `‖π‖ ^ i₀ < ε` as hypotheses rather than
+deriving them via `exists_uniformizer`/`exists_pow_lt_of_lt_one`. Exactly what a concrete instance
+needs to close `i₀` to a literal numeral, mirroring `forall_maximalIdeal_pow_norm_trace_le`
+(`Langlands.AdicCompletionTraceBound`). -/
+theorem forall_maximalIdeal_pow_norm_lt {π : v.adicCompletionIntegers F}
+    (hπnorm : ‖(π : v.adicCompletion F)‖ < 1)
+    (hπ : maximalIdeal (v.adicCompletionIntegers F) =
+      Ideal.span ({π} : Set (v.adicCompletionIntegers F))) {i₀ : ℕ} {ε : ℝ}
+    (hthresh : ‖(π : v.adicCompletion F)‖ ^ i₀ < ε) :
+    ∀ i ≥ i₀, ∀ x : v.adicCompletionIntegers F,
+      x ∈ maximalIdeal (v.adicCompletionIntegers F) ^ i → ‖(x : v.adicCompletion F)‖ < ε := by
+  intro i hi x hx
+  refine lt_of_le_of_lt (norm_le_pow_of_mem_maximalIdeal_pow (v.adicCompletionIntegers F)
+    (mem_adicCompletionIntegers_iff_norm_le_one v) hπ hx) ?_
+  exact lt_of_le_of_lt (pow_le_pow_of_le_one (norm_nonneg _) hπnorm.le hi) hthresh
+
 variable [CharZero F] (p : ℕ) [hp : Fact p.Prime] [CharP (ResidueField (v.adicCompletionIntegers F)) p]
 
 /-- **The concrete instantiation, for `exp`.** Some explicit `i₀` has every `x ∈ 𝔪^i` (`i ≥ i₀`) of

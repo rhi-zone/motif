@@ -903,47 +903,12 @@ theorem valued_w_p :
     IsDedekindDomain.HeightOneSpectrum.valuedAdicCompletion_eq_valuation',
     w.valuation_of_algebraMap, intValuation_w_p]
 
-/-- **The concrete numeral: `i₀ := 13`.** No `Classical.choose` — derived directly from the
-`Valued.v`-arithmetic above (`2 * (p * (p - 1)) + 1 = 13` for `p = 3`). -/
-def i₀ : ℕ := 13
-
-set_option linter.defProp false in
-/-- **The strict threshold bound at the concrete `i₀ := 13`**, exactly what `expEquiv` wants —
-reduced, via `lt_logUnitsThreshold_iff_valued_lt`, to the integer inequality `-13 < -12` between
-the `Valued.v`-exponents of `Θ₀ ^ i₀` and `(p : w.adicCompletion L) ^ 2`. -/
-def hthreshStrict_i₀ :=
-  (IsDedekindDomain.HeightOneSpectrum.lt_logUnitsThreshold_iff_valued_lt
-      (v := w) (F := L) (p := p) (π := (Θ₀ : w.adicCompletion L)) (i := i₀)).mpr (by
-    show Valued.v (Θ : w.adicCompletion L) ^ i₀ < Valued.v (((p : ℕ) : w.adicCompletion L)) ^ 2
-    rw [valuation_Θ, valued_w_p, ← WithZero.exp_nsmul, ← WithZero.exp_nsmul, WithZero.exp_lt_exp]
-    show (i₀ : ℕ) • (-1 : ℤ) < (2 : ℕ) • (-((p : ℤ) * ((p : ℤ) - 1)))
-    simp only [nsmul_eq_mul, i₀]
-    norm_num)
-
-/-- **Capstone: `U_{L_w}^{(i₀)} ≅ (𝔪_{L_w}^{i₀}, +)`, instantiated against the concrete
-mixed-characteristic wild Galois instance `K = ℚ(ζ_3) ⊆ L = ℚ(ζ_9)`.** The first time the entire
-`exp`/`log` machinery of this repo — mutual inverse (`exp_log_eq_one_add`), filtration landing
-(`exp_mem_principalUnitsPow`), norm/trace compatibility
-(`exists_maximalIdeal_pow_norm_exp_eq_exp_trace` above), AND the units isomorphism (`expEquiv`) — is
-exercised end to end against one real concrete instance. -/
-noncomputable def expEquiv_w :
-    Multiplicative ↥(IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) ^ i₀) ≃*
-      ↥(ValuationSubring.principalUnitsPow (w.adicCompletionIntegers L) i₀) :=
-  IsDedekindDomain.HeightOneSpectrum.expEquiv w p hnormL maximalIdeal_L₀_eq Θ_ne_zero hπnorm_Θ
-    hthreshStrict_i₀
-
-/-! ### Concrete numerals for `convergenceRadius`, closing `i1`/`i3`
+/-! ### A concrete numeral for `Valued.v (p : v.adicCompletion K)`
 
 `vZ` (defined above for the `w`-side) is also the place of `ℤ` at `p` seen from `v`: `v.asIdeal`
 already `LiesOver (Ideal.span {p})` (established earlier for `hζ_K'`), so the same
 `intValuation_liesOver` bridge computes `Valued.v (p : v.adicCompletion K)` exactly, mirroring
-`valued_w_p`. Combined with `norm_eq_toNNReal_valued`/`WithZeroMulInt.toNNReal_exp`
-(`Langlands.NormMap`), this turns `convergenceRadius (v.adicCompletion K) p` from a real `rpow` at a
-fractional exponent into a literal `2 ^ (-1 : ℝ)`, since `ramificationIdx_v = p - 1` makes the
-`rpow` exponent `(p-1)⁻¹` exactly cancel the `Valued.v`-exponent `-(p-1)`. `convergenceRadius_eq_pow`
-(`Langlands.AdicCompletionNormExpTrace`) then propagates this to the `w`-side for free: raising to
-the `e := ramificationIdx'_eq = p = 3`-rd power gives `convergenceRadius (w.adicCompletion L) p = 2 ^
-(-3 : ℝ)`. -/
+`valued_w_p`. -/
 
 instance : v.asIdeal.LiesOver vZ.asIdeal :=
   (inferInstance : v.asIdeal.LiesOver (Ideal.span {(p : ℤ)}))
@@ -975,6 +940,62 @@ theorem valued_v_p :
       ((algebraMap (𝓞 K) K ((p : ℕ) : 𝓞 K) : K) : v.adicCompletion K) from rfl,
     IsDedekindDomain.HeightOneSpectrum.valuedAdicCompletion_eq_valuation',
     v.valuation_of_algebraMap, intValuation_v_p]
+
+/-- **The concrete numeral: `i₀ := 13`.** No `Classical.choose` — derived directly from the
+`Valued.v`-arithmetic above (`2 * (p * (p - 1)) + 1 = 13` for `p = 3`). -/
+def i₀ : ℕ := 13
+
+set_option linter.defProp false in
+/-- **The strict threshold bound at the concrete `i₀ := 13`**, exactly what `expEquiv` wants —
+reduced, via `lt_logUnitsThreshold_iff_valued_lt`, to the integer inequality `-13 < -12` between
+the `Valued.v`-exponents of `Θ₀ ^ i₀` and `(p : w.adicCompletion L) ^ 2`. -/
+def hthreshStrict_i₀ :=
+  (IsDedekindDomain.HeightOneSpectrum.lt_logUnitsThreshold_iff_valued_lt
+      (v := w) (F := L) (p := p) (π := (Θ₀ : w.adicCompletion L)) (i := i₀)).mpr (by
+    show Valued.v (Θ : w.adicCompletion L) ^ i₀ < Valued.v (((p : ℕ) : w.adicCompletion L)) ^ 2
+    rw [valuation_Θ, valued_w_p, ← WithZero.exp_nsmul, ← WithZero.exp_nsmul, WithZero.exp_lt_exp]
+    show (i₀ : ℕ) • (-1 : ℤ) < (2 : ℕ) • (-((p : ℤ) * ((p : ℤ) - 1)))
+    simp only [nsmul_eq_mul, i₀]
+    norm_num)
+
+/-- **The concrete numeral: `iK := 5`.** The `K_v`-side analogue of `i₀ := 13`: reduced, via
+`lt_logUnitsThreshold_iff_valued_lt`, to the integer inequality `-5 < -4` between the `Valued.v`-
+exponents of `π₀ ^ iK` (`valuation_π₀ : exp (-1)`) and `(p : v.adicCompletion K) ^ 2` (`valued_v_p :
+exp (-(p - 1)) = exp (-2)`). -/
+def iK : ℕ := 5
+
+set_option linter.defProp false in
+/-- **The strict threshold bound at the concrete `iK := 5`.** -/
+def hthreshStrict_iK :=
+  (IsDedekindDomain.HeightOneSpectrum.lt_logUnitsThreshold_iff_valued_lt
+      (v := v) (F := K) (p := p) (π := (π₀ : v.adicCompletion K)) (i := iK)).mpr (by
+    show Valued.v (π₀ : v.adicCompletion K) ^ iK < Valued.v (((p : ℕ) : v.adicCompletion K)) ^ 2
+    rw [valuation_π₀, valued_v_p, ← WithZero.exp_nsmul, ← WithZero.exp_nsmul, WithZero.exp_lt_exp]
+    show (iK : ℕ) • (-1 : ℤ) < (2 : ℕ) • (-((p : ℤ) - 1))
+    simp only [nsmul_eq_mul, iK]
+    norm_num)
+
+/-- **Capstone: `U_{L_w}^{(i₀)} ≅ (𝔪_{L_w}^{i₀}, +)`, instantiated against the concrete
+mixed-characteristic wild Galois instance `K = ℚ(ζ_3) ⊆ L = ℚ(ζ_9)`.** The first time the entire
+`exp`/`log` machinery of this repo — mutual inverse (`exp_log_eq_one_add`), filtration landing
+(`exp_mem_principalUnitsPow`), norm/trace compatibility
+(`exists_maximalIdeal_pow_norm_exp_eq_exp_trace` above), AND the units isomorphism (`expEquiv`) — is
+exercised end to end against one real concrete instance. -/
+noncomputable def expEquiv_w :
+    Multiplicative ↥(IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) ^ i₀) ≃*
+      ↥(ValuationSubring.principalUnitsPow (w.adicCompletionIntegers L) i₀) :=
+  IsDedekindDomain.HeightOneSpectrum.expEquiv w p hnormL maximalIdeal_L₀_eq Θ_ne_zero hπnorm_Θ
+    hthreshStrict_i₀
+
+/-! ### Concrete numerals for `convergenceRadius`, closing `i1`/`i3`
+
+Combined with `norm_eq_toNNReal_valued`/`WithZeroMulInt.toNNReal_exp` (`Langlands.NormMap`), the
+`valued_v_p`/`valued_w_p` facts above turn `convergenceRadius (v.adicCompletion K) p` from a real
+`rpow` at a fractional exponent into a literal `2 ^ (-1 : ℝ)`, since `ramificationIdx_v = p - 1`
+makes the `rpow` exponent `(p-1)⁻¹` exactly cancel the `Valued.v`-exponent `-(p-1)`.
+`convergenceRadius_eq_pow` (`Langlands.AdicCompletionNormExpTrace`) then propagates this to the
+`w`-side for free: raising to the `e := ramificationIdx'_eq = p = 3`-rd power gives
+`convergenceRadius (w.adicCompletion L) p = 2 ^ (-3 : ℝ)`. -/
 
 /-- **Pure real-number arithmetic**: the exponent `convergenceRadius_eq_rpow_of_valued_natCast_eq_exp`
 produces for `K_v`, `-(((p:ℤ)-1 : ℤ) : ℝ) * ((p:ℝ)-1)⁻¹`, equals `-1` exactly (the `k = p - 1`

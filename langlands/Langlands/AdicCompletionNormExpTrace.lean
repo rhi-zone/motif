@@ -205,6 +205,45 @@ theorem exists_maximalIdeal_pow_norm_exp_eq_exp_trace
     exact pow_lt_pow_left₀ htrK (norm_nonneg _)
       (Ideal.IsDedekindDomain.ramificationIdx'_ne_zero_of_liesOver w.asIdeal v.ne_bot)
 
+omit [Algebra.IsIntegral R S] in
+/-- **The concrete-witness core of `exists_maximalIdeal_pow_norm_exp_eq_exp_trace`.** Same
+conclusion shape, at `i₀ := max i1 i3`, but taking the two convergence-domain memberships `h1`/`h3`
+(what `exists_maximalIdeal_pow_norm_lt`/`exists_maximalIdeal_pow_norm_trace_lt` produce internally)
+as EXPLICIT hypotheses rather than deriving them existentially. Exactly the piece a concrete
+instance needs to supply literal `i1`/`i3` (e.g. via `forall_maximalIdeal_pow_norm_lt`/
+`forall_maximalIdeal_pow_norm_trace_le`, both `AdicCompletionTraceBound`/
+`NonarchimedeanExponentialAdicCompletion`) and close `i₀` to a numeral. -/
+theorem forall_maximalIdeal_pow_norm_exp_eq_exp_trace
+    [IsGalois (v.adicCompletion K) (w.adicCompletion L)]
+    (hnormK : ‖(p : v.adicCompletion K)‖ < 1) (hnormL : ‖(p : w.adicCompletion L)‖ < 1)
+    {i1 i3 : ℕ}
+    (h1 : ∀ i ≥ i1, ∀ x : w.adicCompletionIntegers L,
+      x ∈ maximalIdeal (w.adicCompletionIntegers L) ^ i →
+        ‖(x : w.adicCompletion L)‖ < convergenceRadius (w.adicCompletion L) p)
+    (h3 : ∀ i ≥ i3, ∀ x : w.adicCompletionIntegers L,
+      x ∈ maximalIdeal (w.adicCompletionIntegers L) ^ i →
+        ‖Algebra.trace (v.adicCompletion K) (w.adicCompletion L) (x : w.adicCompletion L)‖ <
+          convergenceRadius (v.adicCompletion K) p) :
+    ∀ i ≥ max i1 i3, ∀ x : w.adicCompletionIntegers L,
+      x ∈ maximalIdeal (w.adicCompletionIntegers L) ^ i →
+        Algebra.norm (v.adicCompletion K) (exp hnormL (x : w.adicCompletion L))
+          = exp hnormK (Algebra.trace (v.adicCompletion K) (w.adicCompletion L)
+              (x : w.adicCompletion L)) := by
+  intro i hi x hx
+  have hi1 : i1 ≤ i := le_trans (le_max_left _ _) hi
+  have hi3 : i3 ≤ i := le_trans (le_max_right _ _) hi
+  refine norm_exp_eq_exp_trace K L v w p hnormK hnormL (h1 i hi1 x hx) (fun σ => ?_)
+    (h3 i hi3 x hx) ?_
+  · have hmem := restrictAdicCompletionIntegers_mem_maximalIdeal_pow K L v w σ hx
+    have := h1 i hi1 _ hmem
+    rwa [coe_restrictAdicCompletionIntegers] at this
+  · have htrK := h3 i hi3 x hx
+    rw [show (algebraMap (v.adicCompletion K) (w.adicCompletion L))
+        = adicCompletionComap K L v w from rfl, norm_algebraMap_pow_eq,
+      convergenceRadius_eq_pow K L v w p]
+    exact pow_lt_pow_left₀ htrK (norm_nonneg _)
+      (Ideal.IsDedekindDomain.ramificationIdx'_ne_zero_of_liesOver w.asIdeal v.ne_bot)
+
 end IsDedekindDomain.HeightOneSpectrum
 
 end
