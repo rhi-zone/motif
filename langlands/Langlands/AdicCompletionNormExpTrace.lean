@@ -1,3 +1,4 @@
+import Langlands.AdicCompletionIntegralClosure
 import Langlands.AdicCompletionTraceBound
 import Langlands.NonarchimedeanExponentialRingHom
 
@@ -112,16 +113,27 @@ theorem norm_exp_eq_exp_trace [IsGalois (v.adicCompletion K) (w.adicCompletion L
   exact (map_exp hnormK hnormL (algebraMap (v.adicCompletion K) (w.adicCompletion L))
     (continuous_adicCompletionComap K L v w) htrK htrL).symm
 
-omit [Algebra.IsIntegral R S] [Module.IsTorsionFree R S] [CharZero K] [CharZero L] in
-/-- Continuity at `0`, in ε/δ form: a continuous map sending `0` to `0` pulls any ball around `0`
-back to a ball around `0`. -/
-private theorem exists_delta_of_continuous {M N : Type*} [SeminormedAddCommGroup M]
-    [SeminormedAddCommGroup N] (f : M → N) (hf : Continuous f) (h0 : f 0 = 0) {ε : ℝ}
-    (hε : 0 < ε) : ∃ δ > 0, ∀ z : M, ‖z‖ < δ → ‖f z‖ < ε := by
-  obtain ⟨δ, hδ0, hδ⟩ := Metric.continuous_iff.mp hf 0 ε hε
-  refine ⟨δ, hδ0, fun z hz => ?_⟩
-  have := hδ z (by simpa [dist_eq_norm] using hz)
-  simpa [h0, dist_eq_norm] using this
+omit [Algebra.IsIntegral R S] [Module.Finite K L] [CharZero K] [CharZero L] hp in
+/-- **`convergenceRadius` scales by the exact ramification index across `algebraMap K_v L_w`.**
+`convergenceRadius F p = ‖(p : F)‖ ^ ((p - 1)⁻¹ : ℝ)`, and `(p : w.adicCompletion L) = algebraMap
+(p : v.adicCompletion K)` (`map_natCast`), so `norm_algebraMap_pow_eq` gives `‖(p : L_w)‖ = ‖(p :
+K_v)‖ ^ e` EXACTLY. Raising both sides to the `(p - 1)⁻¹` power and reassociating the exponents
+(`Real.rpow_natCast`, `Real.rpow_mul`, `norm_nonneg`) turns this into `convergenceRadius L_w p =
+(convergenceRadius K_v p) ^ e` — an exact equation between the two convergence radii, not merely an
+order comparison. This is what lets the `algebraMap`-side threshold of
+`exists_maximalIdeal_pow_norm_exp_eq_exp_trace` reuse the `K_v`-side trace threshold directly. -/
+theorem convergenceRadius_eq_pow :
+    convergenceRadius (w.adicCompletion L) p =
+      (convergenceRadius (v.adicCompletion K) p) ^ (v.asIdeal.ramificationIdx' w.asIdeal) := by
+  have hpL : ((p : ℕ) : w.adicCompletion L) =
+      adicCompletionComap K L v w ((p : ℕ) : v.adicCompletion K) := by
+    rw [map_natCast]
+  unfold convergenceRadius
+  rw [hpL, norm_algebraMap_pow_eq, ← Real.rpow_natCast (‖((p : ℕ) : v.adicCompletion K)‖)
+      (v.asIdeal.ramificationIdx' w.asIdeal), ← Real.rpow_mul (norm_nonneg _),
+    ← Real.rpow_natCast (‖((p : ℕ) : v.adicCompletion K)‖ ^ (((p : ℝ) - 1)⁻¹))
+      (v.asIdeal.ramificationIdx' w.asIdeal),
+    ← Real.rpow_mul (norm_nonneg _), mul_comm]
 
 omit [Algebra.IsIntegral R S] in
 /-- **The norm/trace compatibility formula on a filtration level.** Some `i₀` has
@@ -130,12 +142,20 @@ omit [Algebra.IsIntegral R S] in
 
 for *every* `x ∈ 𝔪_{L_w}^i` with `i ≥ i₀` — no further hypotheses on `x`.
 
-All four convergence-domain hypotheses of `norm_exp_eq_exp_trace` are produced by pairing
-`exists_maximalIdeal_pow_norm_lt` / `exists_maximalIdeal_pow_norm_trace_lt` (which reach any
-prescribed accuracy at a deep enough level) with continuity at `0` of the maps involved: the
-finitely many conjugations `σ` (`continuous_algEquiv`) and `algebraMap K_v L_w`
-(`continuous_adicCompletionComap`). Finiteness of `Gal(L_w/K_v)` is what lets the per-`σ`
-thresholds be combined into one. -/
+`i₀ := max i1 i3` is genuinely closed-form in terms of the two remaining existential witnesses:
+
+* `i1` (`exists_maximalIdeal_pow_norm_lt`) supplies both `hx` directly and, via
+  `restrictAdicCompletionIntegers_mem_maximalIdeal_pow` (`Langlands.AdicCompletionIntegralClosure`
+  — Galois conjugation preserves `𝔪_{L_w}^i` EXACTLY, for the same `i`), `hσ` for every conjugate at
+  the SAME threshold `i1` — no per-`σ` threshold or `Finset.sup` is needed at all, unlike the
+  ε/δ-continuity route this replaces.
+* `i3` (`exists_maximalIdeal_pow_norm_trace_lt`) supplies `htrK` directly, and (via
+  `norm_algebraMap_pow_eq` and `convergenceRadius_eq_pow`, both EXACT ramification-index-`e`
+  equations) `htrL` at that SAME threshold `i3` too: `‖Tr x‖ < convergenceRadius K_v p` implies
+  `‖algebraMap (Tr x)‖ = ‖Tr x‖ ^ e < (convergenceRadius K_v p) ^ e = convergenceRadius L_w p`.
+
+Both conveniences replace what used to be a separate ε/δ-continuity argument
+(`exists_delta_of_continuous`, now removed) per hypothesis. -/
 theorem exists_maximalIdeal_pow_norm_exp_eq_exp_trace
     [IsGalois (v.adicCompletion K) (w.adicCompletion L)]
     (hnormK : ‖(p : v.adicCompletion K)‖ < 1) (hnormL : ‖(p : w.adicCompletion L)‖ < 1) :
@@ -144,36 +164,26 @@ theorem exists_maximalIdeal_pow_norm_exp_eq_exp_trace
         Algebra.norm (v.adicCompletion K) (exp hnormL (x : w.adicCompletion L))
           = exp hnormK (Algebra.trace (v.adicCompletion K) (w.adicCompletion L)
               (x : w.adicCompletion L)) := by
-  classical
   have hcrL : (0 : ℝ) < convergenceRadius (w.adicCompletion L) p :=
     Real.rpow_pos_of_pos norm_natCast_pos _
   have hcrK : (0 : ℝ) < convergenceRadius (v.adicCompletion K) p :=
     Real.rpow_pos_of_pos norm_natCast_pos _
   obtain ⟨i1, h1⟩ := exists_maximalIdeal_pow_norm_lt (F := L) w hcrL
-  have hgal : ∀ σ : w.adicCompletion L ≃ₐ[v.adicCompletion K] w.adicCompletion L,
-      ∃ i : ℕ, ∀ j ≥ i, ∀ x : w.adicCompletionIntegers L,
-        x ∈ maximalIdeal (w.adicCompletionIntegers L) ^ j →
-          ‖σ (x : w.adicCompletion L)‖ < convergenceRadius (w.adicCompletion L) p := by
-    intro σ
-    obtain ⟨δ, hδ0, hδ⟩ := exists_delta_of_continuous (fun z => σ z)
-      (continuous_algEquiv K L v w σ) (map_zero σ) hcrL
-    obtain ⟨i, hi⟩ := exists_maximalIdeal_pow_norm_lt (F := L) w hδ0
-    exact ⟨i, fun j hj x hx => hδ _ (hi j hj x hx)⟩
-  choose iσ hiσ using hgal
   obtain ⟨i3, h3⟩ := exists_maximalIdeal_pow_norm_trace_lt K L v w hcrK
-  obtain ⟨δ, hδ0, hδ⟩ := exists_delta_of_continuous
-    (fun a => algebraMap (v.adicCompletion K) (w.adicCompletion L) a)
-    (continuous_adicCompletionComap K L v w) (map_zero _) hcrL
-  obtain ⟨i4, h4⟩ := exists_maximalIdeal_pow_norm_trace_lt K L v w hδ0
-  refine ⟨max (max i1 (Finset.univ.sup iσ)) (max i3 i4), fun i hi x hx => ?_⟩
-  have hi1 : i1 ≤ i := le_trans (le_trans (le_max_left _ _) (le_max_left _ _)) hi
-  have hi2 : Finset.univ.sup iσ ≤ i :=
-    le_trans (le_trans (le_max_right _ _) (le_max_left _ _)) hi
-  have hi3 : i3 ≤ i := le_trans (le_trans (le_max_left _ _) (le_max_right _ _)) hi
-  have hi4 : i4 ≤ i := le_trans (le_trans (le_max_right _ _) (le_max_right _ _)) hi
-  exact norm_exp_eq_exp_trace K L v w p hnormK hnormL (h1 i hi1 x hx)
-    (fun σ => hiσ σ i (le_trans (Finset.le_sup (Finset.mem_univ σ)) hi2) x hx)
-    (h3 i hi3 x hx) (hδ _ (h4 i hi4 x hx))
+  refine ⟨max i1 i3, fun i hi x hx => ?_⟩
+  have hi1 : i1 ≤ i := le_trans (le_max_left _ _) hi
+  have hi3 : i3 ≤ i := le_trans (le_max_right _ _) hi
+  refine norm_exp_eq_exp_trace K L v w p hnormK hnormL (h1 i hi1 x hx) (fun σ => ?_)
+    (h3 i hi3 x hx) ?_
+  · have hmem := restrictAdicCompletionIntegers_mem_maximalIdeal_pow K L v w σ hx
+    have := h1 i hi1 _ hmem
+    rwa [coe_restrictAdicCompletionIntegers] at this
+  · have htrK := h3 i hi3 x hx
+    rw [show (algebraMap (v.adicCompletion K) (w.adicCompletion L))
+        = adicCompletionComap K L v w from rfl, norm_algebraMap_pow_eq,
+      convergenceRadius_eq_pow K L v w p]
+    exact pow_lt_pow_left₀ htrK (norm_nonneg _)
+      (Ideal.IsDedekindDomain.ramificationIdx'_ne_zero_of_liesOver w.asIdeal v.ne_bot)
 
 end IsDedekindDomain.HeightOneSpectrum
 
