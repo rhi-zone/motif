@@ -9555,3 +9555,92 @@ functional equation lemma or formal group law from a `ℱ_π`-style hypothesis s
 purely structural/algebraic (its `assoc`/`comm` fields are *inputs*, not consequences derived from
 some deeper hypothesis), so the number-theoretic content of `F_π`'s existence is entirely this
 repo's to build.
+
+## 12. Phase 2c, sixth pass (2026-08-12): the logarithm route to `F_π` — investigated,
+NOT cheaper; the `§11` open question resolved as a no-go
+
+Continuation of `§11`'s explicitly flagged open question: does the classical Lubin-Tate
+*logarithm* `λ_f(X) := lim_n f^{(n)}(X)/π^n`, with `F_π(X,Y) := λ_f^{-1}(λ_f(X) + λ_f(Y))`, supply
+`F_π` more cheaply than the direct 2-variable functional equation lemma from `§11`? This pass is
+pure investigation — mathematical recall and reasoning about what the classical construction
+actually requires, not a Mathlib API survey — so confidence levels are stated per claim rather than
+backed by file citations the way `§11`'s findings were. No `.lean` file was touched.
+
+**What the classical construction actually looks like, with confidence levels.**
+
+* The λ_f-based logarithm is real and standard (high confidence) — it appears in Lubin–Tate's
+  original 1965 paper and in the standard secondary literature (Serre *Local Fields* Ch. IV;
+  Silverman's Lubin-Tate appendix in *Advanced Topics in the Arithmetic of Elliptic Curves*; Iwasawa,
+  *Local Class Field Theory*). It satisfies `λ_f(f(X)) = π · λ_f(X)` and is normalized `λ_f(X) = X +
+  O(X²)`.
+* **`λ_f` is not a power series over `O`** — it is a power series over `K = Frac(O)` (or, in the
+  mixed-characteristic case, needs `p` inverted, so really lives over `O[1/p]`), because computing it
+  requires dividing by `π^n` for arbitrarily large `n`. This is a genuinely different object in kind
+  from everything `LubinTateFunctionalEquation.lean` currently builds, which stays entirely inside
+  `O⟦X⟧` — no denominators anywhere. (High confidence — this is definitional: the limit defining `λ_f`
+  literally has `π^n` in a denominator.)
+* **The nontrivial classical content is proving the *composite* `λ_f^{-1}(λ_f(X)+λ_f(Y))` has
+  coefficients back in `O`**, not merely in `K`. This integrality fact is not free — it is,
+  essentially, *the same theorem* as the direct functional-equation-lemma construction, viewed from a
+  different angle (medium-high confidence, based on recalling how the standard treatments sequence
+  the argument): the standard expositions I can recall prove `F_π ∈ O⟦X,Y⟧` **directly**, via the
+  same degree-by-degree/successive-approximation recursion already built in `§7`-`§10` (extended to
+  two variables, i.e. exactly `§11`'s route (a)) — and only *afterwards* identify `λ_f` as a
+  convenient bookkeeping device (e.g. to prove `F_π`'s uniqueness, compute `[a]_f`, or derive the
+  explicit reciprocity law), with `λ_f(F_π(X,Y)) = λ_f(X) + λ_f(Y)` following from `F_π`'s
+  already-established characterizing functional equation plus a uniqueness argument for objects
+  satisfying `h(f(X)) = π·h(X)`, `h ≡ X` — not the other way around, with `F_π`'s integrality then
+  derived from `λ_f`. Honda's later generalization (*On the theory of commutative formal groups*,
+  1970) does center the construction on a functional-equation-style logarithm for a broader class of
+  "functional equation formal groups," but **that generalization's own hard content is precisely an
+  integrality lemma of the same size and character as the recursion already in this repo** — it is
+  not a shortcut around that work, it is a restatement of the same kind of estimate in different
+  language (medium confidence on Honda's argument specifically; not re-derived from the primary
+  source this pass, only recalled).
+* Net assessment: going via `λ_f` does not avoid `§11` item (1)-(3)'s content. It *adds* a
+  prerequisite (proving `λ_f` converges as an honest power series over `K`, a genuine `p`-adic
+  analysis estimate on `‖f^{(n)}(X)/π^n‖`-type coefficient growth) on top of *still needing* an
+  integrality argument for the composite that is comparable in kind to the direct multivariate
+  recursion — the classical literature does not, as far as this pass's recall extends, present a case
+  where the logarithm route is smaller than the direct route; if anything the direct route is the more
+  economical one, which is consistent with why `§7`-`§10` built the machinery it built.
+
+**Whether the ruled-out `g(Z) = πZ` idea is rescued by a different choice of "inverse."** No —
+`§11`'s objection (`g(Z) = πZ` reduces mod `π` to `0`, not `X^q`, so `IsLubinTatePoly` fails) is not
+an artifact of that particular choice of `g`; it is structural. `λ_f` is not itself a member of
+`ℱ_π`, or even a power series over `O` at all — it plays a different structural role (a
+`K`-valued *coordinate change*, not an alternate `O`-valued `g` to plug into the already-closed
+`subst_phi_eq_phi_subst`/`eq_of_...` lemma). The closed 1-variable functional equation lemma's
+hypotheses (`hf`, `hg : IsLubinTatePoly π q _`) are specific to pairs of `ℱ_π`-members and don't
+have a natural weakening that admits `λ_f` as one of the two sides — `λ_f` doesn't satisfy any
+mod-`π` congruence at all (its coefficients aren't even in `O`). This closes `§11`'s explicitly
+flagged open question: no weaker-hypothesis variant of the closed lemma, applied to some other
+choice of "inverse"-like object in place of `g(Z) = πZ`, supplies `F_π` for free.
+
+**Whether `NonarchimedeanExponential*.lean` helps.** No (high confidence, from reading the file
+list and theorem signatures directly, not recall). Those files build the *ordinary* `p`-adic
+exponential/logarithm — `exp(x) := Σ xⁿ/n!`, a universal series depending only on the ambient field's
+norm, applied to a *scalar* `x : K` — used there for the principal-units/Lie-algebra correspondence
+(`expEquiv`, `NonarchimedeanExponentialUnitsIso.lean`, etc.). `λ_f` is a structurally different
+object: it depends on the specific chosen `f ∈ ℱ_π`, is defined by iterating a *power series
+composition* `f^{(n)}` (not a factorial series), and is itself a power series (a functional-equation
+object), not a function evaluated at a scalar. Nothing in the `exp`/`log` API composes with or
+specializes to `λ_f` — the convergence-radius/filtration *bookkeeping patterns* built there
+(`exists_maximalIdeal_pow_lt_convergenceRadius`-style threshold lemmas) are the right *shape* of tool
+for a future `λ_f`-convergence proof, but no theorem transfers directly, matching the task's own
+recollection that an earlier scoping pass found `exp`/`log` doesn't directly help Lubin-Tate.
+
+**Size/risk comparison.**
+
+| Route | New prerequisites | Hard content | Assessed size vs. `§7`-`§10` |
+|---|---|---|---|
+| (a) direct multivariate recursion (`§11`) | none beyond what's already built | items (1)-(3) of `§11`: multivariate Fact 2, multivariate recursive definition (extra index dimension defeats the termination checker throughout, per `§11`), multivariate residue congruence | comparable to or exceeding `§7`-`§10` (`§11`'s own assessment) |
+| (b) logarithm route (`λ_f`, this pass) | convergence of `λ_f` as a `K`-valued power series (new `p`-adic analysis, not reducible to `NonarchimedeanExponential*.lean`) | an integrality argument for the composite `λ_f^{-1}(λ_f(X)+λ_f(Y)) ∈ O⟦X,Y⟧`, comparable in kind to (a)'s hard content per the classical-literature sequencing recalled above | **at least as large as (a), plus an added prerequisite** — not cheaper |
+| ruled-out `g(Z) = πZ` variant | — | fails outright: `IsLubinTatePoly` not satisfied | not viable, confirmed again this pass under the "different inverse" framing |
+
+**Recommendation given to the roadmap, not a directive.** This pass does not identify a route
+cheaper than `§11`'s route (a). Per this task's explicit "don't force it" instruction, no `.lean`
+file was written this pass. The two live options for `F_π` remain what `§11` already scoped: build
+the direct multivariate recursion (sized like a `§7`-`§10` repeat), or treat `F_π` as out of scope for
+now and look for other Phase 2c/3 work that doesn't require it. Nothing found this pass changes that
+choice's cost-benefit picture in favor of a third, cheaper option.
