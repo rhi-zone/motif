@@ -182,6 +182,26 @@ theorem exists_pow_lt_logUnitsThreshold {π : v.adicCompletion F} (hπnorm : ‖
     ∃ i₀ : ℕ, ∀ i ≥ i₀, ‖π‖ ^ i < NonarchimedeanExponential.logUnitsThreshold (v.adicCompletion F) p :=
   NonarchimedeanExponential.exists_pow_lt_logUnitsThreshold hπnorm
 
+omit [CharZero F] [CharP (ResidueField (v.adicCompletionIntegers F)) p] hp in
+open scoped Valued in
+/-- **`logUnitsThreshold`'s strict inequality reduces to a comparison of integer valuations.**
+For `π : v.adicCompletion F` and `i : ℕ`, `‖π‖ ^ i < logUnitsThreshold (v.adicCompletion F) p` iff
+`Valued.v π ^ i < Valued.v ((p : ℕ) : v.adicCompletion F) ^ 2` — purely a statement about the
+underlying `ℤᵐ⁰`-valued discrete valuation `Valued.v`, with no dependence on which base `e > 1`
+the ambient `RankOne` instance uses to build `‖·‖` from it (`Valued.toNormedField.norm_lt_iff`,
+Mathlib, holds for *any* rank-one `Valued` field, regardless of `e`): `‖x‖ < ‖y‖ ↔ Valued.v x <
+Valued.v y` unconditionally, so distributing the outer powers into the arguments via `norm_pow`
+and applying that lemma reduces the whole comparison to `Valued.v`, order-independent of `e`. Baked
+at this `NumberField`-free file's elaboration site for the same diamond-avoidance reason as
+`exists_pow_lt_logUnitsThreshold` above: a concrete numeral `i₀` closing a strict
+`logUnitsThreshold` bound can now be produced entirely from integer arithmetic on `Valued.v`, with
+no fresh `‖·‖` type ascription ever needed at a `NumberField`-visible call site. -/
+theorem lt_logUnitsThreshold_iff_valued_lt {π : v.adicCompletion F} {i : ℕ} :
+    ‖π‖ ^ i < NonarchimedeanExponential.logUnitsThreshold (v.adicCompletion F) p ↔
+      Valued.v π ^ i < Valued.v ((p : ℕ) : v.adicCompletion F) ^ 2 := by
+  unfold NonarchimedeanExponential.logUnitsThreshold
+  rw [← norm_pow, ← norm_pow, Valued.toNormedField.norm_lt_iff, map_pow, map_pow]
+
 /-- **The concrete instantiation of `NonarchimedeanExponential.expEquiv` for
 `v.adicCompletionIntegers F`.** `U^{(i)} ≅ (𝔪^i, +)`, for a uniformizer `π` of
 `v.adicCompletionIntegers F` and `i` above the strict `logUnitsThreshold` threshold. As with

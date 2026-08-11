@@ -839,23 +839,85 @@ set_option linter.defProp false in
 `‖·‖` type ascription (see the module docstring's diamond discussion). -/
 def hπnorm_Θ := IsDedekindDomain.HeightOneSpectrum.norm_lt_one_of_isUniformizer w isUniformizer_Θ₀
 
-set_option linter.defProp false in
-/-- Existence of some `i₀` above which `‖Θ₀‖ ^ i < logUnitsThreshold (w.adicCompletion L) p` — the
-threshold `expEquiv` needs, obtained existentially (an explicit closed-form `i₀` is unnecessary for
-instantiating the isomorphism). -/
-def exists_i₀_lt_logUnitsThreshold :=
-  IsDedekindDomain.HeightOneSpectrum.exists_pow_lt_logUnitsThreshold w (p := p) hπnorm_Θ
+/-! ### A concrete numeral for `i₀`: closing the `logUnitsThreshold` gap exactly
 
-/-- The concrete threshold index extracted from `exists_i₀_lt_logUnitsThreshold`. -/
-noncomputable def i₀ := exists_i₀_lt_logUnitsThreshold.choose
+`i₀` no longer needs to be extracted from `exists_pow_lt_logUnitsThreshold`'s existential. Via
+`lt_logUnitsThreshold_iff_valued_lt` (`NonarchimedeanExponentialAdicCompletion.lean`), the strict
+bound `‖Θ₀‖ ^ i₀ < logUnitsThreshold (w.adicCompletion L) p` reduces to a comparison of the
+underlying `Valued.v`-valuations of `Θ₀` and of the rational prime `p` itself, computable exactly:
+`Valued.v Θ₀ = WithZero.exp (-1)` (`valuation_Θ`, already in hand) and, via the ramification-index
+bridge below (`vZ`, the place of `ℤ` at `p`, plus Mathlib's `intValuation_liesOver`),
+`Valued.v (p : w.adicCompletion L) = WithZero.exp (-(p * (p - 1)))` — the *total* ramification
+index of the rational prime `p` in `L` over `ℚ` (`ramificationIdx_w`, already `p ^ 1 * (p - 1) = 6`
+for the concrete `p = 3`). The threshold exponent `2 * (p * (p - 1)) = 12` then forces the least
+working `i₀` to be `13`. -/
+
+/-- `vZ`, the unique place of `ℤ` at the rational prime `p` — needed to compute the valuation of
+the *rational integer* `p` itself (as opposed to the uniformizer `Θ₀`) inside `w.adicCompletion
+L`, via Mathlib's `IsDedekindDomain.HeightOneSpectrum.intValuation_liesOver`. -/
+def vZ : HeightOneSpectrum ℤ where
+  asIdeal := Ideal.span {(p : ℤ)}
+  isPrime := (Ideal.span_singleton_prime
+      (by exact_mod_cast (Fact.out : p.Prime).ne_zero)).mpr
+    (Nat.prime_iff_prime_int.mp (Fact.out : p.Prime))
+  ne_bot := IsDedekindDomain.HeightOneSpectrum.span_int_ne_bot (p := p)
+
+instance : w.asIdeal.LiesOver vZ.asIdeal :=
+  (inferInstance : w.asIdeal.LiesOver (Ideal.span {(p : ℤ)}))
+
+/-- `vZ.asIdeal.ramificationIdx' w.asIdeal = p ^ 1 * (p - 1)`: the bridge from Mathlib's
+`Ideal.ramificationIdx'_eq_ramificationIdx` to the already-computed absolute ramification index
+`ramificationIdx_w`. -/
+theorem ramificationIdx'_vZ_w :
+    vZ.asIdeal.ramificationIdx' w.asIdeal = p ^ 1 * (p - 1) := by
+  haveI := w.isPrime
+  rw [Ideal.ramificationIdx'_eq_ramificationIdx vZ.asIdeal w.asIdeal
+      (IsDedekindDomain.HeightOneSpectrum.span_int_ne_bot (p := p)),
+    ramificationIdx_w]
+
+theorem intValuation_vZ_p : vZ.intValuation (p : ℤ) = WithZero.exp (-1 : ℤ) :=
+  vZ.intValuation_singleton (by exact_mod_cast (Fact.out : p.Prime).ne_zero) rfl
+
+/-- `w.intValuation (p : 𝓞 L) = exp (-(p * (p - 1)))`, the algebraic (pre-completion) valuation of
+the rational prime `p` at `w` — Mathlib's `intValuation_liesOver` transported through `vZ`. -/
+theorem intValuation_w_p :
+    w.intValuation ((p : ℕ) : 𝓞 L) = WithZero.exp (-((p : ℤ) * ((p : ℤ) - 1))) := by
+  have h := IsDedekindDomain.HeightOneSpectrum.intValuation_liesOver vZ w (p : ℤ)
+  rw [intValuation_vZ_p, ramificationIdx'_vZ_w, pow_one] at h
+  have hcast : (algebraMap ℤ (𝓞 L)) (p : ℤ) = ((p : ℕ) : 𝓞 L) := map_natCast (algebraMap ℤ (𝓞 L)) p
+  rw [hcast] at h
+  have hp1 : 1 ≤ p := (Fact.out : p.Prime).pos
+  rw [← h, ← WithZero.exp_nsmul, nsmul_eq_mul, mul_neg_one, Nat.cast_mul, Nat.cast_sub hp1,
+    Nat.cast_one]
+
+/-- `Valued.v (p : w.adicCompletion L) = exp (-(p * (p - 1)))`, transporting `intValuation_w_p`
+through the completion (`valuedAdicCompletion_eq_valuation`, `valuation_of_algebraMap`). -/
+theorem valued_w_p :
+    Valued.v (((p : ℕ) : w.adicCompletion L)) = WithZero.exp (-((p : ℤ) * ((p : ℤ) - 1))) := by
+  rw [show ((p : ℕ) : w.adicCompletion L) =
+      algebraMap L (w.adicCompletion L) (algebraMap (𝓞 L) L ((p : ℕ) : 𝓞 L)) from by
+    rw [map_natCast, map_natCast],
+    show algebraMap L (w.adicCompletion L) (algebraMap (𝓞 L) L ((p : ℕ) : 𝓞 L)) =
+      ((algebraMap (𝓞 L) L ((p : ℕ) : 𝓞 L) : L) : w.adicCompletion L) from rfl,
+    IsDedekindDomain.HeightOneSpectrum.valuedAdicCompletion_eq_valuation',
+    w.valuation_of_algebraMap, intValuation_w_p]
+
+/-- **The concrete numeral: `i₀ := 13`.** No `Classical.choose` — derived directly from the
+`Valued.v`-arithmetic above (`2 * (p * (p - 1)) + 1 = 13` for `p = 3`). -/
+def i₀ : ℕ := 13
 
 set_option linter.defProp false in
-/-- `∀ i ≥ i₀, ‖Θ₀‖ ^ i < logUnitsThreshold (w.adicCompletion L) p`, the defining property of `i₀`. -/
-def hi₀_spec := exists_i₀_lt_logUnitsThreshold.choose_spec
-
-set_option linter.defProp false in
-/-- The strict threshold bound at `i := i₀` itself, exactly what `expEquiv` wants. -/
-def hthreshStrict_i₀ := hi₀_spec i₀ le_rfl
+/-- **The strict threshold bound at the concrete `i₀ := 13`**, exactly what `expEquiv` wants —
+reduced, via `lt_logUnitsThreshold_iff_valued_lt`, to the integer inequality `-13 < -12` between
+the `Valued.v`-exponents of `Θ₀ ^ i₀` and `(p : w.adicCompletion L) ^ 2`. -/
+def hthreshStrict_i₀ :=
+  (IsDedekindDomain.HeightOneSpectrum.lt_logUnitsThreshold_iff_valued_lt
+      (v := w) (F := L) (p := p) (π := (Θ₀ : w.adicCompletion L)) (i := i₀)).mpr (by
+    show Valued.v (Θ : w.adicCompletion L) ^ i₀ < Valued.v (((p : ℕ) : w.adicCompletion L)) ^ 2
+    rw [valuation_Θ, valued_w_p, ← WithZero.exp_nsmul, ← WithZero.exp_nsmul, WithZero.exp_lt_exp]
+    show (i₀ : ℕ) • (-1 : ℤ) < (2 : ℕ) • (-((p : ℤ) * ((p : ℤ) - 1)))
+    simp only [nsmul_eq_mul, i₀]
+    norm_num)
 
 /-- **Capstone: `U_{L_w}^{(i₀)} ≅ (𝔪_{L_w}^{i₀}, +)`, instantiated against the concrete
 mixed-characteristic wild Galois instance `K = ℚ(ζ_3) ⊆ L = ℚ(ζ_9)`.** The first time the entire
