@@ -45,7 +45,7 @@ stated only for finite *separable* extensions).
 
 noncomputable section
 
-open IsDedekindDomain
+open IsDedekindDomain IsLocalRing
 
 namespace Valuation
 
@@ -186,6 +186,70 @@ instance instIsIntegralClosureAdicCompletionIntegers :
   isIntegral_iff {x} := by
     rw [isIntegral_iff_mem_adicCompletionIntegers K L v w]
     exact ⟨fun hx => ⟨⟨x, hx⟩, rfl⟩, fun ⟨y, hy⟩ => hy ▸ y.2⟩
+
+/-! ### Galois automorphisms preserve `w.adicCompletionIntegers L` and its maximal-ideal filtration
+EXACTLY -/
+
+omit [Algebra.IsIntegral R S] in
+/-- **A `K_v`-algebra automorphism of `L_w` preserves `w.adicCompletionIntegers L`.** `σ` fixes
+`v.adicCompletion K` pointwise, so `σ.toAlgHom` is an algebra map over `v.adicCompletionIntegers K`
+too (via `instIsScalarTowerAdicCompletionIntegersAdicCompletion`); `IsIntegral.map` then carries
+integrality over `v.adicCompletionIntegers K` along `σ`, and `isIntegral_iff_mem_adicCompletionIntegers`
+converts this back to membership in `w.adicCompletionIntegers L`. -/
+theorem mem_adicCompletionIntegers_algEquiv
+    (σ : w.adicCompletion L ≃ₐ[v.adicCompletion K] w.adicCompletion L) {x : w.adicCompletion L}
+    (hx : x ∈ w.adicCompletionIntegers L) : σ x ∈ w.adicCompletionIntegers L := by
+  rw [← isIntegral_iff_mem_adicCompletionIntegers K L v w] at hx ⊢
+  exact hx.map σ.toAlgHom
+
+omit [Algebra.IsIntegral R S] in
+/-- **The restriction of a `K_v`-algebra automorphism of `L_w` to `w.adicCompletionIntegers L`, as
+a ring automorphism of that subring.** Built directly from `mem_adicCompletionIntegers_algEquiv`
+applied to `σ` and `σ.symm`. -/
+noncomputable def restrictAdicCompletionIntegers
+    (σ : w.adicCompletion L ≃ₐ[v.adicCompletion K] w.adicCompletion L) :
+    w.adicCompletionIntegers L ≃+* w.adicCompletionIntegers L where
+  toFun x := ⟨σ x, mem_adicCompletionIntegers_algEquiv K L v w σ x.2⟩
+  invFun x := ⟨σ.symm x, mem_adicCompletionIntegers_algEquiv K L v w σ.symm x.2⟩
+  left_inv x := by ext; simp
+  right_inv x := by ext; simp
+  map_mul' x y := by ext; simp
+  map_add' x y := by ext; simp
+
+omit [Algebra.IsIntegral R S] in
+@[simp]
+theorem coe_restrictAdicCompletionIntegers
+    (σ : w.adicCompletion L ≃ₐ[v.adicCompletion K] w.adicCompletion L)
+    (x : w.adicCompletionIntegers L) :
+    (restrictAdicCompletionIntegers K L v w σ x : w.adicCompletion L) = σ (x : w.adicCompletion L) :=
+  rfl
+
+omit [Algebra.IsIntegral R S] in
+/-- **`restrictAdicCompletionIntegers σ` fixes the maximal ideal of `w.adicCompletionIntegers L`
+exactly**, for *any* `K_v`-algebra automorphism `σ` of `L_w`. A ring isomorphism sends a maximal
+ideal to a maximal ideal (`Ideal.map_isMaximal_of_equiv`), and `w.adicCompletionIntegers L` is a
+local ring with a unique maximal ideal (`IsLocalRing.eq_maximalIdeal`), so the image is that same
+ideal — no epsilon or Lipschitz-constant estimate is needed, unlike the analytic ε/δ route this
+lemma replaces in `AdicCompletionNormExpTrace.lean`. -/
+theorem map_maximalIdeal_restrictAdicCompletionIntegers
+    (σ : w.adicCompletion L ≃ₐ[v.adicCompletion K] w.adicCompletion L) :
+    Ideal.map (restrictAdicCompletionIntegers K L v w σ) (maximalIdeal (w.adicCompletionIntegers L))
+      = maximalIdeal (w.adicCompletionIntegers L) :=
+  IsLocalRing.eq_maximalIdeal
+    (Ideal.map_isMaximal_of_equiv (restrictAdicCompletionIntegers K L v w σ))
+
+omit [Algebra.IsIntegral R S] in
+/-- **`σ` preserves membership in `𝔪_{L_w}^i` exactly, for the SAME `i`.** The payoff of this
+section: unlike the generic ε/δ continuity argument
+(`AdicCompletionNormExpTrace.lean`'s now-obsolete `exists_delta_of_continuous`), the threshold
+level `i` here needs no adjustment at all when passing from `x` to `σ x` — Galois conjugation is
+an *exact* symmetry of the filtration, not merely a continuous one. -/
+theorem restrictAdicCompletionIntegers_mem_maximalIdeal_pow
+    (σ : w.adicCompletion L ≃ₐ[v.adicCompletion K] w.adicCompletion L) {i : ℕ}
+    {x : w.adicCompletionIntegers L} (hx : x ∈ maximalIdeal (w.adicCompletionIntegers L) ^ i) :
+    restrictAdicCompletionIntegers K L v w σ x ∈ maximalIdeal (w.adicCompletionIntegers L) ^ i := by
+  rw [← map_maximalIdeal_restrictAdicCompletionIntegers K L v w σ, ← Ideal.map_pow]
+  exact Ideal.mem_map_of_mem _ hx
 
 /-! ### `Module.Finite` / `Module.Free` -/
 
