@@ -288,6 +288,66 @@ theorem coeff_pow_add_C_mul_X_pow_sub_coeff_pow {S : Type*} [CommRing S] {A : S�
     rw [← hcoeff]
     split_ifs <;> ring
 
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] in
+/-- **Fact 2, the linear-correction identity in `finsum` form.** Assembling
+`coeff_pow_add_C_mul_X_pow_sub_coeff_pow` (Fact 2') termwise across `coeff_subst'`'s `finsum`: the
+`n`-th coefficient of substituting `A + C c * X^n` into `h` differs from that of substituting `A`
+alone by exactly `c * coeff 1 h` — only the `d = 1` term of the `finsum` sees the correction. -/
+theorem coeff_subst_add_C_mul_X_pow {R : Type*} [CommRing R]
+    (h : R⟦X⟧) {A : R⟦X⟧} (hA : constantCoeff A = 0) (c : R) {n : ℕ} (hn : 1 ≤ n) :
+    coeff n (h.subst (A + C c * X ^ n)) = coeff n (h.subst A) + c * coeff 1 h := by
+  have hA' : PowerSeries.HasSubst A := HasSubst.of_constantCoeff_zero' hA
+  have hAc' : PowerSeries.HasSubst (A + C c * X ^ n) := by
+    apply HasSubst.of_constantCoeff_zero'
+    rw [map_add, hA, zero_add, ← coeff_zero_eq_constantCoeff, coeff_C_mul, coeff_X_pow,
+      if_neg (by omega), mul_zero]
+  have hfin1 : Function.HasFiniteSupport (fun d ↦ coeff d h • coeff n (A ^ d)) :=
+    coeff_subst_finite' hA' h n
+  have hfin2 : Function.HasFiniteSupport (fun d ↦ coeff d h • (if d = 1 then c else 0)) :=
+    .subset (Set.finite_singleton 1) (fun d hd ↦ by
+      by_contra hd1
+      exact hd (by simp [show d ≠ 1 from fun h ↦ hd1 (by simp [h])]))
+  calc coeff n (h.subst (A + C c * X ^ n))
+      = finsum (fun d ↦ coeff d h • coeff n ((A + C c * X ^ n) ^ d)) := coeff_subst' hAc' h n
+    _ = finsum (fun d ↦ coeff d h • (coeff n (A ^ d) + if d = 1 then c else 0)) :=
+        finsum_congr fun d ↦ by rw [coeff_pow_add_C_mul_X_pow_sub_coeff_pow hA c hn d]
+    _ = finsum (fun d ↦ coeff d h • coeff n (A ^ d)) +
+          finsum (fun d ↦ coeff d h • (if d = 1 then c else 0)) := by
+        simp_rw [smul_add]; exact finsum_add_distrib hfin1 hfin2
+    _ = coeff n (h.subst A) + c * coeff 1 h := by
+        rw [← coeff_subst' hA' h n, finsum_eq_single _ 1]
+        · simp [mul_comm]
+        · intro d hd; rw [if_neg hd, smul_zero]
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] in
+/-- **Fact 4, the leading coefficient of `g^n`.** For `b` with `coeff 0 b = 0` and
+`coeff 1 b = u`, the `n`-th coefficient of `b^n` is `u^n`: by induction on `n`, using that
+`coeff i (b^n) = 0` for `i < n` (`le_order_pow_of_constantCoeff_eq_zero`) to collapse
+`coeff (n+1) (b^n * b)`'s convolution sum to its `(n, 1)` term, and `coeff 0 b = 0` to kill the
+`(n+1, 0)` term. -/
+theorem coeff_pow_self_of_coeff_zero_eq_zero {S : Type*} [CommRing S] {b : S⟦X⟧} {u : S}
+    (hb0 : coeff 0 b = 0) (hb1 : coeff 1 b = u) (n : ℕ) :
+    coeff n (b ^ n) = u ^ n := by
+  induction n with
+  | zero => simp
+  | succ n ih =>
+    have hconst : constantCoeff b = 0 := by rwa [← coeff_zero_eq_constantCoeff]
+    have horder : (n : ℕ∞) ≤ (b ^ n).order := le_order_pow_of_constantCoeff_eq_zero n hconst
+    rw [pow_succ, coeff_mul, Finset.sum_eq_single (n, 1)]
+    · rw [ih, hb1]; ring
+    · rintro ⟨i, j⟩ hij hne
+      rw [Finset.mem_antidiagonal] at hij
+      rcases Nat.lt_trichotomy i n with hi | hi | hi
+      · have hlt : (i : ℕ∞) < (b ^ n).order := lt_of_lt_of_le (by exact_mod_cast hi) horder
+        rw [coeff_of_lt_order i hlt, zero_mul]
+      · exact absurd (Prod.ext hi (by omega)) hne
+      · have hj0 : j = 0 := by omega
+        rw [hj0, hb0, mul_zero]
+    · intro hmem
+      exact absurd
+        (show ((n, 1) : ℕ × ℕ) ∈ Finset.antidiagonal (n + 1) from Finset.mem_antidiagonal.mpr rfl)
+        hmem
+
 /-- **The recursive state for the functional equation lemma's intertwining power series `φ`,
 bundled with its own zero-constant-term invariant.** `phiState hπ a hf hg n` packages, for
 degree `n`: the newly-fixed coefficient (`.1.1`) and the partial sum of `φ`'s coefficients up
