@@ -433,6 +433,13 @@ theorem π₀_ne_zero : (π₀ : v.adicCompletionIntegers K) ≠ 0 := by
     Valuation.map_zero] at this
   exact absurd this.symm (by simp)
 
+/-- `(π₀ : v.adicCompletion K) ≠ 0`, the field-level analogue of `π₀_ne_zero`. -/
+theorem π₀_coe_ne_zero : (π₀ : v.adicCompletion K) ≠ 0 := by
+  intro h0
+  have := valuation_π₀
+  rw [h0, Valuation.map_zero] at this
+  exact absurd this.symm (by simp)
+
 theorem isUniformizer_π₀ :
     Valuation.IsUniformizer Valued.v (π₀ : v.adicCompletion K) := by
   rw [Valuation.IsUniformizer.iff, valuation_π₀,
@@ -840,6 +847,10 @@ set_option linter.defProp false in
 `‖·‖` type ascription (see the module docstring's diamond discussion). -/
 def hπnorm_Θ := IsDedekindDomain.HeightOneSpectrum.norm_lt_one_of_isUniformizer w isUniformizer_Θ₀
 
+set_option linter.defProp false in
+/-- `‖π₀‖ < 1`, from `isUniformizer_π₀`, the `K_v`-side analogue of `hπnorm_Θ`. -/
+def hπnorm_π₀ := IsDedekindDomain.HeightOneSpectrum.norm_lt_one_of_isUniformizer v isUniformizer_π₀
+
 /-! ### A concrete numeral for `i₀`: closing the `logUnitsThreshold` gap exactly
 
 `i₀` no longer needs to be extracted from `exists_pow_lt_logUnitsThreshold`'s existential. Via
@@ -1163,6 +1174,24 @@ def exists_maximalIdeal_pow_norm_trace_lt_i3 (i : ℕ) (hi : i ≥ 7) (x : w.adi
       (K := K) (L := L) (v := v) (w := w) (a := aK) (πL := Θ₀) hπnorm_Θ maximalIdeal_L₀_eq
       normΘ_pow_seven_lt_bL.le i hi x hx)
     hn_aK
+
+set_option linter.defProp false in
+/-- **`∀ i ≥ 4, ∀ x ∈ 𝔪_{L_w}^i, ‖x‖ < convergenceRadius L_w p`** — the `i1 := 4` instance of
+`exists_maximalIdeal_pow_norm_lt`'s conclusion, via `forall_maximalIdeal_pow_norm_lt` and
+`hthresh_i1`. -/
+def forall_maximalIdeal_pow_norm_lt_i1 :=
+  IsDedekindDomain.HeightOneSpectrum.forall_maximalIdeal_pow_norm_lt (v := w) (F := L)
+    hπnorm_Θ maximalIdeal_L₀_eq hthresh_i1
+
+set_option linter.defProp false in
+/-- **The concrete numeral: `iN := max i1 i3 = max 4 7 = 7`.** Composes `forall_maximalIdeal_pow_norm_lt_i1`
+(`i1 := 4`) and `exists_maximalIdeal_pow_norm_trace_lt_i3` (`i3 := 7`) via
+`forall_maximalIdeal_pow_norm_exp_eq_exp_trace`, the concrete-witness core of
+`exists_maximalIdeal_pow_norm_exp_eq_exp_trace`. The threshold `max 4 7` in the inferred type
+reduces definitionally to `7`. -/
+def forall_maximalIdeal_pow_norm_exp_eq_exp_trace_iN :=
+  IsDedekindDomain.HeightOneSpectrum.forall_maximalIdeal_pow_norm_exp_eq_exp_trace K L v w p
+    hnormK hnormL forall_maximalIdeal_pow_norm_lt_i1 exists_maximalIdeal_pow_norm_trace_lt_i3
 
 /-! ### Status: both blockers closed, the `exp`/`log` machinery runs end-to-end
 

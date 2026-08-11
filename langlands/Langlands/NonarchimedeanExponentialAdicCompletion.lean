@@ -200,6 +200,17 @@ theorem exists_pow_lt_logUnitsThreshold {π : v.adicCompletion F} (hπnorm : ‖
   NonarchimedeanExponential.exists_pow_lt_logUnitsThreshold hπnorm
 
 omit [CharZero F] [CharP (ResidueField (v.adicCompletionIntegers F)) p] hp in
+/-- **The concrete instantiation of `NonarchimedeanExponential.lt_logUnitsThreshold_of_le` for
+`v.adicCompletion F`.** Same diamond-avoidance reason as `exists_pow_lt_logUnitsThreshold` above:
+shifts an already-closed strict `logUnitsThreshold` numeral bound up to any larger `i`, with `K :=
+v.adicCompletion F` baked in here rather than left generic. -/
+theorem lt_logUnitsThreshold_of_le {π : v.adicCompletion F} (hπnorm : ‖π‖ ≤ 1) {i i₀ : ℕ}
+    (hi : i₀ ≤ i)
+    (hthresh : ‖π‖ ^ i₀ < NonarchimedeanExponential.logUnitsThreshold (v.adicCompletion F) p) :
+    ‖π‖ ^ i < NonarchimedeanExponential.logUnitsThreshold (v.adicCompletion F) p :=
+  NonarchimedeanExponential.lt_logUnitsThreshold_of_le hπnorm hi hthresh
+
+omit [CharZero F] [CharP (ResidueField (v.adicCompletionIntegers F)) p] hp in
 open scoped Valued in
 /-- **`logUnitsThreshold`'s strict inequality reduces to a comparison of integer valuations.**
 For `π : v.adicCompletion F` and `i : ℕ`, `‖π‖ ^ i < logUnitsThreshold (v.adicCompletion F) p` iff

@@ -384,6 +384,16 @@ theorem exists_pow_lt_logUnitsThreshold {π : K} (hπnorm : ‖π‖ < 1) :
   obtain ⟨i₀, hi₀⟩ := exists_pow_lt_of_lt_one h0 hπnorm
   exact ⟨i₀, fun i hi => lt_of_le_of_lt (pow_le_pow_of_le_one (norm_nonneg _) hπnorm.le hi) hi₀⟩
 
+omit hA [IsUltrametricDist K] [CharZero K] [CompleteSpace K] hp in
+/-- **The concrete-witness core of `exists_pow_lt_logUnitsThreshold`.** Given a single strict bound
+`‖π‖ ^ i₀ < logUnitsThreshold K p`, antitonicity of `i ↦ ‖π‖ ^ i` (`‖π‖ ≤ 1`) upgrades it to the
+same bound for every `i ≥ i₀` — the piece that lets a concrete instance shift an already-closed
+numeral threshold up to whatever larger numeral a downstream combination (`max`, `+`) needs, with no
+fresh `‖·‖` type ascription. -/
+theorem lt_logUnitsThreshold_of_le {π : K} (hπnorm : ‖π‖ ≤ 1) {i i₀ : ℕ} (hi : i₀ ≤ i)
+    (hthresh : ‖π‖ ^ i₀ < logUnitsThreshold K p) : ‖π‖ ^ i < logUnitsThreshold K p :=
+  lt_of_le_of_lt (pow_le_pow_of_le_one (norm_nonneg _) hπnorm hi) hthresh
+
 omit hA in
 /-- **`log` matches `‖·‖` exactly, below the strict threshold** (the no-shift landing bound):
 for `z` with `‖z‖ < logUnitsThreshold K p`, `‖log hnorm z‖ = ‖z‖`. Trivial at `z = 0` (`log_zero`);

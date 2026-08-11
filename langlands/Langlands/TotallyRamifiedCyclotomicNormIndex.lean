@@ -121,6 +121,105 @@ theorem exists_index_normUnitsK₀_dvd :
   · rwa [hidx] at hdvd1
   · rwa [hidx] at hdvd2
 
+/-! ### Closing `j` to a concrete numeral
+
+`exists_map_principalUnitsPow_normUnitsK₀_eq`'s `i₀ := max (max iL iN) (iK * e) = max (max 13 7) (5
+* 3) = max 13 15 = 15`, with `iL := 13` (`hthreshStrict_i₀`, `TotallyRamifiedCyclotomicConcreteExample`),
+`iN := 7` (`forall_maximalIdeal_pow_norm_exp_eq_exp_trace_iN`, closing `i1 := 4`/`i3 := 7` to `iN :=
+max 4 7 = 7`), `iK := 5` (`hthreshStrict_iK`), `e := 3` (`ramificationIdx'_eq`).
+`lt_logUnitsThreshold_of_le` shifts `hthreshStrict_i₀`/`hthreshStrict_iK` up from their own witnesses
+to the concrete `i := 15` (resp. `(15 + 6) / e = 7`) `map_principalUnitsPow_normUnitsK₀_eq` needs,
+and `forall_maximalIdeal_pow_norm_exp_eq_exp_trace_iN` supplies `hexp` at that same `i := 15` (`15 ≥
+max 4 7`). This closes the wild-case norm-group IMAGE to a genuine closed-form EQUALITY (not merely
+existential) at the concrete numeral `i := 15`. -/
+
+set_option linter.defProp false in
+/-- `‖Θ₀‖ ^ 15 < logUnitsThreshold (w.adicCompletion L) p`, shifting `hthreshStrict_i₀` (`i := 13`)
+up to `i := 15` via `lt_logUnitsThreshold_of_le`. -/
+def hthreshL_i₀ :=
+  IsDedekindDomain.HeightOneSpectrum.lt_logUnitsThreshold_of_le (v := w) (F := L) (p := p)
+    (π := (Θ₀ : w.adicCompletion L)) hπnorm_Θ.le (i := 15) (i₀ := 13) (by norm_num) hthreshStrict_i₀
+
+set_option linter.defProp false in
+/-- `‖π₀‖ ^ ((15 + 6) / (v.asIdeal.ramificationIdx' w.asIdeal)) < logUnitsThreshold (v.adicCompletion K) p`,
+shifting `hthreshStrict_iK` (`i := 5`) up to the concrete exponent `(15 + 6) / e = 7` (`e := 3`,
+`ramificationIdx'_eq`) via `lt_logUnitsThreshold_of_le`. Stated with the exponent left UNREDUCED
+(`(15 + 6) / (v.asIdeal.ramificationIdx' w.asIdeal)`, not the literal `7`) to match
+`map_principalUnitsPow_normUnitsK₀_eq`'s hypothesis shape exactly. -/
+def hthreshK_i₀ :=
+  IsDedekindDomain.HeightOneSpectrum.lt_logUnitsThreshold_of_le (v := v) (F := K) (p := p)
+    (π := (π₀ : v.adicCompletion K)) hπnorm_π₀.le
+    (i := (15 + 6) / (v.asIdeal.ramificationIdx' w.asIdeal)) (i₀ := 5)
+    (by rw [ramificationIdx'_eq]; norm_num) hthreshStrict_iK
+
+set_option linter.defProp false in
+/-- `∀ x ∈ 𝔪_{L_w}^15, N(exp x) = exp(Tr x)`, the `i := 15` instance of
+`forall_maximalIdeal_pow_norm_exp_eq_exp_trace_iN` (`15 ≥ max 4 7`). -/
+def hexp_i₀ := forall_maximalIdeal_pow_norm_exp_eq_exp_trace_iN 15 (by norm_num)
+
+set_option linter.defProp false in
+/-- **`Subgroup.map (normUnitsK₀ K L v w) (principalUnitsPow L₀ 15) = principalUnitsPow K₀ 7`,
+EXACTLY, for the concrete instance.** Instantiates `map_principalUnitsPow_normUnitsK₀_eq`
+(`AdicCompletionNormGroupImage.lean`) with every witness closed to a literal numeral: `d := 6`
+(`differentIdeal_eq`), `πK := π₀`, `πL := Θ₀`, `i := 15`, giving `(i + d) / e = (15 + 6) / 3 = 7` on
+the `K₀`-side. No existential anywhere — the first fully closed-form equality (not merely a bound)
+in this repo's wild-case norm-group-image thread. -/
+def map_principalUnitsPow_normUnitsK₀_eq_15 :=
+  IsDedekindDomain.HeightOneSpectrum.map_principalUnitsPow_normUnitsK₀_eq K L v w p
+    differentIdeal_eq hnormK hnormL maximalIdeal_eq_span_π₀ π₀_coe_ne_zero hπnorm_π₀
+    maximalIdeal_L₀_eq Θ_ne_zero hπnorm_Θ hthreshL_i₀ hthreshK_i₀ hexp_i₀
+
+/-- `(15 + 6) / v.asIdeal.ramificationIdx' w.asIdeal = 7`, closing the exponent
+`map_principalUnitsPow_normUnitsK₀_eq_15` produces to the literal numeral `7` (`j + 1` for `j := 6`
+below). -/
+theorem exponent_K_i₀_eq : (15 + 6) / (v.asIdeal.ramificationIdx' w.asIdeal) = 7 := by
+  rw [ramificationIdx'_eq]; norm_num
+
+set_option linter.defProp false in
+/-- **`Subgroup.map (normUnitsK₀ K L v w) (principalUnitsPow L₀ 15) = principalUnitsPow K₀ 7`**,
+`map_principalUnitsPow_normUnitsK₀_eq_15` with its exponent reduced to the literal `7` via
+`exponent_K_i₀_eq`. -/
+def map_principalUnitsPow_normUnitsK₀_eq_15_7 :=
+  exponent_K_i₀_eq ▸ map_principalUnitsPow_normUnitsK₀_eq_15
+
+set_option linter.defProp false in
+/-- **`(MonoidHom.range (normUnitsK₀ K L v w)).index ∣ (principalUnitsPow K₀ 7).index`** and the
+matching relative-index bound — the `i := 15`, `j := 6` instantiation of
+`exists_index_dvd_index_principalUnitsPow`'s two divisibility conclusions, built directly from
+`map_principalUnitsPow_normUnitsK₀_eq_15_7` (an EQUALITY, stronger than what the generic existential
+proof produces) via `Subgroup.index_dvd_of_le`/`relIndex_range_localNormMap_units_dvd_index_map_normUnitsK₀`,
+mirroring `AdicCompletionNormGroupIndex.exists_index_dvd_index_principalUnitsPow`'s own proof
+verbatim but with `i := 15`, `j := 6` concrete throughout. -/
+def index_normUnitsK₀_dvd_index_principalUnitsPow_7 :
+    (MonoidHom.range (IsDedekindDomain.HeightOneSpectrum.normUnitsK₀ K L v w)).index ∣
+        (ValuationSubring.principalUnitsPow (v.adicCompletionIntegers K) 7).index ∧
+      (MonoidHom.range (IsDedekindDomain.HeightOneSpectrum.localNormMap K L v w)).relIndex
+          (v.adicCompletionIntegers K).units ∣
+        (ValuationSubring.principalUnitsPow (v.adicCompletionIntegers K) 7).index :=
+  ⟨map_principalUnitsPow_normUnitsK₀_eq_15_7 ▸
+      Subgroup.index_dvd_of_le (Subgroup.map_le_range _ _),
+    map_principalUnitsPow_normUnitsK₀_eq_15_7 ▸
+      IsDedekindDomain.HeightOneSpectrum.relIndex_range_localNormMap_units_dvd_index_map_normUnitsK₀
+        K L v w _⟩
+
+/-- **The final concrete numeral: `[K₀ˣ : N(L₀ˣ)] ∣ 2 * 3 ^ 6`, and the matching relative-index
+bound, for the concrete instance `K = ℚ_3(ζ_3) ⊆ L = ℚ_3(ζ_9)`.** The `j := 6` instantiation of
+`exists_index_normUnitsK₀_dvd` above, with `j` closed to a literal numeral throughout — no
+existential anywhere in the chain from `exp`/`log` (`i1 := 4`, `i3 := 7`) through the norm-group
+image (`i := 15`) to this index bound. Still a genuine DIVISIBILITY bound, not an equality: the
+upstream `ValuationSubring.index_principalUnitsPow`/`relIndex_range_localNormMap_units_dvd_index_map_normUnitsK₀`
+route only ever produces `∣`, never `=`. -/
+theorem index_normUnitsK₀_dvd_two_mul_three_pow_six :
+    (MonoidHom.range (IsDedekindDomain.HeightOneSpectrum.normUnitsK₀ K L v w)).index ∣
+        2 * 3 ^ (6 : ℕ) ∧
+      (MonoidHom.range (IsDedekindDomain.HeightOneSpectrum.localNormMap K L v w)).relIndex
+          (v.adicCompletionIntegers K).units ∣ 2 * 3 ^ (6 : ℕ) := by
+  have hidx := ValuationSubring.index_principalUnitsPow (v.adicCompletionIntegers K)
+    maximalIdeal_eq_span_π₀ π₀_ne_zero 6
+  rw [nat_card_residueFieldK₀_units_eq, nat_card_residueFieldK₀_eq] at hidx
+  obtain ⟨hdvd1, hdvd2⟩ := index_normUnitsK₀_dvd_index_principalUnitsPow_7
+  exact ⟨hidx ▸ hdvd1, hidx ▸ hdvd2⟩
+
 end Langlands.TotallyRamifiedCyclotomicConcreteExample
 
 end
