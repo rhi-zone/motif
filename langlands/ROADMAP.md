@@ -9050,3 +9050,120 @@ existence of *a* Lubin-Tate polynomial, correctly scoped down from a false uniqu
 functional equation lemma, the associated formal group law `F_π` with `f_π` as an endomorphism, and
 everything built on top of those (division points, the Lubin-Tate tower, the local reciprocity map
 via the Lubin-Tate route) remain entirely unattempted future work.
+
+## 8. Phase 2c, second pass: the functional equation lemma's crux algebraic fact — the
+residue-field congruence — proved; the recursive assembly of the intertwining power series itself
+left open, with the precise reason why documented
+
+Continuation of `§7`'s Lubin-Tate thread. The task for this pass was the **functional equation
+lemma** itself: given `f, g ∈ ℱ_π` and a linear starting form, build a power series `φ` with
+`φ ≡` that linear form `(mod deg 2)` and `f(φ(X)) = φ(g(X))`, by solving one linear equation in `O`
+per total-degree step. New file `Langlands/LubinTateFunctionalEquation.lean`.
+
+**What is proved.** For a discrete valuation ring `O` with finite residue field, `q := residueCard
+O` (genuinely the residue field's own size, not an arbitrary natural number — see below):
+
+* `LubinTate.residueCharP`, `LubinTate.residueDegree`, `LubinTate.card_residueField_eq` — the
+  residue characteristic `p` and the `n` with `q = p ^ n`, packaged exactly the way
+  `WeilGroup.residueCharP`/`residueDegree`/`card_residueField_eq` already do for `𝓀[K]`, specialized
+  here to `ResidueField O`.
+* `LubinTate.pow_residueCard_eq_subst_X_pow (h : (ResidueField O)⟦X⟧) : h ^ q = h.subst (X ^ q)` —
+  the Frobenius/`q`-th-power identity `h(X)^q = h(X^q)`, valid for *every* power series `h` over the
+  residue field (no hypothesis on `h` beyond living in that ring). Proved via
+  `MvPowerSeries.map_iterateFrobenius_expand` (`h^(p^n) = map (iterateFrobenius p n) (expand (p^n)
+  h)`) together with `FiniteField.pow_card` showing the iterated Frobenius `x ↦ x^q` is literally the
+  identity map on a field with exactly `q` elements — this is where "the residue field has *exactly*
+  `q` elements" (as opposed to characteristic dividing `q`, or `q` merely a `p`-power) is used, and it
+  is used essentially: without it the iterated Frobenius is an endomorphism, not the identity, and the
+  argument below breaks.
+* `LubinTate.map_residue_subst_eq_map_residue_subst {f g φ : O⟦X⟧} (hf : IsLubinTatePoly π q f) (hg :
+  IsLubinTatePoly π q g) (hφ0 : coeff 0 φ = 0) : map (residue O) (f.subst φ) = map (residue O)
+  (φ.subst g)` — **the crux fact**: reducing mod `π`, `f` and `g` act identically on *any* `φ` with
+  zero constant term. Both sides reduce to `(map (residue O) φ) ^ q`: the left via `f ≡ X^q (mod π)`
+  applied directly (`(X^q).subst (map residue φ) = (map residue φ)^q`), the right via `g ≡ X^q (mod
+  π)` together with `pow_residueCard_eq_subst_X_pow` applied to `map residue φ` itself (`(map residue
+  φ).subst (X^q) = (map residue φ)^q`). The two computations meet at the same value by two genuinely
+  different routes (substituting a power *into* `X^q` vs. substituting `X^q` *into* an arbitrary
+  series), which is exactly why the fact needs the Frobenius identity and isn't just definitional
+  unfolding.
+* `LubinTate.uniformizer_dvd_coeff_subst_sub_subst` — the coefficient-wise form: `π ∣ coeff n
+  (φ.subst g) - coeff n (f.subst φ)` for every `n`, via `IsLocalRing.residue_eq_zero_iff` and
+  `IsDiscreteValuationRing.irreducible_iff_uniformizer`.
+
+`lake build` clean across the whole repo (`8748` jobs, only pre-existing unrelated warnings, no new
+ones); `#print axioms` on all three headline theorems shows only `propext, Classical.choice,
+Quot.sound`; no `sorry` anywhere in the new file.
+
+**Why this is the crux, precisely, and what it settles from the task's own open question.** The task
+brief for this pass asked, before writing any Lean, to work out by hand whether the degree-`d`
+step of the recursion is solvable because its coefficient is a *unit*, and where completeness of `O`
+is actually load-bearing. Hand computation (Taylor-expanding `f(φ_N + c)` and `φ_N(g)`'s degree-`(N+1)`
+part, `φ_N` the coefficients already fixed) gives: the coefficient of the new unknown `c` at
+degree-`(N+1)` is `π - π^{N+1} = π·(1 - π^N)`. This is **not** itself a unit (it is `π` times one) —
+solving for `c` needs *both* that `1 - π^N` is a unit (true in any local ring for `N ≥ 1`, via
+`IsLocalRing.isUnit_one_sub_self_of_mem_nonunits`, no completeness needed) *and* that the
+degree-`(N+1)` right-hand side is divisible by `π` (so the `π` factor cancels, `O` being a domain).
+That second fact is exactly `uniformizer_dvd_coeff_subst_sub_subst` above — and it turns out to hold
+**unconditionally for any admissible `φ`**, not merely once `φ` is already known to satisfy the
+equation up to lower degree, because the underlying congruence
+(`map_residue_subst_eq_map_residue_subst`) is a global fact about `f`, `g`, and the residue field's
+Frobenius, not an inductive consequence of partial correctness. This is a genuine simplification of
+what a naive reading of the classical proof (Lubin–Tate 1965; Serre, Ch. IV) suggests: the standard
+exposition proves the mod-`π` congruence only along the induction (assuming lower degrees already
+match), whereas here it is available up front, for every degree simultaneously, before any recursion
+is set up. **No use of completeness of `O` appears anywhere in this file** — the entire argument is
+algebraic (Frobenius on the residue field, unit/non-unit structure of the local ring, divisibility in
+a domain); completeness would only become relevant if one wanted to characterize `φ` as a *limit* of
+truncations rather than as a bare `ℕ → O` coefficient function, which `MvPowerSeries`/`PowerSeries`
+in Mathlib does not require (a power series is definitionally just a coefficient function, matching
+the task brief's own observation that assembling one is "definitionally free").
+
+**What is explicitly NOT established, and why this pass stopped here.** The functional equation
+lemma's existence half — actually assembling `φ : O⟦X⟧` degree by degree and proving `f.subst φ =
+φ.subst g` in full — is not attempted. What remains, precisely:
+
+* A recursive definition `phiCoeff : ℕ → O` mirroring the shape of Mathlib's own
+  `PowerSeries.substInvFun` (`Mathlib/RingTheory/PowerSeries/Substitution.lean`): `phiCoeff 0 = 0`,
+  `phiCoeff 1 = a` (the linear coefficient), `phiCoeff (d+2) := ⅟u * w` where `u` is the unit
+  `(1 - π^{d+1})` (via `IsLocalRing.isUnit_one_sub_self_of_mem_nonunits`) and `w` is the `Exists.choose`
+  witness of `π ∣ rhs` (via `uniformizer_dvd_coeff_subst_sub_subst`, applied to the partial sum `φ_{d+1}
+  := ∑ i ≤ d+1, C (phiCoeff i) * X^i`, whose own `coeff 0 = 0` needed to invoke that lemma holds for
+  free — `phiCoeff 0 = 0` definitionally, by the base case of the very pattern match being defined,
+  exactly as it does for `substInvFun`). This part is mechanical and low-risk given the lemmas already
+  proved in this pass; it was not the blocker.
+* **The real remaining obstacle**: a "linearization"/Taylor correctness lemma showing this
+  construction actually satisfies `f.subst φ ≡ φ.subst g (mod deg (d+3))` once extended to degree
+  `d+2`, i.e. the Lean-level analogue of the hand computation above (`f(φ_N + c) ≡ f(φ_N) + π·c` and
+  `φ_N(g)`'s degree-`(N+1)` part depending only on `φ_N`, `c·g(X)^{N+1} ≡ π^{N+1}·c·X^{N+1}`). Mathlib's
+  own analogous fact for the *strictly simpler* one-sided case (`P.subst Q = X`, no second series `g`
+  on the other side) — `PowerSeries.coeff_subst_sum_C_substInvFun_mul_X_pow_sub_X` — is itself a
+  genuinely hard ~50-line proof by a professional Mathlib contributor, manipulating `coeff_subst`'s
+  `finsum` formula, binomial expansion (`add_pow`), and careful case-splitting on which terms survive
+  mod a given degree. Our two-sided intertwining equation (`f` on one side, `g`'s composition into
+  every remaining coefficient of `φ` on the other) is the same shape of argument but strictly more
+  bookkeeping, not a smaller version of it. Attempting this without first fully budgeting for a
+  `substInvFun`-scale sub-effort (or larger) risked exactly the "guess a lemma chain, build-and-see"
+  failure mode this repo's Lean workflow guardrails exist to prevent; it was not started rather than
+  left half-built with a plausible-looking but unverified induction.
+* Consequently: uniqueness, the `n = 2`/`L = X + Y` specialization toward the formal group law `F_π`,
+  and the `F_π` construction/`FormalGroup O` term itself (this pass's stretch goals) are all
+  downstream of the unstarted existence induction and remain entirely open.
+
+**Mathlib scaffolding confirmed relevant for the next pass** (read in full this pass, not merely
+grepped): `Mathlib/RingTheory/PowerSeries/Substitution.lean`'s `HasSubst`/`subst`/`substAlgHom` machinery
+(used directly above) and its `substInv`/`substInvOfIsUnit` section (the closest existing template for
+the recursive-definition half, see above); `Mathlib/RingTheory/FormalGroup/Basic.lean`'s `FormalGroup R`
+structure and `F.Point σ` (confirmed to exist, read in full; its `assoc`/`IsComm` API and `Xzero_eq_X`/
+`zeroX_eq_X` lemmas are exactly the target shape for a hypothetical `F_π : FormalGroup O`, but nothing
+in it helps *construct* `F_π` — that still requires the functional equation lemma's `n = 2` case first);
+`Mathlib/RingTheory/PowerSeries/Expand.lean` and `Mathlib/RingTheory/MvPowerSeries/Expand.lean` (used
+directly above for the Frobenius argument, not previously known to this repo).
+
+**Remaining gap, precisely.** `Langlands/LubinTateFunctionalEquation.lean` establishes the single
+algebraic fact that makes the functional equation lemma's recursion solvable at every degree, with the
+"is it a unit, and where does completeness enter" question the task posed answered concretely (not a
+unit; needs a unit times a domain-cancellation of `π`; completeness unused). The recursive
+construction of `φ` itself, its correctness (existence half of the lemma), uniqueness, the `n = 2`
+specialization, and `F_π` remain unattempted, with the specific next blocker (a `substInvFun`-scale
+Taylor/linearization lemma, doubled for two-sided intertwining) identified precisely above rather than
+left implicit.
