@@ -8710,3 +8710,174 @@ thresholds), which would need checking whether `exists_maximalIdeal_pow_norm_lt`
 `norm_exp_eq_exp_trace` argument's own hypotheses. Both are genuine mathematical/Lean design work,
 not bookkeeping, and out of this pass's scope. `TotallyRamifiedCyclotomicNormIndex`'s divisibility
 bound and `AdicCompletionNormGroupIndex`'s `relIndex` factor are otherwise unchanged from §6ae/§6af.
+
+## 6ah. Thirty-sixth pass (2026-08-11): the `convergenceRadius`-shaped obstruction closed exactly —
+`i1 := 4`, `i3 := 7`, `iL := 13`, `iK := 5` — and the wild-case norm-group index closed to a
+concrete divisibility bound, `[K₀ˣ : N(L₀ˣ)] ∣ 2 · 3⁶`, for the whole `exp`/`log`/norm-trace/
+norm-group chain, with no existential anywhere
+
+**Task.** §6ag's diagnosis: the `logUnitsThreshold`↔`convergenceRadius` mismatch — the `i₀ := 13`
+closure route reduces a `logUnitsThreshold` comparison to integer-power `WithZero.exp` arithmetic
+via `lt_logUnitsThreshold_iff_valued_lt`, but `convergenceRadius`'s `rpow` at the *fractional*
+exponent `(p-1)⁻¹` has no such bridge. This pass verified §6ag's own alternative route (option (a),
+sketched but not attempted there) actually works, and closed it end to end.
+
+**The key fact, verified.** `convergenceRadius F p = ‖(p:F)‖ ^ ((p-1)⁻¹:ℝ)`; in this repo's fixed
+normalization (`norm_eq_toNNReal_valued`, `NormMap.lean`), `‖(p:F)‖` is `WithZeroMulInt.toNNReal
+two_ne_zero (Valued.v (p:F))`, and whenever `Valued.v (p:F) = WithZero.exp (-(k:ℤ))` for `k` an
+EXACT multiple of `p - 1` — which it always is here, since `k` is itself a ramification index in the
+`ℚ(ζ_{3^n})` tower and every such index is a multiple of `p - 1` by construction — the fractional
+`rpow` exponent cancels EXACTLY against `k`, landing on a literal integer power of `2`. No genuine
+irrationality was ever present; the `rpow` was fractional only syntactically, not numerically. This
+confirms §6ag's speculative diagnosis was correct and the closure is real, not a workaround.
+
+**New general-purpose lemmas (all `NumberField`-free, hence diamond-safe to apply anywhere).**
+* `logUnitsThreshold_lt_convergenceRadius` (`NonarchimedeanExponentialUnitsIso.lean`): composes
+  the two already-proved `logUnitsThreshold_le_expUnitsThreshold`/`expUnitsThreshold_lt_convergenceRadius`
+  into the direct comparison the task's item 1 asked for.
+* `WithZeroMulInt.toNNReal_exp` (`NormMap.lean`): `WithZeroMulInt.toNNReal he (WithZero.exp a) = e ^
+  a`, a literal `zpow` — the missing piece connecting `WithZero.exp`-level facts to real numbers.
+* `norm_eq_two_zpow_of_valued_eq_exp` (`NormMap.lean`): `Valued.v x = WithZero.exp k → ‖x‖ = 2 ^ k`
+  — composes the above with `norm_eq_toNNReal_valued`, turning any `Valued.v`-level fact (the kind
+  this repo already builds routinely, e.g. `valuation_Θ`, `valued_w_p`) into a literal real value of
+  `‖x‖`, no order/ε argument.
+* `convergenceRadius_eq_rpow_of_valued_natCast_eq_exp` (`AdicCompletionNormExpTrace.lean`): the
+  `convergenceRadius`-specific corollary, `Valued.v (p:F) = WithZero.exp (-k) → convergenceRadius F
+  p = 2 ^ (-(k:ℝ) * ((p:ℝ)-1)⁻¹)`.
+* `forall_maximalIdeal_pow_norm_lt` (`NonarchimedeanExponentialAdicCompletion.lean`),
+  `forall_maximalIdeal_pow_norm_trace_le` (`AdicCompletionTraceBound.lean`),
+  `forall_maximalIdeal_pow_norm_exp_eq_exp_trace` (`AdicCompletionNormExpTrace.lean`),
+  `lt_logUnitsThreshold_of_le` (`NonarchimedeanExponentialUnitsIso.lean`, with a
+  `NonarchimedeanExponentialAdicCompletion.lean` `HeightOneSpectrum` wrapper): each factors the
+  "concrete-witness core" out of an existing `exists_...` theorem — taking the witnessing uniformizer
+  and threshold numeral as EXPLICIT hypotheses instead of deriving them via
+  `NormedField.exists_norm_lt_one`/`exists_pow_lt_of_lt_one`/`exists_uniformizer`. This is the
+  general shape every subsequent numeral closure in this pass used, and is reusable well beyond this
+  one concrete instance.
+
+**A genuine, non-cosmetic diamond hit, confirmed again.** Calling the generic
+`NonarchimedeanExponential.norm_le_pow_of_mem_maximalIdeal_pow`/`lt_logUnitsThreshold_of_le` (bare
+`[NormedField K]`) FRESH in `TotallyRamifiedCyclotomicConcreteExample.lean` (a `NumberField`-visible
+file) picked a DIFFERENT `NormedField (w.adicCompletion L)` instance than the one already baked into
+this file's other facts — a genuine type mismatch (`SeminormedAddCommGroup.toSeminormedAddGroup.toNorm`
+vs. `instNontriviallyNormedFieldAdicCompletion`), not a cosmetic warning. Building
+`HeightOneSpectrum`-level wrappers of these two lemmas in their `NumberField`-free source files (same
+discipline as `exists_pow_lt_logUnitsThreshold`/`lt_logUnitsThreshold_iff_valued_lt` already use)
+fixed it. Every new fact added to the two `NumberField`-visible files this pass touched
+(`TotallyRamifiedCyclotomicConcreteExample.lean`, `TotallyRamifiedCyclotomicNormIndex.lean`) either
+keeps its type INFERRED (`def`, never `theorem`, composed via `Eq.trans`/`LT.lt.trans_eq`/`▸` from
+already-elaborated `NumberField`-free facts) or is pure `ℕ`/`ℤ`/`ℝ` arithmetic mentioning no
+`adicCompletion` type at all.
+
+**The concrete numerals, for `K = ℚ_3(ζ_3) ⊆ L = ℚ_3(ζ_9)`, `p = 3`.**
+* `convergenceRadius (v.adicCompletion K) p = 2 ^ (-1 : ℝ)`, `convergenceRadius (w.adicCompletion L)
+  p = 2 ^ (-3 : ℝ)` (`convergenceRadius_v_eq`/`convergenceRadius_w_eq`,
+  `TotallyRamifiedCyclotomicConcreteExample.lean`), via a new `v`-side uniformizer valuation chain
+  (`vZ`-for-`v`, `ramificationIdx'_vZ_v`, `intValuation_v_p`, `valued_v_p`) mirroring the existing
+  `w`-side one exactly.
+* `i1 := 4`: `‖Θ‖ ^ 4 < convergenceRadius L_w p` (`hthresh_i1`), since `‖Θ‖ = 2 ^ (-1:ℤ)`
+  (`norm_Θ_eq`) and `(2^{-1})^4 = 2^{-4} < 2^{-3}`.
+* `i3 := 7`: re-derives `exists_maximalIdeal_pow_norm_trace_lt`'s proof CONCRETELY with `c := π₀`
+  (the actual `K_v`-uniformizer, not `NormedField.exists_norm_lt_one`'s arbitrary witness) and `n :=
+  2`, giving `a := π₀² `, `‖a‖ = 2^{-2}` (via `Valued.v`, not `norm_pow` applied fresh — sidesteps a
+  second unnecessary instance search), `b := algebraMap a`, `‖b‖ = ‖a‖³ = 2^{-6}` (`e := 3`,
+  `norm_algebraMap_pow_eq`, EXACT), and `‖Θ‖^7 = 2^{-7} < 2^{-6} = ‖b‖`
+  (`exists_maximalIdeal_pow_norm_trace_lt_i3`).
+* `iN := max i1 i3 = max 4 7 = 7` (`forall_maximalIdeal_pow_norm_exp_eq_exp_trace_iN`).
+* `iL := 13` — reuses the existing `hthreshStrict_i₀` from §6w unchanged (it IS exactly `iL`).
+* `iK := 5`: the `K_v`-side analogue of `i₀ := 13`, same `lt_logUnitsThreshold_iff_valued_lt`
+  `WithZero.exp`-arithmetic pattern (`hthreshStrict_iK`).
+* `i₀ := max (max iL iN) (iK · e) = max (max 13 7) (5 · 3) = max 13 15 = 15` for
+  `exists_map_principalUnitsPow_normUnitsK₀_eq`. `lt_logUnitsThreshold_of_le` shifts
+  `hthreshStrict_i₀`/`hthreshStrict_iK` up (by antitonicity) from their own witnesses to `i := 15`
+  (resp. `(15+6)/e = 7`), giving the EXACT equality (all in `TotallyRamifiedCyclotomicNormIndex.lean`,
+  since it needs `differentIdeal_eq`, `d := 6`, from `CyclotomicDifferentExponent.lean`, downstream
+  of the concrete-example file):
+  ```
+  Subgroup.map (normUnitsK₀ K L v w) (principalUnitsPow L₀ 15) = principalUnitsPow K₀ 7
+  ```
+  (`map_principalUnitsPow_normUnitsK₀_eq_15_7`) — the FIRST closed-form EQUALITY (not merely bound)
+  anywhere in this repo's wild-case norm-group-image thread.
+* `j := 6`: `exists_index_dvd_index_principalUnitsPow`'s own combination sets `i := max i₀ e = max
+  15 3 = 15` (the SAME `i`) and `j + 1 := (i+d)/e = 7`, so `j = 6`.
+
+**Final theorem, `index_normUnitsK₀_dvd_two_mul_three_pow_six`
+(`TotallyRamifiedCyclotomicNormIndex.lean`):**
+```
+theorem index_normUnitsK₀_dvd_two_mul_three_pow_six :
+    (MonoidHom.range (normUnitsK₀ K L v w)).index ∣ 2 * 3 ^ (6 : ℕ) ∧
+      (MonoidHom.range (localNormMap K L v w)).relIndex (v.adicCompletionIntegers K).units ∣
+        2 * 3 ^ (6 : ℕ)
+```
+This is a genuine DIVISIBILITY bound, not an equality: `ValuationSubring.index_principalUnitsPow`/
+`relIndex_range_localNormMap_units_dvd_index_map_normUnitsK₀` (the two facts the final `rw`/`▸`
+route through) only ever produce `∣`, never `=` — closing `j` to a numeral does not by itself
+upgrade the divisibility to equality; that would need the sharp `v(N(x)) = f · w(x)` valuation
+formula this repo has never established (`ROADMAP.md` §6ac's own note, still accurate). Combined
+with `index_localNormMap_range_eq_index_normUnitsK₀` (§6ac/§6ad, EXACT for this instance since `f =
+1`), this is also a bound on the FIELD-level index `[K_vˣ : N(L_wˣ)]`.
+
+`lake build` clean across the whole repo (`8747` jobs, unchanged pre-existing warnings only);
+`#print axioms index_normUnitsK₀_dvd_two_mul_three_pow_six` shows only `propext, Classical.choice,
+Quot.sound`; no `sorry` anywhere in the touched files. Commits: bridge lemma + `convergenceRadius`
+numerals `7c6ac9d`; `i1`/`i3` numerals `91d791b`; `iK` numeral + concrete-witness helper factoring
+`2a29131`; the capstone (`iN`, `i₀ := 15`, `j := 6`) `eaf8edd`.
+
+## 6ai. Phase 2b, complete: the wild-case `exp`/`log`/norm-trace/norm-group-index thread, end to end
+
+This closes Phase 2b. What follows summarizes the whole effort, based only on what prior `§6*`
+entries and this pass actually established — not a restatement of what was merely attempted.
+
+**Tame case and Phase 2a** (earlier `§6*` entries, pre-dating the wild-case thread): the tame-case
+norm-group index and the general machinery for ramification filtrations, valuation extensions, and
+the totally-ramified norm-index formula (`TotallyRamifiedNormIndex.lean`) were built first and are
+unaffected by everything below — they are the tameness-free bridge
+(`index_localNormMap_range_eq_index_normUnitsK₀_of_isTotallyRamified`) this pass's capstone still
+uses at the very last step.
+
+**The wild-case machinery, built across roughly two dozen passes (`§6f`–`§6ag`):**
+1. **The `p`-adic `exp`/`log` correspondence** (`NonarchimedeanExponential.lean`,
+   `NonarchimedeanExponentialFiltration.lean`, `NonarchimedeanExponentialUnitsFiltration.lean`,
+   `NonarchimedeanExponentialUnitsIso.lean`): `exp`/`log` as mutually inverse maps on a
+   `convergenceRadius`-bounded domain, `exp` landing in the principal-units filtration
+   (`exp_mem_principalUnitsPow`), and the full group isomorphism `U_A^{(i)} ≅ (𝔪_A^i, +)`
+   (`expEquiv`) — all proved generically, with a second, Lean-friendlier `logUnitsThreshold`
+   threshold built alongside for facts that don't need the sharp classical radius.
+2. **The norm/trace compatibility formula** (`AdicCompletionTraceBound.lean`,
+   `AdicCompletionNormExpTrace.lean`): `N_{L_w/K_v}(exp x) = exp_{K_v}(Tr_{L_w/K_v} x)` on a deep
+   enough filtration level, proved via Galois conjugates (`Algebra.norm_eq_prod_automorphisms`) and
+   continuity of `K_v`-algebra automorphisms of `L_w` (free from finite-dimensionality, no isometry
+   or uniqueness-of-valuation-extension argument anywhere in this repo's approach) — the first time
+   any formalization here needed both a genuine mixed-characteristic AND wild instance to exercise.
+3. **The norm-group image and index** (`AdicCompletionNormGroupImage.lean`,
+   `AdicCompletionNormGroupIndex.lean`, `TotallyRamifiedNormIndex.lean`): the `exp`/`log`
+   isomorphism transports the norm-group-image computation from the multiplicative to the additive
+   side, where the different ideal's exponent `d` (an explicit hypothesis, never derived — Mathlib's
+   `differentIdeal_ne_bot` gives existence only) controls the index formula; `TotallyRamifiedNormIndex`
+   proves the field-level norm index equals the `K₀ˣ`-level one exactly whenever the extension is
+   totally ramified, tameness-free.
+4. **A concrete mixed-characteristic wild Galois instance**
+   (`TotallyRamifiedCyclotomicConcreteExample.lean`): `K = ℚ_3(ζ_3) ⊆ L = ℚ_3(ζ_9)`, the first (and
+   still only) instance in this repo exercising all of the above end to end — every earlier concrete
+   instance in this repo's `exp`/`log` thread was equal-characteristic and could not even state the
+   hypotheses. `differentIdeal_eq` (`CyclotomicDifferentExponent.lean`) computes `d = 6` for it
+   exactly, via `conductor_mul_differentIdeal`.
+
+**This pass's contribution — the last piece, quantitative closure:** every one of the above produces
+existentials (`∃ i₀, ∀ i ≥ i₀, ...`) with no formula for the witness. This pass closed every one of
+them to a literal numeral for the concrete instance (§6ah above), reaching a genuinely closed-form
+final statement: `[K₀ˣ : N(L₀ˣ)] ∣ 2 · 3⁶` (`index_normUnitsK₀_dvd_two_mul_three_pow_six`), and along
+the way an exact intermediate equality one level up
+(`Subgroup.map (normUnitsK₀ K L v w) (principalUnitsPow L₀ 15) = principalUnitsPow K₀ 7`).
+
+**What is NOT established, honestly:**
+* The divisibility is not upgraded to an equality — that needs the sharp `v(N(x)) = f · w(x)`
+  valuation formula, never proved in this repo (§6ac).
+* The numerals (`i1 := 4`, `i3 := 7`, `iL := 13`, `iK := 5`, `i₀ := 15`, `j := 6`) are specific to
+  this one concrete instance (`p = 3`, this particular tower); nothing here produces a general
+  formula for other primes or towers, though the underlying arithmetic identity
+  (`convergenceRadius`'s fractional `rpow` cancelling exactly against a ramification-index-multiple
+  `Valued.v`-exponent) is visibly general and would very likely generalize with modest extra work.
+* No claim is made about global class field theory, functoriality, or any Langlands correspondence
+  proper — this closes one local, concrete instance of the norm-group index computation that
+  local class field theory ultimately needs as an ingredient.
