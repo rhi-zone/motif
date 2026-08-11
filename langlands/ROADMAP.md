@@ -8257,3 +8257,154 @@ closing** — it was obtained entirely from item 1 plus the pre-existing wild-ca
    particular the below-the-break filtration levels (`N(U_{L₀})` vs. `N(U_{L₀}^{(i)})` for `i` below
    the `exp`/`log` threshold) and `d` remaining a hypothesis in the fully generic (non-concrete)
    theorems.
+
+## 6ad. Thirty-second pass (2026-08-11): the residue-degree bridge and the generic
+valuation-of-norm formula closed; the index-bridging and exact-number items diagnosed, not closed
+
+**Task.** Four items, in order: (1) the residue-degree bridge lemma diagnosed as the blocker in
+§6ac item 2; (2) the generic `v(N_{L/K}(x)) = w(x) ^ f` valuation-of-norm formula this unblocks;
+(3) wire that formula into `AdicCompletionNormGroupIndex.lean`/`PrincipalUnitsFiltrationIndex.lean`
+to convert a divisibility bound to an equality; (4) an **exact** index number for the concrete wild
+instance `K = ℚ_3(ζ_3) ⊆ L = ℚ_3(ζ_9)`.
+
+**Item 1: closed.** New file `Langlands/AdicCompletionResidueDegree.lean` (commit `f17f215`),
+wired into `Langlands.lean`.
+
+* `IsDedekindDomain.HeightOneSpectrum.inertiaDeg'_eq_finrank_residueField` :
+  `v.asIdeal.inertiaDeg' w.asIdeal = Module.finrank (ResidueField K₀) (ResidueField L₀)`, no
+  `IsTotallyRamified` hypothesis — the residue-degree analogue of
+  `AdicCompletionRamificationIdeal.map_maximalIdeal_eq_maximalIdeal_pow_ramificationIdx'`.
+
+Route, exactly as §6ac's diagnosis anticipated: `Algebra.finrank_eq_of_equiv_equiv` fed the two
+single-place `residueFieldQuotientRingEquiv` identifications (already in the repo, at `v` and at
+`w`), with the required naturality square (`algebraMap S L (algebraMap R S a) = algebraMap K L
+(algebraMap R K a)`, generalizing `TotallyRamifiedConcreteExample.algebraMap_R_K₀_L₀_eq` to drop
+its `IsTotallyRamified`/hand-built-`S` specificity) proved from `IsScalarTower.algebraMap_apply`
+twice, plus `coe_algebraMap_adicCompletionIntegers`/`adicCompletionComap_algebraMap` to push it
+through the completions. No part of this needed anything not already confirmed present in §6ac.
+
+**Item 2: closed, in full — both the integral case and the field-level `L^×` extension the task
+brief asked for.** New file `Langlands/AdicCompletionValuationNorm.lean` (commits `de859aa`,
+`7843b39`), wired into `Langlands.lean`.
+
+* `IsDedekindDomain.HeightOneSpectrum.valued_norm_eq_pow_of_ne_zero` : for `x : L₀ \ {0}`,
+  `Valued.v (algebraMap K₀ K (Algebra.norm K₀ x)) = (Valued.v x) ^ f`, `f := v.asIdeal.inertiaDeg'
+  w.asIdeal`, needing `[CharZero K]` (to get `PerfectField (FractionRing K₀)` for
+  `Ideal.relNorm_eq_pow_of_isMaximal`) but no `IsTotallyRamified`.
+* `IsDedekindDomain.HeightOneSpectrum.valued_localNormMap_eq_pow` : the headline formula, for
+  *every* `a : (w.adicCompletion L)ˣ`, `Valued.v (Algebra.norm (v.adicCompletion K) a) = (Valued.v
+  a) ^ f`.
+
+Route: `x`'s decomposition `x = πL₀ ^ n · unit` (`IsDiscreteValuationRing.associated_pow_irreducible`)
+is tracked through `Ideal.relNorm` (`relNorm_singleton`, `relNorm_eq_pow_of_isMaximal` with the
+exponent identified as `f` via item 1's bridge and a new `(maximalIdeal L₀).LiesOver (maximalIdeal
+K₀)` instance transported from `Mathlib.RingTheory.Valuation.Extension`), then read back off as a
+valuation via a second uniformizer of `K₀` — this closes the integral case exactly along the route
+§6ac sketched (`ideal-span-exponent bookkeeping`), with no need for
+`AdicCompletionTraceSurjectivity.exists_algebraMap_eq_zpow_iff` specifically (a more direct
+`Associated`/`Ideal.span_singleton_eq_span_singleton` argument sufficed). The field-level extension
+uses the "L-self" uniformizer decomposition `exists_zpow_mul_unit_eq_of_irreducible_self`
+(`TotallyRamifiedNormIndex`, applied at `w` in place of its usual `v`) plus multiplicativity of the
+norm (`Algebra.norm_zpow`) and of `Valued.v`, with the unit factor contributing nothing to either
+side (`localNormMap_mem_units` for the norm side, `adicCompletionIntegers.isUnit_iff_valued_eq_one`
+for the valuation side). `lake build Langlands` clean at 8746/8746 jobs; `#print axioms` on both
+headline theorems shows only `propext, Classical.choice, Quot.sound`.
+
+**Item 3: attempted, not closed — diagnosed, not guessed.** The natural target is
+`(MonoidHom.range (localNormMap K L v w) ⊔ (v.adicCompletionIntegers K).units).index = f`, the
+"valuation-side factor" `AdicCompletionNormGroupIndex.index_range_localNormMap_eq_mul` leaves
+uncomputed. `valued_localNormMap_eq_pow` (item 2) gives exactly the ingredient this needs — the
+valuations hit by `N(L_wˣ)` are precisely the `f`-th powers of the valuations hit by `L_wˣ` — but
+turning that into the index itself needs a construction not yet built anywhere in this repo:
+
+* `Valued.v` restricted to units, `K_vˣ → (ℤᵐ⁰)ˣ`, as a `MonoidHom` (not just a `Valuation`, which
+  is only a `MonoidWithZeroHom`) — surjective, by `valuedAdicCompletion_surjective` restricted off
+  `0`, with kernel exactly `U_{K_v}` (`adicCompletionIntegers.mem_units_iff_valued_eq_one`).
+* The image of `N(L_wˣ) ⊔ U_{K_v}` under that hom is `((ℤᵐ⁰)ˣ) ^ f` (`Subgroup.map_sup`, item 2,
+  and surjectivity of `Valued.v` at `w` restricted off `0`), and since `U_{K_v}` is exactly the
+  kernel, `N(L_wˣ) ⊔ U_{K_v}` is exactly the *comap* of that image
+  (`Subgroup.comap_map_eq_self_of_ker_le` or equivalent) — this is the step that actually converts
+  a valuation-side statement into an index statement.
+* `[K_vˣ : comap(...)] = [(ℤᵐ⁰)ˣ : ((ℤᵐ⁰)ˣ)^f]` for a surjective hom (an index-comap lemma, not
+  hand-verified to exist under this exact name — would need lookup), and
+  `[(ℤᵐ⁰)ˣ : ((ℤᵐ⁰)ˣ)^f] = f` via the cyclic-group classification already in this repo
+  (`Langlands/FiniteIndexSubgroupsZ.lean`'s `Int.index_zmultiples`/`AddSubgroup.existsUnique_index_eq_of_ne_zero`,
+  transported along `(ℤᵐ⁰)ˣ ≃ Multiplicative ℤ`), for `f ≠ 0`.
+
+None of this was written as Lean — a `Units.map` of a bare `Valuation` (as opposed to a
+`Valuation.toMonoidWithZeroHom`-compatible bundled hom) did not resolve on first lookup, and the
+remaining steps (the comap-index lemma, the `(ℤᵐ⁰)ˣ ≃ Multiplicative ℤ` transport of the f-th-power
+subgroup) were assessed as a real, multi-step construction — comparable in size to item 1's or
+`AdicCompletionRamificationIdeal`'s bridge lemmas — not attempted for lack of remaining budget in
+this pass, not because a blocking obstruction was found. This is a genuine "ran out of pass, not
+ran into a wall" situation, unlike item 2's status in §6ac.
+
+**Item 4: not closed, and — this is the important finding — *not* blocked by anything item 1–3
+touch.** Rereading `TotallyRamifiedCyclotomicNormIndex.lean` and
+`TotallyRamifiedCyclotomicConcreteExample.lean` before writing any Lean (per the task brief's
+explicit instruction to check rather than assume) confirms: `inertiaDeg'_eq : v.asIdeal.inertiaDeg'
+w.asIdeal = 1` **was already proved** in an earlier pass, and
+`index_localNormMap_range_eq_index_normUnitsK₀` **already gives the field-level index and the
+`K₀ˣ`-level index as exactly equal** (not a bound) for this concrete instance — via
+`TotallyRamifiedNormIndex`'s totally-ramified sup/inf argument, which never separately names a
+"valuation-side factor" at all (§6ac's own "did NOT close" item 3 already flags this: the equality
+absorbs `f = 1` for free, with no standalone theorem needed). So neither the residue-degree bridge
+nor the valuation-of-norm formula was ever the thing standing between this pass and an exact
+number for the concrete instance — item 3's generic index-bridging work, even if completed, would
+not by itself close item 4 either, because the concrete instance's field-level index already
+bypasses `index_range_localNormMap_eq_mul`'s two-factor decomposition entirely.
+
+The actual remaining gap for item 4, confirmed by reading `AdicCompletionNormGroupImage.lean`'s
+`exists_map_principalUnitsPow_normUnitsK₀_eq` (the theorem `exists_index_normUnitsK₀_dvd`'s
+existential `j` is inherited from): the threshold is an *analytic* one,
+`‖(πL : w.adicCompletion L)‖ ^ i < logUnitsThreshold (w.adicCompletion L) p` (and the matching
+`K`-side threshold) — the radius of convergence at which the `exp`/`log` correspondence between
+`𝔪^i` and `U^{(i)}` is a bijection and compatible with trace. Closing item 4 needs an *explicit*
+numeric bound on `logUnitsThreshold` for this instance's `p = 3`, `e = 3`, and the norms involved
+— a genuinely different piece of work (bounding a `p`-adic exponential's convergence radius
+explicitly) than any of items 1–3, tracing back to §6z, not touched by this pass. No attempt was
+made at this in the time remaining; recorded here as the precise, confirmed location of the
+capstone's actual remaining gap, superseding the framing in §6ac (which had not yet ruled out that
+the valuation-of-norm formula might matter for the concrete number — it does not).
+
+**What did NOT close, precisely.**
+
+1. `index_sup_units_eq_inertiaDeg'` (or equivalent): the generic valuation-side index factor
+   `[K_vˣ : N(L_wˣ) ⊔ U_{K_v}] = f`. Blocked on constructing a surjective `MonoidHom K_vˣ → (ℤᵐ⁰)ˣ`
+   from `Valued.v` and an index-comap lemma for surjective homs — assessed as mechanical but not
+   attempted; see item 3 above for the exact remaining steps.
+2. The capstone exact number for `K = ℚ_3(ζ_3) ⊆ L = ℚ_3(ζ_9)`: still only the `∣ 2 · 3^j`
+   divisibility bound from §6ac, `j` existential. Confirmed (not assumed) to be blocked on an
+   explicit numeric bound for `logUnitsThreshold`, not on anything this pass's items 1–2 supply.
+3. Everything in §6aa's/§6ab's/§6ac's "did NOT close" lists not superseded above is unchanged.
+
+**Phase 2b overview, for whoever scopes Phase 2 proper (full local Artin reciprocity) next.**
+
+* **Tame case: fully closed**, per Phase 2a's own framing (`TotallyRamifiedNormIndex`'s
+  `index_localNormMap_range_eq_of_isTotallyRamified` gives the exact classical formula `[K_vˣ :
+  N(L_wˣ)] = gcd(e, #κ[K]ˣ)` under `IsTamelyRamified`) — this pass re-read that theorem
+  (reproduced in this file's item-1/2 discussion above) and it is exactly the tame formula, no
+  caveats.
+* **Wild case, structurally: the `exp`/`log`/norm-trace machinery is built and has been exercised
+  across many passes** (§6y–§6ac), giving `N(U_{L₀}^{(i)}) = U_{K₀}^{((i+d)/e)}` for `i` above an
+  existential threshold, with no tameness hypothesis anywhere in that chain.
+* **Wild case, the index computation specifically:**
+  - The `K₀ˣ`-level index and the field-level index now coincide exactly (`IsTotallyRamified`
+    alone, §6ac, no tameness) — genuinely unconditional.
+  - The `v(N(x)) = f · w(x)` valuation-of-norm formula, and the residue-degree bridge it needed,
+    are now **fully closed, generically** (this pass) — a real, previously-diagnosed gap now shut,
+    reusable by any future pass needing residue-degree or norm-valuation facts, independent of the
+    index-computation thread specifically.
+  - The **index itself**, in general, is still a **divisibility bound with an existential filtration
+    depth**, not an equality — unchanged in kind since §6z, and this pass's new formula, while a
+    genuine structural advance, turns out not to be the ingredient that tightens it (see item 3/4
+    above for exactly what would).
+  - For the **concrete wild instance** specifically: same divisibility bound, `j` existential,
+    **now confirmed** (not merely suspected) to be blocked on an explicit `logUnitsThreshold` bound
+    rather than on any residue-degree/norm-valuation gap. This is a materially sharper diagnosis
+    than §6ac had: the multi-week wild-ramification norm-group thread (§6z onward) has **one
+    remaining, precisely located obstruction** — an explicit convergence-radius computation for the
+    `p`-adic exponential at `p = 3` — standing between the current state and a genuine closed-form
+    exact index for `[K₀ˣ : N(L₀ˣ)]`. It is not closed by this pass, and this pass did not attempt
+    it, but it is no longer entangled with the residue-degree/valuation-of-norm questions that
+    §6ac left open — those are now separately, fully resolved.
