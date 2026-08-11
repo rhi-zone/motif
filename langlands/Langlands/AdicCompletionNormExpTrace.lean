@@ -78,6 +78,26 @@ theorem continuous_algEquiv
 
 variable [CharZero K] [CharZero L] (p : ℕ) [hp : Fact p.Prime]
 
+omit [CommRing S] [IsDedekindDomain S] [Field L] [Algebra S L] [IsFractionRing S L] [Algebra R S]
+  [Algebra K L] [Algebra R L] [IsScalarTower R S L] [IsScalarTower R K L] [Module.Finite K L]
+  [Algebra.IsIntegral R S] [Module.IsTorsionFree R S] [CharZero L] [CharZero K] hp in
+/-- **`convergenceRadius (v.adicCompletion K) p` is a literal power of `2` whenever `Valued.v (p :
+v.adicCompletion K) = WithZero.exp (-k)` for some integer `k`.** `convergenceRadius F p = ‖(p:F)‖ ^
+((p-1)⁻¹:ℝ)`; `norm_eq_two_zpow_of_valued_eq_exp` (`Langlands.NormMap`) evaluates `‖(p:K_v)‖` to the
+literal `2 ^ (-k)` (a real `zpow`), and reassociating the `rpow` exponent against it
+(`Real.rpow_intCast`, `Real.rpow_mul`) lands on the single `rpow` `2 ^ (-(k:ℝ) * ((p:ℝ)-1)⁻¹)`. Proved
+in this `NumberField`-free file (no fresh `‖·‖`/`convergenceRadius` type ascription at a
+`NumberField`-visible call site) to avoid the `NormedField (v.adicCompletion K)` instance diamond —
+see `ROADMAP.md`'s established diamond-avoidance discipline. -/
+theorem convergenceRadius_eq_rpow_of_valued_natCast_eq_exp {k : ℤ}
+    (h : Valued.v (((p : ℕ) : v.adicCompletion K)) = WithZero.exp (-k)) :
+    convergenceRadius (v.adicCompletion K) p = (2 : ℝ) ^ (-(k : ℝ) * ((p : ℝ) - 1)⁻¹) := by
+  unfold convergenceRadius
+  rw [norm_eq_two_zpow_of_valued_eq_exp (v := v) h, ← Real.rpow_intCast (2 : ℝ) (-k),
+    ← Real.rpow_mul (by norm_num : (0:ℝ) ≤ 2)]
+  push_cast
+  ring_nf
+
 omit [Algebra.IsIntegral R S] in
 /-- **The norm/trace compatibility formula.** For `x : L_w` such that `x`, all its conjugates, the
 trace `Tr_{L_w/K_v}(x)`, and that trace's image in `L_w` lie in the relevant convergence domains,

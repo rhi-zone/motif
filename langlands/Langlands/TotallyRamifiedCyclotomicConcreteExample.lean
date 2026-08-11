@@ -72,6 +72,7 @@ See the closing section of this file and `ROADMAP.md` for the precise account of
 noncomputable section
 
 open IsDedekindDomain IsDedekindDomain.HeightOneSpectrum IsLocalRing Polynomial NumberField Ideal
+  NonarchimedeanExponential
   IntermediateField
 open scoped Cyclotomic
 
@@ -930,6 +931,94 @@ noncomputable def expEquiv_w :
       ↥(ValuationSubring.principalUnitsPow (w.adicCompletionIntegers L) i₀) :=
   IsDedekindDomain.HeightOneSpectrum.expEquiv w p hnormL maximalIdeal_L₀_eq Θ_ne_zero hπnorm_Θ
     hthreshStrict_i₀
+
+/-! ### Concrete numerals for `convergenceRadius`, closing `i1`/`i3`
+
+`vZ` (defined above for the `w`-side) is also the place of `ℤ` at `p` seen from `v`: `v.asIdeal`
+already `LiesOver (Ideal.span {p})` (established earlier for `hζ_K'`), so the same
+`intValuation_liesOver` bridge computes `Valued.v (p : v.adicCompletion K)` exactly, mirroring
+`valued_w_p`. Combined with `norm_eq_toNNReal_valued`/`WithZeroMulInt.toNNReal_exp`
+(`Langlands.NormMap`), this turns `convergenceRadius (v.adicCompletion K) p` from a real `rpow` at a
+fractional exponent into a literal `2 ^ (-1 : ℝ)`, since `ramificationIdx_v = p - 1` makes the
+`rpow` exponent `(p-1)⁻¹` exactly cancel the `Valued.v`-exponent `-(p-1)`. `convergenceRadius_eq_pow`
+(`Langlands.AdicCompletionNormExpTrace`) then propagates this to the `w`-side for free: raising to
+the `e := ramificationIdx'_eq = p = 3`-rd power gives `convergenceRadius (w.adicCompletion L) p = 2 ^
+(-3 : ℝ)`. -/
+
+instance : v.asIdeal.LiesOver vZ.asIdeal :=
+  (inferInstance : v.asIdeal.LiesOver (Ideal.span {(p : ℤ)}))
+
+/-- `vZ.asIdeal.ramificationIdx' v.asIdeal = p - 1`, the `v`-side analogue of
+`ramificationIdx'_vZ_w`. -/
+theorem ramificationIdx'_vZ_v :
+    vZ.asIdeal.ramificationIdx' v.asIdeal = p - 1 := by
+  rw [Ideal.ramificationIdx'_eq_ramificationIdx vZ.asIdeal v.asIdeal
+      (IsDedekindDomain.HeightOneSpectrum.span_int_ne_bot (p := p)),
+    ramificationIdx_v]
+
+theorem intValuation_v_p :
+    v.intValuation ((p : ℕ) : 𝓞 K) = WithZero.exp (-((p : ℤ) - 1)) := by
+  have h := IsDedekindDomain.HeightOneSpectrum.intValuation_liesOver vZ v (p : ℤ)
+  rw [intValuation_vZ_p, ramificationIdx'_vZ_v] at h
+  have hcast : (algebraMap ℤ (𝓞 K)) (p : ℤ) = ((p : ℕ) : 𝓞 K) := map_natCast (algebraMap ℤ (𝓞 K)) p
+  rw [hcast] at h
+  have hp1 : 1 ≤ p := (Fact.out : p.Prime).pos
+  rw [← h, ← WithZero.exp_nsmul, nsmul_eq_mul, mul_neg_one, Nat.cast_sub hp1, Nat.cast_one]
+
+/-- `Valued.v (p : v.adicCompletion K) = exp (-(p - 1))`, the `v`-side analogue of `valued_w_p`. -/
+theorem valued_v_p :
+    Valued.v (((p : ℕ) : v.adicCompletion K)) = WithZero.exp (-((p : ℤ) - 1)) := by
+  rw [show ((p : ℕ) : v.adicCompletion K) =
+      algebraMap K (v.adicCompletion K) (algebraMap (𝓞 K) K ((p : ℕ) : 𝓞 K)) from by
+    rw [map_natCast, map_natCast],
+    show algebraMap K (v.adicCompletion K) (algebraMap (𝓞 K) K ((p : ℕ) : 𝓞 K)) =
+      ((algebraMap (𝓞 K) K ((p : ℕ) : 𝓞 K) : K) : v.adicCompletion K) from rfl,
+    IsDedekindDomain.HeightOneSpectrum.valuedAdicCompletion_eq_valuation',
+    v.valuation_of_algebraMap, intValuation_v_p]
+
+/-- **Pure real-number arithmetic**: the exponent `convergenceRadius_eq_rpow_of_valued_natCast_eq_exp`
+produces for `K_v`, `-(((p:ℤ)-1 : ℤ) : ℝ) * ((p:ℝ)-1)⁻¹`, equals `-1` exactly (the `k = p - 1`
+cancellation the module docstring above describes). No `v.adicCompletion K`/`NormedField` instance
+appears in this statement at all — ordinary real arithmetic, safe to state explicitly in this
+`NumberField`-visible file with no diamond risk. -/
+theorem convergenceRadius_v_exponent_eq :
+    -(((p : ℤ) - 1 : ℤ) : ℝ) * ((p : ℝ) - 1)⁻¹ = (-1 : ℝ) := by
+  have hp1 : ((p : ℝ) - 1) ≠ 0 := by
+    have : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast (Fact.out : p.Prime).two_le
+    linarith
+  push_cast
+  field_simp
+  norm_num
+
+set_option linter.defProp false in
+/-- **The concrete numeral: `convergenceRadius (v.adicCompletion K) p = 2 ^ (-1 : ℝ)`.** The type is
+left to be INFERRED from the proof term (never written explicitly in this `NumberField`-visible
+file) — the same diamond-avoidance trick `hnormK`/`hthreshStrict_i₀` above already use: writing
+`convergenceRadius (v.adicCompletion K) p = ...` as an explicit statement here would force a fresh,
+independently-resolved `NormedField (v.adicCompletion K)` instance search, which can disagree with
+the one baked into `convergenceRadius_eq_rpow_of_valued_natCast_eq_exp`'s own (already-elaborated,
+`NumberField`-free) conclusion type. Composing that generic lemma (`valued_v_p` supplies `k := p - 1`)
+with the pure-arithmetic `convergenceRadius_v_exponent_eq` via `Eq.trans` avoids ever writing the
+`convergenceRadius`-typed statement fresh. -/
+def convergenceRadius_v_eq :=
+  (IsDedekindDomain.HeightOneSpectrum.convergenceRadius_eq_rpow_of_valued_natCast_eq_exp
+      K v p valued_v_p).trans (by rw [convergenceRadius_v_exponent_eq])
+
+/-- **Pure real-number arithmetic**: `-1 * (p:ℝ) = -3` for the concrete `p := 3`. Closes the
+`convergenceRadius_w_eq` exponent to a literal numeral within the same `rw` chain, rather than
+leaving it as the unreduced `-1 * ↑p` an unforced type-inference would otherwise produce. -/
+theorem convergenceRadius_w_exponent_eq : (-1 : ℝ) * (p : ℝ) = (-3 : ℝ) := by norm_num
+
+set_option linter.defProp false in
+/-- **The concrete numeral: `convergenceRadius (w.adicCompletion L) p = 2 ^ (-3 : ℝ)`.** Same
+diamond-avoidance discipline as `convergenceRadius_v_eq`: composes `convergenceRadius_eq_pow`
+(`Langlands.AdicCompletionNormExpTrace`) with `convergenceRadius_v_eq` and `ramificationIdx'_eq`
+(`e = p = 3`) via `Eq.trans`, never stating the `convergenceRadius (w.adicCompletion L) p = ...`
+equation as a fresh explicit type. -/
+def convergenceRadius_w_eq :=
+  (IsDedekindDomain.HeightOneSpectrum.convergenceRadius_eq_pow K L v w p).trans (by
+    rw [convergenceRadius_v_eq, ramificationIdx'_eq, ← Real.rpow_natCast ((2 : ℝ) ^ (-1 : ℝ)) p,
+      ← Real.rpow_mul (by norm_num : (0 : ℝ) ≤ 2), convergenceRadius_w_exponent_eq])
 
 /-! ### Status: both blockers closed, the `exp`/`log` machinery runs end-to-end
 

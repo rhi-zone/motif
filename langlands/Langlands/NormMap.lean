@@ -69,6 +69,19 @@ noncomputable section
 open IsDedekindDomain
 open scoped Pointwise WithZeroTopology
 
+open scoped NNReal in
+/-- **`WithZeroMulInt.toNNReal` of `WithZero.exp a` is the literal `zpow` `e ^ a`.** `exp a` is
+`coe (Multiplicative.ofAdd a)` by definition, so `WithZero.unzero exp_ne_zero` is
+`Multiplicative.ofAdd a` (`WithZero.unzero_coe`), and `toNNReal_neg_apply` unfolds to `e ^
+(Multiplicative.ofAdd a).toAdd = e ^ a` (`toAdd_ofAdd`). Turns any `Valued.v x = WithZero.exp a`
+fact into a literal real-number value of `‖x‖` via `norm_eq_toNNReal_valued` below, with no
+order/ε argument. -/
+theorem WithZeroMulInt.toNNReal_exp {e : ℝ≥0} (he : e ≠ 0) (a : ℤ) :
+    WithZeroMulInt.toNNReal he (WithZero.exp a) = e ^ a := by
+  have hu : WithZero.unzero (WithZero.exp_ne_zero (a := a)) = Multiplicative.ofAdd a :=
+    WithZero.unzero_coe (x := Multiplicative.ofAdd a) (hx := WithZero.exp_ne_zero)
+  rw [WithZeroMulInt.toNNReal_neg_apply he WithZero.exp_ne_zero, hu, toAdd_ofAdd]
+
 namespace IsDedekindDomain.HeightOneSpectrum
 
 section RankOne
@@ -138,6 +151,17 @@ theorem norm_eq_toNNReal_valued (x : v.adicCompletion F) :
   simp only [MonoidWithZeroHom.comp_apply, MonoidWithZeroHom.coe_ofClass,
     Valuation.IsRankOneDiscrete.valueGroup₀_equiv_withZeroMulInt_restrict_apply_of_surjective
       (valuedAdicCompletion_surjective F v)]
+
+/-- **`‖x‖` is the literal real number `2 ^ k` whenever `Valued.v x = WithZero.exp k`.** Composes
+`norm_eq_toNNReal_valued` with `WithZeroMulInt.toNNReal_exp`, then pushes the `NNReal` zpow through
+the `ℝ`-cast (`NNReal.coe_zpow`). The route this repo uses to turn any `Valued.v`-level computation
+(e.g. `valued_w_p`-style facts in a concrete instance) into a literal real-number value of `‖x‖`, no
+order/ε argument needed. -/
+theorem norm_eq_two_zpow_of_valued_eq_exp {x : v.adicCompletion F} {k : ℤ}
+    (hx : Valued.v x = WithZero.exp k) : ‖x‖ = (2 : ℝ) ^ k := by
+  rw [norm_eq_toNNReal_valued, hx, WithZeroMulInt.toNNReal_exp]
+  push_cast [NNReal.coe_zpow]
+  norm_num
 
 /-- The canonical valuation `NormedField.valuation` of `instNontriviallyNormedFieldAdicCompletion`
 is `Compatible` with `instValuativeRelValuedAdicCompletion`, completing the hypotheses of

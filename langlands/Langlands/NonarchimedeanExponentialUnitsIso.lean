@@ -61,7 +61,8 @@ with no need to track two separate thresholds through the final theorem.
 * `expHom` : the bundled `MonoidHom`, `Multiplicative ↥(𝔪_A^i) →* ↥(U_A^{(i)})`.
 * `norm_eq_of_norm_sub_lt` : the ultrametric isosceles-triangle principle,
   `‖a - b‖ < ‖b‖ → ‖a‖ = ‖b‖`.
-* `logUnitsThreshold`, `logUnitsThreshold_le_expUnitsThreshold`.
+* `logUnitsThreshold`, `logUnitsThreshold_le_expUnitsThreshold`,
+  `logUnitsThreshold_lt_convergenceRadius`.
 * `norm_log_eq_of_lt_sq` : `‖z‖ < logUnitsThreshold K p → ‖log hnorm z‖ = ‖z‖` (for `z ≠ 0`; trivially
   true at `z = 0` too since both sides vanish).
 * `log_mem_maximalIdeal_pow` : the no-shift landing lemma, `x ∈ 𝔪_A^i → log hnorm (x : K) ∈ 𝔪_A^i`
@@ -353,6 +354,17 @@ theorem logUnitsThreshold_le_expUnitsThreshold (hnorm : ‖(p : K)‖ < 1) :
   unfold logUnitsThreshold expUnitsThreshold
   rw [← Real.rpow_natCast ‖(p : K)‖ 2]
   exact Real.rpow_le_rpow_of_exponent_ge hp0 hnorm.le hexple
+
+omit hA [IsUltrametricDist K] [CompleteSpace K] in
+/-- **`logUnitsThreshold K p < convergenceRadius K p`.** Composing
+`logUnitsThreshold_le_expUnitsThreshold` with `expUnitsThreshold_lt_convergenceRadius`: the
+`log`-side threshold is bounded above by the `exp`-side units threshold, which is itself strictly
+below `exp`'s own convergence radius. This lets any `‖x‖ < logUnitsThreshold K p` hypothesis be
+reused directly where a `convergenceRadius`-shaped hypothesis is needed. -/
+theorem logUnitsThreshold_lt_convergenceRadius (hnorm : ‖(p : K)‖ < 1) :
+    logUnitsThreshold K p < convergenceRadius K p :=
+  lt_of_le_of_lt (logUnitsThreshold_le_expUnitsThreshold hnorm)
+    (expUnitsThreshold_lt_convergenceRadius hnorm)
 
 omit hA [IsUltrametricDist K] [CompleteSpace K] in
 /-- **A threshold `i₀` above which `‖π‖ ^ i` is strictly below `logUnitsThreshold K p`**, for any
