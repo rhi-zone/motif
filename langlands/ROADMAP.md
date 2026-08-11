@@ -9167,3 +9167,116 @@ construction of `φ` itself, its correctness (existence half of the lemma), uniq
 specialization, and `F_π` remain unattempted, with the specific next blocker (a `substInvFun`-scale
 Taylor/linearization lemma, doubled for two-sided intertwining) identified precisely above rather than
 left implicit.
+
+## 9. Phase 2c, third pass: the recursive construction of φ — CLOSED at the coefficient level,
+the full-power-series existence induction not attempted (deliberately, as scoped)
+
+Continuation of `§8`. The task for this pass was to build the recursive coefficient function for
+the functional equation lemma's intertwining power series `φ`, prove its degree-1 base case and
+the well-definedness of its recursive step, and — if it closed without undue risk — attempt the
+existence induction (`f.subst φ = φ.subst g`) and uniqueness. All additions are in
+`Langlands/LubinTateFunctionalEquation.lean` (same file as `§8`, extended).
+
+**What is proved, sorry-free.**
+
+* `LubinTate.phiState hπ a hf hg : (n : ℕ) → {p : O × O⟦X⟧ // coeff 0 p.2 = 0}` — the recursive
+  coefficient-and-partial-sum construction, with the zero-constant-term invariant *bundled into
+  the return type*. `phiState 0 = ⟨(0, 0), _⟩`, `phiState 1 = ⟨(a, C a * X), _⟩`, and at
+  `n = d + 2`: taking `φ_d := (phiState (d+1)).1.2` (whose `coeff 0 = 0` comes directly from
+  `(phiState (d+1)).2`, no self-reference needed), the new coefficient is
+  `c := ↑hunit.unit⁻¹ * hdvd.choose` where `hunit : IsUnit (1 - π^(d+1))` (via
+  `IsLocalRing.isUnit_one_sub_self_of_mem_nonunits`, since `π^(d+1) ∈ maximalIdeal O`) and
+  `hdvd : π ∣ (coeff (d+2) (φ_d.subst g) - coeff (d+2) (f.subst φ_d))` (via
+  `uniformizer_dvd_coeff_subst_sub_subst` from `§8`, applied unconditionally to `φ_d`); the new
+  state is `⟨(c, φ_d + C c * X^(d+2)), _⟩`.
+* `LubinTate.phiCoeff`, `LubinTate.phiPartialSum` — the two projections out of `phiState`.
+* `LubinTate.phiCoeff_zero : phiCoeff hπ a hf hg 0 = 0`, `LubinTate.phiCoeff_one : phiCoeff hπ a hf hg
+  1 = a` — the degree-`0`/`1` base cases, exactly as scoped.
+* `LubinTate.phiPartialSum_succ_succ` — the recursive step's shape at the power-series level:
+  `phiPartialSum (d+2) = phiPartialSum (d+1) + C (phiCoeff (d+2)) * X^(d+2)`.
+* `LubinTate.pi_mul_one_sub_pow_mul_phiCoeff` — **the recursive step's well-definedness, in the
+  strong sense**: not merely that `phiState`'s degree-`(d+2)` case typechecks (it must, to
+  compile — `IsUnit (1 - π^(d+1))` and the `π`-divisibility witness are genuinely constructed,
+  not assumed), but that the resulting coefficient *provably solves the equation it is defined to
+  solve*: `π * (1 - π^(d+1)) * phiCoeff (d+2) = coeff (d+2) (φ_{d+1}.subst g) - coeff (d+2)
+  (f.subst φ_{d+1})`. Proved via a standalone generic lemma
+  `LubinTate.pi_mul_mul_unit_inv_mul_choose : IsUnit u → π ∣ y → π * u * (↑hunit.unit⁻¹ *
+  hdvd.choose) = y`, applied by unification against `phiState`'s own internal (opaque)
+  `IsUnit`/`Dvd.dvd` witnesses — deliberately *not* proved by naming and rewriting those witnesses
+  directly, which hits a genuine dependent-motive obstruction (below).
+
+`lake build` clean across the whole repo (`8748` jobs, only pre-existing unrelated warnings);
+`#print axioms` on every new declaration shows only `propext, Classical.choice, Quot.sound`; no
+`sorry` anywhere.
+
+**Two real Lean-engineering obstacles this pass diagnosed and resolved, worth recording precisely
+since they are not specific to Lubin-Tate theory and will recur in similar recursive
+power-series constructions.**
+
+1. **A `Finset.sum`-based partial sum (mirroring Mathlib's own `substInvFun` pattern literally)
+   defeats Lean's termination checker here, even though the underlying recursion is well-founded.**
+   The first attempt defined the degree-`(d+2)` coefficient using `∑ i : Fin (d+1), C (phiCoeff
+   (i.1+1)) * X^(i.1+1)` as the partial sum, exactly mirroring
+   `Mathlib/RingTheory/PowerSeries/Substitution.lean`'s `substInvFun` (`∑ i : Fin (n+1), C
+   (substInvFun i.1) * X^i.1`). For `substInvFun` this compiles because that function's recursive
+   step never needs any *fact* about the sum (no conditional/choice construction inside), only
+   the sum's *value*, and Lean's automatic termination search apparently handles the resulting
+   Fibonacci-shaped self-reference. For `phiCoeff` the analogous definition failed at "fail to
+   show termination", with the generated obligation losing all connection between the recursive
+   call's index and the `Fin (d+1)` binder it came from (`⊢ a✝ ≤ d + 1` with no hypothesis on
+   `a✝`) — the recursive calls end up syntactically buried inside `Finset.sum`'s higher-order
+   argument, opaque to the termination checker's call-site analysis, regardless of whether the
+   calls are provably decreasing. The fix: replace the `Finset.sum`-over-history approach with a
+   **single structural recursion carrying the whole previous partial sum as one direct recursive
+   call** (`phiState (d+1)`, not `phiCoeff` applied at `d+1` different indices) — this is
+   `phiState`'s actual shape above, and it compiles as ordinary structural recursion with no
+   termination annotation needed at all.
+2. **Bundling a required invariant into a recursive definition's return type (a dependent
+   subtype), rather than proving it after the fact, is what breaks the self-reference-to-base-case
+   circularity.** `phiState`'s degree-`(d+2)` case needs `coeff 0 φ_d = 0` as a *hypothesis* to
+   invoke `uniformizer_dvd_coeff_subst_sub_subst` (unlike `substInvFun`, whose formula needs no
+   such fact) — proving this fact about `phiCoeff`'s own not-yet-fully-defined values from
+   *within* its own definition is exactly the circularity the previous pass (`§8`) flagged as a
+   risk. Returning `{p : O × O⟦X⟧ // coeff 0 p.2 = 0}` instead of a bare pair sidesteps it
+   entirely: the previous recursive call's own proof component (`(phiState (d+1)).2`) supplies
+   the needed fact directly, as *data* from a legitimate smaller recursive call, not as a fact
+   requiring separate justification.
+3. **A related, smaller obstacle in the well-definedness proof itself**: rewriting an
+   `IsUnit`-witness's value directly (`rw [← u.unit_spec]`) fails with "motive is not type
+   correct" whenever that witness's own *type* mentions the value being rewritten (here `u :
+   IsUnit (1 - π^(d+1))`, and rewriting `1 - π^(d+1)` would need to simultaneously generalize
+   `u`'s type, which `rw` cannot do for a fixed local hypothesis). The general-purpose
+   `pi_mul_mul_unit_inv_mul_choose` lemma above avoids this: stated for an arbitrary `IsUnit u`
+   and arbitrary `π ∣ y`, its conclusion is applied to `phiState`'s specific (opaque, unnamed)
+   internal witnesses *by unification* (`exact pi_mul_mul_unit_inv_mul_choose _ _`) rather than by
+   naming and rewriting them — since the lemma is proved once, generically, without ever
+   depending on which specific proof term instantiates `hunit`/`hdvd`, unification sidesteps the
+   dependent-motive problem entirely.
+
+**What remains open, precisely, and why this pass stopped here (as the task brief's own scoping
+provision anticipated).** `pi_mul_one_sub_pow_mul_phiCoeff` establishes that each new coefficient
+solves its *local* defining equation against the *truncated partial sum* `phiPartialSum (d+1)`.
+What is **not** established: that the *fully assembled* power series `φ := PowerSeries.mk
+(phiCoeff hπ a hf hg)` satisfies the actual target identity `f.subst φ = φ.subst g`. Bridging from
+"each truncation solves its own local equation" to "the limit satisfies the global equation" is a
+linearization/Taylor-expansion argument comparable to Mathlib's own
+`PowerSeries.coeff_subst_sum_C_substInvFun_mul_X_pow_sub_X` (`Substitution.lean`, ~50 lines,
+professional-contributor-level, for the *simpler* one-sided case `P.subst Q = X` with a single
+power series rather than two) — as `§8` already assessed and this pass's own experience confirms
+(the coefficient-level well-definedness step alone required three real Lean-engineering
+workarounds, documented above). Attempting the full induction without budgeting for an effort of
+at least that scale risked exactly the half-finished-induction failure mode the task brief
+explicitly authorized avoiding; consistent with that authorization, this pass stopped at the
+verified recursive construction plus its well-definedness, rather than force the existence
+induction. Uniqueness of `φ` and the `n = 2`/`F_π` formal-group-law specialization remain
+downstream of that induction and were not attempted.
+
+**Precise next blocker for a future pass.** Prove
+`f.subst (PowerSeries.mk (phiCoeff hπ a hf hg)) = (PowerSeries.mk (phiCoeff hπ a hf hg)).subst g`
+by showing, for every `n`, that `coeff n` of both sides agrees — using
+`pi_mul_one_sub_pow_mul_phiCoeff` together with a fact of the shape "`coeff n` of a substitution
+into `f` (respectively out of `g`) depends only on the argument's coefficients up to degree `n`"
+(the truncation-invariance fact `subst_substInv_right`'s proof in `Substitution.lean` builds and
+uses, via `X^(n+1) ∣ (full series − truncation)` and `sub_dvd_pow_sub_pow`) to transfer the
+truncated identity (`pi_mul_one_sub_pow_mul_phiCoeff`) to the full series. That transfer lemma is
+the specific missing piece, not yet stated or attempted in this repo.

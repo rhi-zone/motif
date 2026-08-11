@@ -38,14 +38,32 @@ degree-by-degree obstruction in the functional equation lemma's recursion is *al
   `π ∣ coeff n (φ.subst g) - coeff n (f.subst φ)` for every `n`, obtained from
   `map_residue_subst_eq_map_residue_subst` via `IsLocalRing.residue_eq_zero_iff` and
   `IsDiscreteValuationRing.irreducible_iff_uniformizer`.
+* `phiState`, `phiCoeff`, `phiPartialSum` : the recursive construction of the functional equation
+  lemma's intertwining power series `φ`, coefficient by coefficient. `phiState hπ a hf hg n`
+  bundles the degree-`n` coefficient and the partial sum through degree `n` together with a proof
+  that the partial sum has zero constant term — bundling this invariant into the return type is
+  what lets the recursive step at degree `d + 2` supply `uniformizer_dvd_coeff_subst_sub_subst`'s
+  `coeff 0 φ = 0` hypothesis from the *previous* state's own proof component, with no
+  self-reference to `phiState`'s own base case and no `Finset.sum`-buried recursive calls (the
+  latter defeats Lean's termination checker outright — documented at `phiState`). `phiCoeff`/
+  `phiPartialSum` extract the two components. `phiCoeff_zero`, `phiCoeff_one` give the base cases
+  (`0`, `a`); `phiPartialSum_succ_succ` gives the recursive step's shape; and
+  `pi_mul_one_sub_pow_mul_phiCoeff` shows the degree-`(d+2)` coefficient actually solves the linear
+  equation it is defined to solve — the recursion is well-defined not merely because the term
+  typechecks, but because it provably satisfies its own defining equation.
 
 ## What this does not yet do
 
-The functional equation lemma's existence half — assembling a power series `φ` satisfying
-`f.subst φ = φ.subst g` and `φ ≡ (linear form) mod deg 2`, by choosing `coeff n φ` degree by degree
-using `uniformizer_dvd_coeff_subst_sub_subst` to divide by `π` and
-`IsLocalRing.isUnit_one_sub_self_of_mem_nonunits` to invert the unit factor `1 - π^(n-1)` in the
-degree-`n` coefficient `π - π^n = π·(1 - π^(n-1))` of the recursion — is not attempted in this file.
+The functional equation lemma's existence half — proving the *fully assembled* `φ := mk
+(phiCoeff hπ a hf hg)` satisfies `f.subst φ = φ.subst g` (as opposed to `phiCoeff`'s per-degree
+defining equation against the *truncated partial sum*, which is what `pi_mul_one_sub_pow_mul_phiCoeff`
+already gives) — is not attempted in this file. That remaining step is a linearization/Taylor
+argument analogous to Mathlib's `PowerSeries.coeff_subst_sum_C_substInvFun_mul_X_pow_sub_X`
+(`Mathlib/RingTheory/PowerSeries/Substitution.lean`), itself a genuinely hard ~50-line proof for
+the strictly simpler one-sided case (`P.subst Q = X`, one power series, not two); our two-sided
+intertwining equation is the same shape of argument with materially more bookkeeping, not a
+smaller version of it. Also not attempted: uniqueness of `φ`, and everything downstream (the
+`n = 2`/`F_π` formal group law specialization).
 -/
 
 @[expose] public section
@@ -161,6 +179,124 @@ theorem uniformizer_dvd_coeff_subst_sub_subst {π : O} (hπ : Irreducible π)
       PowerSeries.coeff n (PowerSeries.map (residue O) (f.subst φ)) := by rw [this]
   rw [PowerSeries.coeff_map, PowerSeries.coeff_map] at hcoeff
   rw [map_sub, hcoeff, sub_self]
+
+variable {π : O} {f g : O⟦X⟧}
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] in
+/-- **Generic algebraic solving step**, stated independently of `phiCoeff`/`phiState` so it can
+discharge the recursive step's defining equation *by unification* against whatever specific
+`IsUnit`/`Dvd.dvd` proof terms Lean's equation compiler happens to have produced internally,
+without needing those opaque terms to be named or rewritten (rewriting them directly runs into a
+dependent-motive obstruction, since the `IsUnit` witness's *type* mentions the very ring element
+being solved for). For any `u` with `IsUnit u` and any `y` with `π ∣ y`:
+`π * u * (↑hunit.unit⁻¹ * hdvd.choose) = y`. -/
+theorem pi_mul_mul_unit_inv_mul_choose {π : O} {u : O} (hunit : IsUnit u) {y : O}
+    (hdvd : π ∣ y) : π * u * ((↑hunit.unit⁻¹ : O) * hdvd.choose) = y := by
+  have h1 : u * (↑hunit.unit⁻¹ : O) = 1 := hunit.mul_val_inv
+  calc π * u * ((↑hunit.unit⁻¹ : O) * hdvd.choose)
+      = π * (u * (↑hunit.unit⁻¹ : O)) * hdvd.choose := by ring
+    _ = π * 1 * hdvd.choose := by rw [h1]
+    _ = π * hdvd.choose := by ring
+    _ = y := hdvd.choose_spec.symm
+
+/-- **The recursive state for the functional equation lemma's intertwining power series `φ`,
+bundled with its own zero-constant-term invariant.** `phiState hπ a hf hg n` packages, for
+degree `n`: the newly-fixed coefficient (`.1.1`) and the partial sum of `φ`'s coefficients up
+through degree `n` (`.1.2`), together with a *proof* that this partial sum has zero constant term
+(`.2`). Bundling the invariant into the return type (rather than proving it after the fact) is
+what makes the recursive step well-typed: at degree `d + 2`, the previous state's own proof
+component (`(phiState hπ a hf hg (d + 1)).2`) supplies exactly the `coeff 0 φ = 0` hypothesis
+`uniformizer_dvd_coeff_subst_sub_subst` needs, with no self-reference to `phiState`'s own base
+case required — this is what makes Lean accept the definition as a single structural recursion on
+`n` (each case calls `phiState` at exactly one strictly smaller index, unlike an approach summing
+over all prior coefficients via `Finset.sum`, which defeats Lean's termination checker since the
+recursive calls end up buried inside an opaque higher-order `Finset.sum` argument).
+
+At `n = d + 2 ≥ 2`, the new coefficient solves the linear equation the hand-derivation recorded in
+`ROADMAP.md` §8 identifies: `π · (1 - π^(d+1)) · c = coeff (d+2) (φ_d.subst g) - coeff (d+2)
+(f.subst φ_d)`, where `φ_d` is the previous state's partial sum — obtained by extracting the
+`π`-divisible witness for the right-hand side via `uniformizer_dvd_coeff_subst_sub_subst` (this
+applies unconditionally, to *any* admissible partial sum, not only to ones already known to
+intertwine `f` and `g` correctly — see this file's module docstring) and inverting the unit factor
+`1 - π^(d+1)` via `IsLocalRing.isUnit_one_sub_self_of_mem_nonunits` (`π^(d+1) ∈ 𝔪` since `π ∈ 𝔪`
+and `d + 1 ≥ 1`, so `1 - π^(d+1)` is a unit in the local ring `O`, no completeness needed). -/
+noncomputable def phiState (hπ : Irreducible π) (a : O)
+    (hf : IsLubinTatePoly π (residueCard O) f) (hg : IsLubinTatePoly π (residueCard O) g) :
+    (n : ℕ) → {p : O × O⟦X⟧ // coeff 0 p.2 = 0}
+  | 0 => ⟨(0, 0), by simp⟩
+  | 1 => ⟨(a, PowerSeries.C a * X), by simp⟩
+  | d + 2 =>
+      let prev := phiState hπ a hf hg (d + 1)
+      let φ := prev.1.2
+      have hφ0 : coeff 0 φ = 0 := prev.2
+      have hmem : π ∈ maximalIdeal O := (mem_maximalIdeal π).mpr hπ.not_isUnit
+      have hpowmem : π ^ (d + 1) ∈ maximalIdeal O :=
+        Ideal.pow_mem_of_mem (maximalIdeal O) hmem (d + 1) (by omega)
+      have hunit : IsUnit (1 - π ^ (d + 1)) :=
+        isUnit_one_sub_self_of_mem_nonunits _ ((mem_maximalIdeal _).mp hpowmem)
+      have hdvd : π ∣ (coeff (d + 2) (φ.subst g) - coeff (d + 2) (f.subst φ)) :=
+        uniformizer_dvd_coeff_subst_sub_subst hπ hf hg hφ0 (d + 2)
+      let c := (↑hunit.unit⁻¹ : O) * hdvd.choose
+      ⟨(c, φ + PowerSeries.C c * X ^ (d + 2)), by
+        show coeff 0 (φ + PowerSeries.C c * X ^ (d + 2)) = 0
+        rw [map_add, hφ0, zero_add, coeff_C_mul, coeff_X_pow, if_neg (by omega), mul_zero]⟩
+
+/-- The degree-`n` coefficient of the functional equation lemma's intertwining power series `φ`,
+extracted from `phiState`. `phiCoeff 0 = 0`, `phiCoeff 1 = a` (`phiCoeff_zero`, `phiCoeff_one`). -/
+noncomputable def phiCoeff (hπ : Irreducible π) (a : O)
+    (hf : IsLubinTatePoly π (residueCard O) f) (hg : IsLubinTatePoly π (residueCard O) g)
+    (n : ℕ) : O :=
+  (phiState hπ a hf hg n).1.1
+
+/-- The partial sum of `φ`'s coefficients through degree `n`, extracted from `phiState`. Always
+has zero constant term (`coeff_zero_phiPartialSum`), the invariant `phiState` carries. -/
+noncomputable def phiPartialSum (hπ : Irreducible π) (a : O)
+    (hf : IsLubinTatePoly π (residueCard O) f) (hg : IsLubinTatePoly π (residueCard O) g)
+    (n : ℕ) : O⟦X⟧ :=
+  (phiState hπ a hf hg n).1.2
+
+@[simp] theorem coeff_zero_phiPartialSum (hπ : Irreducible π) (a : O)
+    (hf : IsLubinTatePoly π (residueCard O) f) (hg : IsLubinTatePoly π (residueCard O) g)
+    (n : ℕ) :
+    coeff 0 (phiPartialSum hπ a hf hg n) = 0 :=
+  (phiState hπ a hf hg n).2
+
+@[simp] theorem phiCoeff_zero (hπ : Irreducible π) (a : O)
+    (hf : IsLubinTatePoly π (residueCard O) f) (hg : IsLubinTatePoly π (residueCard O) g) :
+    phiCoeff hπ a hf hg 0 = 0 := by
+  simp [phiCoeff, phiState]
+
+@[simp] theorem phiCoeff_one (hπ : Irreducible π) (a : O)
+    (hf : IsLubinTatePoly π (residueCard O) f) (hg : IsLubinTatePoly π (residueCard O) g) :
+    phiCoeff hπ a hf hg 1 = a := by
+  simp [phiCoeff, phiState]
+
+@[simp] theorem phiPartialSum_one (hπ : Irreducible π) (a : O)
+    (hf : IsLubinTatePoly π (residueCard O) f) (hg : IsLubinTatePoly π (residueCard O) g) :
+    phiPartialSum hπ a hf hg 1 = PowerSeries.C a * X := by
+  simp [phiPartialSum, phiState]
+
+theorem phiPartialSum_succ_succ (hπ : Irreducible π) (a : O)
+    (hf : IsLubinTatePoly π (residueCard O) f) (hg : IsLubinTatePoly π (residueCard O) g)
+    (d : ℕ) :
+    phiPartialSum hπ a hf hg (d + 2) =
+      phiPartialSum hπ a hf hg (d + 1) +
+        PowerSeries.C (phiCoeff hπ a hf hg (d + 2)) * X ^ (d + 2) := by
+  simp only [phiPartialSum, phiCoeff, phiState]
+
+/-- **The recursive step actually solves the equation it is defined to solve.** This is the
+precise sense in which `phiState`'s degree-`(d+2)` case is well-defined: not merely that the term
+typechecks (it must, to compile at all — `IsUnit (1 - π^(d+1))` and the `π`-divisibility witness
+are both genuinely constructed, not assumed), but that the resulting coefficient satisfies the
+defining linear equation on the nose. -/
+theorem pi_mul_one_sub_pow_mul_phiCoeff (hπ : Irreducible π) (a : O)
+    (hf : IsLubinTatePoly π (residueCard O) f) (hg : IsLubinTatePoly π (residueCard O) g)
+    (d : ℕ) :
+    π * (1 - π ^ (d + 1)) * phiCoeff hπ a hf hg (d + 2) =
+      coeff (d + 2) ((phiPartialSum hπ a hf hg (d + 1)).subst g) -
+        coeff (d + 2) (f.subst (phiPartialSum hπ a hf hg (d + 1))) := by
+  simp only [phiCoeff, phiPartialSum, phiState]
+  exact pi_mul_mul_unit_inv_mul_choose _ _
 
 end LubinTate
 
