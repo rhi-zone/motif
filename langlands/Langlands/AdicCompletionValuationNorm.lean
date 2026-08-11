@@ -206,6 +206,71 @@ theorem valued_norm_eq_pow_of_ne_zero (x : w.adicCompletionIntegers L) (hx : x �
   push_cast
   ring
 
+/-! ### The valuation-of-norm formula, on all of `(w.adicCompletion L)ˣ` -/
+
+omit [Algebra.IsIntegral R S] in
+/-- **The valuation-of-norm formula, headline form.** For every `a : (w.adicCompletion L)ˣ`,
+`Valued.v (Algebra.norm (v.adicCompletion K) (a : w.adicCompletion L)) = (Valued.v (a :
+w.adicCompletion L)) ^ f`. Extends `valued_norm_eq_pow_of_ne_zero` from `L₀ \ {0}` to all of
+`(w.adicCompletion L)ˣ` via the "L-self" uniformizer decomposition
+`exists_zpow_mul_unit_eq_of_irreducible_self` (`a = πL₀ ^ k * u` for `k : ℤ`, `u : L₀ˣ`) and
+multiplicativity of both the norm and the valuation: the `πL₀`-part is handled by
+`valued_norm_eq_pow_of_ne_zero` itself (at `x := πL₀`, `n = 1`), and the unit part contributes
+nothing to either side (`localNormMap_mem_units` for the norm, `adicCompletionIntegers.isUnit_iff_valued_eq_one`
+for the valuation). -/
+theorem valued_localNormMap_eq_pow (a : (w.adicCompletion L)ˣ) :
+    Valued.v (Algebra.norm (v.adicCompletion K) (a : w.adicCompletion L)) =
+      (Valued.v (a : w.adicCompletion L)) ^ (v.asIdeal.inertiaDeg' w.asIdeal) := by
+  set f := v.asIdeal.inertiaDeg' w.asIdeal with hfdef
+  obtain ⟨πL, hπLu⟩ := exists_isUniformizer_valued w (F := L)
+  have hπLmem : πL ∈ w.adicCompletionIntegers L :=
+    (mem_adicCompletionIntegers S L w).mpr hπLu.val_lt_one.le
+  set πL₀ : w.adicCompletionIntegers L := ⟨πL, hπLmem⟩ with hπL₀def
+  have hspanL : maximalIdeal (w.adicCompletionIntegers L) = Ideal.span {πL₀} := hπLu.is_generator
+  have hπL₀irr : Irreducible πL₀ :=
+    (IsDiscreteValuationRing.irreducible_iff_uniformizer πL₀).mpr hspanL
+  have hπLval : Valued.v (πL₀ : w.adicCompletion L) = WithZero.exp (-1 : ℤ) := by
+    rw [show (πL₀ : w.adicCompletion L) = πL from rfl, hπLu.val,
+      Valuation.IsRankOneDiscrete.generator_eq_exp_neg_one_of_surjective
+        (valuedAdicCompletion_surjective L w), Units.val_mk0]
+  obtain ⟨k, u, hku⟩ := exists_zpow_mul_unit_eq_of_irreducible_self w hπL₀irr a
+  -- Valuation side: `Valued.v a = Valued.v πL₀ ^ k`.
+  have huval : Valued.v ((u : (w.adicCompletionIntegers L)ˣ) : w.adicCompletion L) = 1 :=
+    adicCompletionIntegers.isUnit_iff_valued_eq_one.mp (u : (w.adicCompletionIntegers L)ˣ).isUnit
+  have haval : Valued.v (a : w.adicCompletion L) = WithZero.exp (-(k : ℤ)) := by
+    have hval := congrArg Valued.v hku
+    rw [map_mul, map_zpow₀, hπLval, huval, mul_one, ← WithZero.exp_zsmul, zsmul_eq_mul,
+      mul_neg_one] at hval
+    exact hval
+  -- Norm side: `Algebra.norm a = (Algebra.norm πL₀) ^ k * Algebra.norm u`.
+  have hnormsplit : Algebra.norm (v.adicCompletion K) (a : w.adicCompletion L) =
+      (Algebra.norm (v.adicCompletion K) (πL₀ : w.adicCompletion L)) ^ k *
+        Algebra.norm (v.adicCompletion K)
+          ((u : (w.adicCompletionIntegers L)ˣ) : w.adicCompletion L) := by
+    rw [hku, map_mul, Algebra.norm_zpow]
+  have hval_normπL : Valued.v (Algebra.norm (v.adicCompletion K) (πL₀ : w.adicCompletion L)) =
+      WithZero.exp (-(f : ℤ)) := by
+    have h1 := valued_norm_eq_pow_of_ne_zero K L v w πL₀ hπL₀irr.ne_zero
+    rw [algebraMap_norm_eq_norm_algebraMap K L v w πL₀, hπLval, ← WithZero.exp_nsmul,
+      nsmul_eq_mul, mul_neg_one] at h1
+    exact h1
+  have hval_normU : Valued.v (Algebra.norm (v.adicCompletion K)
+      ((u : (w.adicCompletionIntegers L)ˣ) : w.adicCompletion L)) = 1 := by
+    have hmem : embedL L w u ∈ (w.adicCompletionIntegers L).units :=
+      range_embedL_eq L w ▸ ⟨u, rfl⟩
+    have hu' := adicCompletionIntegers.mem_units_iff_valued_eq_one.mp
+      (localNormMap_mem_units K L v w hmem)
+    rwa [show ((localNormMap K L v w (embedL L w u) : (v.adicCompletion K)ˣ) : v.adicCompletion K)
+        = Algebra.norm (v.adicCompletion K)
+            ((u : (w.adicCompletionIntegers L)ˣ) : w.adicCompletion L)
+        from rfl] at hu'
+  rw [haval, ← WithZero.exp_nsmul, nsmul_eq_mul]
+  rw [hnormsplit, map_mul, map_zpow₀, hval_normπL, hval_normU, mul_one, ← WithZero.exp_zsmul,
+    zsmul_eq_mul]
+  congr 1
+  push_cast
+  ring
+
 end IsDedekindDomain.HeightOneSpectrum
 
 end
