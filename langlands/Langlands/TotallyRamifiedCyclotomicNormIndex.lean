@@ -220,6 +220,90 @@ theorem index_normUnitsK₀_dvd_two_mul_three_pow_six :
   obtain ⟨hdvd1, hdvd2⟩ := index_normUnitsK₀_dvd_index_principalUnitsPow_7
   exact ⟨hidx ▸ hdvd1, hidx ▸ hdvd2⟩
 
+/-! ### Tightening the bound: `∣ 3 ^ 6` instead of `∣ 2 * 3 ^ 6`
+
+`index_normUnitsK₀_dvd_two_mul_three_pow_six`'s divisor `2 * 3 ^ 6` is `[K₀ˣ : U_{K₀}^{(7)}]`, the
+index of the deep filtration level in the *full* unit group `K₀ˣ`. But
+`AdicCompletionNormGroupIndex`'s generic bridging lemma only ever needs *some* ambient subgroup
+containing `N(L₀ˣ) ⊓ (that subgroup)`; the factor of `2` it carries is exactly `[K₀ˣ :
+U_{K₀}^{(1)}] = #κ_{K₀}ˣ`, the torsion part of `K₀ˣ`, and nothing in the generic bound uses this
+extra room. Here, unconditionally on tameness,
+`sup_normUnitsK₀_principalUnitsPow_one_eq_top_of_isTotallyRamified` shows the norm group already
+reaches every residue class mod `U_{K₀}^{(1)}` — because `gcd(e, #κ_{K₀}ˣ) = gcd(3, 2) = 1` — so the
+bridging can be run against the strictly smaller ambient group `U_{K₀}^{(1)}` instead of `K₀ˣ`,
+dropping the `2` entirely. -/
+
+/-- **`Subgroup.map (normUnitsK₀ K L v w) L₀ˣ ⊔ U_{K₀}^{(1)} = K₀ˣ`, i.e. `N(L₀ˣ) ⊔ U_{K₀}^{(1)} =
+⊤`, exactly, for the concrete instance.** `sup_normUnitsK₀_principalUnitsPow_one_eq_top_of_isTotallyRamified`
+instantiated at `isTotallyRamified` and the concrete coprimality `gcd(3, 2) = 1`
+(`ramificationIdx'_eq`, `nat_card_residueFieldK₀_units_eq`). -/
+theorem sup_normUnitsK₀_principalUnitsPow_one_eq_top :
+    MonoidHom.range (IsDedekindDomain.HeightOneSpectrum.normUnitsK₀ K L v w) ⊔
+        ValuationSubring.principalUnitsPow (v.adicCompletionIntegers K) 1 = ⊤ :=
+  IsDedekindDomain.HeightOneSpectrum.sup_normUnitsK₀_principalUnitsPow_one_eq_top_of_isTotallyRamified
+    K L v w isTotallyRamified
+    (by rw [nat_card_residueFieldK₀_units_eq, ramificationIdx'_eq]; decide)
+
+/-- **The tightened concrete numeral: `[K₀ˣ : N(L₀ˣ)] ∣ 3 ^ 6`, for the concrete instance `K =
+ℚ_3(ζ_3) ⊆ L = ℚ_3(ζ_9)`.** Sharper than `index_normUnitsK₀_dvd_two_mul_three_pow_six` by exactly
+the torsion factor `#κ_{K₀}ˣ = 2`: since `N(L₀ˣ) ⊔ U_{K₀}^{(1)} = ⊤`
+(`sup_normUnitsK₀_principalUnitsPow_one_eq_top`) and `N(L₀ˣ)` is normal (abelian ambient group),
+`[K₀ˣ : N(L₀ˣ)] = [U_{K₀}^{(1)} : N(L₀ˣ) ⊓ U_{K₀}^{(1)}]` (`Subgroup.relIndex_sup_left`), which
+divides `[U_{K₀}^{(1)} : U_{K₀}^{(7)}] = 3 ^ 6` because `U_{K₀}^{(7)} = N(U_{L₀}^{(15)}) ⊆ N(L₀ˣ) ⊓
+U_{K₀}^{(1)}` (`map_principalUnitsPow_normUnitsK₀_eq_15_7`, `principalUnitsPow_antitone`). Still a
+genuine DIVISIBILITY bound, not an equality — see this file's and `AdicCompletionNormGroupIndex`'s
+module docstrings for exactly what would be needed to close it further (the norm image of
+`U_{L₀}^{(i)}` for `1 ≤ i ≤ 14`, unreachable by the `exp`/`log` route used here, which only applies
+from `i = 15` on for this instance). -/
+theorem index_normUnitsK₀_dvd_three_pow_six :
+    (MonoidHom.range (IsDedekindDomain.HeightOneSpectrum.normUnitsK₀ K L v w)).index ∣
+      3 ^ (6 : ℕ) := by
+  have hGnormal :
+      (MonoidHom.range (IsDedekindDomain.HeightOneSpectrum.normUnitsK₀ K L v w)).Normal :=
+    (MonoidHom.range (IsDedekindDomain.HeightOneSpectrum.normUnitsK₀ K L v w)).normal_of_isMulCommutative
+  have hidx :
+      (MonoidHom.range (IsDedekindDomain.HeightOneSpectrum.normUnitsK₀ K L v w)).index =
+        (MonoidHom.range (IsDedekindDomain.HeightOneSpectrum.normUnitsK₀ K L v w)).relIndex
+          (ValuationSubring.principalUnitsPow (v.adicCompletionIntegers K) 1) := by
+    rw [← Subgroup.relIndex_top_right
+        (H := MonoidHom.range (IsDedekindDomain.HeightOneSpectrum.normUnitsK₀ K L v w)),
+      ← sup_normUnitsK₀_principalUnitsPow_one_eq_top, Subgroup.relIndex_sup_left]
+  have hP7leP1 :
+      ValuationSubring.principalUnitsPow (v.adicCompletionIntegers K) 7 ≤
+        ValuationSubring.principalUnitsPow (v.adicCompletionIntegers K) 1 :=
+    ValuationSubring.principalUnitsPow_antitone _ (by norm_num)
+  have hP7leG :
+      ValuationSubring.principalUnitsPow (v.adicCompletionIntegers K) 7 ≤
+        MonoidHom.range (IsDedekindDomain.HeightOneSpectrum.normUnitsK₀ K L v w) := by
+    rw [← map_principalUnitsPow_normUnitsK₀_eq_15_7]
+    exact Subgroup.map_le_range _ _
+  have hP7le :
+      ValuationSubring.principalUnitsPow (v.adicCompletionIntegers K) 7 ≤
+        MonoidHom.range (IsDedekindDomain.HeightOneSpectrum.normUnitsK₀ K L v w) ⊓
+          ValuationSubring.principalUnitsPow (v.adicCompletionIntegers K) 1 :=
+    le_inf hP7leG hP7leP1
+  have hmul := Subgroup.relIndex_mul_relIndex
+    (ValuationSubring.principalUnitsPow (v.adicCompletionIntegers K) 7)
+    (MonoidHom.range (IsDedekindDomain.HeightOneSpectrum.normUnitsK₀ K L v w) ⊓
+      ValuationSubring.principalUnitsPow (v.adicCompletionIntegers K) 1)
+    (ValuationSubring.principalUnitsPow (v.adicCompletionIntegers K) 1) hP7le inf_le_right
+  have hP7relP1 :
+      (ValuationSubring.principalUnitsPow (v.adicCompletionIntegers K) 7).relIndex
+          (ValuationSubring.principalUnitsPow (v.adicCompletionIntegers K) 1) =
+        3 ^ (6 : ℕ) := by
+    have h1 : (ValuationSubring.principalUnitsPow (v.adicCompletionIntegers K) 7).index =
+        2 * 3 ^ (6 : ℕ) := by
+      have := ValuationSubring.index_principalUnitsPow (v.adicCompletionIntegers K)
+        maximalIdeal_eq_span_π₀ π₀_ne_zero 6
+      rwa [nat_card_residueFieldK₀_units_eq, nat_card_residueFieldK₀_eq] at this
+    have h2 : (ValuationSubring.principalUnitsPow (v.adicCompletionIntegers K) 1).index = 2 := by
+      rw [ValuationSubring.index_principalUnitsPow_one, nat_card_residueFieldK₀_units_eq]
+    have h3 := Subgroup.relIndex_mul_index hP7leP1
+    rw [h1, h2] at h3
+    omega
+  rw [hidx, ← Subgroup.inf_relIndex_right, ← hP7relP1]
+  exact dvd_of_mul_left_eq _ hmul
+
 end Langlands.TotallyRamifiedCyclotomicConcreteExample
 
 end
