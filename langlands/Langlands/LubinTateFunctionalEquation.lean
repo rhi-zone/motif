@@ -199,6 +199,95 @@ theorem pi_mul_mul_unit_inv_mul_choose {π : O} {u : O} (hunit : IsUnit u) {y : 
     _ = π * hdvd.choose := by ring
     _ = y := hdvd.choose_spec.symm
 
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] in
+/-- **Truncation invariance, inner position** (Fact 1 of the existence induction). If two
+admissible substitutands `b`, `b'` agree on coefficients `0, …, n` (packaged as
+`X^(n+1) ∣ (b - b')`), then substituting either of them into a fixed outer series `h` gives the
+same `n`-th coefficient. Proved the same way Mathlib's `PowerSeries.subst_substInv_right` proves
+its analogous truncation fact: expand via `coeff_subst'` into a `finsum` over powers of the
+substitutand, and note `X^(n+1) ∣ (b - b')` propagates to `X^(n+1) ∣ (b^d - b'^d)` via
+`sub_dvd_pow_sub_pow`, which forces `coeff n (b^d) = coeff n (b'^d)` via `X_pow_dvd_iff`. -/
+theorem coeff_subst_eq_of_dvd_sub {R S : Type*} [CommRing R] [CommRing S] [Algebra R S]
+    (h : R⟦X⟧) {b b' : S⟦X⟧} (hb : PowerSeries.HasSubst b) (hb' : PowerSeries.HasSubst b')
+    (n : ℕ) (hdvd : (X : S⟦X⟧) ^ (n + 1) ∣ (b - b')) :
+    coeff n (h.subst b) = coeff n (h.subst b') := by
+  rw [coeff_subst' hb, coeff_subst' hb']
+  refine finsum_congr fun d ↦ ?_
+  congr 1
+  have hpow : (X : S⟦X⟧) ^ (n + 1) ∣ (b ^ d - b' ^ d) := hdvd.trans (sub_dvd_pow_sub_pow b b' d)
+  have := X_pow_dvd_iff.mp hpow n (Nat.lt_succ_self n)
+  rwa [map_sub, sub_eq_zero] at this
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] in
+/-- **Truncation invariance, outer position** (the outer-position analogue of Fact 1). If two
+outer series `f`, `f'` agree on coefficients `0, …, n`, substituting a fixed admissible `g` into
+either gives the same `n`-th coefficient. Unlike the inner-position case, this needs no
+`HasSubst` hypothesis on `f`/`f'` themselves (substitution is always defined in the outer
+argument) — only `constantCoeff g = 0`, so that `coeff n (g ^ d) = 0` once `d > n`
+(`le_order_pow_of_constantCoeff_eq_zero`), collapsing the `finsum` over `d` to the range where the
+hypothesis on `f`/`f'` already applies termwise. -/
+theorem coeff_subst_eq_of_dvd_sub_left {R S : Type*} [CommRing R] [CommRing S] [Algebra R S]
+    {g : S⟦X⟧} (hg : constantCoeff g = 0) {f f' : R⟦X⟧} (n : ℕ)
+    (hdvd : (X : R⟦X⟧) ^ (n + 1) ∣ (f - f')) :
+    coeff n (f.subst g) = coeff n (f'.subst g) := by
+  have hg' : PowerSeries.HasSubst g := HasSubst.of_constantCoeff_zero' hg
+  rw [coeff_subst' hg' f, coeff_subst' hg' f']
+  refine finsum_congr fun d ↦ ?_
+  by_cases hdn : d ≤ n
+  · congr 1
+    have := X_pow_dvd_iff.mp hdvd d (by omega)
+    rwa [map_sub, sub_eq_zero] at this
+  · have horder : (n : ℕ∞) < (g ^ d).order :=
+      lt_of_lt_of_le (by exact_mod_cast (by omega : n < d))
+        (le_order_pow_of_constantCoeff_eq_zero d hg)
+    rw [coeff_of_lt_order n horder, smul_zero, smul_zero]
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] in
+/-- **The binomial correction identity** (Fact 2', the crux algebraic fact behind Fact 2). For `A`
+with zero constant term, `c : S`, `n ≥ 1`, and every exponent `d`, the `n`-th coefficient of
+`(A + C c * X^n)^d` differs from that of `A^d` by exactly `c` when `d = 1`, and not at all
+otherwise. Proved via the geometric-sum factorization `x^d - y^d = (∑ i < d, x^i y^(d-1-i))(x-y)`
+(`geom_sum₂_mul`) with `x := A + C c * X^n`, `y := A`, so `x - y = C c * X^n`: the `n`-th
+coefficient of the difference is `c` times the *constant* coefficient of the geometric sum (via
+`coeff_X_pow_mul`), and that constant coefficient is `(constantCoeff (A + C c * X^n))^i *
+(constantCoeff A)^(d-1-i)` summed over `i < d` — since both constant coefficients are `0`, every
+term vanishes except possibly `i = 0`, which itself only survives (contributing `1`) when
+`d - 1 = 0`, i.e. `d = 1`. -/
+theorem coeff_pow_add_C_mul_X_pow_sub_coeff_pow {S : Type*} [CommRing S] {A : S⟦X⟧}
+    (hA : constantCoeff A = 0) (c : S) {n : ℕ} (hn : 1 ≤ n) (d : ℕ) :
+    coeff n ((A + C c * X ^ n) ^ d) = coeff n (A ^ d) + (if d = 1 then c else 0) := by
+  have hwc : constantCoeff (C c * X ^ n : S⟦X⟧) = 0 := by
+    rw [← coeff_zero_eq_constantCoeff, coeff_C_mul, coeff_X_pow, if_neg (by omega), mul_zero]
+  have hxc : constantCoeff (A + C c * X ^ n) = 0 := by rw [map_add, hA, hwc, zero_add]
+  match d with
+  | 0 => simp
+  | d + 1 =>
+    have hgeom := geom_sum₂_mul (A + C c * X ^ n) A (d + 1)
+    have hxy : (A + C c * X ^ n) - A = C c * X ^ n := by ring
+    rw [hxy] at hgeom
+    set B := ∑ i ∈ Finset.range (d + 1), (A + C c * X ^ n) ^ i * A ^ (d + 1 - 1 - i) with hB
+    have hcoeff : coeff n (B * (C c * X ^ n)) =
+        coeff n ((A + C c * X ^ n) ^ (d + 1)) - coeff n (A ^ (d + 1)) := by
+      rw [hgeom, map_sub]
+    have hlhs : coeff n (B * (C c * X ^ n)) = c * constantCoeff B := by
+      rw [show B * (C c * X ^ n) = C c * (X ^ n * B) from by ring, coeff_C_mul,
+        coeff_X_pow_mul', if_pos le_rfl, Nat.sub_self, coeff_zero_eq_constantCoeff]
+    have hsum : constantCoeff B = if d + 1 = 1 then 1 else 0 := by
+      rw [hB, map_sum, Finset.sum_eq_single 0]
+      · simp only [Nat.add_sub_cancel, pow_zero, map_pow, hA, one_mul]
+        rcases d with _ | d
+        · simp
+        · simp [zero_pow (Nat.succ_ne_zero d)]
+      · intro i hi hi0
+        rw [map_mul, map_pow, map_pow, hxc, hA, zero_pow hi0, zero_mul]
+      · intro h0
+        exact absurd (Finset.mem_range.mpr (by omega)) h0
+    rw [hsum] at hlhs
+    rw [hlhs] at hcoeff
+    rw [eq_sub_iff_add_eq] at hcoeff
+    rw [← hcoeff]
+    split_ifs <;> ring
+
 /-- **The recursive state for the functional equation lemma's intertwining power series `φ`,
 bundled with its own zero-constant-term invariant.** `phiState hπ a hf hg n` packages, for
 degree `n`: the newly-fixed coefficient (`.1.1`) and the partial sum of `φ`'s coefficients up
