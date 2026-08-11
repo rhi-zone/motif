@@ -8408,3 +8408,86 @@ the valuation-of-norm formula might matter for the concrete number — it does n
     exact index for `[K₀ˣ : N(L₀ˣ)]`. It is not closed by this pass, and this pass did not attempt
     it, but it is no longer entangled with the residue-degree/valuation-of-norm questions that
     §6ac left open — those are now separately, fully resolved.
+
+## 6ae. Thirty-third pass (2026-08-11): the valuation-side norm-group index factor closed exactly
+
+**Task.** §6ad item 3, precisely as diagnosed there: build (1) a surjective `MonoidHom (v.adicCompletion
+K)ˣ → (ℤᵐ⁰)ˣ` from `Valued.v`, (2) a comap-index lemma for surjective group homs, (3) assemble these
+with `valued_localNormMap_eq_pow` (§6ad) into the missing valuation-side index factor `[K_vˣ :
+N(L_wˣ) ⊔ U_{K_v}] = f`, wired into `AdicCompletionNormGroupIndex.lean`. The `logUnitsThreshold`
+numeric-example gap (§6ad item 4) was explicitly out of scope unless trivially reachable in passing
+— it was not; untouched by this pass.
+
+**All three pieces closed.** New file `Langlands/AdicCompletionUnitsValuationHom.lean` (commit
+`b3618ac`), an addition to `Langlands/FiniteIndexSubgroupsZ.lean` (same commit), and two new theorems
+in `Langlands/AdicCompletionNormGroupIndex.lean` (commit `32a4da3`). Both commits wired into
+`Langlands.lean`; `lake build` clean at 8747/8747 jobs; no `sorry` anywhere in the new/touched code;
+`#print axioms` on the headline theorem shows only `propext, Classical.choice, Quot.sound`.
+
+* `IsDedekindDomain.HeightOneSpectrum.valuationUnitsHom` (`AdicCompletionUnitsValuationHom.lean`) :
+  piece 1. `Valued.v`'s coercion to a plain `MonoidHom (v.adicCompletion F) ℤᵐ⁰` — via
+  `Valued.v.toMonoidWithZeroHom.toMonoidHom`, since ascribing `(Valued.v : F →* Γ₀)` directly did not
+  elaborate (the `?m` metavariables in `Valued.v`'s implicit `Valued` instance argument could not be
+  unified against the target `→*` type through the coe-insertion machinery; explicit projection
+  through the two-step `Valuation → MonoidWithZeroHom → MonoidHom` structure extension sidesteps
+  this) — pushed to units via `Units.map`, giving `valuationUnitsHom F v : (v.adicCompletion F)ˣ →*
+  ℤᵐ⁰ˣ`. `valuationUnitsHom_surjective` (from `valuedAdicCompletion_surjective` plus every nonzero
+  field element being a unit) and `valuationUnitsHom_ker` (exactly `(v.adicCompletionIntegers
+  F).units`, from `adicCompletionIntegers.mem_units_iff_valued_eq_one`) round it out. Generic over
+  any single `HeightOneSpectrum`, reusable at both `v` and `w`.
+* `Subgroup.index_comap_of_surjective` (`Mathlib.GroupTheory.Index`) : piece 2. Already present in
+  Mathlib under exactly this name — `(H.comap f).index = H.index` for `f` surjective — no new lemma
+  needed, contrary to §6ad's "not hand-verified to exist" hedge.
+* `MonoidHom.range_powMonoidHom_multiplicativeInt` / `index_range_powMonoidHom_multiplicativeInt`
+  (`FiniteIndexSubgroupsZ.lean`) : the numeric closure §6ad's third bullet anticipated. The range of
+  the `n`th-power map on `Multiplicative ℤ` is `AddSubgroup.toSubgroup (AddSubgroup.zmultiples (n :
+  ℤ))` (via `Int.toAdd_pow` and injectivity of `Multiplicative.toAdd`), hence has index `n`
+  (`AddSubgroup.index_toSubgroup` + `Int.index_zmultiples`, reusing this file's existing `Multiplicative
+  ℤ` classification machinery exactly as §6ad's diagnosis expected).
+* `IsDedekindDomain.HeightOneSpectrum.index_sup_units_eq_inertiaDeg'`
+  (`AdicCompletionNormGroupIndex.lean`) : the assembly, piece 3. `[K_vˣ : N_{L_w/K_v}(L_wˣ) ⊔ U_{K_v}]
+  = v.asIdeal.inertiaDeg' w.asIdeal`, unconditionally, no tameness hypothesis. Route: with `φ :=
+  valuationUnitsHom K v`, `N(L_wˣ) ⊔ U_{K_v} = comap φ (map φ (N(L_wˣ)))` (`Subgroup.comap_map_eq` +
+  `valuationUnitsHom_ker`), whose index equals `(map φ (N(L_wˣ))).index`
+  (`index_comap_of_surjective`). The valuation-of-norm formula (`valued_localNormMap_eq_pow`, §6ad)
+  identifies `φ ∘ localNormMap` with `(powMonoidHom f) ∘ ψ` for `ψ := valuationUnitsHom L w` (also
+  surjective), so `map φ (N(L_wˣ)) = range (powMonoidHom f : ℤᵐ⁰ˣ →* ℤᵐ⁰ˣ)` (`MonoidHom.range_comp`
+  twice, `ψ`'s surjectivity making its range `⊤`). Transporting that range's index along the `MulEquiv`
+  `WithZero.unitsWithZeroEquiv : ℤᵐ⁰ˣ ≃* Multiplicative ℤ` (`Subgroup.index_map_equiv`,
+  `MulEquiv.map_range_powMonoidHom` — both already in Mathlib, no new transport lemma needed) lands
+  exactly on `index_range_powMonoidHom_multiplicativeInt`, giving `f`.
+* `IsDedekindDomain.HeightOneSpectrum.index_range_localNormMap_eq_inertiaDeg'_mul_relIndex` : a
+  cheap corollary, substituting the now-exact valuation-side factor into
+  `index_range_localNormMap_eq_mul`'s two-factor decomposition: `[K_vˣ : N(L_wˣ)] = f · [U_{K_v} :
+  N(L_wˣ) ⊓ U_{K_v}]`. The remaining `relIndex` factor is still only bounded (a divisibility, existential
+  filtration depth, per §6z–§6ad), unchanged by this pass.
+
+**What did NOT close, precisely.**
+
+1. `[U_{K_v} : N(L_wˣ) ⊓ U_{K_v}]` itself: still only a divisibility bound into a filtration-level
+   index, `j` existential (`PrincipalUnitsFiltrationIndex.lean`,
+   `AdicCompletionNormGroupImage.lean`) — this pass's closure is entirely on the *other* factor, the
+   one §6ad's diagnosis identified as the standalone remaining gap. `PrincipalUnitsFiltrationIndex.lean`
+   itself is unmodified: its content (raw filtration-level indices) was never the actual location of
+   the gap despite the task brief's framing — the missing piece lived entirely in
+   `AdicCompletionNormGroupIndex.lean` plus two small new/extended supporting files.
+2. The capstone exact number for `K = ℚ_3(ζ_3) ⊆ L = ℚ_3(ζ_9)` (§6ad item 4): untouched, as scoped.
+   Still blocked on an explicit numeric `logUnitsThreshold` bound at `p = 3` — confirmed in §6ad to be
+   independent of everything this pass closed, and this pass did not attempt it. The concrete
+   instance's field-level index equality (`TotallyRamifiedCyclotomicNormIndex`'s
+   `index_localNormMap_range_eq_index_normUnitsK₀`, §6ad item 4) already bypasses
+   `index_range_localNormMap_eq_mul`'s two-factor decomposition entirely (total ramification collapses
+   `f = 1`), so this pass's new theorems, while generically complete, do not bear on that specific
+   instance's remaining gap either.
+3. Everything in §6aa's/§6ab's/§6ac's/§6ad's "did NOT close" lists not superseded above is unchanged.
+
+**Phase 2b overview, updated.** The wild-case index computation now has **both multiplicative
+factors of `[K_vˣ : N(L_wˣ)]` individually characterized**: the valuation-side factor `f` exactly
+(this pass), the units-side factor `[U_{K_v} : N(L_wˣ) ⊓ U_{K_v}]` as a divisibility bound with
+existential filtration depth (unchanged, §6z onward). Closing the general wild-case index to an exact
+formula now reduces entirely to tightening that one remaining factor — removing the existential `j`
+and turning `∣` into `=`, which would need either resolving the `exp`/`log` threshold to a concrete
+(not merely existential) filtration level, or an independent argument for `N(L_wˣ) ⊓ U_{K_v} = N(U_{L₀})`
+without the tame case's uniformizer trick. Neither attempted here. The concrete numeric example
+remains blocked on the unrelated `logUnitsThreshold` bound, as diagnosed in §6ad.
+
