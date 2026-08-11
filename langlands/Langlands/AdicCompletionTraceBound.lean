@@ -168,6 +168,31 @@ theorem exists_maximalIdeal_pow_norm_trace_lt {ε : ℝ} (hε : 0 < ε) :
   rw [hadef, norm_pow]
   exact hn
 
+omit [Algebra.IsIntegral R S] in
+/-- **The concrete-witness core of `exists_maximalIdeal_pow_norm_trace_lt`.** Same conclusion shape
+(a uniform trace-norm bound on a filtration level), but taking the witnessing data — a nonzero `a :
+K_v`, a uniformizer `πL` of `L_w`, and an explicit `i₀` with `‖πL‖ ^ i₀ ≤ ‖algebraMap a‖` — as
+EXPLICIT hypotheses rather than deriving them via `exists_pow_lt_of_lt_one`/`NormedField.exists_norm_lt_one`.
+This is exactly the reusable piece a concrete instance needs to close `i₀` to a literal numeral:
+supply a concrete uniformizer for `a` and a concrete numeral for `i₀`, and this lemma produces the
+bound directly, with no existential anywhere. -/
+theorem forall_maximalIdeal_pow_norm_trace_le {a : v.adicCompletion K}
+    {πL : w.adicCompletionIntegers L} (hπLnorm : ‖(πL : w.adicCompletion L)‖ < 1)
+    (hπL : maximalIdeal (w.adicCompletionIntegers L) =
+      Ideal.span ({πL} : Set (w.adicCompletionIntegers L)))
+    {i₀ : ℕ}
+    (hi₀ : ‖(πL : w.adicCompletion L)‖ ^ i₀ ≤
+      ‖algebraMap (v.adicCompletion K) (w.adicCompletion L) a‖) :
+    ∀ i ≥ i₀, ∀ x : w.adicCompletionIntegers L, x ∈ maximalIdeal (w.adicCompletionIntegers L) ^ i →
+      ‖Algebra.trace (v.adicCompletion K) (w.adicCompletion L) (x : w.adicCompletion L)‖ ≤ ‖a‖ := by
+  intro i hi x hx
+  have hxnorm : ‖(x : w.adicCompletion L)‖ ≤
+      ‖algebraMap (v.adicCompletion K) (w.adicCompletion L) a‖ := by
+    refine le_trans (norm_le_pow_of_mem_maximalIdeal_pow (w.adicCompletionIntegers L)
+      (mem_adicCompletionIntegers_iff_norm_le_one w) hπL hx) ?_
+    exact le_trans (pow_le_pow_of_le_one (norm_nonneg _) hπLnorm.le hi) hi₀
+  exact norm_trace_le K L v w hxnorm
+
 variable [CharZero K] (p : ℕ) [hp : Fact p.Prime]
 
 omit [Algebra.IsIntegral R S] in

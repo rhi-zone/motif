@@ -1020,6 +1020,129 @@ def convergenceRadius_w_eq :=
     rw [convergenceRadius_v_eq, ramificationIdx'_eq, ← Real.rpow_natCast ((2 : ℝ) ^ (-1 : ℝ)) p,
       ← Real.rpow_mul (by norm_num : (0 : ℝ) ≤ 2), convergenceRadius_w_exponent_eq])
 
+/-! ### Concrete numerals for `i1`/`i3`, closing `iN := max i1 i3`
+
+With `convergenceRadius_v_eq`/`convergenceRadius_w_eq` in hand, `‖Θ‖`/`‖π₀‖` (the two uniformizers'
+norms, both `2 ^ (-1 : ℤ)` exactly, via `norm_eq_two_zpow_of_valued_eq_exp` applied to
+`valuation_Θ`/`valuation_π₀`) let `i1` (`exists_maximalIdeal_pow_norm_lt`, needing `‖Θ‖ ^ i1 <
+convergenceRadius L_w p`) close to `i1 := 4` directly. `i3`
+(`exists_maximalIdeal_pow_norm_trace_lt`) is not just an inequality to instantiate — its own PROOF
+picks an arbitrary `c` with `‖c‖ < 1` (`NormedField.exists_norm_lt_one`), not a concrete
+uniformizer, so closing `i3` to a numeral means re-deriving that proof concretely with `c := π₀`.
+Below redoes it exactly, at `ε := convergenceRadius K_v p = 2 ^ (-1)`, `n := 2` (so `‖π₀‖ ^ n = 2 ^
+(-2) < 2 ^ (-1) = ε`), landing on `i3 := 7`. Every intermediate fact stays either in pure `ℝ`
+arithmetic (safe to state explicitly) or composed from already-inferred-type `def`s (`norm_Θ_eq`,
+`norm_π₀_eq`, `convergenceRadius_v_eq`, `convergenceRadius_w_eq`) via `Eq.trans`/`LT.lt.trans_eq`,
+never writing a fresh `‖·‖`/`convergenceRadius`-typed statement explicitly in this
+`NumberField`-visible file. -/
+
+set_option linter.defProp false in
+/-- `‖(Θ : w.adicCompletion L)‖ = 2 ^ (-1 : ℤ)`, via `norm_eq_two_zpow_of_valued_eq_exp` and
+`valuation_Θ`. -/
+def norm_Θ_eq :=
+  IsDedekindDomain.HeightOneSpectrum.norm_eq_two_zpow_of_valued_eq_exp (v := w) valuation_Θ
+
+set_option linter.defProp false in
+/-- `‖(π₀ : v.adicCompletion K)‖ = 2 ^ (-1 : ℤ)`, via `norm_eq_two_zpow_of_valued_eq_exp` and
+`valuation_π₀`. -/
+def norm_π₀_eq :=
+  IsDedekindDomain.HeightOneSpectrum.norm_eq_two_zpow_of_valued_eq_exp (v := v) valuation_π₀
+
+/-- **Pure real-number arithmetic**: `(2 ^ (-1:ℤ)) ^ 4 < 2 ^ (-3:ℝ)`, i.e. `2 ^ (-4) < 2 ^ (-3)`. -/
+theorem two_zpow_neg_one_pow_four_lt : ((2 : ℝ) ^ (-1 : ℤ)) ^ (4 : ℕ) < (2 : ℝ) ^ (-3 : ℝ) := by
+  have h1 : ((2 : ℝ) ^ (-1 : ℤ)) ^ (4 : ℕ) = (2 : ℝ) ^ (-4 : ℝ) := by
+    rw [show ((2 : ℝ) ^ (-1 : ℤ) : ℝ) = (2 : ℝ) ^ ((-1 : ℤ) : ℝ) from
+        (Real.rpow_intCast 2 (-1)).symm,
+      ← Real.rpow_natCast ((2 : ℝ) ^ ((-1 : ℤ) : ℝ)) 4,
+      ← Real.rpow_mul (by norm_num : (0 : ℝ) ≤ 2)]
+    norm_num
+  rw [h1]
+  exact Real.rpow_lt_rpow_of_exponent_lt (by norm_num) (by norm_num)
+
+set_option linter.defProp false in
+/-- **The concrete numeral: `i1 := 4`.** `‖Θ‖ ^ 4 < convergenceRadius (w.adicCompletion L) p`,
+composed from `norm_Θ_eq`, `two_zpow_neg_one_pow_four_lt`, and `convergenceRadius_w_eq` via
+`Eq.trans`/`LT.lt.trans_eq` — no fresh `‖·‖`/`convergenceRadius` statement. -/
+def hthresh_i1 :=
+  ((congrArg (· ^ (4 : ℕ)) norm_Θ_eq).trans_lt two_zpow_neg_one_pow_four_lt).trans_eq
+    convergenceRadius_w_eq.symm
+
+/-- `aK := π₀ ^ 2 : v.adicCompletion K`, the concrete instance of
+`exists_maximalIdeal_pow_norm_trace_lt`'s `a := c ^ n` (`n := 2`). Purely algebraic — no `‖·‖`, so no
+diamond risk stating its type explicitly. -/
+noncomputable def aK : v.adicCompletion K := (π₀ : v.adicCompletion K) ^ 2
+
+/-- `Valued.v aK = exp (-2)`: `Valued.v` (unlike `‖·‖`) is diamond-free (the unique ambient valuation,
+no competing Mathlib instance), so this is safe to state and prove directly. -/
+theorem valuation_aK : Valued.v (aK : v.adicCompletion K) = WithZero.exp (-2 : ℤ) := by
+  show Valued.v ((π₀ : v.adicCompletion K) ^ 2) = WithZero.exp (-2 : ℤ)
+  rw [map_pow, valuation_π₀, ← WithZero.exp_nsmul]
+  norm_num
+
+set_option linter.defProp false in
+/-- `‖aK‖ = 2 ^ (-2 : ℤ)`, via `norm_eq_two_zpow_of_valued_eq_exp` and `valuation_aK` — routes
+through `Valued.v` rather than `norm_pow` applied fresh to `π₀ : v.adicCompletion K`, avoiding a
+second, unnecessary `NormedField (v.adicCompletion K)` instance search in this file. -/
+def norm_aK_eq :=
+  IsDedekindDomain.HeightOneSpectrum.norm_eq_two_zpow_of_valued_eq_exp (v := v) valuation_aK
+
+/-- **Pure real-number arithmetic**: `2 ^ (-2:ℤ) < 2 ^ (-1:ℝ)`. -/
+theorem two_zpow_neg_two_lt : ((2 : ℝ) ^ (-2 : ℤ)) < (2 : ℝ) ^ (-1 : ℝ) := by
+  rw [show ((2 : ℝ) ^ (-2 : ℤ) : ℝ) = (2 : ℝ) ^ ((-2 : ℤ) : ℝ) from (Real.rpow_intCast 2 (-2)).symm]
+  exact Real.rpow_lt_rpow_of_exponent_lt (by norm_num) (by norm_num)
+
+set_option linter.defProp false in
+/-- **`‖aK‖ < convergenceRadius (v.adicCompletion K) p`** — the `n := 2` instance of
+`exists_maximalIdeal_pow_norm_trace_lt`'s `hn : ‖c‖ ^ n < ε`, at the concrete `c := π₀`,
+`ε := convergenceRadius K_v p`. -/
+def hn_aK := (norm_aK_eq.trans_lt two_zpow_neg_two_lt).trans_eq convergenceRadius_v_eq.symm
+
+/-- `bL := adicCompletionComap K L v w aK : w.adicCompletion L`, the concrete instance of
+`exists_maximalIdeal_pow_norm_trace_lt`'s `b := algebraMap a` (`adicCompletionComap` IS
+`algebraMap (v.adicCompletion K) (w.adicCompletion L)`, `NormMap.lean`'s
+`instAlgebraAdicCompletionAdicCompletion`). Purely algebraic, no diamond risk. -/
+noncomputable def bL : w.adicCompletion L :=
+  IsDedekindDomain.HeightOneSpectrum.adicCompletionComap K L v w aK
+
+set_option linter.defProp false in
+/-- `‖bL‖ = ‖aK‖ ^ e` (`e := v.asIdeal.ramificationIdx' w.asIdeal = 3`), then `‖aK‖ = 2 ^ (-2:ℤ)`
+(`norm_aK_eq`) and `e = 3` (`ramificationIdx'_eq`) give the literal numeral `‖bL‖ = (2 ^ (-2:ℤ)) ^
+3`. Uses only the repo's own generic `norm_algebraMap_pow_eq` (`NormMap.lean`), never a fresh
+`NormedField`-dependent Mathlib lemma applied directly to `w.adicCompletion L` in this file. -/
+def norm_bL_eq :=
+  (IsDedekindDomain.HeightOneSpectrum.norm_algebraMap_pow_eq K L v w aK).trans
+    ((congrArg (· ^ (v.asIdeal.ramificationIdx' w.asIdeal)) norm_aK_eq).trans
+      (congrArg (fun e => ((2 : ℝ) ^ (-2 : ℤ)) ^ e) ramificationIdx'_eq))
+
+/-- **Pure real-number arithmetic**: `(2 ^ (-2:ℤ)) ^ 3 = 2 ^ (-6:ℤ)`. -/
+theorem two_zpow_neg_two_pow_three_eq : ((2 : ℝ) ^ (-2 : ℤ)) ^ (3 : ℕ) = (2 : ℝ) ^ (-6 : ℤ) := by
+  norm_num
+
+/-- **Pure real-number arithmetic**: `(2 ^ (-1:ℤ)) ^ 7 < 2 ^ (-6:ℤ)`. -/
+theorem two_zpow_neg_one_pow_seven_lt : ((2 : ℝ) ^ (-1 : ℤ)) ^ (7 : ℕ) < (2 : ℝ) ^ (-6 : ℤ) := by
+  norm_num
+
+set_option linter.defProp false in
+/-- **`‖Θ‖ ^ 7 < ‖bL‖`.** Composes `norm_Θ_eq`, `two_zpow_neg_one_pow_seven_lt`, and `norm_bL_eq`
+(reversed via `two_zpow_neg_two_pow_three_eq`). -/
+def normΘ_pow_seven_lt_bL :=
+  ((congrArg (· ^ (7 : ℕ)) norm_Θ_eq).trans_lt two_zpow_neg_one_pow_seven_lt).trans_eq
+    (two_zpow_neg_two_pow_three_eq.symm.trans norm_bL_eq.symm)
+
+set_option linter.defProp false in
+/-- **The concrete numeral: `i3 := 7`.** For every `i ≥ 7` and `x ∈ 𝔪_{L_w}^i`,
+`‖x‖ ≤ ‖Θ‖ ^ i ≤ ‖Θ‖ ^ 7 < ‖bL‖` (`norm_le_pow_of_mem_maximalIdeal_pow`, `pow_le_pow_of_le_one` at
+`hπnorm_Θ.le`, `normΘ_pow_seven_lt_bL.le`), so `norm_trace_le` gives `‖Tr x‖ ≤ ‖aK‖ < convergenceRadius
+K_v p` (`hn_aK`) — mirroring `exists_maximalIdeal_pow_norm_trace_lt`'s proof exactly, with every
+existential witness (`c`, `n`, `i₀`) replaced by the concrete `π₀`, `2`, `7`. -/
+def exists_maximalIdeal_pow_norm_trace_lt_i3 (i : ℕ) (hi : i ≥ 7) (x : w.adicCompletionIntegers L)
+    (hx : x ∈ IsLocalRing.maximalIdeal (w.adicCompletionIntegers L) ^ i) :=
+  lt_of_le_of_lt
+    (IsDedekindDomain.HeightOneSpectrum.forall_maximalIdeal_pow_norm_trace_le
+      (K := K) (L := L) (v := v) (w := w) (a := aK) (πL := Θ₀) hπnorm_Θ maximalIdeal_L₀_eq
+      normΘ_pow_seven_lt_bL.le i hi x hx)
+    hn_aK
+
 /-! ### Status: both blockers closed, the `exp`/`log` machinery runs end-to-end
 
 The previous pass left two blockers here; both are now closed, in this file plus the two
