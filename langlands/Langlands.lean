@@ -5,6 +5,7 @@ import Langlands.AdicCompletionNormGroupIndex
 import Langlands.AdicCompletionResidueDegree
 import Langlands.AdicCompletionTraceBound
 import Langlands.AdicCompletionTraceSurjectivity
+import Langlands.AdicCompletionValuationNorm
 import Langlands.ArtinSchreier
 import Langlands.Basic
 import Langlands.CyclicGaloisSubfields
