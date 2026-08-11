@@ -8601,3 +8601,112 @@ a direct estimate exploiting the extension's small, explicit Eisenstein presenta
 `TotallyRamifiedCyclotomicConcreteExample.lean`). Both are genuine mathematical work, not Lean
 bookkeeping, and out of this pass's scope. `TotallyRamifiedCyclotomicNormIndex`'s divisibility bound
 and `AdicCompletionNormGroupIndex`'s `relIndex` factor are otherwise unchanged from §6ae.
+
+## 6ag. Thirty-fifth pass (2026-08-11): the ε/δ continuity threshold in
+`exists_maximalIdeal_pow_norm_exp_eq_exp_trace` replaced by two EXACT closures; the field-level
+index still blocked, one layer deeper and more precisely than §6af left it
+
+**Task.** §6af's diagnosis: the field-level index's remaining obstruction was `iN`, the threshold
+from `exists_maximalIdeal_pow_norm_exp_eq_exp_trace`, built from `exists_delta_of_continuous` (a
+generic ε/δ statement with no formula for `δ` in terms of `ε`) applied twice — once per Galois
+automorphism, once for `algebraMap K_v L_w`. The route diagnosed to close both call sites
+mathematically (not by finding a Mathlib shortcut) was: (1) Galois automorphisms preserve the
+integers-and-filtration EXACTLY, needing no epsilon at all; (2) `algebraMap` scales the norm by the
+exact ramification index `e`, also needing no epsilon. Both closed.
+
+**Piece 1 — closed exactly.** `IsDedekindDomain.HeightOneSpectrum.restrictAdicCompletionIntegers`
+(`AdicCompletionIntegralClosure.lean`): every `K_v`-algebra automorphism `σ` of `L_w` restricts to a
+ring automorphism of `w.adicCompletionIntegers L` — `IsIntegral.map`, fed `σ.toAlgHom` directly
+(no `restrictScalars` needed; the `IsScalarTower (v.adicCompletionIntegers K) (v.adicCompletion K)
+(w.adicCompletion L)` instance already in that file makes `σ.toAlgHom` an `AlgHomClass` instance at
+the right base ring automatically), carries integrality across `σ`, and
+`isIntegral_iff_mem_adicCompletionIntegers` converts back to subring membership; applying this to
+both `σ` and `σ.symm` gives bijectivity. `map_maximalIdeal_restrictAdicCompletionIntegers`: since a
+ring isomorphism sends a maximal ideal to a maximal ideal (`Ideal.map_isMaximal_of_equiv`) and
+`w.adicCompletionIntegers L` is local (`IsLocalRing.eq_maximalIdeal`, unique maximal ideal), the
+image is the *same* ideal, not merely another maximal ideal — no uniqueness-of-valuation-extension
+argument needed, matching this repo's established avoidance of that route (see this file's own
+`continuous_algEquiv`, which gets continuity for free from finite-dimensionality rather than
+isometry). `restrictAdicCompletionIntegers_mem_maximalIdeal_pow`: consequently `σ` preserves
+`𝔪_{L_w}^i` exactly, for the SAME `i` — the per-`σ` threshold and `Finset.univ.sup` the old proof
+needed are both gone; `i1` (already used for `hx` itself) now also serves every conjugate.
+
+**Piece 2 — closed exactly.** Two new lemmas, in `NormMap.lean`, both proved rather than found:
+`norm_eq_toNNReal_valued` (`‖x‖ = WithZeroMulInt.toNNReal two_ne_zero (Valued.v x)`, on *any*
+`v.adicCompletion F`) unwinds the `RankOne.hom`/`restrict`/`valueGroup₀` bookkeeping down to a
+formula depending on the field only through `Valued.v` — provable because `Valued.v` is surjective
+onto `ℤᵐ⁰` (`valuedAdicCompletion_surjective`, already in Mathlib) is exactly the hypothesis
+`Valuation.IsRankOneDiscrete.valueGroup₀_equiv_withZeroMulInt_restrict_apply_of_surjective` needs,
+and `instRankOneValuedAdicCompletion` fixes the SAME base `e = 2` at *every* place, so the same
+`toNNReal` function applies verbatim to both `K_v` and `L_w`. Combined with the already-proved
+`valuation_algebraMap_pow_eq` (`Valued.v (adicCompletionComap y) = Valued.v y ^ e` exactly) and
+`map_pow` (`toNNReal _` is a `MonoidWithZeroHom`), this gives `norm_algebraMap_pow_eq`: `‖algebraMap
+K_v L_w a‖ = ‖a‖ ^ e`, a literal equation crossing fields — the exact fact
+`AdicCompletionTraceBound.lean`'s docstring had already *claimed* (to explain why the sharp
+classical trace bound isn't used) but never proved. A further consequence,
+`convergenceRadius_eq_pow` (`AdicCompletionNormExpTrace.lean`): since `(p : L_w) = algebraMap (p :
+K_v)` (`map_natCast`) and `convergenceRadius F p = ‖(p:F)‖ ^ ((p-1)⁻¹ : ℝ)`, reassociating the rpow
+exponents (`Real.rpow_natCast`, `Real.rpow_mul`) gives `convergenceRadius L_w p = (convergenceRadius
+K_v p) ^ e` EXACTLY.
+
+**`exists_maximalIdeal_pow_norm_exp_eq_exp_trace` rewritten; `i₀` now genuinely closed-form.** The
+old proof combined four separate ε/δ-derived witnesses via `max (max i1 (Finset.univ.sup iσ)) (max
+i3 i4)`. The new proof needs only `i1` (`exists_maximalIdeal_pow_norm_lt`, unchanged) and `i3`
+(`exists_maximalIdeal_pow_norm_trace_lt`, unchanged): `i₀ := max i1 i3`. `hx` and `hσ` both come
+from `i1` (the latter via Piece 1, reusing `i1` for every conjugate with no adjustment); `htrK`
+comes from `i3` directly, and `htrL` comes from `i3` too, via Piece 2 (`‖Tr x‖ < convergenceRadius
+K_v p` at level `i ≥ i3` implies `‖algebraMap (Tr x)‖ = ‖Tr x‖ ^ e < (convergenceRadius K_v p) ^ e =
+convergenceRadius L_w p` exactly, `pow_lt_pow_left₀`). `exists_delta_of_continuous` — the private
+ε/δ helper this whole thread existed to eliminate — is deleted; it had no other call sites. `lake
+build` clean across the whole repo (`8747` jobs); `#print axioms` on
+`exists_maximalIdeal_pow_norm_exp_eq_exp_trace` and `convergenceRadius_eq_pow` shows only `propext,
+Classical.choice, Quot.sound`. Commits: Piece 1 `57f98a2`, Piece 2 `b32351e`, the rewrite `8246719`.
+
+**Propagation: precisely how far it reaches, and precisely where it stops.**
+`AdicCompletionNormGroupImage.lean`'s `exists_map_principalUnitsPow_normUnitsK₀_eq` draws its
+threshold from `max (max iL iN) (iK * e)`, where `iN` is now `exists_maximalIdeal_pow_norm_exp_eq_exp_trace`'s
+closed-form `max i1 i3` — genuinely closed-form, no longer opaque-from-continuity — and needs no
+code change (it already just calls the theorem and uses the result). This closes what §6af called
+"the newly-precise obstruction" **at the formula level**. It does **not**, however, produce a
+concrete numeral for the capstone `j` in `TotallyRamifiedCyclotomicNormIndex.lean`'s
+`exists_index_normUnitsK₀_dvd`, and the reason is precise and different from §6af's: `iL` and `iK`
+(from `exists_pow_lt_logUnitsThreshold`) are `logUnitsThreshold`-shaped exactly like the
+already-closed `i₀ := 13` — closing them to concrete numerals for this instance (`e_L = 6`, `e_K =
+2`) would be genuinely straightforward, reusing that pattern verbatim. But `iN = max i1 i3` is
+built from `exists_maximalIdeal_pow_norm_lt` / `exists_maximalIdeal_pow_norm_trace_lt`, whose
+threshold is **`convergenceRadius`-shaped, not `logUnitsThreshold`-shaped**:
+`convergenceRadius F p = ‖(p:F)‖ ^ ((p-1)⁻¹ : ℝ)` is a genuine real `rpow` at a fractional exponent,
+whereas `logUnitsThreshold F p = ‖(p:F)‖ ^ 2` is an integer power. The `i₀ := 13` closure (and the
+`iL`/`iK` closure this pass leaves available but unexecuted) works by reducing a `logUnitsThreshold`
+comparison to a comparison of INTEGER powers of `WithZero.exp`, via `lt_logUnitsThreshold_iff_valued_lt`.
+No analogous `lt_convergenceRadius_iff_valued_lt`-shaped lemma exists in this repo, and building one
+is not a bookkeeping exercise: it would need to compare `Valued.v π ^ i` (an integer power in `ℤᵐ⁰`)
+against a *fractional* real power of `Valued.v ((p:ℕ) : F)`, which is not simply `WithZero.exp` of an
+integer — closing `i1`/`i3` to concrete numerals is therefore a genuinely different, and on its
+face harder, piece of quantitative work than the `logUnitsThreshold` closures were, not attempted
+here. Consequently `iL`/`iK` were left unclosed this pass too: exactly as §6af reasoned about `iK`
+alone, closing them without also closing `i1`/`i3` would not produce a concrete `j`, so the effort
+was spent precisely relocating and characterizing the remaining obstruction rather than partially
+closing cosmetic pieces of it.
+
+**Phase 2b overview, updated.** Phase 2b's wild-case norm/trace-compatibility thread has now closed
+every EXACT (non-approximate) piece available without new quantitative real-analysis: the
+norm/trace formula itself (`norm_exp_eq_exp_trace`), its filtration-level form with closed-form
+threshold (`exists_maximalIdeal_pow_norm_exp_eq_exp_trace`, this pass), Galois-exact filtration
+preservation and algebraMap-exact ramification scaling (Pieces 1–2, this pass), and the
+`logUnitsThreshold`-shaped numeral `i₀ := 13` for the concrete instance's `expEquiv_w` (§6af). What
+remains between here and the Phase 2b capstone — a concrete numeral `[K_vˣ : N(L_wˣ)]` for `K =
+ℚ_3(ζ_3) ⊆ L = ℚ_3(ζ_9)` — is exactly one thing, now precisely characterized rather than merely
+located: an explicit numeral (or a converging concrete bound) for `i1`/`i3`, the depth at which
+`𝔪_{L_w}^i` (resp. the trace of `𝔪_{L_w}^i`) provably enters `exp`'s `convergenceRadius`-based
+convergence domain. This needs either (a) a fractional-`rpow` analogue of
+`lt_logUnitsThreshold_iff_valued_lt` — comparing `Valued.v`-integer-power data against a real
+`rpow` threshold, which nothing in this repo's `WithZero.exp` arithmetic toolkit currently reaches —
+or (b) routing the whole argument through `logUnitsThreshold` instead of `convergenceRadius`
+wherever that substitution is sound (`NonarchimedeanExponential.lean`'s docstring already notes
+`logConvergenceRadius`/`logUnitsThreshold` are the more conservative but Lean-friendlier
+thresholds), which would need checking whether `exists_maximalIdeal_pow_norm_lt`/
+`_trace_lt`'s callers can be re-pointed at the `log`-domain analogues without breaking the
+`norm_exp_eq_exp_trace` argument's own hypotheses. Both are genuine mathematical/Lean design work,
+not bookkeeping, and out of this pass's scope. `TotallyRamifiedCyclotomicNormIndex`'s divisibility
+bound and `AdicCompletionNormGroupIndex`'s `relIndex` factor are otherwise unchanged from §6ae/§6af.
