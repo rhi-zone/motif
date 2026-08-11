@@ -8881,3 +8881,86 @@ the way an exact intermediate equality one level up
 * No claim is made about global class field theory, functoriality, or any Langlands correspondence
   proper — this closes one local, concrete instance of the norm-group index computation that
   local class field theory ultimately needs as an ingredient.
+
+## 6aj. Thirty-seventh pass: is `∣ 2·3⁶` a proof-technique artifact or the true ceiling? — diagnosed
+precisely; the bound tightened to `∣ 3⁶` by a genuinely different, tameness-free mechanism
+
+**Task.** §6ai's capstone left `[K₀ˣ : N(L₀ˣ)] ∣ 2 · 3⁶` as a *divisibility*, not an equality, and
+flagged (§6ac) that closing it would need the sharp `v(N(x)) = f · w(x)` valuation-of-norm formula.
+This pass asked the question precisely: for THIS instance, is `∣` a proof-technique limitation — the
+repo just didn't try hard enough — or the true mathematical ceiling of what's reachable without
+substantial new machinery?
+
+**Diagnosis: `∣` is the true ceiling, not an artifact — and the reason is now pinned to a specific
+Lean fact, not a generic appeal to "local class field theory is hard".**
+`TotallyRamifiedNormResidueImage.lean`'s `normUnitsK₀_range_eq_of_isTotallyRamified` computes
+`N(L₀ˣ)` EXACTLY as `{u ∈ K₀ˣ : residue u ∈ (κ_{K₀}ˣ)^e}` — but its proof needs `IsTamelyRamified`,
+and *only* for one step: showing `ker(residue) ≤ N(L₀ˣ)`, i.e. that every principal unit
+(`u ≡ 1 mod 𝔪_{K₀}`) is already a norm. That step is where tameness is spent, and nowhere else in
+this repo's toolkit is there a substitute route to it for the wild case. Concretely: this repo can
+show (tameness-free, `sup_normUnitsK₀_principalUnitsPow_one_eq_top_of_isTotallyRamified`, new this
+pass) that `N(L₀ˣ)` meets *every coset* of `U_{K₀}^{(1)}` in `K₀ˣ` when `gcd(e, #κ_{K₀}ˣ) = 1`, and
+(§6ah, unchanged) that `N(L₀ˣ) ⊇ N(U_{L₀}^{(15)}) = U_{K₀}^{(7)}` exactly. Neither fact, nor
+anything else here, says what `N(L₀ˣ) ⊓ U_{K₀}^{(1)}` is at filtration levels `1` through `6`
+(equivalently, what `N` does to `U_{L₀}^{(i)}` for `1 ≤ i ≤ 14`) — that gap is precisely where
+`IsTamelyRamified` would have supplied the missing containment, and precisely where the `exp`/`log`
+machinery (`NonarchimedeanExponentialUnitsIso`) does not reach: its bijectivity threshold for this
+instance is `i ≥ 15` (`§6ah`'s `i₀ := 15`), forced by the `p`-adic exponential's genuine
+`convergenceRadius` (a real analytic fact about where the power series converges, not a proof gap –
+`§6ag`/`§6ah`). Closing the gap would need one of: (a) the sharp valuation-of-norm formula flagged in
+`§6ac`, still absent; (b) extending norm computation below the convergence threshold by some route
+other than `exp`/`log` (unbuilt, and not a routine extension — `§6ag` already documents that even
+reaching the *current* threshold needed new `rpow`-vs-`WithZero.exp` machinery); or (c) the actual
+local class field theory index formula (for abelian `L/K`, `[K_vˣ : N(L_wˣ)] = [L:K]` exactly by the
+local reciprocity theorem — here `[L:K] = 3`, so the true value is almost certainly `3`, far below
+the `3⁶ = 729` bound below), which is a wholesale different, substantially larger formalization
+project this repo has never approached. None of (a)–(c) is in scope for a session.
+
+**What WAS closed this pass: the bound tightened from `∣ 2 · 3⁶` to `∣ 3⁶`, by removing the torsion
+slack, not by touching the blocked gap.** The `2` in `2 · 3⁶` is `[K₀ˣ : U_{K₀}^{(1)}] = #κ_{K₀}ˣ`,
+i.e. slack from `AdicCompletionNormGroupIndex`'s generic bridging lemma being run against the full
+group `K₀ˣ` rather than the smaller `U_{K₀}^{(1)}`. New general-purpose lemma (`TotallyRamifiedNormResidueImage.lean`):
+
+```
+theorem sup_normUnitsK₀_principalUnitsPow_one_eq_top_of_isTotallyRamified
+    (h : IsTotallyRamified K L v w) [Finite (ResidueField (v.adicCompletionIntegers K))]
+    (hcop : Nat.Coprime (v.asIdeal.ramificationIdx' w.asIdeal)
+        (Nat.card (ResidueField (v.adicCompletionIntegers K))ˣ)) :
+    MonoidHom.range (normUnitsK₀ K L v w) ⊔
+        ValuationSubring.principalUnitsPow (v.adicCompletionIntegers K) 1 = ⊤
+```
+
+— the ring-level analogue of `TotallyRamifiedNormIndex.sup_units_eq_top`, reached by a *different*,
+tameness-free route: `range_residueNormUnits_eq_of_isTotallyRamified` (no tameness) already gives the
+residue-level norm image as exactly the `e`-th powers of `κ_{K₀}ˣ`; when `e` is coprime to
+`#κ_{K₀}ˣ` (finite cyclic group, `IsCyclic.index_powMonoidHom_range`), that image is everything, and
+`Subgroup.comap_map_eq` converts residue-surjectivity into the sup-equals-top statement, identifying
+`ker(residue)` with `U_{K₀}^{(1)}` via `principalUnitsPow_one`. For this instance `gcd(e, #κ_{K₀}ˣ) =
+gcd(3, 2) = 1`, so it applies. Combined with the existing exact equality
+`map_principalUnitsPow_normUnitsK₀_eq_15_7` (`Subgroup.map (normUnitsK₀ K L v w) (principalUnitsPow
+L₀ 15) = principalUnitsPow K₀ 7`), the same `relIndex` algebra pattern used throughout this thread
+gives, in `TotallyRamifiedCyclotomicNormIndex.lean`:
+
+```
+theorem index_normUnitsK₀_dvd_three_pow_six :
+    (MonoidHom.range (normUnitsK₀ K L v w)).index ∣ 3 ^ (6 : ℕ)
+```
+
+This is a genuine improvement in the numeral (halves the bound: `729` instead of `1458`), reached
+without touching tameness or the `exp`/`log` threshold at all — a different mechanism
+(residue-level norm surjectivity) than everything upstream in this thread. It does **not** close the
+gap identified above; `index_normUnitsK₀_dvd_two_mul_three_pow_six` (the `∣ 2·3⁶` bound) is left
+unchanged/unremoved since it is still the source for the matching field-level `relIndex` bound this
+pass did not re-derive.
+
+**Build.** `lake build` clean across the whole repo (`8747` jobs, same pre-existing warnings only,
+no new ones); no `sorry` in `TotallyRamifiedNormResidueImage.lean` or
+`TotallyRamifiedCyclotomicNormIndex.lean`; `#print axioms` on
+`index_normUnitsK₀_dvd_three_pow_six`, `sup_normUnitsK₀_principalUnitsPow_one_eq_top`, and
+`IsDedekindDomain.HeightOneSpectrum.sup_normUnitsK₀_principalUnitsPow_one_eq_top_of_isTotallyRamified`
+each show only `propext, Classical.choice, Quot.sound`.
+
+**Bottom line for this numeric thread.** `[K₀ˣ : N(L₀ˣ)]` divides `3⁶ = 729` (tightened from `1458`)
+for `K = ℚ_3(ζ_3) ⊆ L = ℚ_3(ζ_9)`; the true value is not computed, and — barring one of (a)/(b)/(c)
+above — is not reachable from this repo's current toolkit without a substantial new piece of theory,
+not a session-scale gap. `∣`, not `=`, is the honest final state of this thread.
