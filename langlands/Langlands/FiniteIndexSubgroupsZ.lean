@@ -1,3 +1,5 @@
+import Mathlib.Algebra.Group.Int.TypeTags
+import Mathlib.Algebra.Group.Subgroup.Ker
 import Mathlib.Data.ZMod.QuotientGroup
 import Mathlib.GroupTheory.FiniteIndexNormalSubgroup
 import Mathlib.GroupTheory.SpecificGroups.Cyclic
@@ -28,6 +30,9 @@ form `zmultiples g` — and `Int.index_zmultiples`, computing that index as `g.n
 * `existsUnique_finiteIndexNormalSubgroup_index_eq` : the same classification for
   `FiniteIndexNormalSubgroup (Multiplicative ℤ)`.
 * `FiniteIndexNormalSubgroup.le_iff_dvd_index` : `H ≤ H' ↔ H'.toSubgroup.index ∣ H.toSubgroup.index`.
+* `MonoidHom.range_powMonoidHom_multiplicativeInt` : the range of the `n`th-power map on
+  `Multiplicative ℤ` is `AddSubgroup.toSubgroup (AddSubgroup.zmultiples (n : ℤ))`.
+* `MonoidHom.index_range_powMonoidHom_multiplicativeInt` : its index is `n`.
 -/
 
 @[expose] public section
@@ -154,3 +159,31 @@ theorem FiniteIndexNormalSubgroup.le_iff_dvd_index
     {H H' : FiniteIndexNormalSubgroup (Multiplicative ℤ)} :
     H ≤ H' ↔ H'.toSubgroup.index ∣ H.toSubgroup.index :=
   ⟨FiniteIndexNormalSubgroup.index_dvd_index_of_le, FiniteIndexNormalSubgroup.le_of_dvd_index⟩
+
+/-- **The range of the `n`th-power map on `Multiplicative ℤ` is `AddSubgroup.zmultiples n`,
+transported.** `y = x ^ n` for some `x` iff `toAdd y` is a multiple of `n`
+(`Int.toAdd_pow`/`Multiplicative.toAdd_ofAdd`, plus injectivity of `Multiplicative.toAdd`). Needed
+to compute the index of the norm group's valuation-side image, `[K_vˣ : N(L_wˣ) ⊔ U_{K_v}] = f`,
+in `Langlands.AdicCompletionNormGroupIndex`. -/
+theorem MonoidHom.range_powMonoidHom_multiplicativeInt (n : ℕ) :
+    MonoidHom.range (powMonoidHom n : Multiplicative ℤ →* Multiplicative ℤ) =
+      AddSubgroup.toSubgroup (AddSubgroup.zmultiples (n : ℤ)) := by
+  ext y
+  simp only [MonoidHom.mem_range, powMonoidHom_apply, Multiplicative.mem_toSubgroup,
+    AddSubgroup.mem_zmultiples_iff, zsmul_eq_mul]
+  constructor
+  · rintro ⟨x, rfl⟩
+    exact ⟨Multiplicative.toAdd x, (Int.toAdd_pow x n).symm⟩
+  · rintro ⟨k, hk⟩
+    refine ⟨Multiplicative.ofAdd k, Multiplicative.toAdd.injective ?_⟩
+    rw [Int.toAdd_pow, toAdd_ofAdd, ← hk]
+    norm_cast
+
+/-- **The index of the range of the `n`th-power map on `Multiplicative ℤ` is `n`.** Immediate from
+`MonoidHom.range_powMonoidHom_multiplicativeInt`, `AddSubgroup.index_toSubgroup`, and
+`Int.index_zmultiples`. -/
+theorem MonoidHom.index_range_powMonoidHom_multiplicativeInt (n : ℕ) :
+    (MonoidHom.range (powMonoidHom n : Multiplicative ℤ →* Multiplicative ℤ)).index = n := by
+  rw [MonoidHom.range_powMonoidHom_multiplicativeInt, AddSubgroup.index_toSubgroup,
+    Int.index_zmultiples]
+  simp
