@@ -4,16 +4,25 @@ import Mathlib.RingTheory.PowerSeries.Expand
 import Langlands.LubinTate
 
 /-!
-# Toward the Lubin-Tate functional equation lemma: the residue-field congruence
+# The Lubin-Tate functional equation lemma: existence and uniqueness — CLOSED
 
-This file starts the second, genuinely deep stage of the Lubin-Tate thread opened in
-`Langlands/LubinTate.lean`: the **functional equation lemma**. That lemma builds, for
-`f, g ∈ ℱ_π` and a linear starting form, a power series intertwining `f` and `g` by solving one
-linear equation in `O` per total-degree step. This file proves the single load-bearing fact that
-makes every one of those steps solvable: reducing mod `π`, `f` and `g` act identically (as the
-Frobenius-twisted `q`-th power map) on *any* power series with zero constant term, so the
-degree-by-degree obstruction in the functional equation lemma's recursion is *always* divisible by
-`π`, unconditionally (not merely once earlier degrees are known to already satisfy the equation).
+This file completes the Lubin-Tate thread opened in `Langlands/LubinTate.lean`: the **functional
+equation lemma**. That lemma builds, for `f, g ∈ ℱ_π` and a linear starting form `a`, a power
+series `φ` intertwining `f` and `g` — `f(φ(X)) = φ(g(X))` — and shows `φ` is the unique such series
+with the given linear coefficient. Both halves are proved here, in full:
+`subst_phi_eq_phi_subst` (existence) and `eq_of_coeff_zero_eq_zero_of_coeff_one_eq_of_subst_eq`
+(uniqueness) — see `ROADMAP.md` §10 for the milestone writeup.
+
+The file proceeds in three stages. First, the residue-field congruence: reducing mod `π`, `f` and
+`g` act identically (as the Frobenius-twisted `q`-th power map) on *any* power series with zero
+constant term, so the degree-by-degree obstruction in the functional equation lemma's recursion is
+*always* divisible by `π`, unconditionally. Second, the recursive coefficient-by-coefficient
+construction of `φ` (`phiState`/`phiCoeff`/`phiPartialSum`), each step solving its own local linear
+equation. Third, the bridge from "each truncation solves its own local equation" to "the fully
+assembled series solves the global equation" — four general algebraic facts (two truncation-
+invariance lemmas, a linear-correction identity, and a leading-coefficient identity) that together
+prove existence, and whose reuse against an *arbitrary* solution (via `genTrunc` in place of
+`phiPartialSum`) proves uniqueness.
 
 ## Main results
 
@@ -52,18 +61,28 @@ degree-by-degree obstruction in the functional equation lemma's recursion is *al
   equation it is defined to solve — the recursion is well-defined not merely because the term
   typechecks, but because it provably satisfies its own defining equation.
 
+* `coeff_subst_eq_of_dvd_sub`, `coeff_subst_eq_of_dvd_sub_left` : general-purpose truncation
+  invariance, inner and outer position — if two substitutands (resp. two outer series) agree on
+  coefficients `0, …, n`, substitution agrees on coefficient `n`.
+* `coeff_pow_add_C_mul_X_pow_sub_coeff_pow`, `coeff_subst_add_C_mul_X_pow` : the linear correction
+  identity — extending a substitutand by one new top-degree term shifts the `n`-th coefficient of a
+  substitution by exactly `(new coefficient) * (coeff 1 of the outer series)`.
+* `coeff_pow_self_of_coeff_zero_eq_zero` : the leading-coefficient identity, `coeff n (b^n) = u^n`
+  when `coeff 0 b = 0`, `coeff 1 b = u`.
+* `subst_phi_eq_phi_subst` : **existence** — `f.subst φ = φ.subst g` for `φ := mk (phiCoeff hπ a hf
+  hg)`, proved coefficient by coefficient via `PowerSeries.ext`, assembling the four facts above.
+* `genTrunc`, `pi_mul_one_sub_pow_mul_coeff_of_subst_eq` : a non-recursive truncation of an
+  arbitrary power series, and the recovery of `phiCoeff`'s local defining equation from *any*
+  global solution — the converse direction of the existence argument, needed for uniqueness.
+* `eq_of_coeff_zero_eq_zero_of_coeff_one_eq_of_subst_eq` : **uniqueness** — any two solutions with
+  the same zero constant term and linear coefficient coincide, by strong induction cancelling the
+  regular factor `π * (1 - π^(d+1))` at each step.
+
 ## What this does not yet do
 
-The functional equation lemma's existence half — proving the *fully assembled* `φ := mk
-(phiCoeff hπ a hf hg)` satisfies `f.subst φ = φ.subst g` (as opposed to `phiCoeff`'s per-degree
-defining equation against the *truncated partial sum*, which is what `pi_mul_one_sub_pow_mul_phiCoeff`
-already gives) — is not attempted in this file. That remaining step is a linearization/Taylor
-argument analogous to Mathlib's `PowerSeries.coeff_subst_sum_C_substInvFun_mul_X_pow_sub_X`
-(`Mathlib/RingTheory/PowerSeries/Substitution.lean`), itself a genuinely hard ~50-line proof for
-the strictly simpler one-sided case (`P.subst Q = X`, one power series, not two); our two-sided
-intertwining equation is the same shape of argument with materially more bookkeeping, not a
-smaller version of it. Also not attempted: uniqueness of `φ`, and everything downstream (the
-`n = 2`/`F_π` formal group law specialization).
+Everything downstream of the functional equation lemma itself: specializing `L = X + Y`, `f = g` to
+extract the formal group law `F_π` (the natural next step per `ROADMAP.md` §10), and the theory
+built on top of it (isogenies, the reciprocity map, etc.).
 -/
 
 @[expose] public section
@@ -496,6 +515,216 @@ theorem X_pow_dvd_phi_sub_phiPartialSum (hπ : Irreducible π) (a : O)
   rw [X_pow_dvd_iff]
   intro m hm
   rw [map_sub, PowerSeries.coeff_mk, coeff_phiPartialSum, if_pos (by omega), sub_self]
+
+/-- **The Lubin-Tate functional equation lemma, existence half.** The fully assembled power series
+`φ := PowerSeries.mk (phiCoeff hπ a hf hg)` intertwines `f` and `g`: `f(φ(X)) = φ(g(X))`. Proved
+coefficient by coefficient (`PowerSeries.ext`). Degrees `0` and `1` are direct (both series have
+zero constant term; the linear coefficient is forced by truncating `φ` to its linear part
+`phiPartialSum 1 = C a * X` via the outer/inner truncation-invariance lemmas). At degree `d + 2`,
+combine: truncation invariance (`coeff_subst_eq_of_dvd_sub`/`_left`) replaces `φ` by
+`phiPartialSum (d + 2) = phiPartialSum (d + 1) + C c * X^(d+2)` (`c := phiCoeff (d+2)`) on both
+sides; the linear correction identity (`coeff_subst_add_C_mul_X_pow`) evaluates the inner-position
+side exactly against `phiPartialSum (d+1)` plus a `c * coeff 1 f` term; the exact algebra-hom laws
+(`subst_add`/`subst_mul`/`subst_C`/`subst_pow`/`subst_X`) together with the leading-coefficient
+fact (`coeff_pow_self_of_coeff_zero_eq_zero`) evaluate the outer-position side exactly against
+`phiPartialSum (d+1)` plus a `c * π^(d+2)` term; and the per-degree defining equation
+(`pi_mul_one_sub_pow_mul_phiCoeff`) identifies the difference of the two `phiPartialSum (d+1)`
+terms as exactly `π * (1 - π^(d+1)) * c`, which cancels the two correction terms
+(`c * π^(d+2) - c * π = c * π * (π^(d+1) - 1) = -(π * (1 - π^(d+1)) * c)`) on the nose. -/
+theorem subst_phi_eq_phi_subst (hπ : Irreducible π) (a : O)
+    (hf : IsLubinTatePoly π (residueCard O) f) (hg : IsLubinTatePoly π (residueCard O) g) :
+    f.subst (PowerSeries.mk (phiCoeff hπ a hf hg)) =
+      (PowerSeries.mk (phiCoeff hπ a hf hg)).subst g := by
+  set φ := PowerSeries.mk (phiCoeff hπ a hf hg) with hφdef
+  have hφ0 : constantCoeff φ = 0 := by
+    rw [← coeff_zero_eq_constantCoeff, hφdef, PowerSeries.coeff_mk]
+    exact phiCoeff_zero hπ a hf hg
+  have hg0 : constantCoeff g = 0 := by rw [← coeff_zero_eq_constantCoeff]; exact hg.1
+  have hf0 : constantCoeff f = 0 := by rw [← coeff_zero_eq_constantCoeff]; exact hf.1
+  have hpartial0 : ∀ m, constantCoeff (phiPartialSum hπ a hf hg m) = 0 := fun m ↦ by
+    rw [← coeff_zero_eq_constantCoeff]; exact coeff_zero_phiPartialSum hπ a hf hg m
+  refine PowerSeries.ext fun n ↦ ?_
+  match n with
+  | 0 =>
+    rw [coeff_zero_eq_constantCoeff, PowerSeries.constantCoeff_eq, PowerSeries.constantCoeff_eq,
+      PowerSeries.constantCoeff_subst_eq_zero (a := φ) hφ0 f hf0,
+      PowerSeries.constantCoeff_subst_eq_zero (a := g) hg0 φ hφ0]
+  | 1 =>
+    have hφ' : PowerSeries.HasSubst φ := HasSubst.of_constantCoeff_zero' hφ0
+    have hp1 : PowerSeries.HasSubst (phiPartialSum hπ a hf hg 1) :=
+      HasSubst.of_constantCoeff_zero' (hpartial0 1)
+    have hdvd1 := X_pow_dvd_phi_sub_phiPartialSum hπ a hf hg 1
+    have hstep1 : coeff 1 (f.subst φ) = coeff 1 (f.subst (phiPartialSum hπ a hf hg 1)) :=
+      coeff_subst_eq_of_dvd_sub f hφ' hp1 1 hdvd1
+    have hstep2 : coeff 1 (φ.subst g) = coeff 1 ((phiPartialSum hπ a hf hg 1).subst g) :=
+      coeff_subst_eq_of_dvd_sub_left hg0 1 hdvd1
+    rw [hstep1, hstep2, phiPartialSum_one]
+    have ha : PowerSeries.HasSubst (PowerSeries.C a * X : O⟦X⟧) :=
+      HasSubst.of_constantCoeff_zero' (by simp)
+    have hleft : coeff 1 (f.subst (PowerSeries.C a * X)) = π * a := by
+      rw [coeff_subst' ha, finsum_eq_single _ 1]
+      · rw [pow_one, coeff_C_mul, coeff_X, if_pos rfl, mul_one, hf.2.1, smul_eq_mul]
+      · intro d hd
+        have : coeff 1 ((PowerSeries.C a * X : O⟦X⟧) ^ d) = 0 := by
+          rw [mul_pow, ← map_pow, coeff_C_mul, coeff_X_pow, if_neg (Ne.symm hd), mul_zero]
+        rw [this, smul_zero]
+    have hright : coeff 1 ((PowerSeries.C a * X : O⟦X⟧).subst g) = a * π := by
+      have hg' : PowerSeries.HasSubst g := HasSubst.of_constantCoeff_zero' hg0
+      rw [subst_mul hg', subst_C, ← C_apply, subst_X hg', coeff_C_mul, hg.2.1]
+    rw [hleft, hright]; ring
+  | d + 2 =>
+    set A := phiPartialSum hπ a hf hg (d + 1) with hAdef
+    set c := phiCoeff hπ a hf hg (d + 2) with hcdef
+    have hA0 : constantCoeff A = 0 := hpartial0 (d + 1)
+    have hAsucc : phiPartialSum hπ a hf hg (d + 2) = A + PowerSeries.C c * X ^ (d + 2) :=
+      phiPartialSum_succ_succ hπ a hf hg d
+    have hφ' : PowerSeries.HasSubst φ := HasSubst.of_constantCoeff_zero' hφ0
+    have hp2 : PowerSeries.HasSubst (phiPartialSum hπ a hf hg (d + 2)) :=
+      HasSubst.of_constantCoeff_zero' (hpartial0 (d + 2))
+    have hdvd2 := X_pow_dvd_phi_sub_phiPartialSum hπ a hf hg (d + 2)
+    -- inner-position side: coeff (d+2) (f.subst φ) = coeff (d+2) (f.subst A) + c * coeff 1 f
+    have hstep1 : coeff (d + 2) (f.subst φ) =
+        coeff (d + 2) (f.subst (phiPartialSum hπ a hf hg (d + 2))) :=
+      coeff_subst_eq_of_dvd_sub f hφ' hp2 (d + 2) hdvd2
+    have hinner : coeff (d + 2) (f.subst φ) = coeff (d + 2) (f.subst A) + c * coeff 1 f := by
+      rw [hstep1, hAsucc, coeff_subst_add_C_mul_X_pow f hA0 c (by omega : 1 ≤ d + 2)]
+    -- outer-position side: coeff (d+2) (φ.subst g) = coeff (d+2) (A.subst g) + c * π^(d+2)
+    have hstep2 : coeff (d + 2) (φ.subst g) =
+        coeff (d + 2) ((phiPartialSum hπ a hf hg (d + 2)).subst g) :=
+      coeff_subst_eq_of_dvd_sub_left hg0 (d + 2) hdvd2
+    have hg' : PowerSeries.HasSubst g := HasSubst.of_constantCoeff_zero' hg0
+    have houter : coeff (d + 2) (φ.subst g) =
+        coeff (d + 2) (A.subst g) + c * π ^ (d + 2) := by
+      rw [hstep2, hAsucc, subst_add hg', map_add, subst_mul hg', subst_C, ← C_apply,
+        subst_pow hg', subst_X hg', coeff_C_mul,
+        coeff_pow_self_of_coeff_zero_eq_zero hg.1 hg.2.1 (d + 2)]
+    -- combine with the per-degree defining equation
+    have hkey := pi_mul_one_sub_pow_mul_phiCoeff hπ a hf hg d
+    rw [hinner, houter, hf.2.1]
+    have : coeff (d + 2) (A.subst g) - coeff (d + 2) (f.subst A) =
+        π * (1 - π ^ (d + 1)) * c := hkey.symm
+    linear_combination -this
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] in
+/-- **A generic (non-recursive) truncation of an arbitrary power series**, used only for the
+uniqueness argument: unlike `phiPartialSum`, which is tied to the specific recursively-constructed
+`phiCoeff`, `genTrunc φ n` truncates *any* `φ` to its coefficients `0, …, n`. Defined directly via
+`PowerSeries.mk` (not a `Finset.sum`, unlike Mathlib's `substInvFun`-style truncations) so that its
+defining coefficient formula is immediate from `coeff_mk`. -/
+noncomputable def genTrunc (φ : O⟦X⟧) (n : ℕ) : O⟦X⟧ :=
+  PowerSeries.mk (fun m ↦ if m ≤ n then coeff m φ else 0)
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] in
+theorem coeff_genTrunc (φ : O⟦X⟧) (n m : ℕ) :
+    coeff m (genTrunc φ n) = if m ≤ n then coeff m φ else 0 :=
+  PowerSeries.coeff_mk _ _
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] in
+theorem constantCoeff_genTrunc (φ : O⟦X⟧) (hφ0 : coeff 0 φ = 0) (n : ℕ) :
+    constantCoeff (genTrunc φ n) = 0 := by
+  rw [← coeff_zero_eq_constantCoeff, coeff_genTrunc, if_pos (Nat.zero_le n), hφ0]
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] in
+theorem X_pow_dvd_sub_genTrunc (φ : O⟦X⟧) (n : ℕ) :
+    (X : O⟦X⟧) ^ (n + 1) ∣ (φ - genTrunc φ n) := by
+  rw [X_pow_dvd_iff]
+  intro m hm
+  rw [map_sub, coeff_genTrunc, if_pos (by omega), sub_self]
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] in
+theorem genTrunc_succ (φ : O⟦X⟧) (n : ℕ) :
+    genTrunc φ (n + 1) = genTrunc φ n + PowerSeries.C (coeff (n + 1) φ) * X ^ (n + 1) := by
+  refine PowerSeries.ext fun m ↦ ?_
+  rw [map_add, coeff_genTrunc, coeff_C_mul, coeff_X_pow, coeff_genTrunc]
+  rcases Nat.lt_trichotomy m (n + 1) with hmn | hmn | hmn
+  · rw [if_pos (by omega : m ≤ n), if_neg (by omega : m ≠ n + 1), if_pos (by omega : m ≤ n + 1),
+      mul_zero, add_zero]
+  · rw [if_neg (by omega : ¬ m ≤ n), if_pos hmn, if_pos (by omega : m ≤ n + 1), zero_add,
+      hmn, mul_one]
+  · rw [if_neg (by omega : ¬ m ≤ n), if_neg (by omega : m ≠ n + 1), if_neg (by omega : ¬ m ≤ n + 1),
+      mul_zero, add_zero]
+
+omit [Finite (ResidueField O)] in
+/-- **The local defining equation, recovered from an arbitrary global solution.** This is the
+converse direction of the algebra used to prove `subst_phi_eq_phi_subst`: given *any* `φ` (not
+necessarily `phiCoeff`-constructed) with zero constant term solving the *global* functional
+equation `f.subst φ = φ.subst g`, its coefficients solve the *same* per-degree linear equation
+`pi_mul_one_sub_pow_mul_phiCoeff` established for the recursively-constructed solution — obtained
+by running exactly the same four facts (truncation invariance both ways, the linear correction,
+and the leading-coefficient identity) against `genTrunc φ` in place of `phiPartialSum`, then
+solving for the coefficient using the hypothesis `heq` instead of verifying it. This is the key
+step that lets uniqueness be proved without any information about *how* a solution `φ` was
+constructed. -/
+theorem pi_mul_one_sub_pow_mul_coeff_of_subst_eq
+    (hf : IsLubinTatePoly π (residueCard O) f) (hg : IsLubinTatePoly π (residueCard O) g)
+    {φ : O⟦X⟧} (hφ0 : coeff 0 φ = 0) (heq : f.subst φ = φ.subst g) (d : ℕ) :
+    π * (1 - π ^ (d + 1)) * coeff (d + 2) φ =
+      coeff (d + 2) ((genTrunc φ (d + 1)).subst g) - coeff (d + 2) (f.subst (genTrunc φ (d + 1))) := by
+  have hφ0' : constantCoeff φ = 0 := by rw [← coeff_zero_eq_constantCoeff]; exact hφ0
+  have hg0 : constantCoeff g = 0 := by rw [← coeff_zero_eq_constantCoeff]; exact hg.1
+  set A := genTrunc φ (d + 1) with hAdef
+  set c := coeff (d + 2) φ with hcdef
+  have hA0 : constantCoeff A = 0 := constantCoeff_genTrunc φ hφ0 (d + 1)
+  have hAsucc : genTrunc φ (d + 2) = A + PowerSeries.C c * X ^ (d + 2) := genTrunc_succ φ (d + 1)
+  have hφ' : PowerSeries.HasSubst φ := HasSubst.of_constantCoeff_zero' hφ0'
+  have hp2 : PowerSeries.HasSubst (genTrunc φ (d + 2)) :=
+    HasSubst.of_constantCoeff_zero' (constantCoeff_genTrunc φ hφ0 (d + 2))
+  have hdvd2 := X_pow_dvd_sub_genTrunc φ (d + 2)
+  have hstep1 : coeff (d + 2) (f.subst φ) = coeff (d + 2) (f.subst (genTrunc φ (d + 2))) :=
+    coeff_subst_eq_of_dvd_sub f hφ' hp2 (d + 2) hdvd2
+  have hinner : coeff (d + 2) (f.subst φ) = coeff (d + 2) (f.subst A) + c * coeff 1 f := by
+    rw [hstep1, hAsucc, coeff_subst_add_C_mul_X_pow f hA0 c (by omega : 1 ≤ d + 2)]
+  have hstep2 : coeff (d + 2) (φ.subst g) = coeff (d + 2) ((genTrunc φ (d + 2)).subst g) :=
+    coeff_subst_eq_of_dvd_sub_left hg0 (d + 2) hdvd2
+  have hg' : PowerSeries.HasSubst g := HasSubst.of_constantCoeff_zero' hg0
+  have houter : coeff (d + 2) (φ.subst g) = coeff (d + 2) (A.subst g) + c * π ^ (d + 2) := by
+    rw [hstep2, hAsucc, subst_add hg', map_add, subst_mul hg', subst_C, ← C_apply,
+      subst_pow hg', subst_X hg', coeff_C_mul,
+      coeff_pow_self_of_coeff_zero_eq_zero hg.1 hg.2.1 (d + 2)]
+  have hcoeff_eq : coeff (d + 2) (f.subst φ) = coeff (d + 2) (φ.subst g) := by rw [heq]
+  rw [hinner, houter, hf.2.1] at hcoeff_eq
+  linear_combination hcoeff_eq
+
+omit [Finite (ResidueField O)] in
+/-- **The Lubin-Tate functional equation lemma, uniqueness half — MILESTONE alongside
+`subst_phi_eq_phi_subst`.** Any two power series with zero constant term, linear coefficient `a`,
+and both solving `f.subst _ = _.subst g` must coincide: their coefficients agree by strong
+induction on the degree, using `pi_mul_one_sub_pow_mul_coeff_of_subst_eq` to see that both
+coefficient sequences solve the *same* linear equation at every step once their truncations agree
+(the truncations `genTrunc φ (d+1)`/`genTrunc ψ (d+1)` are literally equal once the coefficients
+below degree `d + 2` are known to agree, by the induction hypothesis and `PowerSeries.ext`), and
+cancelling the shared unit-times-`π` factor `π * (1 - π^(d+1))` — regular in the domain `O` since
+`π ≠ 0` (irreducible) and `1 - π^(d+1)` is a unit. -/
+theorem eq_of_coeff_zero_eq_zero_of_coeff_one_eq_of_subst_eq (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) (hg : IsLubinTatePoly π (residueCard O) g)
+    {φ ψ : O⟦X⟧} (a : O) (hφ0 : coeff 0 φ = 0) (hφ1 : coeff 1 φ = a)
+    (heqφ : f.subst φ = φ.subst g) (hψ0 : coeff 0 ψ = 0) (hψ1 : coeff 1 ψ = a)
+    (heqψ : f.subst ψ = ψ.subst g) : φ = ψ := by
+  refine PowerSeries.ext fun n ↦ ?_
+  induction n using Nat.strong_induction_on with
+  | _ n ih =>
+    match n with
+    | 0 => rw [hφ0, hψ0]
+    | 1 => rw [hφ1, hψ1]
+    | d + 2 =>
+      have htrunc : genTrunc φ (d + 1) = genTrunc ψ (d + 1) := by
+        refine PowerSeries.ext fun m ↦ ?_
+        rw [coeff_genTrunc, coeff_genTrunc]
+        split_ifs with hmle
+        · exact ih m (by omega)
+        · rfl
+      have heφ := pi_mul_one_sub_pow_mul_coeff_of_subst_eq hf hg hφ0 heqφ d
+      have heψ := pi_mul_one_sub_pow_mul_coeff_of_subst_eq hf hg hψ0 heqψ d
+      rw [htrunc] at heφ
+      have hval : π * (1 - π ^ (d + 1)) * coeff (d + 2) φ =
+          π * (1 - π ^ (d + 1)) * coeff (d + 2) ψ := heφ.trans heψ.symm
+      have hunit : IsUnit (1 - π ^ (d + 1)) :=
+        isUnit_one_sub_self_of_mem_nonunits _
+          ((mem_maximalIdeal _).mp (Ideal.pow_mem_of_mem (maximalIdeal O) ((mem_maximalIdeal π).mpr
+            hπ.not_isUnit) (d + 1) (by omega)))
+      have hπne : π ≠ 0 := hπ.ne_zero
+      have hfactorne : π * (1 - π ^ (d + 1)) ≠ 0 := mul_ne_zero hπne hunit.ne_zero
+      exact mul_left_cancel₀ hfactorne hval
 
 end LubinTate
 

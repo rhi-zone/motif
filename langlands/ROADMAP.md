@@ -9280,3 +9280,150 @@ into `f` (respectively out of `g`) depends only on the argument's coefficients u
 uses, via `X^(n+1) ∣ (full series − truncation)` and `sub_dvd_pow_sub_pow`) to transfer the
 truncated identity (`pi_mul_one_sub_pow_mul_phiCoeff`) to the full series. That transfer lemma is
 the specific missing piece, not yet stated or attempted in this repo.
+
+## 10. Phase 2c, fourth pass: the Lubin-Tate functional equation lemma — CLOSED, both existence
+and uniqueness — MAJOR MILESTONE
+
+Continuation of `§7`–`§9`. The task for this pass was to bridge `§9`'s per-degree recursive
+construction of `φ` to the actual functional equation lemma: prove the fully assembled `φ :=
+PowerSeries.mk (phiCoeff hπ a hf hg)` satisfies `f.subst φ = φ.subst g` (existence), and — if that
+closed without undue risk — attempt uniqueness of `φ` among solutions sharing its linear
+coefficient. Both closed. All additions are in `Langlands/LubinTateFunctionalEquation.lean` (same
+file as `§8`–`§9`, extended; now 731 lines).
+
+**What is proved, sorry-free.**
+
+Four general-purpose algebraic facts, none tied to `phiCoeff`/`phiState`, each independently
+reusable in any future power-series substitution argument:
+
+* `LubinTate.coeff_subst_eq_of_dvd_sub` (Fact 1, inner-position truncation invariance): for any
+  commutative rings `R S` with `[Algebra R S]`, any `h : R⟦X⟧`, and any `b, b' : S⟦X⟧` admissible
+  for substitution with `X^(n+1) ∣ (b - b')`, `coeff n (h.subst b) = coeff n (h.subst b')`. Proved
+  exactly the way Mathlib's own `PowerSeries.subst_substInv_right` proves its analogous fact:
+  expand via `coeff_subst'` into a `finsum` over powers of the substitutand, propagate the
+  divisibility hypothesis through `sub_dvd_pow_sub_pow`, and read off the coefficient vanishing via
+  `X_pow_dvd_iff`.
+* `LubinTate.coeff_subst_eq_of_dvd_sub_left` (the outer-position analogue — genuinely new, no
+  direct Mathlib precedent): for `f, f' : R⟦X⟧` agreeing on coefficients `0, …, n` and `g : S⟦X⟧`
+  with `constantCoeff g = 0`, `coeff n (f.subst g) = coeff n (f'.subst g)`. No `HasSubst`
+  hypothesis needed on `f`/`f'` (substitution is always defined in the outer argument); the
+  `finsum` over `d` collapses because `coeff n (g^d) = 0` once `d > n`
+  (`le_order_pow_of_constantCoeff_eq_zero`), so only the range where `f`/`f'` already agree
+  contributes.
+* `LubinTate.coeff_pow_add_C_mul_X_pow_sub_coeff_pow` (Fact 2′, the crux binomial identity): for
+  `A` with zero constant term and `n ≥ 1`, `coeff n ((A + C c * X^n)^d) = coeff n (A^d) + (if d = 1
+  then c else 0)` for every exponent `d`. This is the pass's one genuinely delicate new proof,
+  closed via the geometric-sum factorization `geom_sum₂_mul` (`x^d - y^d = (∑_{i<d} x^i y^{d-1-i})
+  (x - y)`) with `x := A + C c * X^n`, `y := A` — since `x - y = C c * X^n`, the `n`-th coefficient
+  of the difference is `c` times the *constant* coefficient of the geometric sum (via
+  `coeff_X_pow_mul'`), and that constant coefficient collapses to a single surviving term (`i = 0`,
+  via `Finset.sum_eq_single`) that itself only contributes `1` when `d = 1`. This replaced an
+  initially-planned direct `add_pow`/binomial-theorem expansion, which required isolating *two*
+  simultaneously-surviving terms out of a `Finset.range` sum (`m = d` and `m = d - 1`) — doable but
+  materially messier than the two-term geometric-sum-factorization route, which isolates only one.
+* `LubinTate.coeff_subst_add_C_mul_X_pow` (Fact 2, the `finsum`-assembled form of Fact 2′): `coeff
+  n (h.subst (A + C c * X^n)) = coeff n (h.subst A) + c * coeff 1 h`, via `finsum_add_distrib` and
+  `finsum_eq_single` picking out the `d = 1` term.
+* `LubinTate.coeff_pow_self_of_coeff_zero_eq_zero` (Fact 4, leading coefficient): for `b` with
+  `coeff 0 b = 0`, `coeff 1 b = u`, `coeff n (b^n) = u^n`, by induction using
+  `le_order_pow_of_constantCoeff_eq_zero` to collapse `coeff (n+1) (b^n * b)`'s convolution sum to
+  its `(n, 1)` term.
+
+Fact 3 (the *exact*, non-approximate outer-position law `(A + C c * X^n).subst g = A.subst g + c •
+g^n`) needed no standalone lemma — it followed directly from `subst_add`/`subst_mul`/`subst_C`/
+`subst_pow`/`subst_X`, already in Mathlib, applied inline.
+
+Then the Lubin-Tate-specific bridging layer:
+
+* `LubinTate.coeff_phiPartialSum` : `phiPartialSum n` agrees with `phiCoeff` on coefficients `0, …,
+  n` and is identically `0` beyond degree `n`, by induction matching `phiState`'s own recursion
+  shape (`0`, `1`, `d + 2`).
+* `LubinTate.X_pow_dvd_phi_sub_phiPartialSum` : the divisibility corollary, `X^(n+1) ∣ (mk
+  (phiCoeff hπ a hf hg) - phiPartialSum n)`, packaging `coeff_phiPartialSum` into the form Facts 1
+  and 1-outer need.
+* **`LubinTate.subst_phi_eq_phi_subst`** — **existence**: `f.subst φ = φ.subst g` for `φ := mk
+  (phiCoeff hπ a hf hg)`, proved coefficient by coefficient via `PowerSeries.ext`. Degree `0` is
+  direct (`constantCoeff_subst_eq_zero` on both sides). Degree `1` truncates `φ` to its exactly-
+  linear `phiPartialSum 1 = C a * X` via Facts 1/1-outer, then computes both substitutions of a
+  literal linear series directly. Degree `d + 2` runs the full combination worked out by hand in
+  the task brief and verified to cancel exactly: truncate `φ` to `phiPartialSum (d+2)` on both
+  sides (Facts 1/1-outer), split off the new top-degree term via `phiPartialSum_succ_succ` (Fact 2
+  on the inner side, Fact 3 + Fact 4 on the outer side), and cancel the two correction terms
+  against `pi_mul_one_sub_pow_mul_phiCoeff`'s per-degree identity using `linear_combination`.
+* `LubinTate.genTrunc`, `coeff_genTrunc`, `constantCoeff_genTrunc`, `X_pow_dvd_sub_genTrunc`,
+  `genTrunc_succ` : a second, non-recursive truncation operator for an *arbitrary* power series
+  (`genTrunc φ n := PowerSeries.mk (fun m ↦ if m ≤ n then coeff m φ else 0)`), needed because
+  uniqueness must reason about solutions `φ` not built via `phiState`, so `phiPartialSum` (tied to
+  the specific recursive construction) does not apply to them.
+* `LubinTate.pi_mul_one_sub_pow_mul_coeff_of_subst_eq` — the converse bridging step: for *any* `φ`
+  with zero constant term satisfying the *global* equation `f.subst φ = φ.subst g` (not
+  necessarily `phiCoeff`-constructed), its coefficients satisfy the *same* per-degree linear
+  equation `pi_mul_one_sub_pow_mul_phiCoeff` established for the recursive solution — obtained by
+  running the identical four facts against `genTrunc φ` in place of `phiPartialSum`, then solving
+  for the unknown coefficient using the global hypothesis instead of verifying a value already in
+  hand. This is exactly the existence argument run in reverse, and needed no new algebraic content
+  beyond Facts 1/1-outer/2/3/4 already built for existence.
+* **`LubinTate.eq_of_coeff_zero_eq_zero_of_coeff_one_eq_of_subst_eq`** — **uniqueness**: any two
+  power series `φ, ψ` with `coeff 0 = 0`, `coeff 1 = a`, and both solving `f.subst _ = _.subst g`
+  coincide. Proved by strong induction on the degree (`Nat.strong_induction_on`): degrees `0`, `1`
+  are immediate from the shared hypotheses; at degree `d + 2`, the induction hypothesis gives
+  `genTrunc φ (d+1) = genTrunc ψ (d+1)` as power series (literal equality, via `PowerSeries.ext`
+  applied to the coefficient-agreement already established below degree `d + 2`), so
+  `pi_mul_one_sub_pow_mul_coeff_of_subst_eq` applied to each of `φ`, `ψ` gives `π * (1 - π^(d+1)) *
+  coeff (d+2) φ = π * (1 - π^(d+1)) * coeff (d+2) ψ` (same right-hand side, since it depends on `φ`
+  only through the now-equal truncation); cancelling the shared factor via `mul_left_cancel₀`
+  closes the step, using that `π * (1 - π^(d+1))` is nonzero in the domain `O` (`π` is nonzero
+  since irreducible; `1 - π^(d+1)` is a unit via `IsLocalRing.isUnit_one_sub_self_of_mem_nonunits`,
+  the same fact `phiState`'s own recursive step already relies on).
+
+`lake build` clean across the whole repo (`8748` jobs, only pre-existing unrelated warnings);
+`#print axioms` on `subst_phi_eq_phi_subst` and
+`eq_of_coeff_zero_eq_zero_of_coeff_one_eq_of_subst_eq` (and every other new declaration checked)
+shows only `propext, Classical.choice, Quot.sound`; `grep sorry` on the file returns nothing.
+
+**Lean-engineering notes from this pass, in the same spirit as prior passes' obstacle writeups.**
+
+1. **The binomial-expansion route considered first for Fact 2′ was abandoned in favor of the
+   geometric-sum factorization, before any Lean was written for it** — this is exactly the
+   "generation anchors" discipline the repo's `CLAUDE.md` calls for: working the `add_pow`
+   expansion through by hand first revealed it needs `Finset.sum_eq_single`-style isolation of
+   *two* simultaneously-surviving terms (`m = d` and `m = d-1` out of `range (d+1)`), which is
+   provable but structurally awkward (no single distinguished index). Re-deriving via `x^d - y^d =
+   (∑ x^i y^{d-1-i})(x-y)` instead reduces the "which terms survive" question to a single index
+   (`i = 0` of the geometric sum), because the entire correction is isolated multiplicatively by
+   `C c * X^n` up front rather than distributed across a binomial sum. The Lean proof this produced
+   is markedly shorter than the abandoned alternative would have been.
+2. **`PowerSeries.C r` and `MvPowerSeries.C r` are propositionally but not syntactically equal**,
+   which broke `rw [coeff_C_mul]` after `subst_C` (whose statement is phrased in terms of
+   `MvPowerSeries.C`) on more than one occasion. Fixed uniformly via the bridging lemma `C_apply :
+   C r = MvPowerSeries.C r` (`rw [← C_apply]` folds the `MvPowerSeries.C` form back to
+   `PowerSeries.C` so downstream `PowerSeries`-namespace lemmas apply). The same
+   `PowerSeries.constantCoeff`-vs-`MvPowerSeries.constantCoeff` mismatch appeared once more (fixed
+   via `PowerSeries.constantCoeff_eq`) — both are instances of the general pattern flagged in `§6z`
+   region and elsewhere in this roadmap: Mathlib's univariate `PowerSeries` API is frequently a thin
+   wrapper reducing definitionally, but not syntactically, to the `MvPowerSeries Unit` API
+   underneath, so `rw`'s syntactic matching needs an explicit bridging lemma even when the two
+   sides are `rfl`-equal.
+3. **`if_pos h`/`if_neg h` require `h`'s stated type to be syntactically (up to reducible defeq)
+   the ite's condition, not merely propositionally equivalent to it** — `if_pos hmn.symm` failed
+   where the ite's condition was `m = n + 1` and `hmn : m = n + 1` was available directly (using
+   `.symm` produces a proof of `n + 1 = m`, a different — if provably equivalent — proposition).
+   This recurred twice across the coefficient-agreement inductions (`coeff_phiPartialSum`,
+   `genTrunc_succ`); the fix each time was to drop the erroneous `.symm` and match the equality's
+   orientation to the ite's own left-to-right reading.
+4. **Uniqueness needed no new algebraic content beyond what existence already built** — the only
+   new machinery was a second truncation operator (`genTrunc`, non-recursive, since uniqueness
+   ranges over solutions not built via `phiState`) and the induction/cancellation glue. This
+   confirms the task brief's own anticipation that the four existence facts, stated generally
+   rather than specifically against `phiPartialSum`, would be directly reusable "in reverse" for
+   uniqueness — validating the choice (flagged in the file's own docstrings) to build Facts 1/1-
+   outer/2/4 as fully general lemmas (arbitrary rings, arbitrary substitutands) rather than
+   specializing them to `phiCoeff` from the start.
+
+**What remains open.** The functional equation lemma itself — both existence and uniqueness — is
+now fully closed. This is the core content of Lubin-Tate theory's foundational step. The natural
+next move, not attempted in this pass: specialize the two-variable case `L(X, Y) := X + Y` with `f
+= g` to extract the **formal group law** `F_π(X, Y) := φ_f(φ_f^{-1}(X) + φ_f^{-1}(Y))` (using the
+now-closed `subst_phi_eq_phi_subst`/uniqueness to make this well-defined), then build the
+isogeny/endomorphism structure `ℱ_π ⊗ O` on top of it — the next genuinely new stage of the
+Lubin-Tate thread, not yet scoped in detail.
