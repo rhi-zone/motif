@@ -115,6 +115,30 @@ noncomputable instance instNontriviallyNormedFieldAdicCompletion :
     NontriviallyNormedField (v.adicCompletion F) :=
   Valued.toNontriviallyNormedField (v.adicCompletion F) ℤᵐ⁰
 
+open scoped Valued in
+/-- **The norm on `v.adicCompletion F` is `WithZeroMulInt.toNNReal` of `Valued.v` directly** — no
+`restrict`/`valueGroup₀` bookkeeping survives, because `Valued.v` is surjective onto `ℤᵐ⁰`
+(`valuedAdicCompletion_surjective`), which is exactly the hypothesis
+`Valuation.IsRankOneDiscrete.valueGroup₀_equiv_withZeroMulInt_restrict_apply_of_surjective` needs
+to identify `valueGroup₀_equiv_withZeroMulInt Valued.v (Valued.v.restrict x)` with `Valued.v x`.
+Since `instRankOneValuedAdicCompletion` fixes the SAME base `e = 2` at *every* place, this gives a
+formula for `‖·‖` depending on the field only through `Valued.v`, with no reference to which
+particular `HeightOneSpectrum`/field it lives on — the key fact that makes
+`norm_algebraMap_pow_eq` below provable as a literal equation rather than an order/ε-δ
+comparison. -/
+theorem norm_eq_toNNReal_valued (x : v.adicCompletion F) :
+    ‖x‖ = (WithZeroMulInt.toNNReal (two_ne_zero) (Valued.v x) : ℝ) := by
+  rw [Valued.toNormedField.norm_def]
+  have hhom : (Valuation.RankOne.hom (Valued.v : Valuation (v.adicCompletion F) ℤᵐ⁰))
+      = (WithZeroMulInt.toNNReal (two_ne_zero (α := ℝ≥0))).comp
+        (MonoidWithZeroHom.ofClass
+          (Valuation.IsRankOneDiscrete.valueGroup₀_equiv_withZeroMulInt
+            (Valued.v : Valuation (v.adicCompletion F) ℤᵐ⁰))) := rfl
+  rw [hhom]
+  simp only [MonoidWithZeroHom.comp_apply, MonoidWithZeroHom.coe_ofClass,
+    Valuation.IsRankOneDiscrete.valueGroup₀_equiv_withZeroMulInt_restrict_apply_of_surjective
+      (valuedAdicCompletion_surjective F v)]
+
 /-- The canonical valuation `NormedField.valuation` of `instNontriviallyNormedFieldAdicCompletion`
 is `Compatible` with `instValuativeRelValuedAdicCompletion`, completing the hypotheses of
 `LocalField.valuationSubring_eq_of_comap_eq` for `v.adicCompletion F`. Proved via
@@ -534,6 +558,23 @@ theorem valuation_algebraMap_pow_eq (y : v.adicCompletion K) :
       valuedAdicCompletion_eq_valuation', valuedAdicCompletion_eq_valuation',
       valuation_liesOver L v w]
   exact congrFun (hden.equalizer hcont1 hcont2 hcomp) y
+
+omit [Module.Finite K L] [Algebra.IsIntegral R S] in
+/-- **The norm-power bridge**, the `‖·‖` form of `valuation_algebraMap_pow_eq`:
+`‖adicCompletionComap y‖ = ‖y‖ ^ e`, an EXACT equation (not an order/ε-δ comparison), for `e` the
+ramification index of `w` over `v`. Provable because `norm_eq_toNNReal_valued` expresses `‖·‖` on
+*both* `v.adicCompletion K` and `w.adicCompletion L` via the SAME function
+`WithZeroMulInt.toNNReal two_ne_zero` applied directly to `Valued.v` — `instRankOneValuedAdicCompletion`
+fixes the same base `e = 2` at every place — so the `Valued.v`-level equation transports across the
+two fields via `map_pow` (`WithZeroMulInt.toNNReal _` is a `MonoidWithZeroHom`), with no
+`NormedAlgebra`/isometry hypothesis needed (indeed none holds here in general, see
+`Langlands.AdicCompletionTraceBound`'s docstring). This is what lets
+`AdicCompletionNormExpTrace.lean`'s `algebraMap`-side convergence threshold be computed in closed
+form rather than via `exists_delta_of_continuous`. -/
+theorem norm_algebraMap_pow_eq (y : v.adicCompletion K) :
+    ‖adicCompletionComap K L v w y‖ = ‖y‖ ^ (v.asIdeal.ramificationIdx' w.asIdeal) := by
+  rw [norm_eq_toNNReal_valued, norm_eq_toNNReal_valued, valuation_algebraMap_pow_eq, map_pow]
+  norm_cast
 
 omit [Module.Finite K L] [Algebra.IsIntegral R S] in
 /-- `adicCompletionComap` pulls `w.adicCompletionIntegers L` back exactly to
