@@ -10526,3 +10526,151 @@ completed successfully (8748 jobs)`, no `sorry` in `Langlands/LubinTateIterate.l
 
 `8c4f551` (`Langlands/LubinTateIterate.lean`: `iter`, `coeff_one_subst`, `MvPowerSeries.X_subst`,
 `isLubinTatePoly_iter`, `subst_iter_Phi`), `a6d8662` (`iter_add`).
+
+## 20. Phase 2c, fourteenth pass (2026-08-12): the formal inverse `i_F` — built for a general
+`FormalGroup R`, over any commutative ring, and specialized to `F_π`
+
+`§19` listed item 2 of "what remains" as `i_F` with `F_π(X, i_F(X)) = 0`, "absent from Mathlib's
+`FormalGroup` API entirely… constructible by the same coefficient-by-coefficient recursion as
+`PhiState`, but not attempted." This pass builds it — genuinely general-purpose (any
+`F : FormalGroup R`, any `CommRing R`, not `F_π`-specific), with both existence and uniqueness
+closed, then specializes to `LubinTateFormalGroup`. New file: `Langlands/FormalGroupInverse.lean`
+(412 lines).
+
+### The construction turned out simpler than `PhiState` — and simpler even than Mathlib's own
+`substInv`, confirming the task's hypothesis
+
+Verified, not assumed: `FormalGroup`'s `lin_coeff_Y : toPowerSeries.coeff (single 1 1) = 1` is a
+structure *field*, so the coefficient pinning each new degree of `i_F` is exactly `1` in **every**
+commutative ring — no `Invertible`/`IsUnit` hypothesis anywhere in `Langlands/
+FormalGroupInverse.lean`. This is strictly simpler than two things, not one:
+
+* `PhiState`'s recursive step, which needs `1 - π^(d+1)` to be a unit — true only because `π` is a
+  uniformizer of a complete/Henselian-style DVR (`ROADMAP.md`'s own framing of the hypothesis this
+  pass set out to check).
+* Mathlib's own `PowerSeries.substInv` (`Mathlib/RingTheory/PowerSeries/Substitution.lean:434`),
+  which needs `[Invertible (P.coeff 1)]` as a standing hypothesis even though it solves a
+  structurally identical per-degree equation — `i_F`'s recursion (`FormalGroup.invFun`) needed no
+  such typeclass because the "unit" is literally the ring's `1`, so the recursive step is a bare
+  negation, `invFun F (n+1) := - coeff (n+1) (F.subst2 (partial sum through degree n))`, a
+  **two-case** definition (`0`/`n+1`) against `substInv`'s three (`0`/`1`/`n+2`, the middle case
+  needed only because `substInv`'s base case can't yet invoke the unit it doesn't have until degree
+  1). The Finsupp-indexed multi-index enumeration `PhiState` needs (`mkIdx`, `degSet`, batch
+  corrections at each total degree) also has no counterpart: `i_F` is univariate-indexed (`ℕ`, not
+  `Fin 2 →₀ ℕ`), because only the second variable of `F(X, Y)` is being solved for.
+
+### What was built
+
+In `Langlands/FormalGroupInverse.lean`, for a general `F : FormalGroup R`:
+
+* `FormalGroup.subst2 F A` — `F(X, A(X))`, `MvPowerSeries.subst ![X, A] F.toPowerSeries`; the
+  `Y`-slot analogue of Mathlib's own `F.Xzero`/`F.zeroX` (`subst ![X, 0]`/`subst ![0, X]`), with
+  `A` a free parameter instead of `0`.
+* `FormalGroup.coeff_subst2_eq_of_dvd_sub` — truncation invariance in the `Y`-slot: if
+  `X^(n+1) ∣ (A - A')` then `subst2 F A` and `subst2 F A'` agree at coefficient `n`. Proved via
+  `MvPowerSeries.coeff_subst`'s `finsum` over `Fin 2 →₀ ℕ`, reindexed through
+  `Finsupp.prod_fintype`/`Fin.prod_univ_two` into the explicit product `X^(d 0) * A^(d 1))`, then
+  `sub_dvd_pow_sub_pow` + `X_pow_dvd_iff` on the `A^(d 1)` factor — the direct analogue of
+  `LubinTate.coeff_subst_eq_of_dvd_sub`, generalized from a univariate outer series to `F`'s
+  genuinely bivariate one.
+* `FormalGroup.coeff_subst2_add_C_mul_X_pow` — **the linear-correction identity that makes the
+  recursion solvable**: for `A` with zero constant term, `c : R`, `m ≥ 1`, correcting `A` by
+  `C c * X^m` shifts `coeff m (F.subst2 A)` by exactly `c`. Splits `MvPowerSeries.coeff_subst`'s sum
+  over `d : Fin 2 →₀ ℕ` by `d 0`: for `d 0 ≥ 1` the evaluation position `m - d 0 < m`, so
+  `X^m ∣ (C c * X^m)` already forces no change (extracted inline via `X_pow_dvd_iff`, no new lemma
+  needed); for `d 0 = 0` the evaluation position is exactly `m`, where
+  `LubinTate.coeff_pow_add_C_mul_X_pow_sub_coeff_pow` (Fact 2' of the *univariate*
+  functional-equation file, fully general over any `CommRing`) applies **unchanged** — reused
+  verbatim across files, not reproved.
+* `FormalGroup.invFun`, `FormalGroup.invPartialSum`, `FormalGroup.inv` — the recursive
+  coefficient-by-coefficient construction described above and its assembled series
+  `PowerSeries.mk (invFun F)`.
+* `FormalGroup.coeff_subst2_invPartialSum` — the recursion is self-consistent by construction
+  (`coeff n (F.subst2 (invPartialSum F n)) = 0` for every `n`), the well-definedness half.
+* `FormalGroup.subst2_inv_eq_zero` — **existence**: `F.subst2 (inv F) = 0`, i.e.
+  `F(X, i_F(X)) = 0`. Bridges the finite partial sums to the infinite series via
+  `coeff_subst2_eq_of_dvd_sub` and `X_pow_dvd_iff.mpr`.
+* `FormalGroup.eq_inv_of_subst2_eq_zero` — **uniqueness**: any `G` with `constantCoeff G = 0` and
+  `F.subst2 G = 0` equals `inv F`, by strong induction reusing exactly the same two workhorse
+  lemmas. **No separate "linear coefficient `-1`" hypothesis is needed** — it and every other
+  coefficient of `G` are already forced by the two hypotheses stated, a sharper statement than the
+  task brief anticipated (found while proving it, not assumed going in).
+* `FormalGroup.coeff_one_inv` — `coeff 1 (inv F) = -1`, i.e. `i_F ≡ -X (mod deg 2)` as required.
+* `FormalGroup.subst2_subst_eq_zero` — **`i_F` composes with any zero-constant-coefficient
+  substitutand to give its additive inverse under `F`**: for any `A` with `constantCoeff A = 0`,
+  `F.toPowerSeries.subst ![A, (inv F).subst A] = 0`. Proved by substituting `A` for `X` on both
+  sides of `subst2_inv_eq_zero`'s identity, via `MvPowerSeries.subst_comp_subst_apply` (chaining the
+  bivariate `![X, inv F]` substitution with the further univariate substitution `A`) and
+  `PowerSeries.subst_def` (identifying univariate `subst` with its `Unit`-indexed multivariate form
+  — the same identification `subst_subst_mv`, `§16`, uses).
+* `LubinTate.PhiInv`, `constantCoeff_PhiInv`, `coeff_one_PhiInv`, `subst_Phi_PhiInv_eq_zero`,
+  `eq_PhiInv_of_subst_Phi_eq_zero`, `subst_Phi_subst_PhiInv_eq_zero` — the direct specializations of
+  the six results above to `LubinTateFormalGroup`, confirming `F_π` gets a concrete, unique formal
+  inverse `i_{F_π}` for free once the general theory is in place.
+
+### Design call: hypotheses needed — general commutative ring throughout, no domain/local-ring
+
+Every theorem in `Langlands/FormalGroupInverse.lean` is stated for `{R : Type*} [CommRing R]`
+alone. No `IsDomain`, `IsDiscreteValuationRing`, `IsLocalRing`, or completeness hypothesis appears
+anywhere — confirmed while writing the proofs, not assumed beforehand: the only place a
+"solvability" argument is needed is `coeff_subst2_add_C_mul_X_pow`, and there the coefficient is
+literally `F`'s `lin_coeff_Y = 1`, needing no ring-theoretic hypothesis to invert. `O`-specific
+hypotheses appear only in the final specialization section (`namespace LubinTate`), inherited
+unchanged from `LubinTateFunctionalEquationBivariate.lean`'s own section variables, and used only
+to invoke `LubinTateFormalGroup`/`Phi`/`IsLubinTatePoly` — not by the inverse construction itself.
+
+### Design call: what "AddGroup-flavored" statement was landed, and why not a literal instance
+
+Mathlib's `F.Point σ := {f : MvPowerSeries σ R // PowerSeries.HasSubst f}` carries only
+`AddCommMonoid` (`Mathlib/RingTheory/FormalGroup/Basic.lean:337`), because `HasSubst f ↔
+IsNilpotent (constantCoeff f)` — a **nilpotent**, not necessarily **zero**, constant coefficient.
+Every lemma in `Langlands/FormalGroupInverse.lean` (`subst2`, `invFun`, `inv`, and all their
+supporting lemmas) is proved at the narrower "literally zero constant coefficient" hypothesis,
+because that is what the linear-correction identity's proof structure needs at every step
+(`coeff_pow_add_C_mul_X_pow_sub_coeff_pow` itself, reused unchanged, is stated for zero constant
+term). Retrofitting a literal `Neg (F.Point σ)`/`AddGroup (F.Point σ)` instance at Mathlib's full
+nilpotent generality would require re-deriving this entire file's machinery one hypothesis-level
+up — a substantially larger undertaking, scoped out rather than attempted partially (per this
+repo's own discipline against partial migrations reading as canonical).
+
+What *is* true, and *is* landed, at the "zero constant coefficient" generality already built:
+every univariate substitutand this whole Lubin-Tate development ever manipulates — `f`, `iter f n`
+(`Langlands/LubinTateIterate.lean`), and every `A` appearing in any `subst2` call anywhere in this
+file — has **literally** zero constant coefficient, never merely nilpotent. `subst2_subst_eq_zero`
+(and its specialization `subst_Phi_subst_PhiInv_eq_zero`) is exactly the standalone fact that
+matters at that generality: it says `F.Point Unit`, restricted to zero-constant-coefficient
+representatives (which is every representative this codebase ever constructs), already has
+additive inverses computable by a uniform formula (`A ↦ (inv F).subst A`), even though no Mathlib
+typeclass instance is registered to say so generically. This is the judgment call the task brief
+anticipated might be needed ("a standalone fact… without literally building a Mathlib `AddGroup`
+instance"), landed precisely rather than forced into an instance that would either not typecheck
+against `Point`'s real generality or silently narrow it without saying so.
+
+### Build status
+
+`nix develop --command lake build` (run from `langlands/`) — whole project builds clean, `Build
+completed successfully (8748 jobs)`, no `sorry` in `Langlands/FormalGroupInverse.lean` (confirmed
+by `grep -n sorry`, no hits) nor introduced elsewhere this pass.
+
+### What remains, in dependency order
+
+1. **Evaluation of a formal group law at concrete elements** — unchanged from `§19`: the
+   `PowerSeries.aeval`/`hasEvalIdeal` packaging Mathlib lacks, needed before `F_π[π^n]` can be
+   *defined* (as opposed to reasoned about algebraically via `subst`). Still needs a
+   `PowerSeries.eval₂_subst`-style bridge, still absent from Mathlib.
+2. **`F_π[π^n]`** — the kernel of `aeval (iter f n)`, definable once (1) exists. `iter_add` and
+   `subst_iter_Phi` (`§19`) supply the endomorphism/filtration algebra; `PhiInv` and
+   `subst_Phi_subst_PhiInv_eq_zero` (this pass) supply the additive-inverse algebra needed to state
+   torsion as a genuine subgroup rather than a sub-monoid, once (1) makes "subgroup of concrete
+   points" meaningful at all.
+3. **`K_n = K(F_π[π^n])`, `[K_n : K]`, total ramification** — not attempted, blocked on (1)–(2).
+   Still needs the bridge from the abstract complete DVR `O` to this repo's
+   `IsDedekindDomain.HeightOneSpectrum`/`adicCompletionIntegers` vocabulary; none built yet.
+4. **The reciprocity map** — the eventual target, joining this thread to the norm-group index work
+   of Phase 2b (`§6ai`).
+
+### Commits
+
+`8870d07` (`Langlands/FormalGroupInverse.lean`: `subst2`, `coeff_subst2_eq_of_dvd_sub`,
+`coeff_subst2_add_C_mul_X_pow`, `invFun`/`invPartialSum`/`inv`, `subst2_inv_eq_zero`,
+`eq_inv_of_subst2_eq_zero`, `subst2_subst_eq_zero`, and the `LubinTate.PhiInv` specialization).
