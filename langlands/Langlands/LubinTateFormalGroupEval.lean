@@ -42,18 +42,17 @@ instance stack is not usable here).
 
 ## What this does not do
 
-**No compatibility between `evalMv`/`eval` and `PowerSeries.subst`/`MvPowerSeries.subst` is
-proved.** That is the strictly harder claim needed for the next steps of the torsion-point thread
-(closure of `F_π[π^n]` under `F_π`-addition via `LubinTateIterate.subst_iter_Phi`, and additive
-inverses via `FormalGroupInverse.subst_Phi_subst_PhiInv_eq_zero`): it requires showing evaluation
-commutes with composition, `eval (f.subst A) x = eval f (evalMv A x)`, which needs an
-interchange-of-summation (double-series rearrangement) argument.
-`Langlands.NonarchimedeanExponentialHasSum`'s module docstring flags the same gap for the
-`exp`/`log` mutual-inverse identity as "a strictly harder claim… not attempted", and
-`Langlands.NonarchimedeanCauchyProduct`'s docstring identifies "matching the tuple-indexed sum
-against `PowerSeries.subst`'s finite `finsum`" as the specific remaining assembly step, still
-unattempted there too. Building it here, for the bivariate Lubin-Tate case, is out of scope for
-this pass; see `ROADMAP.md` for the precise dependency-ordered remainder.
+**No compatibility between `evalMv`/`eval` and `PowerSeries.subst`/`MvPowerSeries.subst` is proved
+here.** `Langlands.NonarchimedeanPowerSeriesEvalSubst.eval_subst` has since closed the
+univariate-into-univariate case of this compatibility (`eval (g.subst h) x = eval g (eval h x)`, via
+a double-series-interchange argument), but the torsion-point thread's next steps — closure of
+`F_π[π^n]` under `F_π`-addition via `LubinTateIterate.subst_iter_Phi`, and additive inverses via
+`FormalGroupInverse.subst_Phi_subst_PhiInv_eq_zero` — need a **bivariate-outer** form,
+`eval (MvPowerSeries.subst A Φ) x = evalMv Φ (fun i ↦ eval (A i) x)` for a univariate family
+`A : Fin 2 → PowerSeries R`, which is not yet built (see
+`Langlands.NonarchimedeanPowerSeriesEvalSubst`'s module docstring for the precise route by which the
+univariate proof's structure is expected to transfer, and `ROADMAP.md` for the dependency-ordered
+remainder).
 -/
 
 @[expose] public section
