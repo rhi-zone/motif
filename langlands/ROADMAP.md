@@ -9860,3 +9860,113 @@ lemma statement for item 2 was written, sorry-containing or otherwise.
 including this pass's two new theorems, builds clean and sorry-free (only pre-existing lint
 warnings unrelated to this pass's file appear in the output). Committed as
 `882040d feat(langlands): multivariate linear-correction identity — item 1 of §11 closed`.
+
+## 15. Phase 2c, ninth pass (2026-08-12): item 2's recursive construction — setup and
+well-definedness CLOSED, sorry-free; existence not attempted
+
+Continuation of `§14`, attempting item 2 of `§11`'s three-item breakdown: the total-degree-indexed
+recursive construction of `Φ : MvPowerSeries (Fin 2) O` itself. Added to
+`Langlands/LubinTateFunctionalEquationBivariate.lean` (still no new file). This pass closes the
+first two of the four deliverables the task set out (setup, well-definedness); existence and
+uniqueness are not attempted.
+
+**The intra-degree independence question, resolved constructively.** `§14` established that a
+monomial correction at `m` never perturbs `coeff n` for any other `n` with `n.degree ≤ m.degree` —
+in particular, for any other multi-index `n` of the *same* total degree. This pass confirms the
+constructive consequence: at a fixed total degree `d`, all `d + 1` multi-indices' defining linear
+equations can be solved **independently of each other**, each using only the partial sum built
+through total degree `d − 1` — no ordering or sequencing within a degree level is needed. This
+means the batch of new coefficients at each total-degree step is an ordinary (non-recursive)
+`Finset.sum` over a finite index set, not a sequence of dependent recursive corrections.
+
+**The termination-checker hazard, checked directly and confirmed not to recur, by construction.**
+The univariate `phiState`'s docstring flags that burying recursive calls inside a `Finset.sum`
+(e.g., summing over prior degrees' coefficients) defeats Lean's termination checker, and the task
+brief asked whether the added multi-index dimension reintroduces this. It does not, because of how
+the construction is shaped: the degree-`(d + 2)` case makes **exactly one** call to `PhiState`, at
+`d + 1`, closed over in a single `let prev := PhiState hπ hf (d + 1)` *before* the `Finset.sum`
+assembling the `d + 3` new coefficient corrections is built. Every one of those `d + 3` corrections
+is computed from `prev` alone (via `uniformizer_dvd_coeff_subst_sub_subst_mv`, unconditional
+`π`-divisibility at *any* multi-index, applied to `prev`'s partial sum) — the `Finset.sum` contains
+no recursive call to `PhiState` at all, let alone one varying per summand. Lean accepts the
+definition as ordinary structural recursion on the total degree with no workaround needed beyond
+what `phiState` already established (bundling the zero-constant-term invariant into the return
+type, avoiding a separate after-the-fact well-definedness proof for that invariant).
+
+**What got built, with exact signatures.** All in `Langlands/LubinTateFunctionalEquationBivariate.lean`,
+namespace `LubinTate`:
+
+* `mkIdx (k l : ℕ) : Fin 2 →₀ ℕ` — the concrete enumeration device for multi-indices, built via
+  `Finsupp.equivFunOnFinite` (every function out of a `Fintype` is automatically finitely
+  supported, so `Fin 2 →₀ ℕ ≃ (Fin 2 → ℕ)` needs no extra finiteness argument). The exponents of
+  total degree `d` are exactly `mkIdx k (d − k)` for `k = 0, …, d`. `degree_mkIdx : (mkIdx k
+  l).degree = k + l` and `mkIdx_ne_zero` (nonzero whenever `k + l ≠ 0`) support the rest.
+* `PhiState (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f) : (n : ℕ) → {p : (ℕ →
+  O) × MvPowerSeries (Fin 2) O // MvPowerSeries.constantCoeff p.2 = 0}` — the direct
+  total-degree-indexed generalization of `phiState`. `.1.1` is a function `ℕ → O` giving the
+  degree-`n` batch of new coefficients (indexed by the first coordinate `k`, so the coefficient at
+  `mkIdx k (n − k)` is `.1.1 k`); `.1.2` is the partial sum through degree `n`; `.2` is the
+  zero-constant-term proof. Base cases: `PhiState 0` is identically zero; `PhiState 1` fixes `Φ ≡ X
+  + Y` (both linear coefficients `1`, matching `ROADMAP.md`'s "`Φ ≡ X + Y (mod deg 2)`"
+  specification — **unlike the univariate case, there is no free linear parameter `a`**: this `Φ`
+  is the one specific series that, once existence/uniqueness close, specializes to `F_π` itself,
+  so its linear part is pinned down from the start rather than left as a parameter). At `n = d + 2`,
+  the recursive step matches `phiState`'s pattern exactly (same `π ∈ 𝔪` / `IsUnit (1 − π^(d+1))`
+  argument, same `pi_mul_mul_unit_inv_mul_choose` unit-inversion), just producing `d + 3` new
+  coefficients (one per `k = 0, …, d + 2`) instead of one, assembled via `Finset.sum` into the
+  `correction` term added to the previous partial sum.
+* `PhiCoeff`, `PhiPartialSum` — extraction functions from `PhiState`, direct analogues of
+  `phiCoeff`/`phiPartialSum`. `PhiCoeff m := (PhiState hπ hf m.degree).1.1 (m 0)`, well-defined for
+  *every* `m : Fin 2 →₀ ℕ` since `m 0 ≤ m.degree` always. `constantCoeff_PhiPartialSum`,
+  `PhiPartialSum_zero`, `PhiPartialSum_one`, `PhiCoeff_zero`, `PhiCoeff_mkIdx_one_zero`,
+  `PhiCoeff_mkIdx_zero_one` give the base-case values; `PhiPartialSum_succ_succ` gives the
+  recursive step's shape as a sum of monomial corrections.
+* `pi_mul_one_sub_pow_mul_PhiCoeff` — **the well-definedness theorem, item 2's second
+  deliverable**, the direct generalization of `pi_mul_one_sub_pow_mul_phiCoeff`: for every total
+  degree `d` and every `k ≤ d + 2` (i.e., every multi-index `mkIdx k (d + 2 − k)` of degree `d +
+  2`), `π * (1 − π^(d+1)) * PhiCoeff hπ hf (mkIdx k (d + 2 − k))` exactly equals the coefficient
+  difference `uniformizer_dvd_coeff_subst_sub_subst_mv` says is `π`-divisible at that multi-index,
+  applied to `PhiPartialSum hπ hf (d + 1)`. This is proved genuinely, not merely typechecked: it
+  reuses `pi_mul_mul_unit_inv_mul_choose` (the same generic algebraic solving-step lemma
+  `phiState`'s well-definedness proof uses) at each of the `d + 3` multi-indices independently,
+  confirming by direct construction — not just by the combinatorial argument of `§14` — that the
+  batch of same-degree equations really is independently solvable.
+
+**What remains open, and precisely why.** Existence (`f.subst Φ = Φ.subst (fun i ↦ f.subst (X
+i))`, item 2's third deliverable) is **not attempted this pass**. The univariate existence proof
+(`subst_phi_eq_phi_subst`) assembles four facts: two truncation-invariance lemmas
+(`coeff_subst_eq_of_dvd_sub`/`_left`, both already stated generally enough over arbitrary
+`R`/`S`/`Algebra R S` to reuse as-is — no multivariate generalization needed, since truncation
+invariance only inspects `X^(n+1) ∣ (b − b')`-style divisibility, orthogonal to the substitutand's
+variable count), the linear-correction identity (`coeff_subst_add_C_mul_X_pow`, whose multivariate
+analogue `coeff_subst_add_monomial_mv` was already built in `§14` and covers exactly the *inner*
+position — `f.subst Φ`'s dependence on a monomial correction to `Φ` — needed here), and the
+leading-coefficient identity (`coeff_pow_self_of_coeff_zero_eq_zero`). **The multivariate
+existence proof needs a genuinely new fact with no univariate analogue already built**: how the
+*outer*-position substitution `Φ.subst (fun i ↦ f.subst (X i))` changes when `Φ` itself (not the
+substitutand) gains a monomial correction `monomial m c`. Concretely, using `MvPowerSeries.subst_monomial`
+(`subst a (monomial e r) = algebraMap r * e.prod (fun s n ↦ (a s) ^ n)`, already in Mathlib) together
+with the fact that each `a i := f.subst (X i)` is supported purely along axis `i` (so `a_0^{m 0}` and
+`a_1^{m 1}` have disjoint supports and their product's `m`-th coefficient is the plain product of
+univariate coefficients `PowerSeries.coeff (m 0) (f^(m 0)) * PowerSeries.coeff (m 1) (f^(m 1))`),
+combined with the univariate leading-coefficient identity applied to each factor, gives the expected
+shape `coeff m ((Φ + monomial m c).subst a) = coeff m (Φ.subst a) + c * π^(m.degree)` — matching the
+univariate pattern (`c * π^(d+2)`) with `m.degree` replacing `d + 2` — but **none of this chain is
+built yet**: neither the "`h.subst (X i)` is axis-pure" fact, nor the "coefficient of a product of
+axis-disjoint series is the product of univariate coefficients" fact, nor their assembly into the
+outer-position monomial-correction identity. This is a real, non-trivial new lemma (or short chain
+of lemmas), not a routine generalization — it is the one place item 2's task brief's expectation
+that "the multivariate leading-coefficient behavior should still be governed by the same 'π times a
+unit' structure... applied per-multi-index" needs to be established from scratch rather than reused.
+Once built, assembling existence should follow `subst_phi_eq_phi_subst`'s exact proof shape
+(`PowerSeries.ext`-style induction, replaced here by `MvPowerSeries.ext` over multi-indices via
+strong induction on total degree, truncating both sides to `PhiPartialSum` at the relevant degree
+and combining the four facts via `linear_combination`). Uniqueness was not attempted at all,
+consistently with the task's explicit "if existence closes, attempt uniqueness" ordering.
+
+**Build state at the point this pass stopped.** `nix develop --command lake build` from
+`langlands/` completes with `Build completed successfully (8748 jobs)` — the whole project,
+including this pass's new `mkIdx`/`PhiState`/`PhiCoeff`/`PhiPartialSum` machinery and the
+well-definedness theorem, builds clean and sorry-free (only pre-existing lint warnings unrelated to
+this pass's file appear in the output). Committed as
+`3b4b9e5 feat(langlands): total-degree recursive construction of Φ — item 2 setup + well-definedness`.
