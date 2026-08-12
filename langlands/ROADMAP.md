@@ -10839,3 +10839,166 @@ Langlands/LubinTateTorsionPoints.lean`, no hits) nor introduced elsewhere this p
 `4093ba9` (`Langlands/NonarchimedeanPowerSeriesEval.lean`), `203f4dc`
 (`Langlands/NonarchimedeanMvPowerSeriesEvalFin2.lean`), `7e538ef`
 (`Langlands/LubinTateFormalGroupEval.lean`), `d314a00` (`Langlands/LubinTateTorsionPoints.lean`).
+
+## 22. Phase 2c, sixteenth pass (2026-08-12): `eval_mul`/`eval_pow` closed; the univariate
+eval-subst compatibility **closed** (`eval_subst`); the filtration `F_π[π^n] ⊆ F_π[π^{m+n}]`
+**closed** as its first payoff — the bivariate-outer form needed for `F_π`-addition/inverse closure
+of `piTorsion` is not yet built, precisely re-scoped
+
+`§21` closed evaluation itself and re-located the remaining obstruction to
+"evaluation does not (yet) commute with formal substitution/composition", sketching a
+Cauchy-product/`finsum`-matching route for `eval_mul` and flagging `eval_subst` as comparable in size
+to `§21`'s four files combined. This pass builds `eval_mul`/`eval_pow`, then `eval_subst` on top, then
+uses `eval_subst` to close a genuine (if partial) torsion-point structural fact — the filtration — and
+precisely re-scopes what's left for full group structure.
+
+### `eval_mul`/`eval_pow`: closed, by a different (and simpler) route than `§21`'s sketch
+
+`§21`'s sketch proposed expanding `eval_mul` via `NonarchimedeanCauchyProduct`'s `n`-ary
+`HasSum.pow_of_nonarchimedean` (tuple-indexed) and matching against `PowerSeries.coeff_subst'`'s
+`finsum`. That route was not needed: Mathlib's `Summable.tsum_mul_tsum_eq_tsum_sum_antidiagonal`
+(`Mathlib.Topology.Algebra.InfiniteSum.Ring`) directly regroups a summable `ℕ × ℕ`-indexed product
+family by `Finset.antidiagonal`, matching `PowerSeries.coeff_mul` exactly, and needs only
+`[T3Space α] [IsTopologicalSemiring α]` — **not** `NonarchimedeanRing`. The one place the
+nonarchimedean structure *is* needed is establishing the product family's summability in the first
+place, via `HasSum.mul_of_nonarchimedean` (no separate summability hypothesis, unlike the
+general/archimedean case), which needs a `NonarchimedeanRing K` instance.
+
+**Verified, not assumed: no Mathlib instance connects `NormedField`/`IsUltrametricDist` to
+`NonarchimedeanRing`.** Grepped `Mathlib/Analysis/` and `Mathlib/Topology/Algebra/Nonarchimedean/`
+for any instance with both a normed-field-shaped and a `NonarchimedeanRing`-shaped hypothesis — none
+found. The bridge is built locally in `NonarchimedeanPowerSeriesEval.lean`:
+```
+instance : NonarchimedeanRing K :=
+  { (inferInstance : IsTopologicalRing K) with
+    is_nonarchimedean := NonarchimedeanAddGroup.is_nonarchimedean }
+```
+This is diamond-free and low-risk, not a workaround: `NonarchimedeanRing` is `Prop`-valued and
+extends `IsTopologicalRing` (already an automatic instance for `NormedRing`) with exactly one
+additional `Prop` field, `is_nonarchimedean`; `NonarchimedeanAddGroup K`'s own instance (automatic
+from `IsUltrametricDist K`, via `Mathlib.Analysis.Normed.Group.Ultra`'s `to_additive`d
+`nonarchimedeanGroup`) already proves that exact fact. No data-carrying instance is introduced, so
+this cannot create the `NormedField`/`RankOne`-shaped diamond `§6u` hit.
+
+`eval_one`, `coeff_bound_one`, `coeff_bound_pow`, `coeff_bound_mul` (coefficient-boundedness closed
+under multiplication, via the ultrametric nonempty-sum bound
+`Finset.Nonempty.norm_sum_le_sup'_norm`), and `eval_pow` (by induction on `eval_mul`) round out the
+multiplicative structure. Landed in `Langlands/NonarchimedeanPowerSeriesEval.lean`, alongside `eval`
+itself.
+
+### `eval_subst`: closed, univariate-into-univariate, by a double-series-interchange argument
+
+New file `Langlands/NonarchimedeanPowerSeriesEvalSubst.lean`. **`eval (g.subst h) x = eval g
+(eval h x)`**, for `g h : PowerSeries R` with `h` having zero constant term, both algebra-mapped into
+`K` with coefficients bounded by `1`, `x : K` with `‖x‖ < 1`, and `‖eval h x‖ < 1`.
+
+Route (verified by construction, not the `§21` sketch — the actual proof needed no tuple-indexed
+`n`-ary Cauchy product, `NonarchimedeanCauchyProduct.lean` remains unused): set
+`T (d, e) := algebraMap (coeff d g) * evalSummand (h ^ d) x e`. `h`'s zero constant term forces
+`h ^ d` to have order `≥ d` (`PowerSeries.le_order_pow_of_constantCoeff_eq_zero`), so
+`T (d, e) = 0` whenever `e < d` (`coeff_eq_zero_pow_of_lt`). This single fact does double duty:
+
+* It bounds `{(d, e) : ‖T (d, e)‖ ≥ ε}` to a finite rectangle (combined with the uniform bound
+  `‖T (d, e)‖ ≤ ‖x‖ ^ e`), giving `Tendsto T cofinite (𝓝 0)` and hence unconditional `Summable T`
+  (`tendsto_T_cofinite_zero`), with total sum `A`.
+* It collapses `PowerSeries.coeff_subst'`'s `finsum` for `coeff e (g.subst h)` to a finite sum over
+  `Finset.range (e + 1)` (`coeff_subst_finset_range`), matching `T`'s own finite-support row exactly
+  (`hasSum_row_e`, via `hasSum_sum_of_ne_finset_zero`).
+
+Grouping `T` by each coordinate via **`HasSum.prod_fiberwise`**
+(`Mathlib.Topology.Algebra.InfiniteSum.Constructions`) — not the `Equiv.sigmaEquivProd`/`HasSum.sigma`
+route originally attempted, which hit repeated `(deterministic) timeout at whnf`/`isDefEq` even at
+`maxHeartbeats 1000000` on the composed-equiv defeq checks; `prod_fiberwise` needs no Sigma-type
+detour and closed immediately — identifies `A` with `eval g (eval h x)` (group by `d`, via
+`hasSum_row_d` from `hasSum_eval`/`HasSum.mul_left`/`eval_pow`, then `HasSum.unique`) and with
+`eval (g.subst h) x` (group by `e`, via `hasSum_row_e` after swapping coordinates with
+`Equiv.hasSum_iff (Equiv.prodComm ℕ ℕ)`, then `HasSum.tsum_eq` directly — no coefficient-boundedness
+hypothesis on `g.subst h` itself needed for this direction, since `eval` is defined unconditionally
+as a `tsum`). `eval_subst` chains the two identifications; a `set_option maxHeartbeats 1000000 in` is
+needed on the theorem (precedent: `NonarchimedeanExpLogDegreeMatch.lean`,
+`NonarchimedeanExponentialAdd.lean` both already do this).
+
+### The bivariate-outer generalization: precisely re-scoped, not attempted this pass
+
+The Lubin-Tate torsion-point thread's remaining needs (`F_π`-addition-closure via
+`LubinTateIterate.subst_iter_Phi`, additive-inverse-closure via
+`FormalGroupInverse.subst_Phi_subst_PhiInv_eq_zero`) both need a genuinely different shape:
+`eval (MvPowerSeries.subst A Φ) x = evalMv Φ (fun i ↦ eval (A i) x)`, for `Φ : MvPowerSeries (Fin 2) R`
+and a **univariate** family `A : Fin 2 → PowerSeries R` (each `A i` with zero constant term) — the
+exact shape `subst_iter_Phi`'s RHS and `subst_Phi_subst_PhiInv_eq_zero`'s statement both have (a
+bivariate outer series, substituted by *univariate* power-series-valued coordinates, landing back in
+a univariate codomain ring). This is **not** the same as evaluating `Φ.subst` of an
+`MvPowerSeries`-valued family (which would need a fresh multivariate Cauchy product); since each row's
+target ring stays univariate, the inner "row" sums reduce to `this file's own `eval_mul`/`eval_pow`
+applied to a finite product `∏ i, (A i) ^ (d i)`, not new machinery.
+
+Checked (not assumed) that every Mathlib lemma the univariate proof's structure would need in this
+generalization exists, with the exact matching shape: `MvPowerSeries.coeff_subst` (the general
+`a : σ → MvPowerSeries τ S` form; `PowerSeries.coeff_subst'` used above is its `σ = τ = Unit`
+specialization), `MvPowerSeries.le_order_pow_of_constantCoeff_eq_zero`,
+`MvPowerSeries.coeff_of_lt_order`, `Finsupp.finite_of_degree_lt` (already used by
+`NonarchimedeanMvPowerSeriesEvalFin2.lean`). `HasSum.prod_fiberwise` (this pass's own key
+simplification over the `Equiv`/`Sigma` route) generalizes with no change, since it only needs a
+plain product type `β × γ`, not `ℕ × ℕ` specifically — `β` becomes `Fin 2 →₀ ℕ`, `γ` stays `ℕ`.
+
+**This is a comparably-sized undertaking to this pass's `eval_subst` on its own** (verified by
+sketching every supporting lemma's Mathlib counterpart above, not merely asserted) — not attempted
+this pass. It is the sole remaining prerequisite for `F_π`-addition/inverse closure of `piTorsion`.
+
+### `piTorsion`'s first structural fact: the filtration `F_π[π^n] ⊆ F_π[π^{m+n}]`, closed
+
+`Langlands/LubinTateTorsionPoints.lean`. **`mem_piTorsion_add`**: `x ∈ F_π[π^n] → x ∈ F_π[π^{m+n}]`,
+given `hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1` (matching `LubinTateFormalGroupEval`'s convention). This
+is the one torsion-point fact beyond `zero_mem_piTorsion` that needs only the **univariate** case of
+eval-subst compatibility — both sides of `LubinTateIterate.iter_add`
+(`iter f (m + n) = (iter f m).subst (iter f n)`) are univariate-into-univariate composites — unlike
+`F_π`-addition/inverse-closure, which need the bivariate-outer case above. Proved directly:
+`eval (iter f (m+n)) x = eval (iter f m) (eval (iter f n) x) = eval (iter f m) 0 = 0`, via
+`eval_subst`, the hypothesis `eval (iter f n) x = 0`, and `eval_iter_zero` (factored out of
+`zero_mem_piTorsion`'s existing argument, generalized from `n` to any `m`).
+
+This is genuine (if partial) subgroup-flavored structure on `piTorsion`, landed as a standalone
+**closure theorem**, not a Mathlib `AddSubgroup`/`Subgroup` instance — matching `§21`'s and this
+task's own judgment that `eval`/`FPiEval` being total functions meaningful only on a restricted
+domain (`‖·‖ < 1`) makes a literal Mathlib subgroup structure overclaiming what's actually proved.
+
+### What remains, in dependency order
+
+1. **The bivariate-outer eval-subst compatibility** — `eval (MvPowerSeries.subst A Φ) x =
+   evalMv Φ (fun i ↦ eval (A i) x)`, precisely re-scoped above with every needed Mathlib lemma
+   verified to exist. The sole remaining prerequisite for (2).
+2. **`F_π[π^n]` closure under `F_π`-addition and additive inverses** — blocked on (1). Once (1)
+   closes: addition-closure transports `LubinTateIterate.subst_iter_Phi` (`f^{(n)}` is an
+   endomorphism of `F_π`) the same way `mem_piTorsion_add` transported `iter_add`; inverse-closure
+   transports `FormalGroupInverse.subst_Phi_subst_PhiInv_eq_zero` analogously, using
+   `LubinTate.PhiInv`.
+3. **`F_π[π^n]` as a genuine subgroup (or closure-theorem bundle)** — blocked on (2); same
+   closure-theorem-vs-literal-Mathlib-structure judgment call as `mem_piTorsion_add`, revisit once
+   (2) is in hand and the full closure picture (addition, inverses, filtration, `0`) is visible at
+   once.
+4. **`K_n = K(F_π[π^n])`, `[K_n : K]`, total ramification** — blocked on (3), and still separately
+   needs the bridge from the abstract complete DVR `O` to this repo's
+   `IsDedekindDomain.HeightOneSpectrum`/`adicCompletionIntegers` vocabulary (unchanged from
+   `§19`/`§20`/`§21` — `hOK`'s intended concrete instantiation is sketched in
+   `LubinTateFormalGroupEval`'s docstring but not built).
+5. **The reciprocity map** — the eventual target, joining this thread to the norm-group index work
+   of Phase 2b (`§6ai`).
+
+The optional size computation (`|piTorsion hπ hf 1|`, item 4 of the task brief) was not attempted —
+items 1-3 above did not leave comparable room to spare, and it is blocked on (3) regardless (no
+group structure to compute the size of yet).
+
+### Build status
+
+`nix develop --command lake build` (run from `langlands/`) — whole project builds clean, `Build
+completed successfully (8748 jobs)`, no `sorry` in any touched file (confirmed by
+`grep -n sorry Langlands/NonarchimedeanPowerSeriesEval.lean
+Langlands/NonarchimedeanPowerSeriesEvalSubst.lean Langlands/LubinTateTorsionPoints.lean
+Langlands/LubinTateFormalGroupEval.lean`, no hits).
+
+### Commits
+
+`f3f03f5` (`Langlands/NonarchimedeanPowerSeriesEval.lean` — `eval_mul`/`eval_pow`), `2c03dba`
+(`Langlands/NonarchimedeanPowerSeriesEvalSubst.lean` new, `Langlands/LubinTateFormalGroupEval.lean`
+docstring — `eval_subst`), `d813f53` (`Langlands/LubinTateTorsionPoints.lean` —
+`mem_piTorsion_add`/`eval_iter_zero`).
