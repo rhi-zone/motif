@@ -10364,3 +10364,165 @@ no hits) nor introduced elsewhere this pass.
 `86839bc` (`eq_of_subst_eq_mv_fintype` and its general-`σ` supporting lemmas), `4fd0047`
 (`assoc_Phi` — associativity closed), `851aaa9` (`LubinTateFormalGroup` packaging, `IsComm`
 instance).
+
+## 19. Phase 2c, thirteenth pass (2026-08-12): the `[π^n]` endomorphisms of `F_π` — iterates built;
+`FormalGroup.Point` ruled out as the torsion-point vehicle; evaluation machinery identified and
+**not** built
+
+`§18` closed `F_π` as a Mathlib `FormalGroup O` and listed item 1 of "what remains" as torsion
+points, explicitly flagging that no investigation had been done into whether `FormalGroup.Point`
+is the right vehicle. This pass answers that question (it is not, for a precise structural
+reason), and builds the algebraic half of the torsion story — the `n`-fold iterates `f^{(n)}` and
+their endomorphism property. The analytic half — evaluating a power series at a concrete element
+of the maximal ideal of a complete local `O`-algebra — is **not** built; it is scoped below with
+the exact Mathlib lemmas a next pass would use.
+
+### `FormalGroup.Point` is the wrong vehicle for Lubin-Tate torsion points
+
+Checked against `langlands/.lake/packages/mathlib/Mathlib/`:
+
+* `RingTheory/FormalGroup/Basic.lean:126` — `def Point (F : FormalGroup R) (σ : Type*) :=
+  {f : MvPowerSeries σ R // PowerSeries.HasSubst f}`. The elements are *formal power series*, and
+  the group operation (`:128`, `add x y := ⟨F.toPowerSeries.subst ![x.val, y.val], _⟩`) is
+  **substitution**, not evaluation.
+* `RingTheory/PowerSeries/Substitution.lean:40` — `abbrev HasSubst (a : MvPowerSeries τ S) : Prop
+  := IsNilpotent (MvPowerSeries.constantCoeff a)`. Literal algebraic nilpotence in the base ring.
+  Specializing `Point` to a *constant* series `C r` over an integral domain therefore forces
+  `r = 0`: in a domain `IsNilpotent r ↔ r = 0`. Lubin-Tate torsion points are nonzero elements of
+  the maximal ideal of an adic-completion-style integral domain, so `Point` cannot hold them.
+* `RingTheory/PowerSeries/Substitution.lean:58` — `theorem HasSubst.hasEval : HasSubst a →
+  HasEval a`, one-way (nilpotent ⇒ topologically nilpotent). Together with
+  `RingTheory/PowerSeries/Evaluation.lean:61` (`abbrev HasEval (a : S) :=
+  IsTopologicallyNilpotent a`) this confirms `HasEval` is the strictly weaker and correct notion
+  for elements of a complete local ring's maximal ideal.
+* `RingTheory/FormalGroup/Basic.lean:122` — `Point`'s own docstring carries the TODO
+  "Mathematically, a 1-dimensional formal group law `F` over a ring `R` defines a group structure
+  on the elements of a complete local `R`-algebra (specifically, its maximal ideal) via the
+  substitution operation `x +_F y = F(x, y)`", i.e. Mathlib itself records the concrete-elements
+  construction as *not yet done*.
+* `RingTheory/FormalGroup/Basic.lean:337` — the strongest instance `Point` carries is
+  `instance [F.IsComm] : AddCommMonoid (F.Point σ)`. There is **no** `Neg`/`AddGroup` instance and
+  no formal-inverse series anywhere under `Mathlib/RingTheory/FormalGroup/` (single file,
+  342 lines). So even for the substitution-valued points Mathlib provides a commutative *monoid*,
+  not a group — the formal inverse `i_F` with `F(X, i_F(X)) = 0` is absent and would have to be
+  built here regardless of vehicle.
+* No file under `Mathlib/RingTheory/FormalGroup/` mentions `HasEval`, `aeval`, or
+  `IsTopologicallyNilpotent` (grep: the only hits for `aeval`/`eval₂` are `simp [subst, eval₂]` at
+  `:313` and `:325`, inside unrelated proofs). **The packaging "a formal group law evaluated at
+  concrete topologically-nilpotent ring elements is a group" does not exist in Mathlib.**
+
+Conclusion: the vehicle is `PowerSeries.aeval` / `PowerSeries.eval₂Hom`
+(`Mathlib/RingTheory/PowerSeries/Evaluation.lean`), with `PowerSeries.hasEvalIdeal` (`:112`, the
+ideal of topologically nilpotent elements) as the carrier set. That packaging is new work; see
+"what remains" below for the precise shape.
+
+### What was built: `Langlands/LubinTateIterate.lean`
+
+* `MvPowerSeries.X_subst` — substituting the identity family is the identity. The multivariate
+  analogue of Mathlib's `PowerSeries.X_subst`; Mathlib has the univariate one only
+  (`RingTheory/PowerSeries/Substitution.lean:297`), and a loogle query for the multivariate form
+  returns nothing. Proved the same way, via `MvPowerSeries.map_algebraMap_eq_subst_X` at `S := R`.
+* `coeff_one_subst` — the linear coefficient of a composite is the product of the linear
+  coefficients, for any commutative ring and any inner series with zero constant term. Mathlib has
+  no `coeff 1 (subst ...)` lemma (loogle: 0 matches); proved from `PowerSeries.coeff_subst'` by
+  `finsum_eq_single _ 1`, with the `d ≥ 2` summands killed by
+  `PowerSeries.le_order_pow_of_constantCoeff_eq_zero` + `PowerSeries.coeff_of_lt_order`.
+* `iter f n` — the `n`-fold iterate, with `iter_zero`, `iter_succ`, `constantCoeff_iter`,
+  `hasSubst_iter`.
+* `iter_succ'` — `f ∘ f^{(n)} = f^{(n)} ∘ f`, i.e. the two composition conventions agree.
+* `iter_add` — `f^{(m + n)} = f^{(m)} ∘ f^{(n)}`.
+* `coeff_one_iter` — `coeff 1 (f^{(n)}) = π ^ n`.
+* `map_residue_iter` — `f^{(n)} ≡ X ^ (q ^ n) (mod 𝔪)`.
+* `isLubinTatePoly_iter` — **`IsLubinTatePoly (π ^ n) (q ^ n) (iter f n)`**.
+* `subst_iter_Phi` — **`f^{(n)}` is an endomorphism of `F_π`**: `(iter f n).subst (Phi hπ hf) =
+  (Phi hπ hf).subst (fun i ↦ (iter f n).subst (X i))`, i.e. `f^{(n)}(F_π(X, Y)) =
+  F_π(f^{(n)}(X), f^{(n)}(Y))`.
+
+#### Design call: composition order, and the correct analogue of `IsLubinTatePoly`
+
+`iter f (n + 1) = f.subst (iter f n)` — new copy of `f` on the **outside**. Reason: in
+`subst_iter_Phi`'s induction step the outer `f` is exactly the one `subst_Phi_eq_Phi_subst` (`§16`)
+applies to, so that step consumes the already-proved base fact directly. The choice is not
+load-bearing: `iter_succ'` proves the two conventions equal.
+
+The predicate `f^{(n)}` satisfies is **not** `IsLubinTatePoly π q (iter f n)` — the linear
+coefficient of an `n`-fold composite is `π ^ n`, not `π`, and the mod-`𝔪` reduction is
+`X ^ (q ^ n)`, not `X ^ q`. It is `IsLubinTatePoly (π ^ n) (q ^ n) (iter f n)`: both defining
+congruences of `LubinTate.IsLubinTatePoly` (`Langlands/LubinTate.lean:87`) survive verbatim under
+that substitution of parameters, because `IsLubinTatePoly` imposes no irreducibility or primality
+condition on its `π`/`q` arguments — so `π ^ n` (not a uniformizer for `n ≥ 2`) and `q ^ n` are
+legitimate arguments. Stating it this way keeps the whole downstream vocabulary
+(`coeff 0 = 0`, `coeff 1 = ·`, `map (residue O) · = X ^ ·`) unchanged.
+
+#### Elaboration pitfall re-encountered (cost three build cycles)
+
+With **both** the substitutand and the substituted series univariate, nested dot notation
+(`(f.subst a).subst b`) elaborates against `MvPowerSeries.subst` rather than `PowerSeries.subst`
+— `R⟦X⟧`'s reducible head is `MvPowerSeries Unit R`, so both namespaces match — and the resulting
+unification **diverges** (`deterministic timeout at whnf`) rather than failing cleanly. This is
+already documented in `Langlands/PowerSeriesExpLog.lean`'s `eq_substInv_of_subst_eq_X`; the fix is
+the prefix form `PowerSeries.subst a f` throughout, now used in `iter_succ'` and `iter_add` with
+the reason recorded at `iter_succ'`. Mixed univariate/multivariate nesting (as in
+`subst_iter_Phi`) is unaffected, since only one of the two namespaces typechecks there.
+
+### What was *not* built, and why: torsion points
+
+**No torsion-point definition was landed.** Defining `F_π[π^n]` as `{x | f^{(n)}(x) = 0}` requires
+evaluating a power series at a concrete ring element, which in Mathlib means `PowerSeries.aeval`
+and hence the instance stack `[UniformSpace A] [IsUniformAddGroup A] [IsTopologicalRing A]
+[IsLinearTopology A A] [T2Space A] [CompleteSpace A] [Algebra O A] [ContinuousSMul O A]` on the
+target `A` (`Mathlib/RingTheory/PowerSeries/Evaluation.lean:211` and the `variable` blocks above
+it). Beyond the definition, every fact one would want needs a bridge lemma from `subst` to
+`aeval`:
+
+* `f^{(n)}(x) = 0 ⇒ f^{(m+n)}(x) = 0` (the filtration) needs
+  `aeval hx (PowerSeries.subst b g) = aeval (aeval hx b) g`. The algebraic half of this is already
+  in hand (`iter_add`); the evaluation half is not. Mathlib has the multivariate form
+  `MvPowerSeries.eval₂_subst` (`Mathlib/RingTheory/MvPowerSeries/Substitution.lean:414`) and the
+  general composition law `PowerSeries.comp_aeval`
+  (`Mathlib/RingTheory/PowerSeries/Evaluation.lean:241`), plus
+  `PowerSeries.substAlgHom_eq_aeval` (`Substitution.lean:184`) to identify `subst` with `aeval`.
+  There is **no** `PowerSeries.eval₂_subst`. All three of the available routes require a
+  `[DiscreteUniformity O]`-style uniformity on the coefficient ring `O` and the induced uniformity
+  on `O⟦X⟧`, neither of which this repo's Lubin-Tate context currently carries.
+* The group structure `x +_{F_π} y := F_π(x, y)` needs the bivariate analogue
+  (`MvPowerSeries.aeval` at a two-element family), closure of the maximal ideal under it, and
+  associativity/commutativity transported from `assoc_Phi`/`subst_swapVars_Phi` (`§16`, `§18`)
+  through evaluation. It also needs an **additive inverse**, which does not exist anywhere yet:
+  see the `Mathlib/RingTheory/FormalGroup/Basic.lean:337` finding above — Mathlib's `Point` gets
+  only `AddCommMonoid`, and no formal inverse series `i_F` is constructed in Mathlib or here.
+
+Rather than land a definition with no theorems attached, nothing was written. The judgment call:
+a partially-migrated evaluation layer would be read as canonical by later passes.
+
+### Build status
+
+`nix develop --command lake build` (run from `langlands/`) — whole project builds clean, `Build
+completed successfully (8748 jobs)`, no `sorry` in `Langlands/LubinTateIterate.lean` (confirmed by
+`grep -n sorry`, no hits) nor introduced elsewhere this pass.
+
+### What remains, in dependency order
+
+1. **Evaluation of a formal group law at concrete elements** — the packaging Mathlib lacks. Shape:
+   for `A` a complete Hausdorff linearly-topologized `O`-algebra, show `PowerSeries.hasEvalIdeal
+   (S := A)` is closed under `(x, y) ↦ aeval (F_π) ![x, y]`, and that the resulting operation is
+   associative and commutative (transporting `assoc_Phi` / `subst_swapVars_Phi`). Needs, first, a
+   `PowerSeries.eval₂_subst`-style bridge (absent from Mathlib; see above).
+2. **The formal inverse series `i_F`** with `F_π(X, i_F(X)) = 0` — absent from Mathlib's
+   `FormalGroup` API entirely, and needed before any "group" (as opposed to commutative monoid)
+   statement about torsion points. Constructible by the same coefficient-by-coefficient recursion
+   as `PhiState`, but not attempted.
+3. **`F_π[π^n]`** — the kernel of `aeval (iter f n)`, definable once (1) exists, a subgroup once
+   (2) exists. `iter_add` and `subst_iter_Phi` are the algebraic inputs and are done.
+4. **`K_n = K(F_π[π^n])`, `[K_n : K]`, total ramification** — not attempted, and blocked on (1)–(3).
+   Note this step also has to connect the abstract complete DVR `O` of the Lubin-Tate thread to
+   this repo's `IsDedekindDomain.HeightOneSpectrum` / `adicCompletionIntegers` vocabulary (used by
+   `Langlands/TotallyRamifiedValuationExtension.lean` and ~18 other files); no such bridge exists
+   yet, and none was built this pass.
+5. **The reciprocity map** — the eventual target, joining this thread to the norm-group index work
+   of Phase 2b (`§6ai`).
+
+### Commits
+
+`8c4f551` (`Langlands/LubinTateIterate.lean`: `iter`, `coeff_one_subst`, `MvPowerSeries.X_subst`,
+`isLubinTatePoly_iter`, `subst_iter_Phi`), `a6d8662` (`iter_add`).
