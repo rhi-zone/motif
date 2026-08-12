@@ -2,16 +2,20 @@ import Mathlib.RingTheory.MvPowerSeries.Expand
 import Langlands.LubinTateFunctionalEquation
 
 /-!
-# The Lubin-Tate functional equation lemma, 2-variable case — residue congruence only
+# The Lubin-Tate formal group law `F_π` — existence, uniqueness, commutativity
 
-This file begins the 2-variable generalization of `Langlands/LubinTateFunctionalEquation.lean`
-scoped in `ROADMAP.md` §11/§12: building `Φ : MvPowerSeries (Fin 2) O` with `Φ ≡ X + Y (mod deg
-2)` and `f.subst Φ = Φ.subst (f, f)` (i.e. `f` substituted into *each* of `Φ`'s two variables
-separately), for `f ∈ ℱ_π`. Per §11's three-item breakdown of what remains after the confirmed
-Mathlib building blocks, **only item 3 (the residue-field congruence) is closed here**; items 1
-(the multivariate linear-correction identity) and 2 (the total-degree-indexed recursive
-construction of `Φ`) are not attempted — see `ROADMAP.md`'s entry for this pass for the precise
-statement of what blocks them.
+The 2-variable generalization of `Langlands/LubinTateFunctionalEquation.lean` scoped in
+`ROADMAP.md` §11/§12, now **closed**: for `f ∈ ℱ_π` there is a unique
+`Φ : MvPowerSeries (Fin 2) O` with `Φ ≡ X + Y (mod deg 2)` satisfying
+`f.subst Φ = Φ.subst (f, f)` (i.e. `f` substituted into *each* of `Φ`'s two variables
+separately), and it is commutative. That `Φ` is the Lubin-Tate formal group law `F_π`.
+
+**Not yet proved: associativity** — `F_π(F_π(X, Y), Z) = F_π(X, F_π(Y, Z))`, which needs the
+3-variable case and is out of scope for this file. Without it, `Φ` cannot be packaged as a
+`FormalGroup O` (Mathlib's `Mathlib/RingTheory/FormalGroup/Basic.lean` makes `assoc` a field of
+the structure); every other field of that structure — `zero_constantCoeff`, `lin_coeff_X`,
+`lin_coeff_Y` — is available here (`constantCoeff_Phi`, `coeff_Phi_of_degree_eq_one`), as is
+`FormalGroup.IsComm`'s content (`subst_swapVars_Phi`).
 
 ## The substitution shape used here
 
@@ -47,21 +51,38 @@ express the functional equation `f.subst Φ = Φ.subst (f, f)`:
   breakdown.
 * `uniformizer_dvd_coeff_subst_sub_subst_mv` : the coefficient-wise consequence, `π ∣ coeff n (Φ.subst
   (fun i ↦ f.subst (X i))) - coeff n (f.subst Φ)` for every `n : Fin 2 →₀ ℕ` — the multivariate
-  analogue of `LubinTate.uniformizer_dvd_coeff_subst_sub_subst`, which is exactly what a future
-  total-degree-indexed recursive construction of `Φ` (item 2, not attempted here) would need at
-  every step to solve its own local linear equation, the same role the univariate version plays in
+  analogue of `LubinTate.uniformizer_dvd_coeff_subst_sub_subst`, the solvability fact the
+  total-degree recursion consumes at every step, the same role the univariate version plays in
   `LubinTate.phiState`.
+* `coeff_pow_add_monomial_sub_coeff_pow_mv`, `coeff_subst_add_monomial_mv`,
+  `coeff_subst_add_sum_monomial_mv` : the *inner*-position monomial-correction identities — how
+  `f.subst Φ` responds when `Φ` gains one monomial, or a whole same-total-degree batch of them.
+* `coeff_subst_X_zero_mul_subst_X_one`, `coeff_subst_monomial_diag`,
+  `coeff_subst_monomial_diag_of_degree_le` : the *outer*-position monomial-correction identity —
+  how `Φ.subst (fun i ↦ f.subst (X i))` responds to a monomial correction to `Φ`. The first of
+  these strictly generalizes Mathlib's `PowerSeries.coeff_subst_X_zero_subst_mul_X_one` to two
+  different series.
+* `coeff_pow_eq_of_coeff_eq_mv`, `coeff_subst_eq_of_coeff_eq_mv`,
+  `coeff_subst_eq_of_coeff_eq_left_mv`, `coeff_subst_eq_of_coeff_eq_outer_mv` : total-degree
+  truncation invariance in each of the three substitution positions.
+* `PhiState`, `PhiCoeff`, `PhiPartialSum`, `pi_mul_one_sub_pow_mul_PhiCoeff`,
+  `coeff_PhiPartialSum` : the total-degree-indexed recursive construction and its well-definedness.
+* `Phi` : the fully assembled series, i.e. **`F_π`**.
+* `subst_Phi_eq_Phi_subst` : **existence** — `f.subst Φ = Φ.subst (fun i ↦ f.subst (X i))`.
+* `genTruncMv`, `pi_mul_one_sub_pow_mul_coeff_of_subst_eq_mv`, `eq_of_subst_eq_mv` :
+  **uniqueness** — any solution with zero constant term and the same linear part is `Φ`.
+* `eq_Phi_of_subst_eq` : the resulting complete characterization of `F_π`.
+* `subst_swapVars_Phi`, `coeff_swapIdx_Phi` : **commutativity**, `F_π(X, Y) = F_π(Y, X)`, via
+  uniqueness applied to the variable-swapped series.
+* `subst_subst_mv` : the mixed substitution-composition law
+  `(f ∘ A) ∘ b = f ∘ (A ∘ b)` for `A` multivariate — absent from Mathlib, whose
+  `PowerSeries.subst_comp_subst_apply` only covers a univariate inner substitutand.
 
 ## What this does not do
 
-Item 1 (`ROADMAP.md` §11: a multivariate analogue of `coeff_subst_add_C_mul_X_pow` accounting for
-`f`'s own higher-degree part acting on a genuinely two-variable substitutand, indexed by `σ →₀ ℕ`
-rather than a single `ℕ`) and item 2 (the total-degree-indexed recursive definition of `Φ` itself,
-producing a `(σ →₀ ℕ) → O` value at each step rather than a single scalar, with the same
-`Finset.sum`-buried-recursive-call termination-checker hazard `LubinTate.phiState`'s docstring
-flags — now with an extra index dimension) are **not attempted in this pass**. No existence or
-uniqueness statement for `Φ` is proved here; only the residue-congruence solvability fact that a
-future recursive construction would consume at each step.
+**Associativity** (`F_π(F_π(X, Y), Z) = F_π(X, F_π(Y, Z))`) is not proved: it needs the 3-variable
+functional equation lemma, which none of the `Fin 2`-specific machinery here covers. This is the
+sole obstruction to packaging `Phi` as a Mathlib `FormalGroup O`.
 -/
 
 @[expose] public section
@@ -1167,6 +1188,125 @@ theorem eq_Phi_of_subst_eq (hπ : Irreducible π) (hf : IsLubinTatePoly π (resi
   eq_of_subst_eq_mv hπ hf hΨ0 (constantCoeff_Phi hπ hf)
     (fun m hm ↦ by rw [hlin m hm, coeff_Phi_of_degree_eq_one hπ hf hm]) heq
     (subst_Phi_eq_Phi_subst hπ hf)
+
+/-! ### Commutativity of `F_π` -/
+
+/-- **Substitution into a univariate series commutes with a subsequent multivariate
+substitution**: `(f ∘ A) ∘ b = f ∘ (A ∘ b)`. Mathlib's `PowerSeries.subst_comp_subst_apply` covers
+only a *univariate* inner substitutand; this is the mixed case, where the inner substitutand `A` is
+multivariate and the outer substitution is by a family. It is immediate from
+`MvPowerSeries.subst_comp_subst_apply` once `PowerSeries.subst` is unfolded to its `Unit`-indexed
+multivariate form via `PowerSeries.subst_def`. -/
+theorem subst_subst_mv {σ τ S : Type*} [CommRing S] (h : PowerSeries S)
+    {A : MvPowerSeries σ S} (hA : PowerSeries.HasSubst A)
+    {b : σ → MvPowerSeries τ S} (hb : MvPowerSeries.HasSubst b) :
+    MvPowerSeries.subst b (h.subst A) = h.subst (MvPowerSeries.subst b A) := by
+  rw [PowerSeries.subst_def, PowerSeries.subst_def,
+    MvPowerSeries.subst_comp_subst_apply hA.const hb]
+
+/-- The transposition of `Fin 2`, as a plain function. -/
+def swapFin : Fin 2 → Fin 2 := ![1, 0]
+
+/-- The transposition acting on bivariate multi-indices: `swapIdx (k, l) = (l, k)`. -/
+def swapIdx (m : Fin 2 →₀ ℕ) : Fin 2 →₀ ℕ := mkIdx (m 1) (m 0)
+
+@[simp] theorem swapIdx_apply_zero (m : Fin 2 →₀ ℕ) : swapIdx m 0 = m 1 := rfl
+
+@[simp] theorem swapIdx_apply_one (m : Fin 2 →₀ ℕ) : swapIdx m 1 = m 0 := rfl
+
+@[simp] theorem swapIdx_swapIdx (m : Fin 2 →₀ ℕ) : swapIdx (swapIdx m) = m :=
+  finsupp_fin_two_ext rfl rfl
+
+@[simp] theorem swapIdx_zero : swapIdx 0 = 0 := finsupp_fin_two_ext rfl rfl
+
+theorem degree_swapIdx (m : Fin 2 →₀ ℕ) : (swapIdx m).degree = m.degree := by
+  rw [degree_fin_two (swapIdx m), degree_fin_two m, swapIdx_apply_zero, swapIdx_apply_one]
+  omega
+
+/-- The variable-swapping substitution family `(X, Y) ↦ (Y, X)`. -/
+def swapVars {S : Type*} [CommRing S] : Fin 2 → MvPowerSeries (Fin 2) S :=
+  fun i ↦ MvPowerSeries.X (swapFin i)
+
+theorem hasSubst_swapVars {S : Type*} [CommRing S] :
+    MvPowerSeries.HasSubst (swapVars (S := S)) :=
+  MvPowerSeries.hasSubst_of_constantCoeff_zero fun i ↦ by simp [swapVars]
+
+/-- Swapping the two variables of a bivariate series transposes its multi-indices. -/
+theorem coeff_subst_swapVars {S : Type*} [CommRing S] (Φ : MvPowerSeries (Fin 2) S)
+    (e : Fin 2 →₀ ℕ) :
+    MvPowerSeries.coeff e (Φ.subst swapVars) = MvPowerSeries.coeff (swapIdx e) Φ := by
+  have hprod : ∀ d : Fin 2 →₀ ℕ,
+      (d.prod fun s j ↦ (swapVars (S := S) s) ^ j) = MvPowerSeries.monomial (swapIdx d) 1 := by
+    intro d
+    rw [Finsupp.prod_fintype _ _ (fun s ↦ pow_zero _), Fin.prod_univ_two]
+    show (MvPowerSeries.X (swapFin 0) : MvPowerSeries (Fin 2) S) ^ d 0 *
+        (MvPowerSeries.X (swapFin 1) : MvPowerSeries (Fin 2) S) ^ d 1 = _
+    rw [MvPowerSeries.X_pow_eq, MvPowerSeries.X_pow_eq, MvPowerSeries.monomial_mul_monomial,
+      one_mul]
+    have hexp : Finsupp.single (swapFin 0) (d 0) + Finsupp.single (swapFin 1) (d 1) =
+        swapIdx d := by
+      refine finsupp_fin_two_ext ?_ ?_
+      · show (Finsupp.single (swapFin 0) (d 0) + Finsupp.single (swapFin 1) (d 1)) 0 = d 1
+        simp [swapFin]
+      · show (Finsupp.single (swapFin 0) (d 0) + Finsupp.single (swapFin 1) (d 1)) 1 = d 0
+        simp [swapFin]
+    rw [hexp]
+  rw [MvPowerSeries.coeff_subst hasSubst_swapVars, finsum_eq_single _ (swapIdx e)]
+  · rw [hprod, swapIdx_swapIdx, MvPowerSeries.coeff_monomial_same, smul_eq_mul, mul_one]
+  · intro d hd
+    rw [hprod, MvPowerSeries.coeff_monomial,
+      if_neg (fun hc ↦ hd (by rw [hc, swapIdx_swapIdx])), smul_zero]
+
+/-- **`F_π` is commutative: `F_π(X, Y) = F_π(Y, X)`.** Swapping the two variables of `Φ` produces a
+series with the same zero constant term and the same linear part `X + Y` (both linear coefficients
+are `1`, so the swap fixes them) which still solves the functional equation — the swap substitution
+commutes past both sides, turning `f.subst Φ = Φ.subst (fun i ↦ f.subst (X i))` into the same
+equation for the swapped series, because the family `fun i ↦ f.subst (X i)` is itself
+swap-equivariant. Uniqueness (`eq_Phi_of_subst_eq`) then forces the swapped series to be `Φ`
+itself. -/
+theorem subst_swapVars_Phi (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f) :
+    (Phi hπ hf).subst swapVars = Phi hπ hf := by
+  have hf0 : PowerSeries.constantCoeff f = 0 := by
+    rw [← PowerSeries.coeff_zero_eq_constantCoeff]; exact hf.1
+  have ha0 : ∀ i, MvPowerSeries.constantCoeff
+      (f.subst (MvPowerSeries.X i) (S := O) (τ := Fin 2)) = 0 :=
+    fun i ↦ PowerSeries.constantCoeff_subst_eq_zero (by simp) f hf0
+  have ha : MvPowerSeries.HasSubst
+      (fun i ↦ f.subst (MvPowerSeries.X i) (S := O) (τ := Fin 2)) :=
+    MvPowerSeries.hasSubst_of_constantCoeff_zero ha0
+  have hΦ : PowerSeries.HasSubst (Phi hπ hf) :=
+    PowerSeries.HasSubst.of_constantCoeff_zero (constantCoeff_Phi hπ hf)
+  refine eq_Phi_of_subst_eq hπ hf ?_ ?_ ?_
+  · rw [← MvPowerSeries.coeff_zero_eq_constantCoeff, coeff_subst_swapVars, swapIdx_zero,
+      MvPowerSeries.coeff_zero_eq_constantCoeff, constantCoeff_Phi]
+  · intro m hm
+    rw [coeff_subst_swapVars,
+      coeff_Phi_of_degree_eq_one hπ hf (by rw [degree_swapIdx]; exact hm)]
+  · -- both sides equal `Φ.subst (fun i ↦ f.subst (X (swapFin i)))`
+    have hleft : f.subst ((Phi hπ hf).subst (swapVars (S := O))) =
+        (Phi hπ hf).subst (fun i ↦ f.subst (MvPowerSeries.X (swapFin i))) := by
+      rw [← subst_subst_mv f hΦ (hasSubst_swapVars (S := O)), subst_Phi_eq_Phi_subst hπ hf,
+        MvPowerSeries.subst_comp_subst_apply ha (hasSubst_swapVars (S := O))]
+      refine congrArg (fun b ↦ MvPowerSeries.subst b (Phi hπ hf)) (funext fun i ↦ ?_)
+      have hXi : PowerSeries.HasSubst (MvPowerSeries.X i : MvPowerSeries (Fin 2) O) :=
+        PowerSeries.HasSubst.of_constantCoeff_zero (by simp)
+      rw [subst_subst_mv f hXi (hasSubst_swapVars (S := O)),
+        MvPowerSeries.subst_X (hasSubst_swapVars (S := O))]
+      rfl
+    have hright : ((Phi hπ hf).subst (swapVars (S := O))).subst
+          (fun i ↦ f.subst (MvPowerSeries.X i) (S := O) (τ := Fin 2)) =
+        (Phi hπ hf).subst (fun i ↦ f.subst (MvPowerSeries.X (swapFin i))) := by
+      rw [MvPowerSeries.subst_comp_subst_apply hasSubst_swapVars ha]
+      refine congrArg (fun b ↦ MvPowerSeries.subst b (Phi hπ hf)) (funext fun i ↦ ?_)
+      exact MvPowerSeries.subst_X ha (swapFin i)
+    rw [hleft, hright]
+
+/-- The coefficientwise form of commutativity: `F_π`'s coefficients are symmetric under
+transposing the multi-index. -/
+theorem coeff_swapIdx_Phi (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f)
+    (m : Fin 2 →₀ ℕ) :
+    MvPowerSeries.coeff (swapIdx m) (Phi hπ hf) = MvPowerSeries.coeff m (Phi hπ hf) := by
+  rw [← coeff_subst_swapVars, subst_swapVars_Phi]
 
 end LubinTate
 
