@@ -130,6 +130,29 @@ theorem hasSum_eval {f : PowerSeries R}
     HasSum (evalSummand f x) (eval f x) :=
   (summable_evalSummand hf hx).hasSum
 
+omit [CompleteSpace K] in
+/-- **`eval f x` lies in the maximal ideal whenever `f` does**: if `f` has zero constant term (so
+every evaluation summand of index `0` vanishes) and bounded coefficients, `‖eval f x‖ ≤ ‖x‖`. Via
+the ultrametric bound `IsUltrametricDist.norm_tsum_le` (`‖∑' i, g i‖ ≤ ⨆ i, ‖g i‖`, unconditional,
+no summability hypothesis needed), applied to `evalSummand f x`. -/
+theorem norm_eval_le {f : PowerSeries R}
+    (hf : ∀ n, ‖algebraMap R K (PowerSeries.coeff n f)‖ ≤ 1)
+    (hf0 : PowerSeries.constantCoeff f = 0) {x : K} (hx : ‖x‖ < 1) :
+    ‖eval f x‖ ≤ ‖x‖ := by
+  unfold eval
+  refine (IsUltrametricDist.norm_tsum_le _).trans (ciSup_le fun n ↦ ?_)
+  match n with
+  | 0 =>
+      have h0 : evalSummand f x 0 = 0 := by
+        unfold evalSummand
+        rw [PowerSeries.coeff_zero_eq_constantCoeff, hf0, map_zero, zero_mul]
+      rw [h0, norm_zero]
+      exact norm_nonneg x
+  | n + 1 =>
+      calc ‖evalSummand f x (n + 1)‖ ≤ ‖x‖ ^ (n + 1) := norm_evalSummand_le hf x (n + 1)
+        _ ≤ ‖x‖ ^ 1 := pow_le_pow_of_le_one (norm_nonneg x) hx.le (by omega)
+        _ = ‖x‖ := pow_one _
+
 /-- **Evaluation is additive**, on the domain where both series have algebra-mapped-norm-bounded
 coefficients. Proved by matching `PowerSeries.coeff_add` (`coeff` is an `R`-linear map) against the
 ultrametric bound `‖a + b‖ ≤ max ‖a‖ ‖b‖ ≤ 1` needed to see `f + g`'s own coefficients are bounded,
@@ -202,6 +225,31 @@ theorem coeff_bound_mul {f g : PowerSeries R}
   calc ‖algebraMap R K (PowerSeries.coeff p.1 f)‖ * ‖algebraMap R K (PowerSeries.coeff p.2 g)‖
       ≤ 1 * 1 := mul_le_mul (hf p.1) (hg p.2) (norm_nonneg _) zero_le_one
     _ = 1 := mul_one 1
+
+omit [IsUltrametricDist K] [CompleteSpace K] in
+/-- **Evaluation at `X` is the identity**: only the linear term contributes. -/
+theorem eval_X (x : K) : eval (PowerSeries.X : PowerSeries R) x = x := by
+  have hterm : ∀ n, evalSummand (PowerSeries.X : PowerSeries R) x n = if n = 1 then x else 0 := by
+    intro n
+    unfold evalSummand
+    match n with
+    | 0 => simp
+    | 1 => simp
+    | n + 2 => simp [PowerSeries.coeff_X]
+  unfold eval
+  rw [tsum_eq_single 1 (by intro n hn; rw [hterm]; simp [hn])]
+  rw [hterm]; simp
+
+omit [IsUltrametricDist K] [CompleteSpace K] in
+/-- The coefficients of `X : PowerSeries R`, algebra-mapped into `K`, are trivially bounded by
+`1`. -/
+theorem coeff_bound_X :
+    ∀ n, ‖algebraMap R K (PowerSeries.coeff n (PowerSeries.X : PowerSeries R))‖ ≤ 1 := by
+  intro n
+  match n with
+  | 0 => simp
+  | 1 => simp
+  | n + 2 => simp [PowerSeries.coeff_X]
 
 omit [IsUltrametricDist K] [CompleteSpace K] in
 /-- **Evaluation at `1` is `1`**: only the constant term (`= 1`) contributes. -/

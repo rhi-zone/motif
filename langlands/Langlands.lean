@@ -29,6 +29,7 @@ import Langlands.NonarchimedeanExponentialHasSum
 import Langlands.NonarchimedeanExponentialRingHom
 import Langlands.NonarchimedeanExponentialUnitsFiltration
 import Langlands.NonarchimedeanExponentialUnitsIso
+import Langlands.NonarchimedeanPowerSeriesEvalSubstMv
 import Langlands.NonarchimedeanSigmaSummability
 import Langlands.NonarchimedeanUnconditionalSummability
 import Langlands.PowerSeriesExpLog
