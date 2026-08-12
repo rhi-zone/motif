@@ -309,6 +309,153 @@ theorem coeff_subst_add_monomial_mv {ι R S : Type*} [DecidableEq ι] [CommRing 
           intro d
           rw [if_neg (fun h ↦ hnm h.1), smul_zero]
 
+variable {π : O} {f : O⟦X⟧}
+
+/-- **The multi-index `(k, l) : Fin 2 →₀ ℕ`**, built from its two coordinate values via
+`Finsupp.equivFunOnFinite` (every function out of a finite type is automatically finitely
+supported). This is the concrete enumeration device for "all exponents of a given total degree
+`d` over `Fin 2 →₀ ℕ`": the exponents of total degree `d` are exactly `mkIdx k (d - k)` for
+`k = 0, …, d`. -/
+def mkIdx (k l : ℕ) : Fin 2 →₀ ℕ := Finsupp.equivFunOnFinite.symm ![k, l]
+
+@[simp] theorem mkIdx_apply_zero (k l : ℕ) : mkIdx k l 0 = k := rfl
+
+@[simp] theorem mkIdx_apply_one (k l : ℕ) : mkIdx k l 1 = l := rfl
+
+theorem degree_mkIdx (k l : ℕ) : (mkIdx k l).degree = k + l := by
+  rw [Finsupp.degree_eq_sum, Fin.sum_univ_two, mkIdx_apply_zero, mkIdx_apply_one]
+
+theorem mkIdx_ne_zero (k l : ℕ) (h : k + l ≠ 0) : mkIdx k l ≠ 0 := by
+  intro he
+  apply h
+  have hk : mkIdx k l 0 = (0 : Fin 2 →₀ ℕ) 0 := by rw [he]
+  have hl : mkIdx k l 1 = (0 : Fin 2 →₀ ℕ) 1 := by rw [he]
+  simp only [mkIdx_apply_zero, mkIdx_apply_one, Finsupp.coe_zero, Pi.zero_apply] at hk hl
+  omega
+
+/-- **The recursive state for the 2-variable functional equation lemma's formal group series
+`Φ`, bundled with its own zero-constant-term invariant**, the direct total-degree-indexed
+generalization of `LubinTate.phiState`. `PhiState hπ hf n` packages, for total degree `n`: a
+function `ℕ → O` giving the newly-fixed coefficients at multi-indices of degree `n` (`.1.1`,
+indexed by the first coordinate `k`, so the coefficient at `mkIdx k (n - k)` is `.1.1 k`) and the
+partial sum of `Φ`'s coefficients through total degree `n` (`.1.2`), together with a *proof* that
+this partial sum has zero constant term (`.2`).
+
+Unlike the univariate case, `Φ ≡ X + Y (mod deg 2)` is a *fixed* base case (not a free linear
+parameter `a`): this is the canonical series that, once existence/uniqueness are established,
+specializes to the Lubin-Tate formal group law `F_π` itself. At each total degree `d + 2 ≥ 2`,
+the batch of `d + 3` new coefficients (one per multi-index `mkIdx k (d + 2 - k)`, `k = 0, …, d +
+2`) is computed **directly from the single previous state** `PhiState hπ hf (d + 1)` via
+`uniformizer_dvd_coeff_subst_sub_subst_mv` (unconditional `π`-divisibility at *every* multi-index,
+for *any* admissible partial sum) and the same unit-inversion technique `phiState` uses (`1 -
+π^(d+1)` is a unit since `π ∈ 𝔪`). Crucially, the `Finset.sum` assembling these `d + 3`
+correction monomials does **not** bury any recursive call inside it — every one of the `d + 3`
+coefficients is computed from the single `let prev := PhiState hπ hf (d + 1)` closed over before
+the sum is built, exactly the `phiState`-style workaround the univariate file's docstring flags:
+the recursion is structural in `n`, calling `PhiState` at exactly one strictly smaller index. -/
+noncomputable def PhiState (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f) :
+    (n : ℕ) → {p : (ℕ → O) × MvPowerSeries (Fin 2) O // MvPowerSeries.constantCoeff p.2 = 0}
+  | 0 => ⟨(fun _ ↦ 0, 0), by simp⟩
+  | 1 => ⟨(fun _ ↦ 1, MvPowerSeries.X 0 + MvPowerSeries.X 1), by simp⟩
+  | d + 2 =>
+      let prev := PhiState hπ hf (d + 1)
+      let Φ := prev.1.2
+      have hΦ0 : MvPowerSeries.constantCoeff Φ = 0 := prev.2
+      have hmem : π ∈ maximalIdeal O := (mem_maximalIdeal π).mpr hπ.not_isUnit
+      have hpowmem : π ^ (d + 1) ∈ maximalIdeal O :=
+        Ideal.pow_mem_of_mem (maximalIdeal O) hmem (d + 1) (by omega)
+      have hunit : IsUnit (1 - π ^ (d + 1)) :=
+        isUnit_one_sub_self_of_mem_nonunits _ ((mem_maximalIdeal _).mp hpowmem)
+      have hdvd : ∀ k : ℕ, π ∣ (MvPowerSeries.coeff (mkIdx k (d + 2 - k))
+          (Φ.subst (fun i ↦ f.subst (MvPowerSeries.X i))) -
+            MvPowerSeries.coeff (mkIdx k (d + 2 - k)) (f.subst Φ)) :=
+        fun k ↦ uniformizer_dvd_coeff_subst_sub_subst_mv hπ hf hΦ0 (mkIdx k (d + 2 - k))
+      let c : ℕ → O := fun k ↦ (↑hunit.unit⁻¹ : O) * (hdvd k).choose
+      let correction : MvPowerSeries (Fin 2) O :=
+        ∑ k ∈ Finset.range (d + 3), MvPowerSeries.monomial (mkIdx k (d + 2 - k)) (c k)
+      ⟨(c, Φ + correction), by
+        rw [map_add, hΦ0, zero_add, map_sum]
+        refine Finset.sum_eq_zero fun k _ ↦ ?_
+        rw [← MvPowerSeries.coeff_zero_eq_constantCoeff, MvPowerSeries.coeff_monomial,
+          if_neg (Ne.symm (mkIdx_ne_zero k (d + 2 - k) (by omega)))]⟩
+
+/-- The coefficient of `Φ` at multi-index `m`, extracted from `PhiState` at total degree
+`m.degree`, reading off the `(m 0)`-th entry of that degree's coefficient function. Direct
+generalization of `LubinTate.phiCoeff`. -/
+noncomputable def PhiCoeff (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f)
+    (m : Fin 2 →₀ ℕ) : O :=
+  (PhiState hπ hf m.degree).1.1 (m 0)
+
+/-- The partial sum of `Φ`'s coefficients through total degree `n`, extracted from `PhiState`.
+Always has zero constant term (`constantCoeff_PhiPartialSum`), the invariant `PhiState` carries.
+Direct generalization of `LubinTate.phiPartialSum`. -/
+noncomputable def PhiPartialSum (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f)
+    (n : ℕ) : MvPowerSeries (Fin 2) O :=
+  (PhiState hπ hf n).1.2
+
+@[simp] theorem constantCoeff_PhiPartialSum (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) (n : ℕ) :
+    MvPowerSeries.constantCoeff (PhiPartialSum hπ hf n) = 0 :=
+  (PhiState hπ hf n).2
+
+@[simp] theorem PhiPartialSum_zero (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f) :
+    PhiPartialSum hπ hf 0 = 0 := by
+  simp [PhiPartialSum, PhiState]
+
+@[simp] theorem PhiPartialSum_one (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f) :
+    PhiPartialSum hπ hf 1 = MvPowerSeries.X 0 + MvPowerSeries.X 1 := by
+  simp [PhiPartialSum, PhiState]
+
+@[simp] theorem PhiCoeff_zero (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f) :
+    PhiCoeff hπ hf 0 = 0 := by
+  simp [PhiCoeff, PhiState]
+
+theorem PhiCoeff_mkIdx_one_zero (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f) :
+    PhiCoeff hπ hf (mkIdx 1 0) = 1 := by
+  simp [PhiCoeff, degree_mkIdx, PhiState]
+
+theorem PhiCoeff_mkIdx_zero_one (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f) :
+    PhiCoeff hπ hf (mkIdx 0 1) = 1 := by
+  simp [PhiCoeff, degree_mkIdx, PhiState]
+
+theorem PhiPartialSum_succ_succ (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f)
+    (d : ℕ) :
+    PhiPartialSum hπ hf (d + 2) =
+      PhiPartialSum hπ hf (d + 1) +
+        ∑ k ∈ Finset.range (d + 3), MvPowerSeries.monomial (mkIdx k (d + 2 - k))
+          (PhiCoeff hπ hf (mkIdx k (d + 2 - k))) := by
+  have hcoeff : ∀ k ∈ Finset.range (d + 3),
+      MvPowerSeries.monomial (mkIdx k (d + 2 - k)) (PhiCoeff hπ hf (mkIdx k (d + 2 - k))) =
+        MvPowerSeries.monomial (mkIdx k (d + 2 - k)) ((PhiState hπ hf (d + 2)).1.1 k) :=
+    fun k hk ↦ by
+      rw [Finset.mem_range] at hk
+      congr 1
+      show (PhiState hπ hf (mkIdx k (d + 2 - k)).degree).1.1 (mkIdx k (d + 2 - k) 0) = _
+      rw [degree_mkIdx, mkIdx_apply_zero, Nat.add_sub_cancel' (by omega : k ≤ d + 2)]
+  rw [Finset.sum_congr rfl hcoeff]
+  simp only [PhiPartialSum, PhiState]
+
+/-- **The recursive step actually solves the equation it is defined to solve, at every
+multi-index of the new total degree.** The direct generalization of
+`LubinTate.pi_mul_one_sub_pow_mul_phiCoeff`: this is the precise sense in which `PhiState`'s
+degree-`(d+2)` case is well-defined, at *each* of the `d + 3` multi-indices of total degree `d +
+2` independently — matching `ROADMAP.md` §14's confirmation that distinct same-degree monomials
+do not interact, so each of these equations is exactly as solvable, and independently so, as the
+single univariate equation `phiState` solves at each step. -/
+theorem pi_mul_one_sub_pow_mul_PhiCoeff (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) (d k : ℕ) (hk : k ≤ d + 2) :
+    π * (1 - π ^ (d + 1)) * PhiCoeff hπ hf (mkIdx k (d + 2 - k)) =
+      MvPowerSeries.coeff (mkIdx k (d + 2 - k))
+        ((PhiPartialSum hπ hf (d + 1)).subst (fun i ↦ f.subst (MvPowerSeries.X i))) -
+        MvPowerSeries.coeff (mkIdx k (d + 2 - k)) (f.subst (PhiPartialSum hπ hf (d + 1))) := by
+  have hPhiCoeff : PhiCoeff hπ hf (mkIdx k (d + 2 - k)) = (PhiState hπ hf (d + 2)).1.1 k := by
+    show (PhiState hπ hf (mkIdx k (d + 2 - k)).degree).1.1 (mkIdx k (d + 2 - k) 0) = _
+    rw [degree_mkIdx, mkIdx_apply_zero, Nat.add_sub_cancel' hk]
+  rw [hPhiCoeff]
+  show π * (1 - π ^ (d + 1)) * (PhiState hπ hf (d + 2)).1.1 k = _
+  simp only [PhiPartialSum, PhiState]
+  exact pi_mul_mul_unit_inv_mul_choose _ _
+
 end LubinTate
 
 end
