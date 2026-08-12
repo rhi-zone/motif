@@ -9970,3 +9970,142 @@ including this pass's new `mkIdx`/`PhiState`/`PhiCoeff`/`PhiPartialSum` machiner
 well-definedness theorem, builds clean and sorry-free (only pre-existing lint warnings unrelated to
 this pass's file appear in the output). Committed as
 `3b4b9e5 feat(langlands): total-degree recursive construction of Φ — item 2 setup + well-definedness`.
+
+## 16. Phase 2c, tenth pass (2026-08-12): **`F_π` CONSTRUCTED** — the Lubin-Tate formal group law,
+existence, uniqueness and commutativity, all sorry-free
+
+**This is a landmark for the whole Langlands-program direction of the project.** The Lubin-Tate
+formal group law `F_π` — the object every subsequent step of explicit local class field theory is
+built on — now exists in Lean, characterized completely, with commutativity proved. Everything is
+in `Langlands/LubinTateFunctionalEquationBivariate.lean`, namespace `LubinTate`; the whole project
+builds with `Build completed successfully (8748 jobs)` and the file contains no `sorry`.
+
+### What `F_π` is, precisely
+
+`Phi hπ hf : MvPowerSeries (Fin 2) O` — the series assembled from `PhiCoeff` at every multi-index
+(`§15`'s recursive construction). The three theorems that pin it down:
+
+* `subst_Phi_eq_Phi_subst` — **existence**: `f.subst (Phi hπ hf) = (Phi hπ hf).subst (fun i ↦
+  f.subst (MvPowerSeries.X i))`, i.e. `f(Φ(X, Y)) = Φ(f(X), f(Y))`.
+* `eq_of_subst_eq_mv` — **uniqueness**: two solutions with zero constant term agreeing in total
+  degree `1` are equal.
+* `eq_Phi_of_subst_eq` — the combination: *any* `Ψ` with `constantCoeff Ψ = 0`, all
+  degree-`1` coefficients `1`, and `f.subst Ψ = Ψ.subst (fun i ↦ f.subst (X i))` equals `Phi hπ
+  hf`. Together with `constantCoeff_Phi` and `coeff_Phi_of_degree_eq_one` this says `F_π` is
+  well defined: it is *the* series with `Φ ≡ X + Y (mod deg 2)` self-intertwining `f`.
+* `subst_swapVars_Phi` / `coeff_swapIdx_Phi` — **commutativity**, `F_π(X, Y) = F_π(Y, X)`, in
+  substitution form and in coefficient form.
+
+### The lemma chain `§15` identified as missing, built
+
+`§15` diagnosed the blocker precisely and correctly: the *outer*-position monomial-correction
+identity had no univariate analogue to reuse. It is now built, along with three corrections to
+`§15`'s expectations about what could be reused as-is.
+
+* `coeff_subst_X_zero_mul_subst_X_one` — the coefficient of a product of two axis-embedded
+  univariate series factors as `coeff (e 0) f * coeff (e 1) g`. This **strictly generalizes**
+  Mathlib's `PowerSeries.coeff_subst_X_zero_subst_mul_X_one` (the `g = f` case) and is proved by
+  the same argument. The "axis-purity" fact `§15` anticipated having to build from scratch turned
+  out to be already in Mathlib as `PowerSeries.coeff_subst_single` — worth recording, since `§15`
+  budgeted for it.
+* `coeff_subst_monomial_diag` — `coeff n ((monomial m c).subst (fun i ↦ f.subst (X i))) = c *
+  coeff (n 0) (f ^ m 0) * coeff (n 1) (f ^ m 1)`, via `MvPowerSeries.subst_monomial` (whose shape
+  `§15` quoted correctly) plus `PowerSeries.subst_pow` plus the factoring above.
+* `coeff_subst_monomial_diag_of_degree_le` — the usable form: `= if n = m then c * u ^ m.degree
+  else 0` whenever `n.degree ≤ m.degree`, for `f` with `coeff 0 f = 0`, `coeff 1 f = u`. Exactly
+  the shape `§15` predicted (`c * π ^ m.degree`, with `m.degree` replacing the univariate `d + 2`).
+  Off-diagonal vanishing is the multivariate content: `n ≠ m` with `n.degree ≤ m.degree` forces
+  `n i < m i` at some coordinate, where `coeff (n i) (f ^ m i) = 0` by order.
+* `coeff_subst_add_sum_monomial_mv` — the inner-position correction for a whole *batch* of
+  same-degree monomials, by iterating `§14`'s `coeff_subst_add_monomial_mv` over a `Finset`. Needed
+  because the multivariate recursive step adds `d + 3` monomials at once where the univariate one
+  adds a single `C c * X ^ (d + 2)`.
+
+**Correction to `§15`, item 1.** `§15` stated that `coeff_subst_eq_of_dvd_sub`/`_left` were
+"already stated generally enough over arbitrary `R`/`S`/`Algebra R S` to reuse as-is — no
+multivariate generalization needed". That is **not the case**: both take a *univariate*
+substitutand (`b b' : S⟦X⟧`, `g : S⟦X⟧`), and total-degree truncation is not expressible as
+`X ^ (n + 1) ∣ (b - b')` divisibility. Three genuinely new lemmas were needed, one per substitution
+position:
+* `coeff_pow_eq_of_coeff_eq_mv` + `coeff_subst_eq_of_coeff_eq_mv` — inner position; the
+  propagation of "agree in total degree ≤ N" through powers is proved directly by induction over
+  `MvPowerSeries.coeff_mul`'s antidiagonal (both factors of a splitting of `e` have total degree at
+  most `e.degree`), replacing the univariate `sub_dvd_pow_sub_pow` step.
+* `coeff_subst_eq_of_coeff_eq_left_mv` — outer position with a *univariate* outer series.
+* `coeff_subst_eq_of_coeff_eq_outer_mv` — outer position with a *multivariate* outer series, the
+  case `Φ.subst (fun i ↦ f.subst (X i))` actually needs. Its vanishing input,
+  `coeff_prod_pow_eq_zero_of_degree_lt`, is extracted from the argument Mathlib uses inside
+  `MvPowerSeries.truncTotal_subst_eq_truncTotal_subst_sum`.
+
+**Correction to `§15`, item 2.** `§15` anticipated existence needing "strong induction on total
+degree". It does not — exactly as in the univariate `subst_phi_eq_phi_subst`, **no induction
+hypothesis is used at all**: truncation invariance reduces each multi-index to the partial sum at
+its own total degree, and the per-multi-index defining equation closes it. Strong induction on
+total degree *is* needed for uniqueness, where the truncations must be shown equal first.
+
+**Also built (Mathlib gaps).**
+* `MvPowerSeries.mk` / `MvPowerSeries.coeff_mk` — the multi-index analogue of `PowerSeries.mk`,
+  absent from Mathlib despite `MvPowerSeries σ R` being definitionally `(σ →₀ ℕ) → R`.
+* `subst_subst_mv` — `MvPowerSeries.subst b (h.subst A) = h.subst (MvPowerSeries.subst b A)` for
+  `A` multivariate. Mathlib's `PowerSeries.subst_comp_subst_apply` covers only a univariate inner
+  substitutand; the mixed case follows from `MvPowerSeries.subst_comp_subst_apply` after unfolding
+  `PowerSeries.subst_def`. This is what makes the commutativity argument go through.
+
+### Supporting machinery added this pass
+
+`degree_fin_two`, `finsupp_fin_two_ext`, `finsupp_fin_two_ne` (bivariate multi-index arithmetic);
+`constantCoeff_sum_monomial`; `PhiCoeff_of_degree_eq_one`; `coeff_PhiPartialSum` (the multi-index
+analogue of `coeff_phiPartialSum`, by induction matching `PhiState`'s own `0`/`1`/`d + 2` shape);
+`Phi`, `coeff_Phi`, `constantCoeff_Phi`, `coeff_Phi_eq_coeff_PhiPartialSum`; `genTruncMv`,
+`coeff_genTruncMv`, `constantCoeff_genTruncMv`, `genTruncMv_succ` (the multivariate `genTrunc`,
+with the same batch decomposition at each degree step);
+`pi_mul_one_sub_pow_mul_coeff_of_subst_eq_mv` (the local defining equation recovered from an
+arbitrary global solution); `swapFin`, `swapIdx`, `swapVars`, `coeff_subst_swapVars`.
+
+### How commutativity was proved
+
+Exactly the route the task brief anticipated: the variable-swapped series `Φ.subst swapVars` has
+zero constant term (`swapIdx 0 = 0`), the same linear part (both degree-`1` coefficients are `1`,
+so the swap fixes them), and still solves the functional equation — because the substitutand
+family `fun i ↦ f.subst (X i)` is itself swap-equivariant, so applying the swap to both sides of
+`f.subst Φ = Φ.subst (fun i ↦ f.subst (X i))` yields the same equation for the swapped series,
+with both sides equal to `Φ.subst (fun i ↦ f.subst (X (swapFin i)))`. Uniqueness then forces
+`Φ.subst swapVars = Φ`.
+
+### What remains, in dependency order
+
+1. **Associativity** — `F_π(F_π(X, Y), Z) = F_π(X, F_π(Y, Z))`. This is the immediate next step
+   and it is **out of scope for this pass by design**: it requires the *3-variable* functional
+   equation lemma (`MvPowerSeries (Fin 3) O`), of which none of this file's `Fin 2`-specific
+   machinery carries over directly. The `Fin 2`-specific pieces that would each need a `Fin 3`
+   analogue are: `mkIdx`/`degree_fin_two`/`finsupp_fin_two_ext` (multi-index enumeration —
+   at total degree `d` over three variables there are `(d+1)(d+2)/2` multi-indices, not `d + 1`,
+   so `PhiState`'s coefficient batch would be indexed by a pair, not a single `ℕ`),
+   `coeff_subst_X_zero_mul_subst_X_one` (a three-factor axis-disjoint product), and
+   `coeff_subst_monomial_diag`. The general-position lemmas built this pass
+   (`coeff_subst_add_sum_monomial_mv`, all four truncation-invariance lemmas,
+   `coeff_prod_pow_eq_zero_of_degree_lt`, `subst_subst_mv`, `coeff_pow_eq_of_coeff_eq_mv`) are
+   already stated over arbitrary index types and would be reused unchanged. **Uncertain, not
+   verified:** whether associativity can instead be derived from the 2-variable uniqueness alone
+   by a substitution trick, avoiding the 3-variable construction — this was not investigated.
+2. **Packaging as `FormalGroup O`.** Mathlib *does* have the structure
+   (`Mathlib/RingTheory/FormalGroup/Basic.lean`, `FormalGroup R` with fields
+   `toPowerSeries`/`zero_constantCoeff`/`lin_coeff_X`/`lin_coeff_Y`/`assoc`, plus a
+   `FormalGroup.IsComm` class). Every field except `assoc` is already available here —
+   `constantCoeff_Phi` gives `zero_constantCoeff`, and `coeff_Phi_of_degree_eq_one` gives both
+   `lin_coeff_X` and `lin_coeff_Y` (`(Finsupp.single i 1).degree = 1`), while
+   `subst_swapVars_Phi` is the content of `IsComm.comm` modulo matching Mathlib's `subst ![X₁, X₀]`
+   formulation against this file's `subst swapVars`. So packaging is blocked on item 1 alone.
+3. **Torsion points / the tower** — `F_π[π^n]`, the fields `K_n = K(F_π[π^n])`, and the
+   Lubin-Tate tower. Requires at minimum the `FormalGroup` packaging and the `[π^n]`-multiplication
+   endomorphisms (which are themselves instances of the *univariate* functional equation lemma,
+   already closed in `Langlands/LubinTateFunctionalEquation.lean` — so this part is unblocked by
+   the 3-variable gap and could be attempted independently).
+4. **The reciprocity map** — the eventual target, joining this thread to the norm-group index work
+   of Phase 2b (`§6ai`).
+
+### Commits
+
+`3b080a2` (outer-position monomial-correction chain), `025de98` (`Φ` assembled + truncation
+invariant), `56e5c92` (existence), `8ddc165` (uniqueness + `F_π` characterization), `c6cbea6`
+(commutativity).
