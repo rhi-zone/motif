@@ -824,6 +824,139 @@ theorem coeff_Phi_eq_coeff_PhiPartialSum (hπ : Irreducible π)
     MvPowerSeries.coeff m (Phi hπ hf) = MvPowerSeries.coeff m (PhiPartialSum hπ hf n) := by
   rw [coeff_Phi, coeff_PhiPartialSum, if_pos hm]
 
+/-- **The 2-variable Lubin-Tate functional equation lemma, existence half.** The fully assembled
+bivariate series `Φ := Phi hπ hf` satisfies `f(Φ(X, Y)) = Φ(f(X), f(Y))`. Proved multi-index by
+multi-index (`MvPowerSeries.ext`), following `LubinTate.subst_phi_eq_phi_subst`'s shape with total
+degree in place of degree — and, as there, needing no induction hypothesis, since truncation
+invariance reduces every multi-index to the partial sum at its own total degree.
+
+At total degree `0` both sides have zero constant term. At total degree `1`, truncating `Φ` to
+`PhiPartialSum 1 = X + Y` makes both sides computable in closed form (Mathlib's
+`PowerSeries.coeff_subst_X_zero_add_X_one` on the left, `PowerSeries.coeff_subst_single` on the
+right), and both equal `π`. At total degree `d + 2`, the four facts combine exactly as in the
+univariate case: truncation invariance (`coeff_subst_eq_of_coeff_eq_mv` /
+`coeff_subst_eq_of_coeff_eq_outer_mv`) replaces `Φ` by `PhiPartialSum (d + 2) = PhiPartialSum (d +
+1) + (batch of degree-`(d+2)` monomials)`; the inner-position batch correction
+(`coeff_subst_add_sum_monomial_mv`) contributes `coeff 1 f * c = π * c`; the outer-position batch
+correction (`coeff_subst_monomial_diag_of_degree_le`) contributes `c * π ^ (d + 2)`; and the
+per-multi-index defining equation `pi_mul_one_sub_pow_mul_PhiCoeff` identifies the difference of
+the two `PhiPartialSum (d + 1)` terms as `π * (1 - π ^ (d + 1)) * c`, cancelling the two
+corrections on the nose. In both batch sums exactly one summand survives, selected by the first
+coordinate of the multi-index. -/
+theorem subst_Phi_eq_Phi_subst (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) :
+    f.subst (Phi hπ hf) =
+      (Phi hπ hf).subst (fun i ↦ f.subst (MvPowerSeries.X i)) := by
+  have hf0 : PowerSeries.constantCoeff f = 0 := by
+    rw [← PowerSeries.coeff_zero_eq_constantCoeff]; exact hf.1
+  have ha0 : ∀ i, MvPowerSeries.constantCoeff
+      (f.subst (MvPowerSeries.X i) (S := O) (τ := Fin 2)) = 0 :=
+    fun i ↦ PowerSeries.constantCoeff_subst_eq_zero (by simp) f hf0
+  have ha : MvPowerSeries.HasSubst
+      (fun i ↦ f.subst (MvPowerSeries.X i) (S := O) (τ := Fin 2)) :=
+    MvPowerSeries.hasSubst_of_constantCoeff_zero ha0
+  have hΦ0 : MvPowerSeries.constantCoeff (Phi hπ hf) = 0 := constantCoeff_Phi hπ hf
+  have hΦ : PowerSeries.HasSubst (Phi hπ hf) :=
+    PowerSeries.HasSubst.of_constantCoeff_zero hΦ0
+  refine MvPowerSeries.ext fun n ↦ ?_
+  rcases hd : n.degree with _ | dd
+  · -- total degree `0`: both sides have zero constant term
+    have hn0 : n = 0 := (Finsupp.degree_eq_zero_iff n).mp hd
+    subst hn0
+    rw [MvPowerSeries.coeff_zero_eq_constantCoeff_apply,
+      MvPowerSeries.coeff_zero_eq_constantCoeff_apply,
+      PowerSeries.constantCoeff_subst_eq_zero hΦ0 f hf0,
+      MvPowerSeries.constantCoeff_subst_eq_zero ha ha0 hΦ0]
+  · rcases dd with _ | d
+    · -- total degree `1`: `Φ` truncates to `X + Y`
+      have hnd : n.degree ≤ 1 := le_of_eq hd
+      have hP0 : MvPowerSeries.constantCoeff (PhiPartialSum hπ hf 1) = 0 :=
+        constantCoeff_PhiPartialSum hπ hf 1
+      have hPsub : PowerSeries.HasSubst (PhiPartialSum hπ hf 1) :=
+        PowerSeries.HasSubst.of_constantCoeff_zero hP0
+      have hdeg : n 0 + n 1 = 1 := by rw [← degree_fin_two]; exact hd
+      rw [coeff_subst_eq_of_coeff_eq_mv f hΦ hPsub
+          (fun j hj ↦ coeff_Phi_eq_coeff_PhiPartialSum hπ hf 1 j hj) hnd,
+        coeff_subst_eq_of_coeff_eq_outer_mv ha ha0
+          (fun j hj ↦ coeff_Phi_eq_coeff_PhiPartialSum hπ hf 1 j hj) hnd,
+        PhiPartialSum_one, MvPowerSeries.subst_add ha, MvPowerSeries.subst_X ha,
+        MvPowerSeries.subst_X ha, map_add, PowerSeries.coeff_subst_X_zero_add_X_one,
+        PowerSeries.coeff_subst_single, PowerSeries.coeff_subst_single, hdeg]
+      rcases Nat.eq_zero_or_pos (n 0) with h0 | h0
+      · have h1 : n 1 = 1 := by omega
+        have hns : n = Finsupp.single 1 1 := finsupp_fin_two_ext (by simp [h0]) (by simp [h1])
+        rw [if_neg (by rw [hns]; exact finsupp_fin_two_ne 1 (by simp)),
+          if_pos (by rw [hns]; simp), h0, h1, hf.2.1]
+        simp
+      · have h0' : n 0 = 1 := by omega
+        have h1 : n 1 = 0 := by omega
+        have hns : n = Finsupp.single 0 1 := finsupp_fin_two_ext (by simp [h0']) (by simp [h1])
+        rw [if_pos (by rw [hns]; simp),
+          if_neg (by rw [hns]; exact finsupp_fin_two_ne 0 (by simp)),
+          h0', hf.2.1]
+        simp
+    · -- the recursive step at total degree `d + 2`
+      have hnd : n.degree ≤ d + 2 := le_of_eq hd
+      have hA0 : MvPowerSeries.constantCoeff (PhiPartialSum hπ hf (d + 1)) = 0 :=
+        constantCoeff_PhiPartialSum hπ hf (d + 1)
+      have hP0 : MvPowerSeries.constantCoeff (PhiPartialSum hπ hf (d + 2)) = 0 :=
+        constantCoeff_PhiPartialSum hπ hf (d + 2)
+      have hPsub : PowerSeries.HasSubst (PhiPartialSum hπ hf (d + 2)) :=
+        PowerSeries.HasSubst.of_constantCoeff_zero hP0
+      have hMne : ∀ k ∈ Finset.range (d + 3), mkIdx k (d + 2 - k) ≠ 0 := fun k hk ↦ by
+        rw [Finset.mem_range] at hk
+        exact mkIdx_ne_zero k (d + 2 - k) (by omega)
+      have hMdeg : ∀ k ∈ Finset.range (d + 3), (mkIdx k (d + 2 - k)).degree = d + 2 :=
+        fun k hk ↦ by
+          rw [Finset.mem_range] at hk
+          rw [degree_mkIdx]; omega
+      have hn0le : n 0 ≤ d + 2 := by rw [degree_fin_two] at hd; omega
+      have hnmk : mkIdx (n 0) (d + 2 - n 0) = n :=
+        finsupp_fin_two_ext (by simp) (by
+          simp only [mkIdx_apply_one]
+          rw [degree_fin_two] at hd; omega)
+      have hnot : ∀ k ∈ Finset.range (d + 3), k ≠ n 0 → ¬ (n = mkIdx k (d + 2 - k)) :=
+        fun k _ hk hc ↦ hk (by rw [hc, mkIdx_apply_zero])
+      have hinner : MvPowerSeries.coeff n (f.subst (Phi hπ hf)) =
+          MvPowerSeries.coeff n (f.subst (PhiPartialSum hπ hf (d + 1))) +
+            PowerSeries.coeff 1 f * PhiCoeff hπ hf n := by
+        rw [coeff_subst_eq_of_coeff_eq_mv f hΦ hPsub
+            (fun j hj ↦ coeff_Phi_eq_coeff_PhiPartialSum hπ hf (d + 2) j hj) hnd,
+          PhiPartialSum_succ_succ,
+          coeff_subst_add_sum_monomial_mv f hA0 (Finset.range (d + 3))
+            (fun k ↦ mkIdx k (d + 2 - k)) (fun k ↦ PhiCoeff hπ hf (mkIdx k (d + 2 - k)))
+            hMne (fun k hk ↦ by rw [hMdeg k hk]; exact hnd),
+          Finset.sum_eq_single (n 0)]
+        · rw [if_pos hnmk.symm, hnmk, smul_eq_mul]
+        · intro k hk hkne
+          rw [if_neg (hnot k hk hkne)]
+        · intro hmem
+          exact absurd (Finset.mem_range.mpr (by omega)) hmem
+      have houter : MvPowerSeries.coeff n
+            ((Phi hπ hf).subst (fun i ↦ f.subst (MvPowerSeries.X i))) =
+          MvPowerSeries.coeff n
+              ((PhiPartialSum hπ hf (d + 1)).subst (fun i ↦ f.subst (MvPowerSeries.X i))) +
+            PhiCoeff hπ hf n * π ^ (d + 2) := by
+        rw [coeff_subst_eq_of_coeff_eq_outer_mv ha ha0
+            (fun j hj ↦ coeff_Phi_eq_coeff_PhiPartialSum hπ hf (d + 2) j hj) hnd,
+          PhiPartialSum_succ_succ, MvPowerSeries.subst_add ha]
+        simp only [← MvPowerSeries.substAlgHom_apply ha, map_sum, map_add]
+        simp only [MvPowerSeries.substAlgHom_apply ha]
+        congr 1
+        rw [Finset.sum_congr rfl (fun k hk ↦
+            coeff_subst_monomial_diag_of_degree_le hf.1 hf.2.1 ha
+              (m := mkIdx k (d + 2 - k)) (by rw [hMdeg k hk]; exact hnd) _),
+          Finset.sum_eq_single (n 0)]
+        · rw [if_pos hnmk.symm, hMdeg (n 0) (Finset.mem_range.mpr (by omega)), hnmk]
+        · intro k hk hkne
+          rw [if_neg (hnot k hk hkne)]
+        · intro hmem
+          exact absurd (Finset.mem_range.mpr (by omega)) hmem
+      have hkey := pi_mul_one_sub_pow_mul_PhiCoeff hπ hf d (n 0) hn0le
+      rw [hnmk] at hkey
+      rw [hinner, houter, hf.2.1]
+      linear_combination hkey
+
 end LubinTate
 
 end
