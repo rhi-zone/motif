@@ -26,6 +26,8 @@ directly rather than after a commutation.
   coefficients (any commutative ring, inner series with zero constant term).
 * `iter` : the `n`-fold iterate, with `iter_zero`, `iter_succ`, `iter_succ'`,
   `constantCoeff_iter`, `hasSubst_iter`.
+* `iter_add` : `f^{(m + n)} = f^{(m)} ∘ f^{(n)}` — the filtration fact underlying
+  `F_π[π^n] ⊆ F_π[π^(m+n)]`.
 * `coeff_one_iter` : `coeff 1 (f^{(n)}) = π ^ n`.
 * `map_residue_iter` : `f^{(n)} ≡ X ^ (q ^ n) (mod 𝔪)`.
 * `isLubinTatePoly_iter` : **`IsLubinTatePoly (π ^ n) (q ^ n) (f^{(n)})`** — the correct analogue
@@ -130,6 +132,30 @@ theorem iter_succ' {f : S⟦X⟧} (hf0 : PowerSeries.constantCoeff f = 0) (n : �
         _ = PowerSeries.subst (PowerSeries.subst f (iter f n)) f := by rw [ih]
         _ = PowerSeries.subst f (PowerSeries.subst (iter f n) f) := hcomp.symm
         _ = PowerSeries.subst f (iter f (n + 1)) := by rw [iter_succ]
+
+/-- **Iterates compose additively**: `f^{(m + n)} = f^{(m)} ∘ f^{(n)}`. Induction on `m`, from
+`PowerSeries.subst_comp_subst_apply`; the base case is `PowerSeries.subst_X`. This is the
+filtration fact the `π^n`-torsion tower rests on — once evaluation at a concrete element is
+available, `f^{(n)}(x) = 0` immediately gives `f^{(m + n)}(x) = f^{(m)}(0) = 0`, i.e. the
+`π^n`-torsion sits inside the `π^(m+n)`-torsion. Written in prefix `PowerSeries.subst` form for
+the reason recorded at `iter_succ'`. -/
+theorem iter_add {f : S⟦X⟧} (hf0 : PowerSeries.constantCoeff f = 0) (n : ℕ) :
+    ∀ m, iter f (m + n) = PowerSeries.subst (iter f n) (iter f m) := by
+  have hfs : PowerSeries.HasSubst f := PowerSeries.HasSubst.of_constantCoeff_zero' hf0
+  intro m
+  induction m with
+  | zero => rw [Nat.zero_add, iter_zero, PowerSeries.subst_X (hasSubst_iter hf0 n)]
+  | succ m ih =>
+      have hidx : m + 1 + n = m + n + 1 := by omega
+      have hcomp : PowerSeries.subst (iter f n) (PowerSeries.subst (iter f m) f)
+          = PowerSeries.subst (PowerSeries.subst (iter f n) (iter f m)) f :=
+        PowerSeries.subst_comp_subst_apply (hasSubst_iter hf0 m) (hasSubst_iter hf0 n) f
+      calc iter f (m + 1 + n)
+          = iter f (m + n + 1) := by rw [hidx]
+        _ = PowerSeries.subst (iter f (m + n)) f := iter_succ f (m + n)
+        _ = PowerSeries.subst (PowerSeries.subst (iter f n) (iter f m)) f := by rw [ih]
+        _ = PowerSeries.subst (iter f n) (PowerSeries.subst (iter f m) f) := hcomp.symm
+        _ = PowerSeries.subst (iter f n) (iter f (m + 1)) := by rw [iter_succ]
 
 /-- The linear coefficient of the `n`-fold iterate is `π ^ n`. -/
 theorem coeff_one_iter {f : S⟦X⟧} {π : S} (hf0 : PowerSeries.coeff 0 f = 0)
