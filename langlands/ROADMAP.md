@@ -10245,3 +10245,122 @@ rebuild is a strict subset of that scope.
 
 `a449ed1` (`solvesFunctionalEq_subst`, `solvesFunctionalEq_X`, `PhiAssocLeft`/`PhiAssocRight` and
 their functional-equation proofs).
+
+## 18. Phase 2c, twelfth pass (2026-08-12): **associativity CLOSED — `F_π` packaged as a Mathlib
+`FormalGroup`, the Lubin-Tate formal group law construction complete end to end**
+
+**Landmark.** `§16` constructed `F_π` (existence, uniqueness, commutativity); `§17` closed
+existence of the two 3-variable composites needed for associativity but left uniqueness at
+`Fin 3` unattempted. This pass builds that `Fin 3` (in fact, fully general finite-index-type)
+uniqueness theorem, uses it to prove associativity, and packages `F_π` as a Mathlib
+`FormalGroup O` with the `IsComm` instance. `Langlands/LubinTateFunctionalEquationBivariate.lean`
+now contains the complete Lubin-Tate formal group law — existence, uniqueness, commutativity,
+associativity, and the Mathlib structural packaging — sorry-free, whole project builds clean.
+
+### Design call: general finite-index-type route, not `Fin 3`-specific — and it was cheaper
+
+`§17` scoped this as needing a `Fin 3`-specific rebuild of the enumeration (`mkIdx`-analogue for
+pairs `(k, l)` with `k + l ≤ d`) and the outer-position monomial correction (a three-factor
+axis-disjoint product). The task brief asked for an explicit judgment call between that
+`Fin 3`-specific route and a fully general "any finite index type `σ`" route, taken only if not
+substantially harder. **The general route was taken, and it turned out to be no harder — in
+places syntactically simpler — not a compromise.** The deciding factor, checked before writing
+any of the combinatorics: Mathlib already supplies, for a general finite `σ`, both pieces of
+infrastructure that a `Fin 3`-specific route would otherwise have to hand-build:
+
+* `Finsupp.finite_of_degree_eq [Finite σ] (n : ℕ) : {f : σ →₀ ℕ | f.degree = n}.Finite` — finiteness
+  of "multi-indices of total degree `n`" over any finite index type, found in
+  `Mathlib/Data/Finsupp/Weight.lean`. Combined with `Set.Finite.toFinset` this gives `degSet σ n`
+  directly, with no need for a bespoke pair-enumeration analogous to `mkIdx`.
+* `MvPowerSeries.coeff_prod (f : ι → MvPowerSeries σ R) (d : σ →₀ ℕ) (s : Finset ι) : coeff d
+  (∏ j ∈ s, f j) = ∑ l ∈ s.finsuppAntidiag d, ∏ i ∈ s, coeff (l i) (f i)`, found in
+  `Mathlib/RingTheory/MvPowerSeries/Basic.lean` — the antidiagonal expansion of a coefficient of a
+  finite product, generalizing `MvPowerSeries.coeff_mul`'s binary antidiagonal to arbitrarily many
+  factors. This is exactly what the `n`-ary axis-disjoint product identity needs, in place of a
+  hand-rolled ternary splitting.
+
+A concrete side benefit realized once written: indexing the batch-correction sums directly by the
+multi-index itself (`degSet σ (d + 2)`) rather than by an auxiliary coordinate `k` (as `mkIdx`
+does for `Fin 2`) removes a layer of index bookkeeping the `Fin 2` proofs need (`hnmk`/`hnot`/
+`hn0le`-style lemmas connecting `k` back to the multi-index have no counterpart here — the
+`Finset.sum_eq_single n` steps select the target multi-index directly).
+
+### What was built
+
+In `Langlands/LubinTateFunctionalEquationBivariate.lean`:
+
+* `degSet`, `mem_degSet` — the general-`σ` finite set of multi-indices of a given total degree.
+* `coeff_subst_X_prod` — the `Fintype`-indexed `n`-ary axis-disjoint product identity, generalizing
+  both Mathlib's `PowerSeries.coeff_subst_X_zero_subst_mul_X_one` and this file's own two-factor
+  `coeff_subst_X_zero_mul_subst_X_one`.
+* `coeff_subst_monomial_diag_fintype`, `coeff_subst_monomial_diag_of_degree_le_fintype` — the
+  general-`σ` outer-position monomial-correction identity. The off-diagonal vanishing argument
+  generalizes directly: `n ≠ m` with `n.degree ≤ m.degree` forces some single coordinate `i` with
+  `n i < m i` (the same `¬ m ≤ n` argument `coeff_pow_add_monomial_sub_coeff_pow_mv` already uses,
+  reused via `Finsupp.le_def`), and that coordinate's factor already vanishes by order — no need
+  for the two-way case split (`Fin 2`'s `hlt : n 0 < m 0 ∨ n 1 < m 1`) the `Fin 2` proof needed.
+* `genTruncMv_succ_fintype` — the general-`σ` batch-splitting of the degree-`(n+1)` truncation.
+* `pi_mul_one_sub_pow_mul_coeff_of_subst_eq_mv_fintype` — the general-`σ` local defining equation
+  recovered from an arbitrary global solution, reusing the already-general truncation-invariance
+  lemmas from `§16` (`coeff_subst_eq_of_coeff_eq_mv`, `coeff_subst_eq_of_coeff_eq_outer_mv`,
+  `coeff_subst_add_sum_monomial_mv`) unchanged, exactly as `§17` predicted.
+* `eq_of_subst_eq_mv_fintype` — **the general finite-index-type uniqueness theorem**: any two
+  solutions of the functional equation with zero constant term agreeing in total degree `1`, over
+  any `Fintype` index type, are equal. Same strong-induction structure as `eq_of_subst_eq_mv`.
+* `coeff_PhiAssocLeft_of_degree_le_one`, `coeff_PhiAssocRight_of_degree_le_one` — both
+  `PhiAssocLeft`/`PhiAssocRight` have, at every multi-index of total degree at most `1`, the
+  coefficient `coeff e (X 0) + coeff e (X 1) + coeff e (X 2)` — proved by two applications of
+  `coeff_subst_eq_of_coeff_eq_outer_mv` (from `§16`, unchanged), each truncating an outer `Φ`
+  (first the composite's outer `Phi`, then the inner embedded `Phi`) to its degree-`≤1` part
+  `PhiPartialSum 1 = X + Y`, followed by `subst_add`/`subst_X`. This is the concrete instance of
+  "the linear part of a composite is the sum of the linear parts" the associativity argument needs,
+  proved directly rather than as a separately-stated general chain-rule lemma.
+* `assoc_Phi` — **`PhiAssocLeft hπ hf = PhiAssocRight hπ hf`, i.e. `F_π(F_π(X,Y),Z) =
+  F_π(X,F_π(Y,Z))`**: both composites have zero constant term and matching linear part (from the
+  two lemmas above, at `e = 0` and `e.degree = 1` respectively) and each already solves the
+  3-variable functional equation (`§17`'s `subst_PhiAssocLeft_eq_PhiAssocLeft_subst`/
+  `subst_PhiAssocRight_eq_PhiAssocRight_subst`); `eq_of_subst_eq_mv_fintype` at `σ := Fin 3`
+  concludes.
+* `LubinTateFormalGroup` — `Phi hπ hf` packaged as a Mathlib `FormalGroup O`
+  (`Mathlib/RingTheory/FormalGroup/Basic.lean`). Every field was already available or closed this
+  pass: `zero_constantCoeff` from `constantCoeff_Phi`, `lin_coeff_X`/`lin_coeff_Y` from
+  `coeff_Phi_of_degree_eq_one`, `assoc` from `assoc_Phi`. The `assoc` field's stated type —
+  `toPowerSeries.subst ![toPowerSeries.subst ![Y₀, Y₁], Y₂] = toPowerSeries.subst ![Y₀,
+  toPowerSeries.subst ![Y₁, Y₂]]`, where `Y₀, Y₁, Y₂` are `name_power_vars`-generated notation for
+  `MvPowerSeries.X (0 : Fin 3)` etc. — matches `PhiAssocLeft`/`PhiAssocRight`'s definitions exactly
+  once the local notation is unfolded, so `assoc := assoc_Phi hπ hf` typechecks directly with no
+  bridging lemma needed.
+* `isComm_LubinTateFormalGroup` — the `FormalGroup.IsComm` instance, from `subst_swapVars_Phi`
+  (`§16`) after identifying `swapVars` with the explicit transposition `![X 1, X 0]` that
+  `FormalGroup.IsComm.comm`'s stated type is written against (`funext i; fin_cases i <;> rfl`).
+
+No `Fin 3`-specific recursive construction (a `PhiState`-`Fin 3` analogue) was built or needed —
+confirming `§17`'s scope reduction: only uniqueness needed a `Fin 3` (here: general-`σ`) rebuild,
+existence transported for free.
+
+### Build status
+
+`nix develop --command lake build` (run from `langlands/`) — whole project builds clean, `Build
+completed successfully (8748 jobs)`, no `sorry` anywhere in
+`Langlands/LubinTateFunctionalEquationBivariate.lean` (confirmed by `grep -n sorry` on the file,
+no hits) nor introduced elsewhere this pass.
+
+### What remains, in dependency order
+
+1. **Torsion points / the tower** — `F_π[π^n]` (kernel of the `[π^n]`-multiplication
+   endomorphism), the fields `K_n = K(F_π[π^n])`, and the Lubin-Tate tower. Now fully unblocked:
+   `LubinTateFormalGroup` supplies the packaged object, and the `[π^n]`-multiplication
+   endomorphisms are instances of the *univariate* functional equation lemma, already closed in
+   `Langlands/LubinTateFunctionalEquation.lean`. Not attempted this pass; no investigation was done
+   into what `FormalGroup`-level API Mathlib provides for endomorphisms/torsion (e.g. whether
+   `FormalGroup.Point` — noted in that file's docstring, `F.Point σ` with nilpotent-constant-term
+   values — is the right vehicle, or a fresh definition is needed), so this is a genuinely open
+   next step, not a known-shape task.
+2. **The reciprocity map** — the eventual target, joining this thread to the norm-group index work
+   of Phase 2b (`§6ai`).
+
+### Commits
+
+`86839bc` (`eq_of_subst_eq_mv_fintype` and its general-`σ` supporting lemmas), `4fd0047`
+(`assoc_Phi` — associativity closed), `851aaa9` (`LubinTateFormalGroup` packaging, `IsComm`
+instance).
