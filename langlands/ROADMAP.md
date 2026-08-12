@@ -9644,3 +9644,121 @@ file was written this pass. The two live options for `F_π` remain what `§11` a
 the direct multivariate recursion (sized like a `§7`-`§10` repeat), or treat `F_π` as out of scope for
 now and look for other Phase 2c/3 work that doesn't require it. Nothing found this pass changes that
 choice's cost-benefit picture in favor of a third, cheaper option.
+
+## 13. Phase 2c, seventh pass (2026-08-12): the 2-variable functional equation lemma — item 3
+(the multivariate residue congruence) closed, sorry-free; items 1-2 not attempted
+
+Continuation of `§11`'s route (a) (the direct multivariate recursion — the only route `§12` left
+live). Per this task's brief, entry point chosen was `f = g` is *not* what got built first: the
+general `f`-only shape (no second series `g` needed for this pass's scope, since only the residue
+congruence — which in the univariate file is stated for a pair `f, g` — was attempted, and its
+single-series specialization is what a future `Φ` recursion with `f = g` would actually consume)
+turned out to be the tractable, self-contained unit; see "what got built" below for the precise
+scope. New file: `Langlands/LubinTateFunctionalEquationBivariate.lean` (171 lines), not an edit to
+the closed `Langlands/LubinTateFunctionalEquation.lean` — chosen to keep the closed univariate file
+untouched (it is cited as CLOSED in its own docstring) and because everything new here is additive
+(new `Fin 2`-specialized theorems), not a modification of any existing univariate declaration.
+
+**What got built, with exact signatures.** All in `Langlands/LubinTateFunctionalEquationBivariate.lean`,
+namespace `LubinTate`, same `variable {O : Type*} [CommRing O] [IsDomain O] [IsDiscreteValuationRing
+O] [Finite (ResidueField O)]` context as the closed file:
+
+* `pow_residueCard_eq_subst_X_pow_mv` (lines 84-105):
+  ```
+  theorem pow_residueCard_eq_subst_X_pow_mv
+      (h : MvPowerSeries (Fin 2) (ResidueField O)) :
+      h ^ residueCard O =
+        MvPowerSeries.subst (fun i ↦ (MvPowerSeries.X i : MvPowerSeries (Fin 2) (ResidueField O))
+          ^ residueCard O) h
+  ```
+  The `σ = Fin 2` instance of the univariate `pow_residueCard_eq_subst_X_pow`, proved the identical
+  way: `MvPowerSeries.map_iterateFrobenius_expand` (confirmed present for arbitrary `σ` in `§11`'s
+  survey, so no new lemma needed here) together with `LubinTate.iterateFrobenius_residueField_eq_id`
+  reused **completely unchanged** — that fact is intrinsically about `ResidueField O` alone and
+  carries no `σ`-dependence, confirming `§11`'s own expectation that this piece would transfer
+  directly. The only new step versus the univariate proof is unfolding `MvPowerSeries.expand p hp h`
+  to `MvPowerSeries.subst (fun i ↦ X i ^ p) h` via `MvPowerSeries.substAlgHom_apply` (the multivariate
+  analogue of `PowerSeries.expand_apply`, which is not itself stated as a standalone lemma in
+  `Mathlib.RingTheory.MvPowerSeries.Expand` — `expand` is *defined* as `substAlgHom (HasSubst.X_pow
+  hp)`, so `substAlgHom_apply` closes the gap directly by unfolding the definition).
+* `map_residue_subst_eq_map_residue_subst_mv` (lines 107-151) — **item 3 of `§11`'s three-item
+  breakdown, closed**:
+  ```
+  theorem map_residue_subst_eq_map_residue_subst_mv {π : O} {f : O⟦X⟧}
+      {Φ : MvPowerSeries (Fin 2) O}
+      (hf : IsLubinTatePoly π (residueCard O) f) (hΦ0 : MvPowerSeries.constantCoeff Φ = 0) :
+      MvPowerSeries.map (residue O) (f.subst Φ) =
+        MvPowerSeries.map (residue O) (Φ.subst (fun i ↦ f.subst (MvPowerSeries.X i)))
+  ```
+  This is the multivariate generalization of the closed file's
+  `map_residue_subst_eq_map_residue_subst`, holding for a *single* `f ∈ ℱ_π` (the univariate lemma's
+  two-series `f, g` case is not needed for this fact when `f = g`, which is the entry point this pass
+  actually needed — the general two-series multivariate case, substituting `f` into one variable and
+  `g` into the other, is a direct drop-in generalization of the proof below with `f`/`g` in the two
+  coordinate positions and was not separately written out, since nothing in this pass's scope needed
+  it). Both sides of the functional equation reduce mod `π` to `(map (residue O) Φ) ^ q`: the outer
+  ("`f.subst Φ`") side via `PowerSeries.map_subst` (the *univariate* substitution API, since `f` stays
+  one-variable and `Φ` is merely its substitutand's ring — no new multivariate infrastructure needed
+  for this side at all, confirming `§11`'s own observation that outer-position substitution needs
+  nothing new) together with `hf.2.2` (`f ≡ X^q mod π`); the inner ("`Φ.subst (f, f)`") side via
+  `MvPowerSeries.map_subst` (the genuinely multivariate substitution-commutes-with-`map` fact,
+  confirmed present and already cited by `§11`'s survey) applied coordinatewise (each `f.subst (X i)`
+  also reduces to `(X i)^q` by the *same* univariate `map_subst` fact, since each coordinate embedding
+  is itself a univariate-into-multivariate substitution) followed by
+  `pow_residueCard_eq_subst_X_pow_mv` above.
+* `uniformizer_dvd_coeff_subst_sub_subst_mv` (lines 153-171) — the coefficient-wise corollary:
+  ```
+  theorem uniformizer_dvd_coeff_subst_sub_subst_mv {π : O} (hπ : Irreducible π) {f : O⟦X⟧}
+      {Φ : MvPowerSeries (Fin 2) O} (hf : IsLubinTatePoly π (residueCard O) f)
+      (hΦ0 : MvPowerSeries.constantCoeff Φ = 0) (n : Fin 2 →₀ ℕ) :
+      π ∣ (MvPowerSeries.coeff n (Φ.subst (fun i ↦ f.subst (MvPowerSeries.X i))) -
+        MvPowerSeries.coeff n (f.subst Φ))
+  ```
+  Obtained from the congruence above via `residue_eq_zero_iff` and
+  `IsDiscreteValuationRing.irreducible_iff_uniformizer`, exactly as the univariate
+  `uniformizer_dvd_coeff_subst_sub_subst` is derived from `map_residue_subst_eq_map_residue_subst`.
+  This is the exact fact a future total-degree-indexed recursive construction of `Φ` (item 2 below)
+  would need to invoke at every step to certify its local linear equation is solvable, the same role
+  the univariate `uniformizer_dvd_coeff_subst_sub_subst` plays inside `LubinTate.phiState`.
+
+**Confirms `§11`'s own prediction exactly.** `§11` assessed item 3 as "plausible via the same
+Frobenius argument … since `pow_residueCard_eq_subst_X_pow`-style reasoning is ring-generic," but
+explicitly flagged it as "not checked against the multivariate substitution API" in that pass. This
+pass checks it: the reasoning is indeed ring/`σ`-generic exactly as predicted, and closes with no
+new hard mathematical content beyond correctly composing the four already-confirmed Mathlib
+building blocks (`map_iterateFrobenius_expand`, `MvPowerSeries.map_subst`, `PowerSeries.map_subst`,
+and the reused `iterateFrobenius_residueField_eq_id`) — the only friction was purely Lean-engineering
+(matching `HasSubst` witnesses to the correct base ring at each of the two substitution layers, `O`
+vs. `ResidueField O`; two of the three build failures on the way to the sorry-free state above were
+exactly this kind of ring-mismatch, not a missing mathematical fact).
+
+**What remains open, and precisely why.** Items 1 and 2 of `§11`'s three-item breakdown are **not
+attempted this pass** — no partial progress, no lemma statements written for them, nothing
+sorry-containing:
+
+1. **The multivariate linear-correction identity** (analogue of `coeff_subst_add_C_mul_X_pow`),
+   needed to prove that extending a total-degree-`n` truncation of `Φ` by one new top-total-degree
+   homogeneous piece shifts `f.subst Φ`'s coefficients in a computable, `π`-independent way. This is
+   not touched by anything built this pass — `map_residue_subst_eq_map_residue_subst_mv` establishes
+   *unconditional* solvability of each step's linear equation (the `π ∣ (…)` fact), exactly
+   paralleling how the univariate `uniformizer_dvd_coeff_subst_sub_subst` does, but neither the
+   univariate nor this pass's multivariate residue-congruence fact says anything about *what the
+   correction term looks like* when extending a truncation — that is genuinely separate content
+   (Fact 2 in the univariate file), unaddressed here.
+2. **The total-degree-indexed recursive construction of `Φ`.** `§11`'s own assessment — that the
+   univariate `phiState`'s `Finset.sum`-buried-recursive-call termination hazard would recur with an
+   added index dimension — was not tested this pass, since building the recursion requires item 1
+   first (the recursion's per-step correction needs the linear-correction identity to even state its
+   invariant). No termination-checker experiment was run.
+
+Neither obstruction is a discovered *new* difficulty beyond what `§11` already predicted — this pass
+did not encounter, for instance, a missing Mathlib lemma or a broken multivariate `subst` API fact
+that would newly block items 1-2; it simply did not attempt them, consistent with the task's explicit
+"partial, honest stopping point" allowance and `§11`'s own assessment that items 1-2 (not item 3) are
+where the comparable-to-`§7`-`§10` size estimate actually lives.
+
+**Build state at the point this pass stopped.** `nix develop --command lake build` from
+`langlands/` completes with `Build completed successfully (8748 jobs)` — the whole project,
+including this pass's new file, builds clean and sorry-free (only pre-existing lint warnings
+unrelated to this pass's file, e.g. unused-section-variable linter notes in unrelated files, appear
+in the output).
