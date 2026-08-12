@@ -1,6 +1,8 @@
 import Mathlib.Analysis.Normed.Field.Ultra
+import Mathlib.Analysis.Normed.Ring.Lemmas
 import Mathlib.Analysis.SpecificLimits.Basic
 import Mathlib.RingTheory.PowerSeries.Basic
+import Mathlib.Topology.Algebra.InfiniteSum.Nonarchimedean
 import Langlands.NonarchimedeanUnconditionalSummability
 
 /-!
@@ -38,14 +40,29 @@ rearrangement argument.
   `0`, hence (via `IsUltrametricDist.summable_of_tendsto_zero`) unconditional summability.
 * `eval`, `hasSum_eval` — the evaluation itself, as a `tsum` with its defining `HasSum` property.
 * `eval_add` — evaluation is additive on the domain where both series' coefficients are bounded.
+* `eval_mul`, `coeff_bound_mul` — evaluation is multiplicative, via Mathlib's nonarchimedean Cauchy
+  product formula `Summable.tsum_mul_tsum_eq_tsum_sum_antidiagonal`
+  (`Mathlib.Topology.Algebra.InfiniteSum.Ring`), which needs only `[T3Space α] [IsTopologicalSemiring
+  α]` — no `NonarchimedeanRing` typeclass required for this particular direction, since it isn't a
+  rearrangement argument (it re-groups the already-known-summable `ℕ × ℕ`-indexed product family by
+  `Finset.antidiagonal`, matching `PowerSeries.coeff_mul` exactly). The summability of that product
+  family itself *is* obtained via the nonarchimedean route (`HasSum.mul_of_nonarchimedean`, which
+  needs no separate summability hypothesis, unlike the general/archimedean case) — see the local
+  `NonarchimedeanRing K` instance below, bridged from `NormedField K`/`IsUltrametricDist K` (no
+  instance for this connection exists in Mathlib itself, confirmed by grep; the bridge is immediate,
+  Prop-valued, and diamond-free — `NonarchimedeanRing` only adds the `is_nonarchimedean` field on top
+  of `IsTopologicalRing`, and `NonarchimedeanAddGroup K`'s own instance, from `IsUltrametricDist`,
+  already supplies exactly that field).
+* `eval_one`, `coeff_bound_one`, `coeff_bound_pow`, `eval_pow` — the multiplicative structure
+  extended to `1` and to powers, by direct induction on `eval_mul`.
 
 ## What this does not do
 
-This file does **not** build a full ring/algebra-hom structure for `eval` (in particular, no
-Cauchy-product/multiplicativity `eval (f * g) x = eval f x * eval g x`, and no compatibility with
-`PowerSeries.subst`/composition) — only what is needed to state and use evaluation at all. See
-`Langlands.LubinTateFormalGroupEval`'s module docstring for the precise remaining gap this leaves
-for the Lubin-Tate torsion-point thread.
+This file does **not** build compatibility between `eval` and `PowerSeries.subst`/composition —
+that is `Langlands.NonarchimedeanPowerSeriesEvalSubst.eval_subst`, built on top of `eval_mul`/
+`eval_pow`. See that file's module docstring for the univariate result, and
+`Langlands.LubinTateFormalGroupEval`'s module docstring for the precise remaining gap (the
+bivariate-outer form) this leaves for the Lubin-Tate torsion-point thread.
 -/
 
 @[expose] public section
@@ -129,6 +146,103 @@ theorem eval_add {f g : PowerSeries R}
     rw [map_add, map_add, add_mul]
   simp only [eval, hterm]
   exact Summable.tsum_add (summable_evalSummand hf hx) (summable_evalSummand hg hx)
+
+/-- **`K` is a nonarchimedean ring** in Mathlib's `NonarchimedeanRing` sense, whenever it is a
+`NormedField` with an ultrametric norm. No instance connecting these already exists in Mathlib
+(confirmed by grep across `Mathlib/Analysis/` and `Mathlib/Topology/Algebra/Nonarchimedean/`); the
+bridge is immediate since both sides are `Prop`-valued and share the same underlying
+`is_nonarchimedean` field — `NonarchimedeanAddGroup K`'s own instance (from `IsUltrametricDist K`
+via `Mathlib.Analysis.Normed.Group.Ultra`) supplies exactly the fact `NonarchimedeanRing` needs on
+top of the (already-automatic) `IsTopologicalRing K` instance. No diamond risk: this only adds a
+`Prop` field to structure already present, it does not touch any data-carrying instance. -/
+instance : NonarchimedeanRing K :=
+  { (inferInstance : IsTopologicalRing K) with
+    is_nonarchimedean := NonarchimedeanAddGroup.is_nonarchimedean }
+
+/-- **Evaluation is multiplicative**, on the domain where both series have
+algebra-mapped-norm-bounded coefficients. The Cauchy product formula
+`Summable.tsum_mul_tsum_eq_tsum_sum_antidiagonal` regroups the `ℕ × ℕ`-indexed product family (whose
+summability comes from `HasSum.mul_of_nonarchimedean`, needing no separate hypothesis given the
+`NonarchimedeanRing K` instance above) by `Finset.antidiagonal`, matching `PowerSeries.coeff_mul`
+term-by-term. -/
+theorem eval_mul {f g : PowerSeries R}
+    (hf : ∀ n, ‖algebraMap R K (PowerSeries.coeff n f)‖ ≤ 1)
+    (hg : ∀ n, ‖algebraMap R K (PowerSeries.coeff n g)‖ ≤ 1) {x : K} (hx : ‖x‖ < 1) :
+    eval (f * g) x = eval f x * eval g x := by
+  have hfg : Summable (fun i : ℕ × ℕ => evalSummand f x i.1 * evalSummand g x i.2) :=
+    ((hasSum_eval hf hx).mul_of_nonarchimedean (hasSum_eval hg hx)).summable
+  unfold eval
+  rw [(summable_evalSummand hf hx).tsum_mul_tsum_eq_tsum_sum_antidiagonal
+    (summable_evalSummand hg hx) hfg]
+  congr 1
+  funext n
+  unfold evalSummand
+  rw [PowerSeries.coeff_mul, map_sum, Finset.sum_mul]
+  apply Finset.sum_congr rfl
+  intro p hp
+  rw [Finset.HasAntidiagonal.mem_antidiagonal] at hp
+  rw [map_mul, ← hp, pow_add]
+  ring
+
+omit [CompleteSpace K] in
+/-- **Coefficient boundedness is preserved by multiplication.** `coeff n (f * g)` is a sum, over
+`Finset.antidiagonal n`, of products of bounded coefficients; the nonempty-sum ultrametric bound
+`Finset.Nonempty.norm_sum_le_sup'_norm` bounds it by `1`. -/
+theorem coeff_bound_mul {f g : PowerSeries R}
+    (hf : ∀ n, ‖algebraMap R K (PowerSeries.coeff n f)‖ ≤ 1)
+    (hg : ∀ n, ‖algebraMap R K (PowerSeries.coeff n g)‖ ≤ 1) :
+    ∀ n, ‖algebraMap R K (PowerSeries.coeff n (f * g))‖ ≤ 1 := by
+  intro n
+  rw [PowerSeries.coeff_mul, map_sum]
+  refine (Finset.Nonempty.norm_sum_le_sup'_norm
+    ⟨(0, n), Finset.mem_antidiagonal.mpr (by simp)⟩ _).trans ?_
+  simp only [Finset.sup'_le_iff]
+  intro p _
+  rw [map_mul, norm_mul]
+  calc ‖algebraMap R K (PowerSeries.coeff p.1 f)‖ * ‖algebraMap R K (PowerSeries.coeff p.2 g)‖
+      ≤ 1 * 1 := mul_le_mul (hf p.1) (hg p.2) (norm_nonneg _) zero_le_one
+    _ = 1 := mul_one 1
+
+omit [IsUltrametricDist K] [CompleteSpace K] in
+/-- **Evaluation at `1` is `1`**: only the constant term (`= 1`) contributes. -/
+theorem eval_one (x : K) : eval (1 : PowerSeries R) x = 1 := by
+  have hterm : ∀ n, evalSummand (1 : PowerSeries R) x n = if n = 0 then 1 else 0 := by
+    intro n
+    unfold evalSummand
+    match n with
+    | 0 => simp
+    | n + 1 => simp
+  unfold eval
+  rw [tsum_eq_single 0 (by intro n hn; rw [hterm]; simp [hn])]
+  rw [hterm]; simp
+
+omit [IsUltrametricDist K] [CompleteSpace K] in
+/-- The coefficients of `1 : PowerSeries R`, algebra-mapped into `K`, are trivially bounded by `1`. -/
+theorem coeff_bound_one :
+    ∀ n, ‖algebraMap R K (PowerSeries.coeff n (1 : PowerSeries R))‖ ≤ 1 := by
+  intro n
+  match n with
+  | 0 => simp
+  | n + 1 => simp
+
+omit [CompleteSpace K] in
+/-- **Coefficient boundedness is preserved by powers**, by induction on `coeff_bound_mul`. -/
+theorem coeff_bound_pow {f : PowerSeries R}
+    (hf : ∀ n, ‖algebraMap R K (PowerSeries.coeff n f)‖ ≤ 1) :
+    ∀ (m n : ℕ), ‖algebraMap R K (PowerSeries.coeff n (f ^ m))‖ ≤ 1 := by
+  intro m
+  induction m with
+  | zero => intro n; simpa using coeff_bound_one (R := R) (K := K) n
+  | succ m ih => intro n; rw [pow_succ]; exact coeff_bound_mul ih hf n
+
+/-- **Evaluation is compatible with powers**: `eval (f ^ n) x = (eval f x) ^ n`, by induction on
+`eval_mul`. -/
+theorem eval_pow {f : PowerSeries R}
+    (hf : ∀ n, ‖algebraMap R K (PowerSeries.coeff n f)‖ ≤ 1) {x : K} (hx : ‖x‖ < 1) :
+    ∀ n, eval (f ^ n) x = eval f x ^ n
+  | 0 => by simpa using eval_one (R := R) (K := K) x
+  | n + 1 => by
+      rw [pow_succ, pow_succ, eval_mul (coeff_bound_pow hf n) hf hx, eval_pow hf hx n]
 
 end NonarchimedeanPowerSeriesEval
 
