@@ -1308,6 +1308,281 @@ theorem coeff_swapIdx_Phi (hπ : Irreducible π) (hf : IsLubinTatePoly π (resid
     MvPowerSeries.coeff (swapIdx m) (Phi hπ hf) = MvPowerSeries.coeff m (Phi hπ hf) := by
   rw [← coeff_subst_swapVars, subst_swapVars_Phi]
 
+/-! ### A general finite-index-type uniqueness theorem, toward `Fin 3`
+
+Everything from `mkIdx` (line 598) through `eq_of_subst_eq_mv` above is stated only for
+`MvPowerSeries (Fin 2) O`. Associativity needs the analogous uniqueness statement for
+`MvPowerSeries (Fin 3) O`. Two routes were available: (a) a `Fin 3`-specific pair encoding
+`(k, l)` with `k + l ≤ d`, mirroring `mkIdx`, or (b) a fully general finite-index-type `σ`
+version. **Route (b) is taken here, and it turned out to be no harder than (a)** — in some steps
+syntactically simpler — because Mathlib already supplies, for a general finite `σ`, the two pieces
+of combinatorial infrastructure that would otherwise have to be hand-built for `Fin 3`:
+`Finsupp.finite_of_degree_eq` (finiteness of "multi-indices of total degree `n`" over any finite
+`σ`, used below as `degSet`, replacing a bespoke pair-enumeration) and `MvPowerSeries.coeff_prod`
+(the antidiagonal expansion of the coefficient of a finite product, replacing a hand-rolled
+ternary splitting of `MvPowerSeries.coeff_mul`'s antidiagonal in the outer-position monomial
+lemma below). A useful side effect of enumerating multi-indices by *themselves* (via `degSet`)
+rather than by an auxiliary coordinate `k` (as `mkIdx` does) is that the `Finset.sum_eq_single`
+steps below select the target multi-index `n` directly, with no `mkIdx`-style index bookkeeping
+(`hnmk`/`hnot`/`hn0le` in the `Fin 2` proofs above have no counterpart here). -/
+
+/-- **The finite set of multi-indices of total degree `n` over a finite index type**, obtained
+from `Finsupp.finite_of_degree_eq` via `Set.Finite.toFinset`. This is the general-`σ` replacement
+for the `Fin 2`-specific enumeration `Finset.range (d + 1)` via `mkIdx k (d - k)`, which does not
+generalize past two variables (at `Fin 3` there are `(d+1)(d+2)/2` multi-indices of total degree
+`d`, not `d + 1`, so no single-coordinate range works). -/
+noncomputable def degSet (σ : Type*) [Finite σ] (n : ℕ) : Finset (σ →₀ ℕ) :=
+  (Finsupp.finite_of_degree_eq n).toFinset
+
+theorem mem_degSet {σ : Type*} [Finite σ] {n : ℕ} {m : σ →₀ ℕ} :
+    m ∈ degSet σ n ↔ m.degree = n :=
+  (Finsupp.finite_of_degree_eq n).mem_toFinset
+
+/-- **The `n`-ary axis-disjoint product identity.** For a `Fintype`-indexed family of univariate
+series `g i`, each embedded along its own coordinate axis `i` of `MvPowerSeries ι S`, the `e`-th
+coefficient of the product `∏ i, (g i).subst (X i)` factors completely into the univariate
+coefficients `coeff (e i) (g i)`. This is the `Fintype`-indexed generalization of Mathlib's
+`PowerSeries.coeff_subst_X_zero_subst_mul_X_one` (the two-factor, `g = f`-constant case) and of
+this file's own two-factor `coeff_subst_X_zero_mul_subst_X_one`, via `MvPowerSeries.coeff_prod`'s
+antidiagonal expansion in place of a hand-rolled binary splitting of `MvPowerSeries.coeff_mul`. -/
+theorem coeff_subst_X_prod {ι S : Type*} [Fintype ι] [DecidableEq ι] [CommRing S]
+    (g : ι → S⟦X⟧) (e : ι →₀ ℕ) :
+    MvPowerSeries.coeff e (∏ i, (g i).subst (MvPowerSeries.X i : MvPowerSeries ι S)) =
+      ∏ i, PowerSeries.coeff (e i) (g i) := by
+  classical
+  set l₀ : ι →₀ (ι →₀ ℕ) := Finsupp.equivFunOnFinite.symm (fun i ↦ Finsupp.single i (e i))
+    with hl₀def
+  have hl₀ : ∀ i, l₀ i = Finsupp.single i (e i) := fun i ↦ rfl
+  rw [MvPowerSeries.coeff_prod (fun i ↦ (g i).subst (MvPowerSeries.X i)) e Finset.univ,
+    Finset.sum_eq_single l₀ ?_ ?_]
+  · refine Finset.prod_congr rfl fun i _ ↦ ?_
+    rw [hl₀, PowerSeries.coeff_subst_single]
+    simp
+  · intro l hl hlne
+    by_contra hprod
+    apply hlne
+    have hfact : ∀ i : ι, l i = Finsupp.single i ((l i) i) := fun i ↦ by
+      by_contra hc
+      exact hprod (Finset.prod_eq_zero (Finset.mem_univ i)
+        (by rw [PowerSeries.coeff_subst_single, if_neg hc]))
+    have hsum : Finset.univ.sum l = e := (Finset.mem_finsuppAntidiag.mp hl).1
+    have hcoord : ∀ i : ι, (l i) i = e i := fun i ↦ by
+      have happ : (Finset.univ.sum l) i = e i := by rw [hsum]
+      rw [Finsupp.finsetSum_apply] at happ
+      rw [Finset.sum_congr rfl (fun j _ ↦ by rw [hfact j, Finsupp.single_apply]),
+        Finset.sum_ite_eq' Finset.univ i (fun j ↦ (l j) j)] at happ
+      rwa [if_pos (Finset.mem_univ i)] at happ
+    ext1 i
+    rw [hfact i, hcoord i, hl₀ i]
+  · intro hnotmem
+    exact absurd (Finset.mem_finsuppAntidiag.mpr ⟨by
+      simp_rw [hl₀]; exact Finsupp.univ_sum_single e, Finset.subset_univ _⟩) hnotmem
+
+/-- **The outer-position monomial substitution, coefficientwise, general finite index type.** The
+`Fintype`-indexed generalization of `coeff_subst_monomial_diag` (which is specific to `Fin 2`, with
+the same univariate `f` embedded diagonally at both axes). -/
+theorem coeff_subst_monomial_diag_fintype {σ R : Type*} [Fintype σ] [DecidableEq σ] [CommRing R]
+    {f : R⟦X⟧}
+    (ha : MvPowerSeries.HasSubst
+      (fun i ↦ f.subst (MvPowerSeries.X i) : σ → MvPowerSeries σ R))
+    (m n : σ →₀ ℕ) (c : R) :
+    MvPowerSeries.coeff n
+        ((MvPowerSeries.monomial m c).subst (fun i ↦ f.subst (MvPowerSeries.X i))) =
+      c * ∏ i, PowerSeries.coeff (n i) (f ^ m i) := by
+  have hX : ∀ i : σ, PowerSeries.HasSubst (MvPowerSeries.X i : MvPowerSeries σ R) :=
+    fun i ↦ PowerSeries.HasSubst.X i
+  have key : (m.prod fun s e ↦ (f.subst (MvPowerSeries.X s) : MvPowerSeries σ R) ^ e) =
+      ∏ s, (f ^ m s).subst (MvPowerSeries.X s : MvPowerSeries σ R) := by
+    rw [Finsupp.prod_fintype _ _ (fun s ↦ pow_zero _)]
+    exact Finset.prod_congr rfl fun s _ ↦ (PowerSeries.subst_pow (hX s) f (m s)).symm
+  rw [MvPowerSeries.subst_monomial ha m c, key]
+  simp only [MvPowerSeries.algebraMap_apply, Algebra.algebraMap_self, RingHom.id_apply,
+    MvPowerSeries.coeff_C_mul]
+  rw [coeff_subst_X_prod]
+
+/-- **The outer-position monomial-correction identity, general finite index type.** The
+`Fintype`-indexed generalization of `coeff_subst_monomial_diag_of_degree_le`. The off-diagonal
+vanishing argument generalizes directly: `n ≠ m` together with `n.degree ≤ m.degree` forces some
+single coordinate `i` with `n i < m i` (exactly the `¬ m ≤ n` argument already used in
+`coeff_pow_add_monomial_sub_coeff_pow_mv` above), and that one coordinate's factor
+`coeff (n i) (f ^ m i)` already vanishes by order. -/
+theorem coeff_subst_monomial_diag_of_degree_le_fintype {σ R : Type*} [Fintype σ] [DecidableEq σ]
+    [CommRing R] {f : R⟦X⟧} {u : R} (hf0 : PowerSeries.coeff 0 f = 0)
+    (hf1 : PowerSeries.coeff 1 f = u)
+    (ha : MvPowerSeries.HasSubst
+      (fun i ↦ f.subst (MvPowerSeries.X i) : σ → MvPowerSeries σ R))
+    {m n : σ →₀ ℕ} (hn : n.degree ≤ m.degree) (c : R) :
+    MvPowerSeries.coeff n
+        ((MvPowerSeries.monomial m c).subst (fun i ↦ f.subst (MvPowerSeries.X i))) =
+      if n = m then c * u ^ m.degree else 0 := by
+  rw [coeff_subst_monomial_diag_fintype ha m n c]
+  by_cases hnm : n = m
+  · subst hnm
+    rw [if_pos rfl, Finsupp.degree_eq_sum, ← Finset.prod_pow_eq_pow_sum]
+    exact congrArg (c * ·) (Finset.prod_congr rfl
+      fun i _ ↦ coeff_pow_self_of_coeff_zero_eq_zero hf0 hf1 (n i))
+  · rw [if_neg hnm]
+    have hnotle : ¬ m ≤ n := by
+      intro hle
+      obtain ⟨k, hk⟩ := exists_add_of_le hle
+      have hdeg_eq : n.degree = m.degree + k.degree := by rw [hk]; exact map_add _ m k
+      have hk0 : k.degree = 0 := by omega
+      have hmn : m = n := by rw [hk, (Finsupp.degree_eq_zero_iff k).mp hk0, add_zero]
+      exact hnm hmn.symm
+    rw [Finsupp.le_def] at hnotle
+    simp only [not_forall, not_le] at hnotle
+    obtain ⟨i, hi⟩ := hnotle
+    have hconst : PowerSeries.constantCoeff f = 0 := by
+      rwa [← PowerSeries.coeff_zero_eq_constantCoeff]
+    have hzero : PowerSeries.coeff (n i) (f ^ m i) = 0 :=
+      PowerSeries.coeff_of_lt_order (n i)
+        (lt_of_lt_of_le (by exact_mod_cast hi)
+          (PowerSeries.le_order_pow_of_constantCoeff_eq_zero (m i) hconst))
+    rw [Finset.prod_eq_zero (Finset.mem_univ i) hzero, mul_zero]
+
+/-- The total-degree-`(n + 1)` truncation is the total-degree-`n` truncation plus the batch of new
+monomials at exactly the multi-indices of total degree `n + 1`, general finite index type. The
+`Fintype`-indexed generalization of `genTruncMv_succ`, summing over `degSet σ (n + 1)` directly
+(the multi-indices index themselves) rather than over `mkIdx`-generated pairs. -/
+theorem genTruncMv_succ_fintype {σ S : Type*} [Fintype σ] [DecidableEq σ] [CommRing S]
+    (Φ : MvPowerSeries σ S) (n : ℕ) :
+    genTruncMv Φ (n + 1) = genTruncMv Φ n +
+      ∑ m ∈ degSet σ (n + 1), MvPowerSeries.monomial m (MvPowerSeries.coeff m Φ) := by
+  refine MvPowerSeries.ext fun m ↦ ?_
+  rw [map_add, map_sum, coeff_genTruncMv, coeff_genTruncMv]
+  by_cases h1 : m.degree ≤ n
+  · have hsum : ∑ k ∈ degSet σ (n + 1), MvPowerSeries.coeff m
+        (MvPowerSeries.monomial k (MvPowerSeries.coeff k Φ)) = 0 :=
+      Finset.sum_eq_zero fun k hk ↦ by
+        rw [MvPowerSeries.coeff_monomial,
+          if_neg (fun hc ↦ by rw [hc, mem_degSet.mp hk] at h1; omega)]
+    rw [if_pos h1, if_pos (by omega), hsum, add_zero]
+  · rw [if_neg h1]
+    by_cases h2 : m.degree = n + 1
+    · rw [if_pos (by omega), zero_add, Finset.sum_eq_single m]
+      · rw [MvPowerSeries.coeff_monomial_same]
+      · intro k _ hkne
+        rw [MvPowerSeries.coeff_monomial, if_neg (Ne.symm hkne)]
+      · intro hmem
+        exact absurd (mem_degSet.mpr h2) hmem
+    · rw [if_neg (by omega), zero_add]
+      exact (Finset.sum_eq_zero fun k hk ↦ by
+        rw [MvPowerSeries.coeff_monomial,
+          if_neg (fun hc ↦ by rw [hc, mem_degSet.mp hk] at h2; omega)]).symm
+
+omit [Finite (ResidueField O)] in
+/-- **The local defining equation, recovered from an arbitrary global solution, general finite
+index type.** The `Fintype`-indexed generalization of `pi_mul_one_sub_pow_mul_coeff_of_subst_eq_mv`.
+-/
+theorem pi_mul_one_sub_pow_mul_coeff_of_subst_eq_mv_fintype {σ : Type*} [Fintype σ]
+    [DecidableEq σ] (hf : IsLubinTatePoly π (residueCard O) f) {Φ : MvPowerSeries σ O}
+    (hΦ0 : MvPowerSeries.constantCoeff Φ = 0)
+    (heq : f.subst Φ = Φ.subst (fun i ↦ f.subst (MvPowerSeries.X i)))
+    (d : ℕ) {n : σ →₀ ℕ} (hn : n.degree = d + 2) :
+    π * (1 - π ^ (d + 1)) * MvPowerSeries.coeff n Φ =
+      MvPowerSeries.coeff n
+          ((genTruncMv Φ (d + 1)).subst (fun i ↦ f.subst (MvPowerSeries.X i))) -
+        MvPowerSeries.coeff n (f.subst (genTruncMv Φ (d + 1))) := by
+  have hf0 : PowerSeries.constantCoeff f = 0 := by
+    rw [← PowerSeries.coeff_zero_eq_constantCoeff]; exact hf.1
+  have ha0 : ∀ i : σ, MvPowerSeries.constantCoeff
+      (f.subst (MvPowerSeries.X i) (S := O) (τ := σ)) = 0 :=
+    fun i ↦ PowerSeries.constantCoeff_subst_eq_zero (by simp) f hf0
+  have ha : MvPowerSeries.HasSubst
+      (fun i ↦ f.subst (MvPowerSeries.X i) (S := O) (τ := σ)) :=
+    MvPowerSeries.hasSubst_of_constantCoeff_zero ha0
+  have hΦ : PowerSeries.HasSubst Φ := PowerSeries.HasSubst.of_constantCoeff_zero hΦ0
+  have hnd : n.degree ≤ d + 2 := le_of_eq hn
+  have hA0 : MvPowerSeries.constantCoeff (genTruncMv Φ (d + 1)) = 0 :=
+    constantCoeff_genTruncMv hΦ0 (d + 1)
+  have hP0 : MvPowerSeries.constantCoeff (genTruncMv Φ (d + 2)) = 0 :=
+    constantCoeff_genTruncMv hΦ0 (d + 2)
+  have hPsub : PowerSeries.HasSubst (genTruncMv Φ (d + 2)) :=
+    PowerSeries.HasSubst.of_constantCoeff_zero hP0
+  have htrunc : ∀ j : σ →₀ ℕ, j.degree ≤ d + 2 →
+      MvPowerSeries.coeff j Φ = MvPowerSeries.coeff j (genTruncMv Φ (d + 2)) :=
+    fun j hj ↦ by rw [coeff_genTruncMv, if_pos hj]
+  have hnmem : n ∈ degSet σ (d + 2) := mem_degSet.mpr hn
+  have hMne : ∀ k ∈ degSet σ (d + 2), k ≠ 0 := fun k hk h0 ↦ by
+    have hkdeg := mem_degSet.mp hk; rw [h0] at hkdeg; simp at hkdeg
+  have hMdeg : ∀ k ∈ degSet σ (d + 2), n.degree ≤ (k : σ →₀ ℕ).degree := fun k hk ↦ by
+    rw [mem_degSet.mp hk]; exact hnd
+  have hinner : MvPowerSeries.coeff n (f.subst Φ) =
+      MvPowerSeries.coeff n (f.subst (genTruncMv Φ (d + 1))) +
+        PowerSeries.coeff 1 f * MvPowerSeries.coeff n Φ := by
+    rw [coeff_subst_eq_of_coeff_eq_mv f hΦ hPsub htrunc hnd, genTruncMv_succ_fintype,
+      coeff_subst_add_sum_monomial_mv f hA0 (degSet σ (d + 2)) (fun k ↦ k)
+        (fun k ↦ MvPowerSeries.coeff k Φ) hMne hMdeg,
+      Finset.sum_eq_single n]
+    · rw [if_pos rfl, smul_eq_mul]
+    · intro k _ hkne
+      rw [if_neg (fun hc ↦ hkne hc.symm)]
+    · intro hnotmem
+      exact absurd hnmem hnotmem
+  have houter : MvPowerSeries.coeff n (Φ.subst (fun i ↦ f.subst (MvPowerSeries.X i))) =
+      MvPowerSeries.coeff n
+          ((genTruncMv Φ (d + 1)).subst (fun i ↦ f.subst (MvPowerSeries.X i))) +
+        MvPowerSeries.coeff n Φ * π ^ (d + 2) := by
+    rw [coeff_subst_eq_of_coeff_eq_outer_mv ha ha0 htrunc hnd, genTruncMv_succ_fintype,
+      MvPowerSeries.subst_add ha]
+    simp only [← MvPowerSeries.substAlgHom_apply ha, map_sum, map_add]
+    simp only [MvPowerSeries.substAlgHom_apply ha]
+    congr 1
+    rw [Finset.sum_congr rfl (fun k hk ↦
+        coeff_subst_monomial_diag_of_degree_le_fintype hf.1 hf.2.1 ha
+          (m := k) (n := n) (by rw [mem_degSet.mp hk]; exact hnd) (MvPowerSeries.coeff k Φ)),
+      Finset.sum_eq_single n]
+    · rw [if_pos rfl, hn]
+    · intro k _ hkne
+      rw [if_neg (fun hc ↦ hkne hc.symm)]
+    · intro hnotmem
+      exact absurd hnmem hnotmem
+  have hcoeff_eq : MvPowerSeries.coeff n (f.subst Φ) =
+      MvPowerSeries.coeff n (Φ.subst (fun i ↦ f.subst (MvPowerSeries.X i))) := by rw [heq]
+  rw [hinner, houter, hf.2.1] at hcoeff_eq
+  linear_combination hcoeff_eq
+
+omit [Finite (ResidueField O)] in
+/-- **The general finite-index-type uniqueness theorem.** Any two solutions of
+`f.subst Φ = Φ.subst (fun i ↦ f.subst (X i))` with zero constant term that agree in total degree
+`1`, over any `Fintype` index type `σ`, are equal. The `Fintype`-indexed generalization of
+`eq_of_subst_eq_mv`, by the identical strong-induction argument. Applied below at `σ := Fin 3` to
+close associativity. -/
+theorem eq_of_subst_eq_mv_fintype {σ : Type*} [Fintype σ] [DecidableEq σ] (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) {Φ Ψ : MvPowerSeries σ O}
+    (hΦ0 : MvPowerSeries.constantCoeff Φ = 0) (hΨ0 : MvPowerSeries.constantCoeff Ψ = 0)
+    (hlin : ∀ m : σ →₀ ℕ, m.degree = 1 →
+      MvPowerSeries.coeff m Φ = MvPowerSeries.coeff m Ψ)
+    (heqΦ : f.subst Φ = Φ.subst (fun i ↦ f.subst (MvPowerSeries.X i)))
+    (heqΨ : f.subst Ψ = Ψ.subst (fun i ↦ f.subst (MvPowerSeries.X i))) : Φ = Ψ := by
+  suffices hall : ∀ N : ℕ, ∀ n : σ →₀ ℕ, n.degree = N →
+      MvPowerSeries.coeff n Φ = MvPowerSeries.coeff n Ψ by
+    exact MvPowerSeries.ext fun n ↦ hall n.degree n rfl
+  intro N
+  induction N using Nat.strong_induction_on with
+  | _ N ih =>
+    intro n hn
+    match N with
+    | 0 =>
+      rw [(Finsupp.degree_eq_zero_iff n).mp hn, MvPowerSeries.coeff_zero_eq_constantCoeff,
+        hΦ0, hΨ0]
+    | 1 => exact hlin n hn
+    | d + 2 =>
+      have htrunc : genTruncMv Φ (d + 1) = genTruncMv Ψ (d + 1) := by
+        refine MvPowerSeries.ext fun m ↦ ?_
+        rw [coeff_genTruncMv, coeff_genTruncMv]
+        split_ifs with hmle
+        · exact ih m.degree (by omega) m rfl
+        · rfl
+      have heΦ := pi_mul_one_sub_pow_mul_coeff_of_subst_eq_mv_fintype hf hΦ0 heqΦ d hn
+      have heΨ := pi_mul_one_sub_pow_mul_coeff_of_subst_eq_mv_fintype hf hΨ0 heqΨ d hn
+      rw [htrunc] at heΦ
+      have hunit : IsUnit (1 - π ^ (d + 1)) :=
+        isUnit_one_sub_self_of_mem_nonunits _
+          ((mem_maximalIdeal _).mp (Ideal.pow_mem_of_mem (maximalIdeal O)
+              ((mem_maximalIdeal π).mpr hπ.not_isUnit) (d + 1) (by omega)))
+      exact mul_left_cancel₀ (mul_ne_zero hπ.ne_zero hunit.ne_zero) (heΦ.trans heΨ.symm)
+
 /-! ### Toward associativity: composition of solutions of the functional equation
 
 Associativity, `F_π(F_π(X, Y), Z) = F_π(X, F_π(Y, Z))`, needs the 3-variable functional equation
