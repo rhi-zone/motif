@@ -10674,3 +10674,168 @@ by `grep -n sorry`, no hits) nor introduced elsewhere this pass.
 `8870d07` (`Langlands/FormalGroupInverse.lean`: `subst2`, `coeff_subst2_eq_of_dvd_sub`,
 `coeff_subst2_add_C_mul_X_pow`, `invFun`/`invPartialSum`/`inv`, `subst2_inv_eq_zero`,
 `eq_inv_of_subst2_eq_zero`, `subst2_subst_eq_zero`, and the `LubinTate.PhiInv` specialization).
+
+## 21. Phase 2c, fifteenth pass (2026-08-12): evaluation machinery built from scratch — `F_π(a,b)`
+well-defined for concrete `a, b`; `F_π[π^n]` defined; group structure still blocked
+
+`§19`/`§20` identified evaluation of a power series at a concrete ring element as the crux missing
+piece and scoped it as needing `PowerSeries.aeval`/`hasEvalIdeal`
+(`Mathlib/RingTheory/PowerSeries/Evaluation.lean`), which requires an `IsLinearTopology A A`
+instance on the target ring `A` that nothing in this repo or the vendored Mathlib connects to
+`v.adicCompletionIntegers`/`HeightOneSpectrum`-style rings. This pass verifies that finding still
+holds, builds evaluation from scratch instead at this repo's established lighter generality
+(`NormedField`/`IsUltrametricDist`/`CompleteSpace`, no `UniformSpace`/`IsLinearTopology` stack),
+lands `F_π(a, b)` for concrete `a, b` in the maximal ideal, defines `F_π[π^n]`, and precisely
+re-locates the remaining obstruction: not the evaluation itself, but making evaluation commute with
+formal substitution/composition.
+
+### The `aeval` route verified still closed, by direct re-grep
+
+Re-checked, not assumed: `grep -rn "IsLinearTopology"
+langlands/.lake/packages/mathlib/Mathlib/RingTheory/DedekindDomain/
+langlands/.lake/packages/mathlib/Mathlib/RingTheory/Valuation/` — zero hits in either location (the
+only hits for the identifier anywhere in this repo are in this pass's own new files' docstrings,
+discussing the gap in prose). No instance connects `IsLinearTopology` to this repo's adic-completion
+rings, confirming `§19`'s finding rather than superseding it. The from-scratch route is not a preference between two
+comparably-costed options; it is the only route available without first building a large,
+diamond-risk-prone instance stack this repo has explicitly chosen not to build (per `§19`'s own
+reasoning and the `ROADMAP.md` §6u/§6v diamond precedent).
+
+### What was built
+
+Four new files, each building on the last:
+
+**`Langlands/NonarchimedeanPowerSeriesEval.lean`** — univariate evaluation, fully general
+(`{R K : Type*} [CommRing R] [NormedField K] [IsUltrametricDist K] [CompleteSpace K] [Algebra R K]`,
+no Lubin-Tate-specific content):
+
+* `evalSummand f x n := algebraMap R K (coeff n f) * x ^ n`.
+* `norm_evalSummand_le` : `‖evalSummand f x n‖ ≤ ‖x‖ ^ n`, given every coefficient of `f`,
+  algebra-mapped into `K`, has norm at most `1`. **No factorial/Legendre estimate is needed here**
+  — this is the precise sense in which evaluating a bounded-coefficient series is a strictly
+  simpler convergence argument than `Langlands.NonarchimedeanExponential.exp`/`.log`, confirming the
+  task brief's conjecture on this point.
+* `tendsto_evalSummand_atTop_zero`, `summable_evalSummand` : the geometric bound plus
+  `Langlands.NonarchimedeanUnconditionalSummability.IsUltrametricDist.summable_of_tendsto_zero`
+  (built two passes ago, `§9`-era work on the wild-ramification thread) give **unconditional**
+  (`HasSum`, not merely sequential) convergence directly — a strictly stronger and more usable
+  result than `NonarchimedeanExponential.exp`'s own `Tendsto`-along-`range n` characterization,
+  obtained for free by building on top of the newer file instead of copying the older pattern.
+* `eval`, `hasSum_eval` : the evaluation itself (a `tsum`) and its defining `HasSum` property —
+  the precise sense in which `eval` "agrees with the formal object": every coefficient contributes
+  its term, order-independently.
+* `eval_add` : evaluation is additive where both series have bounded coefficients (`Summable.tsum_add`).
+  No multiplicativity (`eval (f * g) x = eval f x * eval g x`) or `subst`-compatibility is built —
+  scoped out, see below.
+
+**`Langlands/NonarchimedeanMvPowerSeriesEvalFin2.lean`** — the bivariate analogue, specialized to
+`σ = Fin 2` (the shape of `Phi`/`F_π`), still Lubin-Tate-independent:
+
+* `evalSummandMv Φ y n := algebraMap R K (coeff n Φ) * ∏ i, y i ^ n i`.
+* `norm_evalSummandMv_le` : bounded by `(max ‖y 0‖ ‖y 1‖) ^ n.degree` (`Finsupp.degree`, total
+  degree) — the direct multi-index generalization.
+* `tendsto_evalSummandMv_cofinite_zero` : convergence to `0` along `cofinite` on `Fin 2 →₀ ℕ`,
+  using Mathlib's **`Finsupp.finite_of_degree_lt`** (`Mathlib.Data.Finsupp.Weight`) for "finitely
+  many multi-indices below a given total degree" — found via loogle, and a materially better fit
+  than the bespoke `LubinTate.mkIdx`-based enumeration `Langlands/LubinTateFunctionalEquationBivariate.lean`
+  builds for a different purpose (asserting new coefficients in the total-degree recursion): using
+  it kept this file independent of the (1938-line) bivariate functional-equation file entirely.
+* `summable_evalSummandMv`, `evalMv`, `hasSum_evalMv` : the bivariate evaluation and its `HasSum`
+  property, mirroring the univariate file exactly.
+
+**`Langlands/LubinTateFormalGroupEval.lean`** — the Lubin-Tate specialization, now importing
+`LubinTateFunctionalEquationBivariate`:
+
+* Ambient setup: `Φ := Phi hπ hf : MvPowerSeries (Fin 2) O` (the abstract Lubin-Tate base, as in
+  `§11`-`§18`), a target `K` with `[NormedField K] [IsUltrametricDist K] [CompleteSpace K]
+  [Algebra O K]`, and `hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1` — "`O`'s image lies in `K`'s closed
+  unit ball", i.e. `O` embeds as (a subring of) `K`'s ring of integers. In the concrete case this
+  is `O := v.adicCompletionIntegers F`-shaped, `K := v.adicCompletion F`, with `hOK` immediate from
+  `adicCompletionIntegers`'s own definition (membership *is* `norm ≤ 1`, per
+  `Langlands.NonarchimedeanExponentialAdicCompletion.mem_adicCompletionIntegers_iff_norm_le_one`)
+  — not re-derived in this pass, but the exact fact that would supply `hOK` when instantiating at
+  the concrete ring.
+* `norm_algebraMap_coeff_Phi_le_one` : every coefficient of `Φ` is bounded, immediate from `hOK`
+  since `Φ`'s coefficients are literally elements of `O`.
+* `FPiEval hπ hf a b` : **`F_π(a, b)`**, the crux deliverable — the bivariate formal group law
+  evaluated at concrete `a, b : K`.
+* `hasSum_FPiEval` : **`F_π(a, b)` is well-defined and agrees with `Φ` coefficient-by-coefficient**,
+  for `a, b` in the maximal ideal (`‖a‖ < 1`, `‖b‖ < 1`).
+
+**`Langlands/LubinTateTorsionPoints.lean`** — the torsion-point definition, importing
+`LubinTateIterate`:
+
+* `piTorsion hπ hf n : Set K := {x | ‖x‖ < 1 ∧ eval (iter f n) x = 0}` — **`F_π[π^n]`, defined**,
+  directly on `LubinTateIterate.iter f n` (the `n`-fold iterate, `§19`), using the univariate `eval`.
+* `zero_mem_piTorsion` : `0 ∈ F_π[π^n]`, always — every evaluation summand of `iter f n` at `0`
+  vanishes termwise (constant term `0` by `isLubinTatePoly_iter`, every other term `0^k = 0`).
+
+### Design call: `eval`/`evalMv` are defined unconditionally (as `tsum`), not as `Option`/`dite`-guarded partial functions
+
+Matches Mathlib's own `tsum` convention (`0` when not summable) rather than this repo's own
+`NonarchimedeanExponential.exp`/`.log`, which use `if hx : ‖x‖ < radius then … else 0` explicitly.
+Verified, not merely stylistic: building on `HasSum`/`tsum` directly (rather than the manual
+`CauchySeq`+`dite` route those two definitions use) is what makes `hasSum_eval`/`hasSum_evalMv`
+land as genuine **unconditional** convergence facts for free via
+`IsUltrametricDist.summable_of_tendsto_zero`, rather than the weaker sequential-limit
+(`Tendsto`-along-`range n`) facts `tendsto_partialSum_exp`/`_log` are — `exp`/`log` only reach
+`HasSum` one file later, `Langlands.NonarchimedeanExponentialHasSum`, as a separate upgrade step.
+Building `eval` on `tsum` from the start absorbs that upgrade into the definition itself, at no
+extra proof cost (the bound `norm_evalSummand_le` needed for `HasSum` is exactly the bound
+`Summable`/`Tendsto` both need).
+
+### What remains, in dependency order — the obstruction has moved, not disappeared
+
+**The evaluation existence gap (`§19`/`§20`'s "item 1") is closed.** What replaces it as the sole
+remaining obstruction to torsion-point group structure is narrower and now precisely stated:
+**evaluation does not (yet) commute with formal substitution/composition.** Concretely, no theorem
+of the shape `eval (g.subst h) x = eval g (eval h x)` (univariate-into-univariate) or
+`eval (Φ.subst a) y = evalMv Φ (fun i ↦ eval (a i) y)` (bivariate-outer) exists anywhere in this
+repo. This is not a new discovery: `Langlands.NonarchimedeanExponentialHasSum`'s module docstring
+already flags the analogous `exp`/`log` mutual-inverse identity as needing "a strictly harder claim
+(a Cauchy-product/double-series rearrangement argument for the composite series)… not attempted",
+and `Langlands.NonarchimedeanCauchyProduct`'s docstring identifies "matching the tuple-indexed sum
+against `PowerSeries.subst`'s finite `finsum`" as the specific unassembled step — this pass confirms
+(rather than assumes) that gap is exactly what blocks the Lubin-Tate torsion thread too, and that no
+work already in this repo closes it. A candidate route, sketched but not attempted: `eval_mul`
+(`eval (f*g) x = eval f x * eval g x`) should follow from
+`Langlands.NonarchimedeanUnconditionalSummability`'s `tsum_mul_tsum_of_nonarchimedean` (already
+built, unused until now) applied to `evalSummand f x`/`evalSummand g x`, giving a Cauchy product
+indexed by `ℕ × ℕ`; matching that against `eval (f * g) x`'s `ℕ`-indexed sum needs a further
+antidiagonal-grouping lemma (not identified) to reindex `ℕ × ℕ` by `i + j`. Iterating `eval_mul`
+would give `eval (f^n) x = (eval f x)^n`, and from there `eval (g.subst f) x = eval g (eval f x)`
+via matching `PowerSeries.coeff_subst`'s `finsum` term-by-term against `eval`'s own `tsum` — a
+further nontrivial interchange, not sketched in detail. Estimated comparable in size to this pass's
+four files combined, not a small addition.
+
+1. **`eval_mul`/`eval_pow`** — multiplicativity of `eval`, via `tsum_mul_tsum_of_nonarchimedean`
+   plus an antidiagonal-reindexing lemma (not yet identified in Mathlib or built here).
+2. **`eval`-`subst` compatibility** (univariate and bivariate-outer forms) — the actual blocker for
+   every non-trivial torsion-point fact: the filtration `F_π[π^n] ⊆ F_π[π^{n+1}]` (transporting
+   `LubinTateIterate.iter_add`), closure of `piTorsion` under `LubinTate.FPiEval`-addition
+   (transporting `LubinTateIterate.subst_iter_Phi`), and additive inverses (transporting
+   `FormalGroupInverse.subst_Phi_subst_PhiInv_eq_zero`/`LubinTate.PhiInv`) all need it, and none of
+   the three is provable without it — confirmed while attempting `zero_mem_piTorsion`, the one
+   torsion-point fact that turned out *not* to need it (evaluation at the literal zero series-input
+   collapses every higher term regardless of composition).
+3. **`F_π[π^n]` as a genuine subgroup** — blocked on (1)-(2).
+4. **`K_n = K(F_π[π^n])`, `[K_n : K]`, total ramification** — blocked on (3), and still separately
+   needs the bridge from the abstract complete DVR `O` to this repo's
+   `IsDedekindDomain.HeightOneSpectrum`/`adicCompletionIntegers` vocabulary (unchanged from `§19`/`§20`
+   — `hOK`'s intended concrete instantiation is sketched above but not built).
+5. **The reciprocity map** — the eventual target, joining this thread to the norm-group index work
+   of Phase 2b (`§6ai`).
+
+### Build status
+
+`nix develop --command lake build` (run from `langlands/`) — whole project builds clean, `Build
+completed successfully (8748 jobs)`, no `sorry` in any of the four new files (confirmed by
+`grep -n sorry Langlands/NonarchimedeanPowerSeriesEval.lean
+Langlands/NonarchimedeanMvPowerSeriesEvalFin2.lean Langlands/LubinTateFormalGroupEval.lean
+Langlands/LubinTateTorsionPoints.lean`, no hits) nor introduced elsewhere this pass.
+
+### Commits
+
+`4093ba9` (`Langlands/NonarchimedeanPowerSeriesEval.lean`), `203f4dc`
+(`Langlands/NonarchimedeanMvPowerSeriesEvalFin2.lean`), `7e538ef`
+(`Langlands/LubinTateFormalGroupEval.lean`), `d314a00` (`Langlands/LubinTateTorsionPoints.lean`).
