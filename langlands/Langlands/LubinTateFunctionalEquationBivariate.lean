@@ -1,3 +1,4 @@
+import Mathlib.RingTheory.FormalGroup.Basic
 import Mathlib.RingTheory.MvPowerSeries.Expand
 import Langlands.LubinTateFunctionalEquation
 
@@ -1905,6 +1906,32 @@ theorem assoc_Phi (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O
     (subst_PhiAssocRight_eq_PhiAssocRight_subst hπ hf)
   rw [coeff_PhiAssocLeft_of_degree_le_one hπ hf (le_of_eq hm),
     coeff_PhiAssocRight_of_degree_le_one hπ hf (le_of_eq hm)]
+
+/-! ### `F_π` packaged as a Mathlib `FormalGroup` -/
+
+/-- **`F_π` packaged as a Mathlib `FormalGroup O`.** Every field is now available:
+`zero_constantCoeff` from `constantCoeff_Phi`, `lin_coeff_X`/`lin_coeff_Y` from
+`coeff_Phi_of_degree_eq_one`, and `assoc` from `assoc_Phi`. -/
+noncomputable def LubinTateFormalGroup (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) : FormalGroup O where
+  toPowerSeries := Phi hπ hf
+  zero_constantCoeff := constantCoeff_Phi hπ hf
+  lin_coeff_X := coeff_Phi_of_degree_eq_one hπ hf (by simp)
+  lin_coeff_Y := coeff_Phi_of_degree_eq_one hπ hf (by simp)
+  assoc := assoc_Phi hπ hf
+
+/-- **`F_π`'s `FormalGroup` package is commutative.** `subst_swapVars_Phi`, rewritten through the
+identification of `swapVars` with the explicit transposition `![X 1, X 0]` that `FormalGroup.IsComm`
+is stated against. -/
+instance isComm_LubinTateFormalGroup (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) : (LubinTateFormalGroup hπ hf).IsComm where
+  comm := by
+    show Phi hπ hf = (Phi hπ hf).subst
+      (![MvPowerSeries.X 1, MvPowerSeries.X 0] : Fin 2 → MvPowerSeries (Fin 2) O)
+    have hswap : (![MvPowerSeries.X 1, MvPowerSeries.X 0] : Fin 2 → MvPowerSeries (Fin 2) O) =
+        swapVars := by
+      funext i; fin_cases i <;> rfl
+    rw [hswap, subst_swapVars_Phi]
 
 end LubinTate
 
