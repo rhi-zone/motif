@@ -330,6 +330,10 @@ theorem finsupp_fin_two_ext {m n : Fin 2 →₀ ℕ} (h0 : m 0 = n 0) (h1 : m 1 
   · exact h0
   · exact h1
 
+/-- Disequality of bivariate multi-indices, witnessed at a single coordinate. -/
+theorem finsupp_fin_two_ne {m n : Fin 2 →₀ ℕ} (i : Fin 2) (h : m i ≠ n i) : m ≠ n :=
+  fun hc ↦ h (by rw [hc])
+
 /-- **Two axis-embedded univariate series multiply with independent coefficients.** Substituting
 `X 0` into `f` and `X 1` into `g` produces two bivariate series supported on the two coordinate
 axes, so the `e`-th coefficient of their product is the plain product of univariate coefficients
@@ -529,6 +533,40 @@ theorem coeff_subst_eq_of_coeff_eq_left_mv {ι R S : Type*} [DecidableEq ι] [Co
           (MvPowerSeries.le_order_pow_of_constantCoeff_eq_zero d hb0))
     rw [hzero, smul_zero, smul_zero]
 
+/-- A product `∏ s, (a s) ^ (d s)` of powers of series with zero constant term has no coefficient
+below total degree `d.degree`. The multi-index refinement of
+`MvPowerSeries.le_order_pow_of_constantCoeff_eq_zero`, extracted from the argument Mathlib uses
+inside `MvPowerSeries.truncTotal_subst_eq_truncTotal_subst_sum`. -/
+theorem coeff_prod_pow_eq_zero_of_degree_lt {σ τ S : Type*} [CommRing S]
+    {a : σ → MvPowerSeries τ S} (ha0 : ∀ i, MvPowerSeries.constantCoeff (a i) = 0)
+    {d : σ →₀ ℕ} {e : τ →₀ ℕ} (h : e.degree < d.degree) :
+    MvPowerSeries.coeff e (d.prod fun s j ↦ (a s) ^ j) = 0 := by
+  rw [Finsupp.prod]
+  refine MvPowerSeries.coeff_of_lt_order (lt_of_lt_of_le (Nat.cast_lt.mpr h)
+    (.trans ?_ (MvPowerSeries.le_order_prod _ d.support)))
+  exact_mod_cast Finset.sum_le_sum fun i _ ↦
+    MvPowerSeries.le_order_pow_of_constantCoeff_eq_zero _ (ha0 i)
+
+/-- **Truncation invariance, outer position, for a multivariate outer series.** If two
+multivariate series agree in total degree at most `N`, substituting a fixed admissible family with
+zero constant terms into either gives the same coefficient at every multi-index of total degree at
+most `N`. This is the shape needed for `Φ.subst (fun i ↦ f.subst (X i))`, where the *outer* series
+is itself multivariate — neither `LubinTate.coeff_subst_eq_of_dvd_sub_left` nor its multivariate
+restatement `coeff_subst_eq_of_coeff_eq_left_mv` covers it, since both take a univariate outer
+series. -/
+theorem coeff_subst_eq_of_coeff_eq_outer_mv {σ τ R S : Type*} [DecidableEq σ] [CommRing R]
+    [CommRing S] [Algebra R S] {a : σ → MvPowerSeries τ S} (ha : MvPowerSeries.HasSubst a)
+    (ha0 : ∀ i, MvPowerSeries.constantCoeff (a i) = 0) {Φ Φ' : MvPowerSeries σ R} {N : ℕ}
+    (hΦ : ∀ j : σ →₀ ℕ, j.degree ≤ N → MvPowerSeries.coeff j Φ = MvPowerSeries.coeff j Φ')
+    {e : τ →₀ ℕ} (he : e.degree ≤ N) :
+    MvPowerSeries.coeff e (Φ.subst a) = MvPowerSeries.coeff e (Φ'.subst a) := by
+  rw [MvPowerSeries.coeff_subst ha, MvPowerSeries.coeff_subst ha]
+  refine finsum_congr fun d ↦ ?_
+  by_cases hd : d.degree ≤ N
+  · rw [hΦ d hd]
+  · rw [coeff_prod_pow_eq_zero_of_degree_lt ha0 (by omega : e.degree < d.degree),
+      smul_zero, smul_zero]
+
 variable {π : O} {f : O⟦X⟧}
 
 /-- **The multi-index `(k, l) : Fin 2 →₀ ℕ`**, built from its two coordinate values via
@@ -675,6 +713,116 @@ theorem pi_mul_one_sub_pow_mul_PhiCoeff (hπ : Irreducible π)
   show π * (1 - π ^ (d + 1)) * (PhiState hπ hf (d + 2)).1.1 k = _
   simp only [PhiPartialSum, PhiState]
   exact pi_mul_mul_unit_inv_mul_choose _ _
+
+/-- Every multi-index of total degree `1` carries coefficient `1`: this is the `Φ ≡ X + Y (mod deg
+2)` base case, read off `PhiState`'s degree-`1` constant function. -/
+theorem PhiCoeff_of_degree_eq_one (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) {m : Fin 2 →₀ ℕ} (hm : m.degree = 1) :
+    PhiCoeff hπ hf m = 1 := by
+  simp [PhiCoeff, hm, PhiState]
+
+/-- **The coefficient-agreement invariant tying `PhiPartialSum` to `PhiCoeff`**, the multi-index
+generalization of `LubinTate.coeff_phiPartialSum`: the partial sum through total degree `n` agrees
+with `PhiCoeff` at every multi-index of total degree at most `n`, and vanishes beyond. Proved by
+induction on `n` matching `PhiState`'s own recursion shape (`0`, `1`, `d + 2`); at the recursive
+step, the batch of `d + 3` degree-`(d + 2)` monomials contributes at exactly one multi-index,
+selected by its first coordinate. -/
+theorem coeff_PhiPartialSum (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f)
+    (n : ℕ) (m : Fin 2 →₀ ℕ) :
+    MvPowerSeries.coeff m (PhiPartialSum hπ hf n) =
+      if m.degree ≤ n then PhiCoeff hπ hf m else 0 := by
+  induction n with
+  | zero =>
+    rw [PhiPartialSum_zero, map_zero]
+    by_cases hm : m.degree ≤ 0
+    · rw [if_pos hm, (Finsupp.degree_eq_zero_iff m).mp (by omega), PhiCoeff_zero]
+    · rw [if_neg hm]
+  | succ n ih =>
+    rcases n with _ | d
+    · -- total degree `1`: the fixed base case `Φ ≡ X + Y`
+      rw [PhiPartialSum_one, map_add, MvPowerSeries.coeff_X, MvPowerSeries.coeff_X]
+      rcases Nat.lt_or_ge m.degree 2 with hlt | hge
+      · rcases Nat.eq_zero_or_pos m.degree with h | h
+        · have hm : m = 0 := (Finsupp.degree_eq_zero_iff m).mp h
+          subst hm
+          rw [if_neg (finsupp_fin_two_ne (m := 0) (n := Finsupp.single 0 1) 0 (by simp)),
+            if_neg (finsupp_fin_two_ne (m := 0) (n := Finsupp.single 1 1) 1 (by simp)),
+            if_pos (show Finsupp.degree (0 : Fin 2 →₀ ℕ) ≤ 0 + 1 from by simp),
+            PhiCoeff_zero, add_zero]
+        · have hd2 : m 0 + m 1 = 1 := by rw [← degree_fin_two]; omega
+          rcases Nat.eq_zero_or_pos (m 0) with h0 | h0
+          · have hm : m = Finsupp.single 1 1 :=
+              finsupp_fin_two_ext (by simp [h0]) (by simp; omega)
+            subst hm
+            rw [if_neg (finsupp_fin_two_ne (m := Finsupp.single 1 1)
+                (n := Finsupp.single 0 1) 0 (by simp)),
+              if_pos (show (Finsupp.single (1 : Fin 2) 1) = Finsupp.single 1 1 from rfl),
+              if_pos (show Finsupp.degree (Finsupp.single (1 : Fin 2) (1 : ℕ)) ≤ 0 + 1 from by
+                simp),
+              PhiCoeff_of_degree_eq_one hπ hf (by simp), zero_add]
+          · have hm : m = Finsupp.single 0 1 :=
+              finsupp_fin_two_ext (by simp; omega) (by simp; omega)
+            subst hm
+            rw [if_pos (show (Finsupp.single (0 : Fin 2) 1) = Finsupp.single 0 1 from rfl),
+              if_neg (finsupp_fin_two_ne (m := Finsupp.single 0 1)
+                (n := Finsupp.single 1 1) 0 (by simp)),
+              if_pos (show Finsupp.degree (Finsupp.single (0 : Fin 2) (1 : ℕ)) ≤ 0 + 1 from by
+                simp),
+              PhiCoeff_of_degree_eq_one hπ hf (by simp), add_zero]
+      · rw [if_neg (show ¬(m = Finsupp.single 0 1) from fun hc ↦ by rw [hc] at hge; simp at hge),
+          if_neg (show ¬(m = Finsupp.single 1 1) from fun hc ↦ by rw [hc] at hge; simp at hge),
+          if_neg (show ¬(Finsupp.degree m ≤ 0 + 1) from by omega), add_zero]
+    · -- the recursive step at total degree `d + 2`
+      have hMdeg : ∀ k ∈ Finset.range (d + 3), (mkIdx k (d + 2 - k)).degree = d + 2 :=
+        fun k hk ↦ by
+          rw [Finset.mem_range] at hk
+          rw [degree_mkIdx]; omega
+      rw [PhiPartialSum_succ_succ, map_add, map_sum, ih]
+      by_cases hm2 : m.degree ≤ d + 1
+      · rw [if_pos hm2, if_pos (by omega),
+          Finset.sum_eq_zero (fun k hk ↦ by
+            rw [MvPowerSeries.coeff_monomial, if_neg (fun hc ↦ by
+              rw [hc, hMdeg k hk] at hm2; omega)]),
+          add_zero]
+      · rw [if_neg hm2, zero_add]
+        by_cases hm3 : m.degree = d + 2
+        · have hm0 : m 0 ≤ d + 2 := by rw [degree_fin_two] at hm3; omega
+          have hmk : mkIdx (m 0) (d + 2 - m 0) = m :=
+            finsupp_fin_two_ext (by simp) (by
+              simp only [mkIdx_apply_one]
+              rw [degree_fin_two] at hm3; omega)
+          rw [if_pos (by omega), Finset.sum_eq_single (m 0)]
+          · rw [hmk, MvPowerSeries.coeff_monomial_same]
+          · intro k hk hkne
+            rw [MvPowerSeries.coeff_monomial, if_neg (fun hc ↦ hkne (by rw [hc, mkIdx_apply_zero]))]
+          · intro hnot
+            exact absurd (Finset.mem_range.mpr (by omega)) hnot
+        · rw [if_neg (by omega)]
+          exact Finset.sum_eq_zero fun k hk ↦ by
+            rw [MvPowerSeries.coeff_monomial, if_neg (fun hc ↦ by
+              rw [hc, hMdeg k hk] at hm3; omega)]
+
+/-- **The fully assembled 2-variable series `Φ`**, built from `PhiCoeff` at every multi-index.
+Once `subst_Phi_eq_Phi_subst` and `eq_of_subst_eq_mv` are in hand, this *is* the Lubin-Tate formal
+group law `F_π`. -/
+noncomputable def Phi (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f) :
+    MvPowerSeries (Fin 2) O :=
+  MvPowerSeries.mk (PhiCoeff hπ hf)
+
+@[simp] theorem coeff_Phi (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f)
+    (m : Fin 2 →₀ ℕ) : MvPowerSeries.coeff m (Phi hπ hf) = PhiCoeff hπ hf m := rfl
+
+@[simp] theorem constantCoeff_Phi (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) :
+    MvPowerSeries.constantCoeff (Phi hπ hf) = 0 := by
+  rw [← MvPowerSeries.coeff_zero_eq_constantCoeff, coeff_Phi, PhiCoeff_zero]
+
+/-- `Φ` and its degree-`n` truncation agree at every multi-index of total degree at most `n` — the
+hypothesis both truncation-invariance lemmas consume. -/
+theorem coeff_Phi_eq_coeff_PhiPartialSum (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) (n : ℕ) (m : Fin 2 →₀ ℕ) (hm : m.degree ≤ n) :
+    MvPowerSeries.coeff m (Phi hπ hf) = MvPowerSeries.coeff m (PhiPartialSum hπ hf n) := by
+  rw [coeff_Phi, coeff_PhiPartialSum, if_pos hm]
 
 end LubinTate
 
