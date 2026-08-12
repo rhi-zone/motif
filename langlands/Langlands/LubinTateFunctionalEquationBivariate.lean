@@ -957,6 +957,217 @@ theorem subst_Phi_eq_Phi_subst (hπ : Irreducible π)
       rw [hinner, houter, hf.2.1]
       linear_combination hkey
 
+/-- **A generic (non-recursive) total-degree truncation of an arbitrary multivariate power
+series**, the multi-index analogue of `LubinTate.genTrunc`: `genTruncMv Φ n` keeps exactly the
+coefficients at multi-indices of total degree at most `n`. Used only for the uniqueness argument,
+where the solution being compared is arbitrary rather than `PhiCoeff`-constructed. -/
+noncomputable def genTruncMv {σ S : Type*} [CommRing S] (Φ : MvPowerSeries σ S) (n : ℕ) :
+    MvPowerSeries σ S :=
+  MvPowerSeries.mk (fun m ↦ if m.degree ≤ n then MvPowerSeries.coeff m Φ else 0)
+
+@[simp] theorem coeff_genTruncMv {σ S : Type*} [CommRing S] (Φ : MvPowerSeries σ S) (n : ℕ)
+    (m : σ →₀ ℕ) :
+    MvPowerSeries.coeff m (genTruncMv Φ n) = if m.degree ≤ n then MvPowerSeries.coeff m Φ else 0 :=
+  rfl
+
+theorem constantCoeff_genTruncMv {σ S : Type*} [CommRing S] {Φ : MvPowerSeries σ S}
+    (hΦ0 : MvPowerSeries.constantCoeff Φ = 0) (n : ℕ) :
+    MvPowerSeries.constantCoeff (genTruncMv Φ n) = 0 := by
+  rw [← MvPowerSeries.coeff_zero_eq_constantCoeff, coeff_genTruncMv,
+    if_pos (by simp : Finsupp.degree (0 : σ →₀ ℕ) ≤ n), MvPowerSeries.coeff_zero_eq_constantCoeff,
+    hΦ0]
+
+/-- The truncation at total degree `n + 1` is the truncation at `n` plus the batch of `n + 2`
+monomials at the multi-indices of total degree exactly `n + 1` — the multi-index analogue of
+`LubinTate.genTrunc_succ`, with a whole batch in place of a single monomial. -/
+theorem genTruncMv_succ {S : Type*} [CommRing S] (Φ : MvPowerSeries (Fin 2) S) (n : ℕ) :
+    genTruncMv Φ (n + 1) = genTruncMv Φ n +
+      ∑ k ∈ Finset.range (n + 2), MvPowerSeries.monomial (mkIdx k (n + 1 - k))
+        (MvPowerSeries.coeff (mkIdx k (n + 1 - k)) Φ) := by
+  have hMdeg : ∀ k ∈ Finset.range (n + 2), (mkIdx k (n + 1 - k)).degree = n + 1 := fun k hk ↦ by
+    rw [Finset.mem_range] at hk
+    rw [degree_mkIdx]; omega
+  refine MvPowerSeries.ext fun m ↦ ?_
+  rw [map_add, map_sum, coeff_genTruncMv, coeff_genTruncMv]
+  by_cases h1 : m.degree ≤ n
+  · have hsum : ∑ k ∈ Finset.range (n + 2), MvPowerSeries.coeff m
+        (MvPowerSeries.monomial (mkIdx k (n + 1 - k))
+          (MvPowerSeries.coeff (mkIdx k (n + 1 - k)) Φ)) = 0 :=
+      Finset.sum_eq_zero fun k hk ↦ by
+        rw [MvPowerSeries.coeff_monomial,
+          if_neg (fun hc ↦ by rw [hc, hMdeg k hk] at h1; omega)]
+    rw [if_pos h1, if_pos (by omega), hsum, add_zero]
+  · rw [if_neg h1]
+    by_cases h2 : m.degree = n + 1
+    · have hmk : mkIdx (m 0) (n + 1 - m 0) = m :=
+        finsupp_fin_two_ext (by simp) (by
+          simp only [mkIdx_apply_one]
+          rw [degree_fin_two] at h2; omega)
+      rw [if_pos (by omega), zero_add, Finset.sum_eq_single (m 0)]
+      · rw [hmk, MvPowerSeries.coeff_monomial_same]
+      · intro k hk hkne
+        rw [MvPowerSeries.coeff_monomial,
+          if_neg (fun hc ↦ hkne (by rw [hc, mkIdx_apply_zero]))]
+      · intro hmem
+        exact absurd (Finset.mem_range.mpr (by rw [degree_fin_two] at h2; omega)) hmem
+    · have hsum : ∑ k ∈ Finset.range (n + 2), MvPowerSeries.coeff m
+          (MvPowerSeries.monomial (mkIdx k (n + 1 - k))
+            (MvPowerSeries.coeff (mkIdx k (n + 1 - k)) Φ)) = 0 :=
+        Finset.sum_eq_zero fun k hk ↦ by
+          rw [MvPowerSeries.coeff_monomial,
+            if_neg (fun hc ↦ by rw [hc, hMdeg k hk] at h2; omega)]
+      rw [if_neg (by omega), zero_add, hsum]
+
+omit [Finite (ResidueField O)] in
+/-- **The local defining equation, recovered from an arbitrary global solution.** The multi-index
+analogue of `LubinTate.pi_mul_one_sub_pow_mul_coeff_of_subst_eq`: given *any* `Φ` with zero
+constant term solving the global 2-variable functional equation, its coefficient at a multi-index
+of total degree `d + 2` solves the same per-multi-index linear equation that
+`pi_mul_one_sub_pow_mul_PhiCoeff` establishes for the recursively-constructed solution — obtained
+by running the same facts against `genTruncMv Φ` in place of `PhiPartialSum`, then solving for the
+coefficient using the hypothesis rather than verifying it. This is what lets uniqueness be proved
+without any information about how a solution was constructed. -/
+theorem pi_mul_one_sub_pow_mul_coeff_of_subst_eq_mv
+    (hf : IsLubinTatePoly π (residueCard O) f) {Φ : MvPowerSeries (Fin 2) O}
+    (hΦ0 : MvPowerSeries.constantCoeff Φ = 0)
+    (heq : f.subst Φ = Φ.subst (fun i ↦ f.subst (MvPowerSeries.X i)))
+    (d : ℕ) {n : Fin 2 →₀ ℕ} (hn : n.degree = d + 2) :
+    π * (1 - π ^ (d + 1)) * MvPowerSeries.coeff n Φ =
+      MvPowerSeries.coeff n
+          ((genTruncMv Φ (d + 1)).subst (fun i ↦ f.subst (MvPowerSeries.X i))) -
+        MvPowerSeries.coeff n (f.subst (genTruncMv Φ (d + 1))) := by
+  have hf0 : PowerSeries.constantCoeff f = 0 := by
+    rw [← PowerSeries.coeff_zero_eq_constantCoeff]; exact hf.1
+  have ha0 : ∀ i, MvPowerSeries.constantCoeff
+      (f.subst (MvPowerSeries.X i) (S := O) (τ := Fin 2)) = 0 :=
+    fun i ↦ PowerSeries.constantCoeff_subst_eq_zero (by simp) f hf0
+  have ha : MvPowerSeries.HasSubst
+      (fun i ↦ f.subst (MvPowerSeries.X i) (S := O) (τ := Fin 2)) :=
+    MvPowerSeries.hasSubst_of_constantCoeff_zero ha0
+  have hΦ : PowerSeries.HasSubst Φ := PowerSeries.HasSubst.of_constantCoeff_zero hΦ0
+  have hnd : n.degree ≤ d + 2 := le_of_eq hn
+  have hA0 : MvPowerSeries.constantCoeff (genTruncMv Φ (d + 1)) = 0 :=
+    constantCoeff_genTruncMv hΦ0 (d + 1)
+  have hP0 : MvPowerSeries.constantCoeff (genTruncMv Φ (d + 2)) = 0 :=
+    constantCoeff_genTruncMv hΦ0 (d + 2)
+  have hPsub : PowerSeries.HasSubst (genTruncMv Φ (d + 2)) :=
+    PowerSeries.HasSubst.of_constantCoeff_zero hP0
+  have htrunc : ∀ j : Fin 2 →₀ ℕ, j.degree ≤ d + 2 →
+      MvPowerSeries.coeff j Φ = MvPowerSeries.coeff j (genTruncMv Φ (d + 2)) :=
+    fun j hj ↦ by rw [coeff_genTruncMv, if_pos hj]
+  have hMne : ∀ k ∈ Finset.range (d + 3), mkIdx k (d + 2 - k) ≠ 0 := fun k hk ↦ by
+    rw [Finset.mem_range] at hk
+    exact mkIdx_ne_zero k (d + 2 - k) (by omega)
+  have hMdeg : ∀ k ∈ Finset.range (d + 3), (mkIdx k (d + 2 - k)).degree = d + 2 := fun k hk ↦ by
+    rw [Finset.mem_range] at hk
+    rw [degree_mkIdx]; omega
+  have hn0le : n 0 ≤ d + 2 := by rw [degree_fin_two] at hn; omega
+  have hnmk : mkIdx (n 0) (d + 2 - n 0) = n :=
+    finsupp_fin_two_ext (by simp) (by
+      simp only [mkIdx_apply_one]
+      rw [degree_fin_two] at hn; omega)
+  have hnot : ∀ k ∈ Finset.range (d + 3), k ≠ n 0 → ¬ (n = mkIdx k (d + 2 - k)) :=
+    fun k _ hk hc ↦ hk (by rw [hc, mkIdx_apply_zero])
+  have hinner : MvPowerSeries.coeff n (f.subst Φ) =
+      MvPowerSeries.coeff n (f.subst (genTruncMv Φ (d + 1))) +
+        PowerSeries.coeff 1 f * MvPowerSeries.coeff n Φ := by
+    rw [coeff_subst_eq_of_coeff_eq_mv f hΦ hPsub htrunc hnd, genTruncMv_succ,
+      coeff_subst_add_sum_monomial_mv f hA0 (Finset.range (d + 3))
+        (fun k ↦ mkIdx k (d + 2 - k))
+        (fun k ↦ MvPowerSeries.coeff (mkIdx k (d + 2 - k)) Φ)
+        hMne (fun k hk ↦ by rw [hMdeg k hk]; exact hnd),
+      Finset.sum_eq_single (n 0)]
+    · rw [if_pos hnmk.symm, hnmk, smul_eq_mul]
+    · intro k hk hkne
+      rw [if_neg (hnot k hk hkne)]
+    · intro hmem
+      exact absurd (Finset.mem_range.mpr (by omega)) hmem
+  have houter : MvPowerSeries.coeff n (Φ.subst (fun i ↦ f.subst (MvPowerSeries.X i))) =
+      MvPowerSeries.coeff n
+          ((genTruncMv Φ (d + 1)).subst (fun i ↦ f.subst (MvPowerSeries.X i))) +
+        MvPowerSeries.coeff n Φ * π ^ (d + 2) := by
+    rw [coeff_subst_eq_of_coeff_eq_outer_mv ha ha0 htrunc hnd, genTruncMv_succ,
+      MvPowerSeries.subst_add ha]
+    simp only [← MvPowerSeries.substAlgHom_apply ha, map_sum, map_add]
+    simp only [MvPowerSeries.substAlgHom_apply ha]
+    congr 1
+    rw [Finset.sum_congr rfl (fun k hk ↦
+        coeff_subst_monomial_diag_of_degree_le hf.1 hf.2.1 ha
+          (m := mkIdx k (d + 2 - k)) (by rw [hMdeg k hk]; exact hnd) _),
+      Finset.sum_eq_single (n 0)]
+    · rw [if_pos hnmk.symm, hMdeg (n 0) (Finset.mem_range.mpr (by omega)), hnmk]
+    · intro k hk hkne
+      rw [if_neg (hnot k hk hkne)]
+    · intro hmem
+      exact absurd (Finset.mem_range.mpr (by omega)) hmem
+  have hcoeff_eq : MvPowerSeries.coeff n (f.subst Φ) =
+      MvPowerSeries.coeff n (Φ.subst (fun i ↦ f.subst (MvPowerSeries.X i))) := by rw [heq]
+  rw [hinner, houter, hf.2.1] at hcoeff_eq
+  linear_combination hcoeff_eq
+
+omit [Finite (ResidueField O)] in
+/-- **The 2-variable Lubin-Tate functional equation lemma, uniqueness half.** Any two solutions of
+`f.subst Φ = Φ.subst (fun i ↦ f.subst (X i))` with zero constant term that agree in total degree
+`1` are equal. Multi-index analogue of
+`LubinTate.eq_of_coeff_zero_eq_zero_of_coeff_one_eq_of_subst_eq`, by strong induction on total
+degree: once the coefficients below total degree `d + 2` agree, the truncations `genTruncMv _ (d +
+1)` are literally equal, so `pi_mul_one_sub_pow_mul_coeff_of_subst_eq_mv` exhibits both
+coefficients at every multi-index of total degree `d + 2` as solutions of the *same* linear
+equation, and the shared factor `π * (1 - π ^ (d + 1))` is regular in the domain `O`. -/
+theorem eq_of_subst_eq_mv (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f)
+    {Φ Ψ : MvPowerSeries (Fin 2) O} (hΦ0 : MvPowerSeries.constantCoeff Φ = 0)
+    (hΨ0 : MvPowerSeries.constantCoeff Ψ = 0)
+    (hlin : ∀ m : Fin 2 →₀ ℕ, m.degree = 1 →
+      MvPowerSeries.coeff m Φ = MvPowerSeries.coeff m Ψ)
+    (heqΦ : f.subst Φ = Φ.subst (fun i ↦ f.subst (MvPowerSeries.X i)))
+    (heqΨ : f.subst Ψ = Ψ.subst (fun i ↦ f.subst (MvPowerSeries.X i))) : Φ = Ψ := by
+  suffices hall : ∀ N : ℕ, ∀ n : Fin 2 →₀ ℕ, n.degree = N →
+      MvPowerSeries.coeff n Φ = MvPowerSeries.coeff n Ψ by
+    exact MvPowerSeries.ext fun n ↦ hall n.degree n rfl
+  intro N
+  induction N using Nat.strong_induction_on with
+  | _ N ih =>
+    intro n hn
+    match N with
+    | 0 =>
+      rw [(Finsupp.degree_eq_zero_iff n).mp hn, MvPowerSeries.coeff_zero_eq_constantCoeff,
+        hΦ0, hΨ0]
+    | 1 => exact hlin n hn
+    | d + 2 =>
+      have htrunc : genTruncMv Φ (d + 1) = genTruncMv Ψ (d + 1) := by
+        refine MvPowerSeries.ext fun m ↦ ?_
+        rw [coeff_genTruncMv, coeff_genTruncMv]
+        split_ifs with hmle
+        · exact ih m.degree (by omega) m rfl
+        · rfl
+      have heΦ := pi_mul_one_sub_pow_mul_coeff_of_subst_eq_mv hf hΦ0 heqΦ d hn
+      have heΨ := pi_mul_one_sub_pow_mul_coeff_of_subst_eq_mv hf hΨ0 heqΨ d hn
+      rw [htrunc] at heΦ
+      have hunit : IsUnit (1 - π ^ (d + 1)) :=
+        isUnit_one_sub_self_of_mem_nonunits _
+          ((mem_maximalIdeal _).mp (Ideal.pow_mem_of_mem (maximalIdeal O)
+            ((mem_maximalIdeal π).mpr hπ.not_isUnit) (d + 1) (by omega)))
+      exact mul_left_cancel₀ (mul_ne_zero hπ.ne_zero hunit.ne_zero) (heΦ.trans heΨ.symm)
+
+/-- Every linear coefficient of `Φ` is `1`, i.e. `Φ ≡ X + Y (mod deg 2)` — the normalization that,
+together with `subst_Phi_eq_Phi_subst` and `eq_of_subst_eq_mv`, characterizes `Φ` completely. -/
+theorem coeff_Phi_of_degree_eq_one (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) {m : Fin 2 →₀ ℕ} (hm : m.degree = 1) :
+    MvPowerSeries.coeff m (Phi hπ hf) = 1 := by
+  rw [coeff_Phi, PhiCoeff_of_degree_eq_one hπ hf hm]
+
+/-- **`Φ` is *the* Lubin-Tate formal group law `F_π`.** Any bivariate series with zero constant
+term, linear part `X + Y`, and satisfying the functional equation `f(Ψ(X,Y)) = Ψ(f(X), f(Y))` is
+equal to `Phi hπ hf`. Combining `subst_Phi_eq_Phi_subst` (such a series exists) with
+`eq_of_subst_eq_mv` (it is unique), this is the full characterization: `F_π` is well defined. -/
+theorem eq_Phi_of_subst_eq (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f)
+    {Ψ : MvPowerSeries (Fin 2) O} (hΨ0 : MvPowerSeries.constantCoeff Ψ = 0)
+    (hlin : ∀ m : Fin 2 →₀ ℕ, m.degree = 1 → MvPowerSeries.coeff m Ψ = 1)
+    (heq : f.subst Ψ = Ψ.subst (fun i ↦ f.subst (MvPowerSeries.X i))) : Ψ = Phi hπ hf :=
+  eq_of_subst_eq_mv hπ hf hΨ0 (constantCoeff_Phi hπ hf)
+    (fun m hm ↦ by rw [hlin m hm, coeff_Phi_of_degree_eq_one hπ hf hm]) heq
+    (subst_Phi_eq_Phi_subst hπ hf)
+
 end LubinTate
 
 end
