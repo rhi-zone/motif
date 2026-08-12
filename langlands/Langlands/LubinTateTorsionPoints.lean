@@ -1,5 +1,7 @@
 import Langlands.NonarchimedeanPowerSeriesEvalSubst
 import Langlands.NonarchimedeanPowerSeriesEvalSubstMv
+import Langlands.NonarchimedeanPowerSeriesEvalSubstMvIn
+import Langlands.NonarchimedeanMvPowerSeriesEvalSubstDiagonal
 import Langlands.LubinTateIterate
 import Langlands.LubinTateFormalGroupEval
 import Langlands.FormalGroupInverse
@@ -43,7 +45,7 @@ noncomputable section
 
 namespace LubinTate
 
-open NonarchimedeanPowerSeriesEval PowerSeries IsLocalRing
+open NonarchimedeanPowerSeriesEval NonarchimedeanMvPowerSeriesEvalFin2 PowerSeries IsLocalRing
 
 variable {O : Type*} [CommRing O] [IsDomain O] [IsDiscreteValuationRing O]
   [Finite (ResidueField O)]
@@ -148,6 +150,178 @@ theorem FPiEval_PhiInv_eq_zero (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (
     · rfl
   rw [hfam] at key
   exact key.symm
+
+/-- **`ROADMAP.md` §23's "Fact E"**: the `[π^n]`-endomorphism `eval (iter f n)` commutes with
+concrete `F_π`-addition. Chains `LubinTateIterate.subst_iter_Phi`'s formal identity
+`(iter f n).subst Φ = Φ.subst (fun i ↦ (iter f n).subst (X i))` through `evalMv` at `y = ![a, b]`:
+the LHS matches `NonarchimedeanPowerSeriesEval.eval_subst_A`'s shape ("Lemma A") exactly, giving
+`eval (iter f n) (FPiEval a b)`; the RHS matches `NonarchimedeanMvPowerSeriesEvalFin2.eval_subst_S`'s
+shape ("Lemma S") exactly (the substitutand family is precisely `diagEmbed (iter f n)`, by
+definition), giving `FPiEval (eval (iter f n) a) (eval (iter f n) b)`. -/
+theorem eval_iter_FPiEval (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) (n : ℕ) {a b : K} (ha : ‖a‖ < 1) (hb : ‖b‖ < 1) :
+    eval (iter f n) (FPiEval hπ hf a b) =
+      FPiEval hπ hf (eval (iter f n) a) (eval (iter f n) b) := by
+  have hΦ : ∀ m, ‖algebraMap O K (MvPowerSeries.coeff m (Phi hπ hf))‖ ≤ 1 :=
+    norm_algebraMap_coeff_Phi_le_one hOK hπ hf
+  have hΦ0 : MvPowerSeries.constantCoeff (Phi hπ hf) = 0 := constantCoeff_Phi hπ hf
+  have hfn0 : PowerSeries.constantCoeff (iter f n) = 0 := by
+    rw [← PowerSeries.coeff_zero_eq_constantCoeff]; exact (isLubinTatePoly_iter hf n).1
+  have hfn : ∀ k, ‖algebraMap O K (PowerSeries.coeff k (iter f n))‖ ≤ 1 := fun k ↦ hOK _
+  have hab0 : ‖(![a, b] : Fin 2 → K) 0‖ < 1 := by simpa using ha
+  have hab1 : ‖(![a, b] : Fin 2 → K) 1‖ < 1 := by simpa using hb
+  have hFPiEval_lt : ‖FPiEval hπ hf a b‖ < 1 := by
+    calc ‖FPiEval hπ hf a b‖ = ‖evalMv (Phi hπ hf) ![a, b]‖ := rfl
+      _ ≤ max ‖(![a, b] : Fin 2 → K) 0‖ ‖(![a, b] : Fin 2 → K) 1‖ :=
+          norm_evalMv_le hΦ hΦ0 hab0 hab1
+      _ < 1 := by rw [max_lt_iff]; exact ⟨hab0, hab1⟩
+  have keyDiag : PowerSeries.subst (Phi hπ hf) (iter f n) =
+      MvPowerSeries.subst (diagEmbed (iter f n)) (Phi hπ hf) := subst_iter_Phi hπ hf n
+  have hLHS : evalMv (PowerSeries.subst (Phi hπ hf) (iter f n)) ![a, b] =
+      eval (iter f n) (FPiEval hπ hf a b) :=
+    (eval_subst_A hfn hΦ0 hΦ hab0 hab1 hFPiEval_lt).symm
+  have hRHS : evalMv (MvPowerSeries.subst (diagEmbed (iter f n)) (Phi hπ hf)) ![a, b] =
+      FPiEval hπ hf (eval (iter f n) a) (eval (iter f n) b) := by
+    rw [eval_subst_S hfn0 hfn hΦ hab0 hab1]
+    congr 1
+    funext i
+    fin_cases i <;> rfl
+  rw [← hLHS, keyDiag]
+  exact hRHS
+
+omit [CompleteSpace K] in
+/-- **`F_π(a, b)` lies in the maximal ideal**, given both `a, b` do. -/
+theorem norm_FPiEval_lt (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) {a b : K} (ha : ‖a‖ < 1) (hb : ‖b‖ < 1) :
+    ‖FPiEval hπ hf a b‖ < 1 := by
+  have hΦ := norm_algebraMap_coeff_Phi_le_one hOK hπ hf
+  have hΦ0 := constantCoeff_Phi hπ hf
+  have hab0 : ‖(![a, b] : Fin 2 → K) 0‖ < 1 := by simpa using ha
+  have hab1 : ‖(![a, b] : Fin 2 → K) 1‖ < 1 := by simpa using hb
+  calc ‖FPiEval hπ hf a b‖ = ‖evalMv (Phi hπ hf) ![a, b]‖ := rfl
+    _ ≤ max ‖(![a, b] : Fin 2 → K) 0‖ ‖(![a, b] : Fin 2 → K) 1‖ := norm_evalMv_le hΦ hΦ0 hab0 hab1
+    _ < 1 := by rw [max_lt_iff]; exact ⟨hab0, hab1⟩
+
+/-- **`F_π(0, x) = x`**: the evaluated form of Mathlib's `FormalGroup.zeroX_eq_X` (the identity
+law `F(0, Y) = Y`, itself proved generically for any commutative `FormalGroup` from the
+associativity/identity axioms). Transports it through `eval_subst_mv` at the univariate family
+`![0, X]`, exactly as `FPiEval_PhiInv_eq_zero` transports `subst_Phi_PhiInv_eq_zero`. -/
+theorem FPiEval_zero (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) {x : K} (hx : ‖x‖ < 1) :
+    FPiEval hπ hf 0 x = x := by
+  have hΦ : ∀ n, ‖algebraMap O K (MvPowerSeries.coeff n (Phi hπ hf))‖ ≤ 1 :=
+    norm_algebraMap_coeff_Phi_le_one hOK hπ hf
+  have hA0 : PowerSeries.constantCoeff
+      ((![0, PowerSeries.X] : Fin 2 → PowerSeries O) 0) = 0 := by simp
+  have hA1 : PowerSeries.constantCoeff
+      ((![0, PowerSeries.X] : Fin 2 → PowerSeries O) 1) = 0 := by simp
+  have hzero : eval (0 : PowerSeries O) x = 0 := by unfold eval evalSummand; simp
+  have hA : ∀ i n, ‖algebraMap O K (PowerSeries.coeff n
+      ((![0, PowerSeries.X] : Fin 2 → PowerSeries O) i))‖ ≤ 1 := by
+    intro i n
+    fin_cases i
+    · simp
+    · exact coeff_bound_X n
+  have hAx0 : ‖eval ((![0, PowerSeries.X] : Fin 2 → PowerSeries O) 0) x‖ < 1 := by
+    show ‖eval (0 : PowerSeries O) x‖ < 1
+    rw [hzero]; simp
+  have hAx1 : ‖eval ((![0, PowerSeries.X] : Fin 2 → PowerSeries O) 1) x‖ < 1 := by
+    show ‖eval (PowerSeries.X : PowerSeries O) x‖ < 1
+    rwa [eval_X]
+  have key := eval_subst_mv (A := ![0, PowerSeries.X]) hΦ hA0 hA1 hA hx hAx0 hAx1
+  have hZ : MvPowerSeries.subst (![0, PowerSeries.X] : Fin 2 → PowerSeries O) (Phi hπ hf) =
+      PowerSeries.X :=
+    (LubinTateFormalGroup hπ hf).zeroX_eq_X
+  rw [hZ, eval_X] at key
+  have hfam : (fun i ↦ eval ((![0, PowerSeries.X] : Fin 2 → PowerSeries O) i) x) =
+      (![0, x] : Fin 2 → K) := by
+    funext i
+    fin_cases i
+    · show eval (0 : PowerSeries O) x = 0
+      exact hzero
+    · show eval (PowerSeries.X : PowerSeries O) x = x
+      exact eval_X x
+  rw [hfam] at key
+  exact key.symm
+
+/-- **`F_π(x, 0) = x`**: the `X`-slot analogue of `FPiEval_zero`, via Mathlib's
+`FormalGroup.Xzero_eq_X`. -/
+theorem FPiEval_zero' (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) {x : K} (hx : ‖x‖ < 1) :
+    FPiEval hπ hf x 0 = x := by
+  have hΦ : ∀ n, ‖algebraMap O K (MvPowerSeries.coeff n (Phi hπ hf))‖ ≤ 1 :=
+    norm_algebraMap_coeff_Phi_le_one hOK hπ hf
+  have hA0 : PowerSeries.constantCoeff
+      ((![PowerSeries.X, 0] : Fin 2 → PowerSeries O) 0) = 0 := by simp
+  have hA1 : PowerSeries.constantCoeff
+      ((![PowerSeries.X, 0] : Fin 2 → PowerSeries O) 1) = 0 := by simp
+  have hzero : eval (0 : PowerSeries O) x = 0 := by unfold eval evalSummand; simp
+  have hA : ∀ i n, ‖algebraMap O K (PowerSeries.coeff n
+      ((![PowerSeries.X, 0] : Fin 2 → PowerSeries O) i))‖ ≤ 1 := by
+    intro i n
+    fin_cases i
+    · exact coeff_bound_X n
+    · simp
+  have hAx0 : ‖eval ((![PowerSeries.X, 0] : Fin 2 → PowerSeries O) 0) x‖ < 1 := by
+    show ‖eval (PowerSeries.X : PowerSeries O) x‖ < 1
+    rwa [eval_X]
+  have hAx1 : ‖eval ((![PowerSeries.X, 0] : Fin 2 → PowerSeries O) 1) x‖ < 1 := by
+    show ‖eval (0 : PowerSeries O) x‖ < 1
+    rw [hzero]; simp
+  have key := eval_subst_mv (A := ![PowerSeries.X, 0]) hΦ hA0 hA1 hA hx hAx0 hAx1
+  have hZ : MvPowerSeries.subst (![PowerSeries.X, 0] : Fin 2 → PowerSeries O) (Phi hπ hf) =
+      PowerSeries.X :=
+    (LubinTateFormalGroup hπ hf).Xzero_eq_X
+  rw [hZ, eval_X] at key
+  have hfam : (fun i ↦ eval ((![PowerSeries.X, 0] : Fin 2 → PowerSeries O) i) x) =
+      (![x, 0] : Fin 2 → K) := by
+    funext i
+    fin_cases i
+    · show eval (PowerSeries.X : PowerSeries O) x = x
+      exact eval_X x
+    · show eval (0 : PowerSeries O) x = 0
+      exact hzero
+  rw [hfam] at key
+  exact key.symm
+
+/-- **`piTorsion` is closed under `F_π`-addition.** Via `eval_iter_FPiEval` (Fact E): torsion `x`,
+`y` (`eval (iter f n) x = eval (iter f n) y = 0`) give `eval (iter f n) (FPiEval x y) =
+FPiEval 0 0 = 0` (`evalMv_eq_zero_of_zero`, `Φ`'s zero constant term). -/
+theorem mem_piTorsion_FPiEval (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) (n : ℕ) {x y : K}
+    (hx : x ∈ piTorsion (K := K) hπ hf n) (hy : y ∈ piTorsion (K := K) hπ hf n) :
+    FPiEval hπ hf x y ∈ piTorsion (K := K) hπ hf n := by
+  obtain ⟨hxnorm, hxzero⟩ := hx
+  obtain ⟨hynorm, hyzero⟩ := hy
+  refine ⟨norm_FPiEval_lt hOK hπ hf hxnorm hynorm, ?_⟩
+  rw [eval_iter_FPiEval hOK hπ hf n hxnorm hynorm, hxzero, hyzero]
+  exact evalMv_eq_zero_of_zero (constantCoeff_Phi hπ hf) rfl rfl
+
+/-- **`piTorsion` is closed under `F_π`-additive inverse.** `FPiEval_PhiInv_eq_zero` gives
+`F_π(x, i_{F_π}(x)) = 0`; applying `eval (iter f n)` to both sides and using Fact E
+(`eval_iter_FPiEval`) plus `x`'s torsion and `FPiEval_zero` (`Φ(0, Z) = Z` evaluated) isolates
+`eval (iter f n) (eval (PhiInv hπ hf) x) = 0`. -/
+theorem mem_piTorsion_PhiInv (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) (n : ℕ) {x : K}
+    (hx : x ∈ piTorsion (K := K) hπ hf n) :
+    eval (PhiInv hπ hf) x ∈ piTorsion (K := K) hπ hf n := by
+  obtain ⟨hxnorm, hxzero⟩ := hx
+  have hPhiInvBound : ∀ k, ‖algebraMap O K (PowerSeries.coeff k (PhiInv hπ hf))‖ ≤ 1 :=
+    fun k ↦ hOK _
+  have hInvNorm : ‖eval (PhiInv hπ hf) x‖ < 1 :=
+    lt_of_le_of_lt (norm_eval_le hPhiInvBound (by simp [constantCoeff_PhiInv hπ hf]) hxnorm) hxnorm
+  refine ⟨hInvNorm, ?_⟩
+  have hzero : FPiEval hπ hf x (eval (PhiInv hπ hf) x) = 0 :=
+    FPiEval_PhiInv_eq_zero hOK hπ hf hxnorm
+  have hE := eval_iter_FPiEval hOK hπ hf n hxnorm hInvNorm
+  rw [hzero, eval_iter_zero hf n, hxzero] at hE
+  have hfn0 : PowerSeries.constantCoeff (iter f n) = 0 := by
+    rw [← PowerSeries.coeff_zero_eq_constantCoeff]; exact (isLubinTatePoly_iter hf n).1
+  have hfn : ∀ k, ‖algebraMap O K (PowerSeries.coeff k (iter f n))‖ ≤ 1 := fun k ↦ hOK _
+  have hzNorm : ‖eval (iter f n) (eval (PhiInv hπ hf) x)‖ < 1 :=
+    lt_of_le_of_lt (norm_eval_le hfn hfn0 hInvNorm) hInvNorm
+  rw [FPiEval_zero hOK hπ hf hzNorm] at hE
+  exact hE.symm
 
 end LubinTate
 

@@ -130,6 +130,53 @@ theorem hasSum_evalMv {Φ : MvPowerSeries (Fin 2) R}
     HasSum (evalSummandMv Φ y) (evalMv Φ y) :=
   (summable_evalSummandMv hΦ hy0 hy1).hasSum
 
+omit [CompleteSpace K] in
+/-- **`evalMv Φ y` lies in the maximal ideal whenever `Φ` does**: if `Φ` has zero constant term
+(so the index-`0` evaluation summand vanishes) and bounded coefficients, `‖evalMv Φ y‖ ≤
+max ‖y 0‖ ‖y 1‖`. Via the ultrametric bound `IsUltrametricDist.norm_tsum_le`, applied to
+`evalSummandMv Φ y`, mirroring `NonarchimedeanPowerSeriesEval.norm_eval_le`. -/
+theorem norm_evalMv_le {Φ : MvPowerSeries (Fin 2) R}
+    (hΦ : ∀ n, ‖algebraMap R K (MvPowerSeries.coeff n Φ)‖ ≤ 1)
+    (hΦ0 : MvPowerSeries.constantCoeff Φ = 0) {y : Fin 2 → K}
+    (hy0 : ‖y 0‖ < 1) (hy1 : ‖y 1‖ < 1) :
+    ‖evalMv Φ y‖ ≤ max ‖y 0‖ ‖y 1‖ := by
+  unfold evalMv
+  set r := max ‖y 0‖ ‖y 1‖ with hrdef
+  have hr0 : (0 : ℝ) ≤ r := le_trans (norm_nonneg _) (le_max_left _ _)
+  have hr1 : r < 1 := max_lt hy0 hy1
+  refine (IsUltrametricDist.norm_tsum_le _).trans (ciSup_le fun n ↦ ?_)
+  rcases eq_or_ne n 0 with hn | hn
+  · have h0 : evalSummandMv Φ y n = 0 := by
+      unfold evalSummandMv
+      rw [hn, MvPowerSeries.coeff_zero_eq_constantCoeff, hΦ0, map_zero, zero_mul]
+    rw [h0, norm_zero]
+    exact hr0
+  · have hdeg : 1 ≤ n.degree := by
+      rw [Nat.one_le_iff_ne_zero]
+      exact fun hcontra ↦ hn ((Finsupp.degree_eq_zero_iff n).mp hcontra)
+    calc ‖evalSummandMv Φ y n‖ ≤ r ^ n.degree := norm_evalSummandMv_le hΦ y n
+      _ ≤ r ^ 1 := pow_le_pow_of_le_one hr0 hr1.le hdeg
+      _ = r := pow_one _
+
+omit [IsUltrametricDist K] [CompleteSpace K] in
+/-- **`evalMv Φ y = 0` when both coordinates of `y` are `0`**, given `Φ` has zero constant term:
+every summand of index `n ≠ 0` has some factor `y i ^ n i` with `n i ≠ 0` and `y i = 0`, hence
+vanishes; the index-`0` summand vanishes because `Φ`'s constant term does. -/
+theorem evalMv_eq_zero_of_zero {Φ : MvPowerSeries (Fin 2) R}
+    (hΦ0 : MvPowerSeries.constantCoeff Φ = 0) {y : Fin 2 → K} (hy0 : y 0 = 0) (hy1 : y 1 = 0) :
+    evalMv Φ y = 0 := by
+  have hterm : ∀ n : Fin 2 →₀ ℕ, evalSummandMv Φ y n = 0 := by
+    intro n
+    unfold evalSummandMv
+    rcases eq_or_ne n 0 with hn | hn
+    · rw [hn, MvPowerSeries.coeff_zero_eq_constantCoeff, hΦ0, map_zero, zero_mul]
+    · obtain ⟨i, hi⟩ := DFunLike.ne_iff.mp hn
+      simp only [Finsupp.coe_zero, Pi.zero_apply] at hi
+      have hyi : y i = 0 := by fin_cases i <;> assumption
+      rw [Finset.prod_eq_zero (Finset.mem_univ i) (by rw [hyi]; exact zero_pow hi), mul_zero]
+  unfold evalMv
+  simp [hterm]
+
 omit [IsUltrametricDist K] [CompleteSpace K] in
 /-- The coefficients of `1 : MvPowerSeries (Fin 2) R`, algebra-mapped into `K`, are trivially
 bounded by `1`. -/
