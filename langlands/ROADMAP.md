@@ -9762,3 +9762,101 @@ where the comparable-to-`§7`-`§10` size estimate actually lives.
 including this pass's new file, builds clean and sorry-free (only pre-existing lint warnings
 unrelated to this pass's file, e.g. unused-section-variable linter notes in unrelated files, appear
 in the output).
+
+## 14. Phase 2c, eighth pass (2026-08-12): the multivariate linear-correction identity — item 1
+closed, sorry-free; item 2 not attempted
+
+Continuation of `§13`, closing item 1 of `§11`'s three-item breakdown. Added to the existing
+`Langlands/LubinTateFunctionalEquationBivariate.lean` (no new file — both new theorems are
+general-purpose algebra, no dependence on `O`/`π`/`IsLubinTatePoly`, so they sit naturally
+alongside the file's other content without needing the ambient `variable {O : Type*} [...]`
+context at all).
+
+**The genuine combinatorial question, resolved.** The task brief asked whether multi-index
+structure introduces real differences from the univariate case — specifically, whether several
+monomials of the *same* total degree `d` can interact through the correction identity, since
+(unlike the univariate case, which has exactly one degree-`d` monomial, `X^d`) the multivariate
+case has many exponents `n : σ →₀ ℕ` with `n.degree = d`. **They do not interact.** Adding a single
+correction `monomial m c` at exponent `m` only ever perturbs `coeff n` for `n = m`, for *any* other
+exponent `n` with `n.degree ≤ m.degree` — this covers both same-total-degree siblings (`n ≠ m`,
+`n.degree = m.degree`) and lower-degree exponents (`n.degree < m.degree`) in one uniform statement,
+with no correction leaking to either. The reason is order-theoretic, not analytic: Mathlib's
+`Finsupp.degree` (`Mathlib.Data.Finsupp.Weight`) is additive and monotone on `σ →₀ ℕ`, so `m ≤ n`
+(pointwise) together with `n.degree ≤ m.degree` forces `m = n` — writing `n = m + k` via
+`exists_add_of_le` (from the `CanonicallyOrderedAdd (σ →₀ ℕ)` instance) gives
+`n.degree = m.degree + k.degree`, and the degree bound forces `k.degree = 0`, hence `k = 0`
+(`Finsupp.degree_eq_zero_iff`) — matching multivariate monomial division
+(`MvPowerSeries.coeff_mul_monomial`'s `m ≤ n` guard) with the degree constraint annihilates the
+`n ≠ m` case *before* any of the constant-coefficient/geometric-sum reasoning the univariate proof
+needs; only the `n = m` case requires that machinery, and there it reproduces the univariate
+argument exactly (verbatim geometric-sum factorization, `coeff_mul_monomial` in place of
+`coeff_X_pow_mul'`).
+
+**What got built, with exact signatures.** Both in `Langlands/LubinTateFunctionalEquationBivariate.lean`,
+namespace `LubinTate`, stated over a fresh, independent set of type variables (not the file's
+ambient `O`) since neither depends on the Lubin-Tate/discrete-valuation-ring context at all:
+
+* `coeff_pow_add_monomial_sub_coeff_pow_mv` — the multi-index generalization of the univariate
+  Fact 2' (`coeff_pow_add_C_mul_X_pow_sub_coeff_pow`):
+  ```
+  theorem coeff_pow_add_monomial_sub_coeff_pow_mv {ι S : Type*} [DecidableEq ι] [CommRing S]
+      {A : MvPowerSeries ι S} (hA : MvPowerSeries.constantCoeff A = 0) (c : S)
+      {m : ι →₀ ℕ} (hm : m ≠ 0) {n : ι →₀ ℕ} (hn : n.degree ≤ m.degree) (d : ℕ) :
+      MvPowerSeries.coeff n ((A + MvPowerSeries.monomial m c) ^ d) =
+        MvPowerSeries.coeff n (A ^ d) + (if n = m ∧ d = 1 then c else 0)
+  ```
+  Proved by cases on `n = m`. The `n = m` branch is the univariate argument transcribed verbatim
+  (`geom_sum₂_mul` factorization, `MvPowerSeries.coeff_mul_monomial` with `tsub_self` in place of
+  `Nat.sub_self`, the same `Finset.sum_eq_single 0` constant-coefficient computation). The `n ≠ m`
+  branch is *new and simpler than the univariate case has any analogue of*: `¬ m ≤ n` follows
+  directly from the degree argument above, so `coeff_mul_monomial`'s `if_neg` branch gives `0`
+  immediately, with no need to inspect the geometric sum's constant coefficient at all — the
+  correction vanishes at *every* exponent `d`, not just `d ≠ 1`.
+* `coeff_subst_add_monomial_mv` — the `finsum`-assembled form, the multi-index generalization of
+  the univariate Fact 2 (`coeff_subst_add_C_mul_X_pow`) — **this closes item 1**:
+  ```
+  theorem coeff_subst_add_monomial_mv {ι R S : Type*} [DecidableEq ι] [CommRing R] [CommRing S]
+      [Algebra R S] (h : PowerSeries R) {A : MvPowerSeries ι S}
+      (hA : MvPowerSeries.constantCoeff A = 0) (c : S) {m : ι →₀ ℕ} (hm : m ≠ 0)
+      {n : ι →₀ ℕ} (hn : n.degree ≤ m.degree) :
+      MvPowerSeries.coeff n (h.subst (A + MvPowerSeries.monomial m c)) =
+        MvPowerSeries.coeff n (h.subst A) +
+          (if n = m then PowerSeries.coeff 1 h • c else 0)
+  ```
+  Assembles the previous theorem termwise across `PowerSeries.coeff_subst`'s `finsum` (the general
+  MV-codomain expansion `coeff e (h.subst a) = finsum (d, coeff d h • coeff e (a^d))`, already
+  present in Mathlib for `a : MvPowerSeries τ S` — no new Mathlib-side infrastructure needed here,
+  confirming `§13`'s note that outer-position substitution needs nothing new). Stated with `•`
+  rather than `*` in the correction term (`PowerSeries.coeff 1 h • c`, not `c * coeff 1 h`) because
+  `h : PowerSeries R` and `c : S` can live over genuinely different rings connected only by
+  `Algebra R S` — this is strictly more general than the univariate `coeff_subst_add_C_mul_X_pow`,
+  which has `R = S` and can use ring multiplication directly; specializing `R = S` with
+  `Algebra.id` and `smul_eq_mul` recovers the univariate statement's shape exactly. This generality
+  is not speculative over-engineering: the eventual application (item 2, not attempted this pass)
+  substitutes `R = S = O` directly, but stating the lemma at this level of generality is what the
+  CLAUDE.md Mathlib-quality rule asks for a general-purpose helper with no `O`-specific content.
+
+**What remains open, and precisely why.** Item 2 of `§11`'s three-item breakdown — the
+total-degree-indexed recursive construction of `Φ` itself, replacing `phiState`'s single-scalar
+per-degree state with a `(σ →₀ ℕ) → O` value at each total degree, together with the existence
+proof that the resulting `Φ` satisfies `f.subst Φ = Φ.subst (f, f)` — is **not attempted this
+pass**. This pass closes exactly the algebraic prerequisite item 2 needs (per `§13`'s own framing:
+"building the recursion requires item 1 first"), but building the recursion itself is separate,
+substantial work not budgeted for this pass: it needs, at minimum, (a) a way to enumerate the
+(generally more-than-one) exponents of a given total degree `d` over `Fin 2 →₀ ℕ` and iterate the
+one-monomial-at-a-time correction across all of them within a single total-degree step without
+disturbing already-fixed same-degree coefficients (now known to be safe, per the identity above,
+but not yet wired into an actual recursive definition); (b) confirming or defusing the
+termination-checker hazard `§11`/`§13` flagged for `phiState`'s univariate
+`Finset.sum`-buried-recursive-call pattern, now with an added index dimension — no experiment
+testing this was run; (c) the multivariate analogues of the univariate existence proof's other
+three facts (truncation invariance both directions, the leading-coefficient identity
+`coeff_pow_self_of_coeff_zero_eq_zero`) generalized from a single outer/inner univariate
+substitution to the bivariate `Φ.subst (f, f)` shape, none of which were touched this pass. No
+lemma statement for item 2 was written, sorry-containing or otherwise.
+
+**Build state at the point this pass stopped.** `nix develop --command lake build` from
+`langlands/` completes with `Build completed successfully (8748 jobs)` — the whole project,
+including this pass's two new theorems, builds clean and sorry-free (only pre-existing lint
+warnings unrelated to this pass's file appear in the output). Committed as
+`882040d feat(langlands): multivariate linear-correction identity — item 1 of §11 closed`.
