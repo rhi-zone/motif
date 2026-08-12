@@ -11002,3 +11002,179 @@ Langlands/LubinTateFormalGroupEval.lean`, no hits).
 (`Langlands/NonarchimedeanPowerSeriesEvalSubst.lean` new, `Langlands/LubinTateFormalGroupEval.lean`
 docstring — `eval_subst`), `d813f53` (`Langlands/LubinTateTorsionPoints.lean` —
 `mem_piTorsion_add`/`eval_iter_zero`).
+
+## 23. Phase 2c, seventeenth pass (2026-08-12): the bivariate-outer eval-subst compatibility
+`§22` scoped **closed** (`eval_subst_mv`); the standalone `F_π(x, i_{F_π}(x)) = 0` evaluated fact
+closed as a corollary; **`piTorsion` genuine subgroup structure NOT reached** — the true remaining
+gap, only fully visible after this pass's work, is precisely larger than `§22`'s framing, and is
+re-scoped exactly below
+
+`§22` framed the bivariate-outer eval-subst compatibility (`eval (MvPowerSeries.subst A Φ) x =
+evalMv Φ (fun i ↦ eval (A i) x)`, univariate family `A : Fin 2 → PowerSeries R`) as "the sole
+remaining prerequisite" for `F_π`-addition/inverse closure of `piTorsion`. This pass built and closed
+that lemma, then discovered — by actually trying to apply it to `LubinTateIterate.subst_iter_Phi`,
+not by assumption — that it is **necessary but not sufficient**: `subst_iter_Phi`'s shape needs two
+*further* compatibilities neither `§22` nor this pass's initial plan had identified. Those two are
+now precisely scoped, with every supporting Mathlib lemma each needs confirmed to exist by name.
+
+### `eval_subst_mv`: closed — the bivariate-outer, univariate-family-in, univariate-out case
+
+New file `Langlands/NonarchimedeanPowerSeriesEvalSubstMv.lean`. **`eval (MvPowerSeries.subst A Φ)
+x = evalMv Φ (fun i ↦ eval (A i) x)`**, for `Φ : MvPowerSeries (Fin 2) R` and a univariate family
+`A : Fin 2 → PowerSeries R` (each `A i` with zero constant term), both algebra-mapped into `K` with
+coefficients bounded by `1`, `x : K` with `‖x‖ < 1`, and both `‖eval (A i) x‖ < 1`.
+
+Exactly the route `§22` pre-verified: the same double-series-interchange shape as
+`NonarchimedeanPowerSeriesEvalSubst.eval_subst`, with the outer index generalized from `ℕ` to
+`Fin 2 →₀ ℕ` and the inner "row" reduced, via `prod_family_fin2` (`d.prod (fun s j ↦ A s ^ j) = A 0
+^ d 0 * A 1 ^ d 1`, `Finsupp.prod_fintype`/`Fin.prod_univ_two`), to an ordinary product of two
+*univariate* powers — so the inner sums are handled entirely by this repo's already-closed
+`eval_mul`/`eval_pow`, no fresh multivariate Cauchy product needed. `order_prod_family_ge`
+(`PowerSeries.le_order_pow_of_constantCoeff_eq_zero` on each factor, `PowerSeries.le_order_mul`
+combining them) gives the finiteness fact `coeff_subst_finset_degree` needs
+(`Finsupp.finite_of_degree_le`, confirmed available exactly as named). `hasSum_row_d_mv`/
+`hasSum_row_e_mv`/`tendsto_T_cofinite_zero_mv` mirror the univariate file's three lemmas one-for-one;
+`Set.Finite.prod` (confirmed via loogle, `Mathlib.Data.Finite.Prod`) replaces
+`Finset.range ×ˢ Finset.range` for the cofinite-zero argument. Landed with a
+`set_option maxHeartbeats 1000000 in`, same precedent as `eval_subst`.
+
+**Naming note**: this file's three row/tendsto lemmas needed a `_mv` suffix
+(`hasSum_row_d_mv`/`hasSum_row_e_mv`/`tendsto_T_cofinite_zero_mv`) — the univariate file's own
+`hasSum_row_d`/`hasSum_row_e`/`tendsto_T_cofinite_zero` already occupy those names in the same
+`NonarchimedeanPowerSeriesEval` namespace (both files open into it); reusing the bare names is a
+hard `already declared` error, not a silent shadow.
+
+Also added to `NonarchimedeanPowerSeriesEval.lean`: `eval_X`/`coeff_bound_X` (evaluation at `X` is
+the identity — the general-purpose companion `eval_one`/`coeff_bound_one` was missing) and
+`norm_eval_le` (`‖eval f x‖ ≤ ‖x‖` when `f` has zero constant term and bounded coefficients, via
+`IsUltrametricDist.norm_tsum_le` — confirmed via loogle, `Mathlib.Analysis.Normed.Group.Ultra`, an
+unconditional `‖∑' i, f i‖ ≤ ⨆ i, ‖f i‖` needing no summability hypothesis).
+
+### `FPiEval_PhiInv_eq_zero`: closed, as the first direct payoff
+
+`Langlands/LubinTateTorsionPoints.lean`. **`F_π(x, i_{F_π}(x)) = 0`** for any `x` in the maximal
+ideal of `K` (`hOK` convention as elsewhere), i.e. `FPiEval hπ hf x (eval (PhiInv hπ hf) x) = 0`.
+Transports the *formal* identity `FormalGroupInverse.subst_Phi_PhiInv_eq_zero`'s `Φ = 0` case
+(`Φ.subst ![X, PhiInv] = 0`, exactly `eval_subst_mv`'s shape — the family `![X, PhiInv]` is
+univariate) through `eval_subst_mv`, using `eval_X` for the first coordinate and `norm_eval_le` to
+confirm `‖eval (PhiInv hπ hf) x‖ ≤ ‖x‖ < 1` (so `Φ` is itself evaluable at the resulting point,
+without circularity — `norm_eval_le` needs only `PhiInv`'s coefficient bound and zero constant
+term, not anything about `Φ` itself). A genuine, standalone, if partial, torsion-adjacent fact —
+this alone does **not** show `piTorsion` is closed under `F_π`-inverse (see next section for why).
+
+### The true remaining gap: `eval_subst_mv` is necessary but not sufficient — two further
+compatibilities, both precisely scoped, neither previously identified
+
+Both `F_π`-addition-closure and (contrary to `§22`'s framing) `F_π`-inverse-closure of `piTorsion`
+route through evaluating `LubinTateIterate.subst_iter_Phi`'s *formal* identity
+```
+(iter f n).subst Φ = Φ.subst (fun i ↦ (iter f n).subst (X i))
+```
+at a concrete point `y = ![a, b]` via `evalMv`. Actually carrying this out (not merely assuming
+`eval_subst_mv` suffices) shows **neither side matches `eval_subst_mv`'s shape**:
+
+* **LHS** `(iter f n).subst Φ` is `PowerSeries.subst Φ (iter f n)` — a *univariate* outer series
+  (`g := iter f n`) substituted by **one bivariate substitutand** `Φ` (not a univariate family),
+  landing back in `MvPowerSeries (Fin 2) O`. Call the needed compatibility **Lemma A**:
+  `eval g (evalMv Φ y) = evalMv (g.subst Φ) y`.
+* **RHS** `Φ.subst (fun i ↦ (iter f n).subst (X i))` is a **bivariate outer `Φ`, substituted by a
+  same-arity family** `h : Fin 2 → MvPowerSeries (Fin 2) O` (`h i := g.subst (X i)`, `g` embedded
+  *diagonally* along axis `i` — not a univariate family, and the result is itself bivariate, not
+  univariate). Call this **Lemma S** (same-arity, diagonal): `evalMv (Φ.subst h) y = evalMv Φ
+  (fun i ↦ eval g (y i))`.
+
+Chaining: `evalMv` of `subst_iter_Phi`'s LHS at `y` gives `eval (iter f n) (FPiEval a b)` (via
+**Lemma A**); `evalMv` of its RHS gives `FPiEval (eval (iter f n) a) (eval (iter f n) b)` (via
+**Lemma S**). Equate them — this is **Fact E**, `eval (iter f n) (FPiEval a b) = FPiEval (eval
+(iter f n) a) (eval (iter f n) b)` — and both closures follow:
+
+* **Addition-closure**: `a, b` torsion (`eval (iter f n) a = eval (iter f n) b = 0`) ⟹ (Fact E) ⟹
+  `eval (iter f n) (FPiEval a b) = FPiEval 0 0 = 0` (`FormalGroup.Xzero`/`zeroX`'s evaluated form,
+  itself immediate — `Φ`'s degree-`≤ 1` part is `X + Y` and every higher term vanishes at `(0,0)`)
+  ⟹ `FPiEval a b` torsion.
+* **Inverse-closure**: `x` torsion. `FPiEval_PhiInv_eq_zero` (closed this pass) gives `FPiEval x
+  (eval PhiInv x) = 0`. Apply `eval (iter f n)` to both sides: LHS `= 0`. RHS, via Fact E, `=
+  FPiEval (eval (iter f n) x) (eval (iter f n) (eval PhiInv x)) = FPiEval 0 (eval (iter f n) (eval
+  PhiInv x))` (`x` torsion) `= eval (iter f n) (eval PhiInv x)` (`Φ(0, Z) = Z`, `FormalGroup.zeroX`
+  evaluated). So `eval (iter f n) (eval PhiInv x) = 0`, i.e. `eval PhiInv x` is torsion too.
+
+So **Fact E is the actual single remaining prerequisite** — not `eval_subst_mv` alone — and Fact E
+needs *both* Lemma A and Lemma S. Neither is a restatement of `eval_subst_mv`; both are new. Both
+were checked for buildability this pass (not assumed):
+
+* **Lemma A** needs bivariate `evalMv_mul`/`evalMv_pow` first — `NonarchimedeanMvPowerSeriesEvalFin2`
+  currently has *only* `eval`/`hasSum_eval` (its own docstring: "no ring/algebra-hom structure"). The
+  route mirrors `NonarchimedeanPowerSeriesEval.eval_mul`/`eval_pow` exactly: `MvPowerSeries.coeff_mul`
+  already provides the `Finset.HasAntidiagonal`-indexed convolution formula for `σ →₀ ℕ` (confirmed —
+  it is `Φ.coeff_mul`'s own stated form), so `Summable.tsum_mul_tsum_eq_tsum_sum_antidiagonal` should
+  transfer verbatim with `Fin 2 →₀ ℕ` in place of `ℕ`; the order argument for the underlying product
+  family's summability needs `MvPowerSeries.le_order_pow_of_constantCoeff_eq_zero` (already confirmed
+  available, `§22`). Once `evalMv_mul`/`evalMv_pow` exist, Lemma A itself is a further
+  double-series-interchange file, outer index `ℕ` (from `g`), inner index `Fin 2 →₀ ℕ` (from `Φ`'s
+  own structure) — roughly `eval_subst_mv`'s shape with the two index roles swapped.
+* **Lemma S** is more tractable than first appeared: `Mathlib.RingTheory.PowerSeries.Substitution`
+  already has **`PowerSeries.coeff_subst_single`** (`coeff e (subst (X s) f) = if e = single s (e s)
+  then coeff (e s) f else 0` — the exact "`g` embedded diagonally along axis `s`" coefficient
+  formula, confirmed present, not needing to be built) and, in its `Bivariate` section,
+  **`coeff_subst_X_zero_subst_mul_X_one`** (`coeff e (subst X₀ f * subst X₁ f) = coeff (e 0) f *
+  coeff (e 1) f`, for the *same* `f` in both slots) — a two-line generalization to different series
+  `f0`/`f1` in each slot (the proof pattern transfers verbatim, `Finset.sum_eq_single` at the unique
+  surviving antidiagonal point `(single 0 (e 0), single 1 (e 1))`) gives exactly the factorization
+  `coeff m (h 0 ^ d 0 * h 1 ^ d 1) = coeff (m 0) (g ^ d 0) * coeff (m 1) (g ^ d 1)` Lemma S's proof
+  needs — via `PowerSeries.subst_pow` (`subst a (f ^ n) = (subst a f) ^ n`, confirmed present) to
+  rewrite `h i ^ d i` as `(g ^ d i).subst (X i)` first. The double-interchange argument itself then
+  mirrors `eval_subst_mv`'s, but with **both** index roles (outer `d` and inner `m`) as `Fin 2 →₀ ℕ`
+  rather than one being `ℕ`; row-`d` grouping combines two independent univariate row-sums via
+  `HasSum.mul_of_nonarchimedean` (already used for `eval_mul`, confirmed present) rather than a
+  single `HasSum.mul_left`.
+
+**Neither Lemma A nor Lemma S was attempted this pass** — each is independently comparable in size
+to `eval_subst_mv` (a full new file), and Fact E needs both plus the final closure write-up on top;
+attempting them without the room to finish and verify would have left something broken, which the
+task's constraints explicitly rule out. This is a genuine, not cosmetic, re-scoping: `§22`'s
+"sole remaining prerequisite" undercounted by roughly a factor of two to three.
+
+### `piTorsion`: still **not** genuine subgroup structure — corrected expectation
+
+**The task brief's "major milestone" condition (`piTorsion` closing as a genuine subgroup) was
+not reached this pass**, and should not be read as close: Fact E (the item both closures actually
+need) requires two further un-built lemmas (Lemma A, Lemma S), not one. `piTorsion`'s only closure
+facts on record remain `zero_mem_piTorsion` and `mem_piTorsion_add` (`§22`), plus this pass's
+standalone (non-closure) `FPiEval_PhiInv_eq_zero`. The size computation (`|piTorsion hπ hf 1|`) was
+correctly not attempted — it is blocked on subgroup structure existing at all.
+
+### What remains, in dependency order
+
+1. **`evalMv_mul`/`evalMv_pow`** (`NonarchimedeanMvPowerSeriesEvalFin2`) — mirrors
+   `NonarchimedeanPowerSeriesEval.eval_mul`/`eval_pow`, generalizing `ℕ` to `Fin 2 →₀ ℕ` throughout;
+   every Mathlib piece confirmed available above. Prerequisite for Lemma A only.
+2. **Lemma A** (`eval g (evalMv Φ y) = evalMv (g.subst Φ) y`) — blocked on (1).
+3. **Lemma S** (`evalMv (Φ.subst (fun i ↦ g.subst (X i))) y = evalMv Φ (fun i ↦ eval g (y i))`) —
+   independent of (1)/(2); every Mathlib piece confirmed available above
+   (`PowerSeries.coeff_subst_single`, `PowerSeries.subst_pow`, `HasSum.mul_of_nonarchimedean`, the
+   `coeff_subst_X_zero_subst_mul_X_one` generalization).
+4. **Fact E** (`eval (iter f n) (FPiEval a b) = FPiEval (eval (iter f n) a) (eval (iter f n) b)`) —
+   `evalMv` of `subst_iter_Phi` at `![a, b]`, via (2) and (3), plus `FormalGroup.Xzero`/`zeroX`
+   evaluated at `(0, 0)`.
+5. **`F_π[π^n]` closure under `F_π`-addition and additive inverses** — blocked on (4); addition via
+   the derivation above, inverse via (4) plus this pass's `FPiEval_PhiInv_eq_zero` plus `Φ(0,Z)=Z`
+   evaluated (both derivations spelled out in full above, not merely asserted).
+6. **`F_π[π^n]` as a genuine subgroup (or closure-theorem bundle)** — blocked on (5); same
+   closure-theorem-vs-literal-Mathlib-structure judgment call as `mem_piTorsion_add`.
+7. **`K_n = K(F_π[π^n])`, `[K_n : K]`, total ramification** — blocked on (6), and still separately
+   needs the abstract-`O`-to-concrete-`HeightOneSpectrum` bridge (unchanged from `§19`–`§22`).
+8. **The reciprocity map** — the eventual target, joining this thread to `§6ai`.
+
+### Build status
+
+`nix develop --command lake build` (run from `langlands/`) — whole project builds clean, `Build
+completed successfully (8752 jobs)`, no `sorry` in any touched file (confirmed by
+`grep -n sorry Langlands/NonarchimedeanPowerSeriesEval.lean
+Langlands/NonarchimedeanPowerSeriesEvalSubstMv.lean Langlands/LubinTateTorsionPoints.lean`, no
+hits).
+
+### Commits
+
+`6253458` (`Langlands/NonarchimedeanPowerSeriesEvalSubstMv.lean` new — `eval_subst_mv`;
+`Langlands/NonarchimedeanPowerSeriesEval.lean` — `eval_X`/`coeff_bound_X`/`norm_eval_le`;
+`Langlands/LubinTateTorsionPoints.lean` — `FPiEval_PhiInv_eq_zero`; `Langlands.lean` import).
