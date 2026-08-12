@@ -2,6 +2,7 @@ import Mathlib.Analysis.Normed.Field.Ultra
 import Mathlib.Data.Finsupp.Weight
 import Mathlib.RingTheory.MvPowerSeries.Basic
 import Langlands.NonarchimedeanUnconditionalSummability
+import Langlands.NonarchimedeanPowerSeriesEval
 
 /-!
 # Evaluating a bivariate power series at a concrete point, `Fin 2` case
@@ -24,12 +25,21 @@ Two new ingredients over the univariate file:
 * `IsUltrametricDist.summable_of_tendsto_zero` is stated for an arbitrary index type, so it applies
   to `Fin 2 →₀ ℕ` exactly as it does to `ℕ`, with no adaptation.
 
+`evalMv_mul`/`evalMv_pow` (`ROADMAP.md` §23's "Lemma A" prerequisite) add the multiplicative
+structure, mirroring `Langlands.NonarchimedeanPowerSeriesEval.eval_mul`/`eval_pow` exactly:
+`MvPowerSeries.coeff_mul` supplies the `Finset.HasAntidiagonal`-indexed convolution formula for
+`Fin 2 →₀ ℕ` (the same `HasAntidiagonal` class `PowerSeries.coeff_subst_X_zero_subst_mul_X_one`
+already uses), so `Summable.tsum_mul_tsum_eq_tsum_sum_antidiagonal` transfers verbatim with
+`Fin 2 →₀ ℕ` in place of `ℕ`, and the underlying product family's summability comes from
+`HasSum.mul_of_nonarchimedean` via the `NonarchimedeanRing K` instance already built in
+`Langlands.NonarchimedeanPowerSeriesEval` (imported here for exactly that instance).
+
 ## What this does not do
 
-Same scope as `Langlands.NonarchimedeanPowerSeriesEval`: existence of the evaluation and its
-defining `HasSum` property only, no ring/algebra-hom structure and no compatibility with
-`MvPowerSeries.subst`/`PowerSeries.subst`. See `Langlands.LubinTateFormalGroupEval`'s module
-docstring for the Lubin-Tate-specific specialization and the precise remaining gap.
+No compatibility with `MvPowerSeries.subst`/`PowerSeries.subst` is proved here — that is
+`ROADMAP.md` §23's "Lemma A"/"Lemma S", built on top of `evalMv_mul`/`evalMv_pow`. See
+`Langlands.LubinTateFormalGroupEval`'s module docstring for the Lubin-Tate-specific specialization
+and the precise remaining gap.
 -/
 
 @[expose] public section
@@ -119,6 +129,100 @@ theorem hasSum_evalMv {Φ : MvPowerSeries (Fin 2) R}
     (hy0 : ‖y 0‖ < 1) (hy1 : ‖y 1‖ < 1) :
     HasSum (evalSummandMv Φ y) (evalMv Φ y) :=
   (summable_evalSummandMv hΦ hy0 hy1).hasSum
+
+omit [IsUltrametricDist K] [CompleteSpace K] in
+/-- The coefficients of `1 : MvPowerSeries (Fin 2) R`, algebra-mapped into `K`, are trivially
+bounded by `1`. -/
+theorem coeff_bound_one_mv :
+    ∀ n : Fin 2 →₀ ℕ,
+      ‖algebraMap R K (MvPowerSeries.coeff n (1 : MvPowerSeries (Fin 2) R))‖ ≤ 1 := by
+  intro n
+  rw [MvPowerSeries.coeff_one]
+  split <;> simp
+
+omit [IsUltrametricDist K] [CompleteSpace K] in
+/-- **Evaluation at `1` is `1`**: only the constant term (`= 1`) contributes. -/
+theorem evalMv_one (y : Fin 2 → K) : evalMv (1 : MvPowerSeries (Fin 2) R) y = 1 := by
+  have hterm : ∀ n : Fin 2 →₀ ℕ, evalSummandMv (1 : MvPowerSeries (Fin 2) R) y n =
+      if n = 0 then 1 else 0 := by
+    intro n
+    unfold evalSummandMv
+    rw [MvPowerSeries.coeff_one]
+    by_cases h : n = 0 <;> simp [h]
+  unfold evalMv
+  rw [tsum_eq_single 0 (by intro n hn; rw [hterm]; simp [hn])]
+  rw [hterm]; simp
+
+omit [CompleteSpace K] in
+/-- **Coefficient boundedness is preserved by multiplication.** `coeff n (Φ * Ψ)` is a sum, over
+`Finset.HasAntidiagonal.antidiagonal n`, of products of bounded coefficients; the nonempty-sum
+ultrametric bound `Finset.Nonempty.norm_sum_le_sup'_norm` bounds it by `1`. -/
+theorem coeff_bound_mul_mv {Φ Ψ : MvPowerSeries (Fin 2) R}
+    (hΦ : ∀ n, ‖algebraMap R K (MvPowerSeries.coeff n Φ)‖ ≤ 1)
+    (hΨ : ∀ n, ‖algebraMap R K (MvPowerSeries.coeff n Ψ)‖ ≤ 1) :
+    ∀ n, ‖algebraMap R K (MvPowerSeries.coeff n (Φ * Ψ))‖ ≤ 1 := by
+  intro n
+  rw [MvPowerSeries.coeff_mul, map_sum]
+  refine (Finset.Nonempty.norm_sum_le_sup'_norm
+    ⟨(0, n), Finset.HasAntidiagonal.mem_antidiagonal.mpr (by simp)⟩ _).trans ?_
+  simp only [Finset.sup'_le_iff]
+  intro p _
+  rw [map_mul, norm_mul]
+  calc ‖algebraMap R K (MvPowerSeries.coeff p.1 Φ)‖ * ‖algebraMap R K (MvPowerSeries.coeff p.2 Ψ)‖
+      ≤ 1 * 1 := mul_le_mul (hΦ p.1) (hΨ p.2) (norm_nonneg _) zero_le_one
+    _ = 1 := mul_one 1
+
+omit [CompleteSpace K] in
+/-- **Coefficient boundedness is preserved by powers**, by induction on `coeff_bound_mul_mv`. -/
+theorem coeff_bound_pow_mv {Φ : MvPowerSeries (Fin 2) R}
+    (hΦ : ∀ n, ‖algebraMap R K (MvPowerSeries.coeff n Φ)‖ ≤ 1) :
+    ∀ (m : ℕ) (n : Fin 2 →₀ ℕ), ‖algebraMap R K (MvPowerSeries.coeff n (Φ ^ m))‖ ≤ 1 := by
+  intro m
+  induction m with
+  | zero => intro n; simpa using coeff_bound_one_mv (R := R) (K := K) n
+  | succ m ih => intro n; rw [pow_succ]; exact coeff_bound_mul_mv ih hΦ n
+
+/-- **Evaluation is multiplicative**, on the domain where both series have
+algebra-mapped-norm-bounded coefficients and both point coordinates lie in the maximal ideal.
+Mirrors `Langlands.NonarchimedeanPowerSeriesEval.eval_mul`, with the outer index generalized from
+`ℕ` to `Fin 2 →₀ ℕ`: the Cauchy product formula `Summable.tsum_mul_tsum_eq_tsum_sum_antidiagonal`
+regroups the `(Fin 2 →₀ ℕ) × (Fin 2 →₀ ℕ)`-indexed product family (summable via
+`HasSum.mul_of_nonarchimedean`, using the `NonarchimedeanRing K` instance from
+`Langlands.NonarchimedeanPowerSeriesEval`) by `Finset.HasAntidiagonal.antidiagonal`, matching
+`MvPowerSeries.coeff_mul` term-by-term. -/
+theorem evalMv_mul {Φ Ψ : MvPowerSeries (Fin 2) R}
+    (hΦ : ∀ n, ‖algebraMap R K (MvPowerSeries.coeff n Φ)‖ ≤ 1)
+    (hΨ : ∀ n, ‖algebraMap R K (MvPowerSeries.coeff n Ψ)‖ ≤ 1) {y : Fin 2 → K}
+    (hy0 : ‖y 0‖ < 1) (hy1 : ‖y 1‖ < 1) :
+    evalMv (Φ * Ψ) y = evalMv Φ y * evalMv Ψ y := by
+  have hfg : Summable (fun p : (Fin 2 →₀ ℕ) × (Fin 2 →₀ ℕ) =>
+      evalSummandMv Φ y p.1 * evalSummandMv Ψ y p.2) :=
+    ((hasSum_evalMv hΦ hy0 hy1).mul_of_nonarchimedean (hasSum_evalMv hΨ hy0 hy1)).summable
+  unfold evalMv
+  rw [(summable_evalSummandMv hΦ hy0 hy1).tsum_mul_tsum_eq_tsum_sum_antidiagonal
+    (summable_evalSummandMv hΨ hy0 hy1) hfg]
+  congr 1
+  funext n
+  unfold evalSummandMv
+  rw [MvPowerSeries.coeff_mul, map_sum, Finset.sum_mul]
+  apply Finset.sum_congr rfl
+  intro p hp
+  rw [Finset.HasAntidiagonal.mem_antidiagonal] at hp
+  rw [map_mul, ← hp]
+  simp only [Finsupp.add_apply, pow_add]
+  rw [Finset.prod_mul_distrib]
+  ring
+
+/-- **Evaluation is compatible with powers**: `evalMv (Φ ^ m) y = evalMv Φ y ^ m`, by induction on
+`evalMv_mul`. -/
+theorem evalMv_pow {Φ : MvPowerSeries (Fin 2) R}
+    (hΦ : ∀ n, ‖algebraMap R K (MvPowerSeries.coeff n Φ)‖ ≤ 1) {y : Fin 2 → K}
+    (hy0 : ‖y 0‖ < 1) (hy1 : ‖y 1‖ < 1) :
+    ∀ m, evalMv (Φ ^ m) y = evalMv Φ y ^ m
+  | 0 => by simpa using evalMv_one (R := R) (K := K) y
+  | m + 1 => by
+      rw [pow_succ, pow_succ, evalMv_mul (coeff_bound_pow_mv hΦ m) hΦ hy0 hy1,
+        evalMv_pow hΦ hy0 hy1 m]
 
 end NonarchimedeanMvPowerSeriesEvalFin2
 
