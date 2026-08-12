@@ -1784,6 +1784,128 @@ theorem subst_PhiAssocRight_eq_PhiAssocRight_subst (hπ : Irreducible π)
       · exact hΦ12
   exact solvesFunctionalEq_subst hf0 hΦ0 hΦeq hasSubst_top hsolve_top
 
+/-! ### Associativity of `F_π` -/
+
+/-- **`PhiAssocLeft`'s coefficients in total degree at most `1`** collapse to the sum of the three
+coordinate variables' coefficients, regardless of the multi-index's total degree-`1` distribution:
+this is the "linear part of a composite is the sum of the linear parts" fact, obtained in two
+truncation steps (`coeff_subst_eq_of_coeff_eq_outer_mv` applied first to the outer `Φ`, then to the
+inner embedded `Φ`), each reducing `Φ` to its degree-`≤1` truncation `PhiPartialSum 1 = X + Y`. -/
+theorem coeff_PhiAssocLeft_of_degree_le_one (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) {e : Fin 3 →₀ ℕ} (he : e.degree ≤ 1) :
+    MvPowerSeries.coeff e (PhiAssocLeft hπ hf) =
+      MvPowerSeries.coeff e (MvPowerSeries.X 0 : MvPowerSeries (Fin 3) O) +
+        MvPowerSeries.coeff e (MvPowerSeries.X 1 : MvPowerSeries (Fin 3) O) +
+        MvPowerSeries.coeff e (MvPowerSeries.X 2 : MvPowerSeries (Fin 3) O) := by
+  have hΦ0 : MvPowerSeries.constantCoeff (Phi hπ hf) = 0 := constantCoeff_Phi hπ hf
+  have hasSubst_e01 : MvPowerSeries.HasSubst
+      (![MvPowerSeries.X (0 : Fin 3), MvPowerSeries.X (1 : Fin 3)] :
+        Fin 2 → MvPowerSeries (Fin 3) O) :=
+    MvPowerSeries.hasSubst_of_constantCoeff_zero (fun i ↦ by fin_cases i <;> simp)
+  have hB : MvPowerSeries.coeff e ((Phi hπ hf).subst
+        (![MvPowerSeries.X 0, MvPowerSeries.X 1] : Fin 2 → MvPowerSeries (Fin 3) O)) =
+      MvPowerSeries.coeff e (MvPowerSeries.X 0 : MvPowerSeries (Fin 3) O) +
+        MvPowerSeries.coeff e (MvPowerSeries.X 1 : MvPowerSeries (Fin 3) O) := by
+    rw [coeff_subst_eq_of_coeff_eq_outer_mv hasSubst_e01 (fun i ↦ by fin_cases i <;> simp)
+        (fun j hj ↦ coeff_Phi_eq_coeff_PhiPartialSum hπ hf 1 j hj) he,
+      PhiPartialSum_one, MvPowerSeries.subst_add hasSubst_e01,
+      MvPowerSeries.subst_X hasSubst_e01, MvPowerSeries.subst_X hasSubst_e01, map_add]
+    rfl
+  have hΦ01c0 : MvPowerSeries.constantCoeff ((Phi hπ hf).subst
+      (![MvPowerSeries.X 0, MvPowerSeries.X 1] : Fin 2 → MvPowerSeries (Fin 3) O)) = 0 :=
+    MvPowerSeries.constantCoeff_subst_eq_zero hasSubst_e01
+      (fun i ↦ by fin_cases i <;> simp) hΦ0
+  have hasSubst_top : MvPowerSeries.HasSubst
+      (![(Phi hπ hf).subst
+            (![MvPowerSeries.X 0, MvPowerSeries.X 1] : Fin 2 → MvPowerSeries (Fin 3) O),
+          MvPowerSeries.X 2] : Fin 2 → MvPowerSeries (Fin 3) O) :=
+    MvPowerSeries.hasSubst_of_constantCoeff_zero (fun i ↦ by fin_cases i <;> simp [hΦ01c0])
+  show MvPowerSeries.coeff e ((Phi hπ hf).subst
+      (![(Phi hπ hf).subst
+            (![MvPowerSeries.X 0, MvPowerSeries.X 1] : Fin 2 → MvPowerSeries (Fin 3) O),
+          MvPowerSeries.X 2] : Fin 2 → MvPowerSeries (Fin 3) O)) = _
+  rw [coeff_subst_eq_of_coeff_eq_outer_mv hasSubst_top (fun i ↦ by fin_cases i <;> simp [hΦ01c0])
+      (fun j hj ↦ coeff_Phi_eq_coeff_PhiPartialSum hπ hf 1 j hj) he,
+    PhiPartialSum_one, MvPowerSeries.subst_add hasSubst_top,
+    MvPowerSeries.subst_X hasSubst_top, MvPowerSeries.subst_X hasSubst_top, map_add]
+  show MvPowerSeries.coeff e ((Phi hπ hf).subst
+      (![MvPowerSeries.X 0, MvPowerSeries.X 1] : Fin 2 → MvPowerSeries (Fin 3) O)) +
+    MvPowerSeries.coeff e (MvPowerSeries.X 2 : MvPowerSeries (Fin 3) O) = _
+  rw [hB, add_assoc]
+
+/-- **`PhiAssocRight`'s coefficients in total degree at most `1`**, the mirror image of
+`coeff_PhiAssocLeft_of_degree_le_one`. -/
+theorem coeff_PhiAssocRight_of_degree_le_one (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) {e : Fin 3 →₀ ℕ} (he : e.degree ≤ 1) :
+    MvPowerSeries.coeff e (PhiAssocRight hπ hf) =
+      MvPowerSeries.coeff e (MvPowerSeries.X 0 : MvPowerSeries (Fin 3) O) +
+        MvPowerSeries.coeff e (MvPowerSeries.X 1 : MvPowerSeries (Fin 3) O) +
+        MvPowerSeries.coeff e (MvPowerSeries.X 2 : MvPowerSeries (Fin 3) O) := by
+  have hΦ0 : MvPowerSeries.constantCoeff (Phi hπ hf) = 0 := constantCoeff_Phi hπ hf
+  have hasSubst_e12 : MvPowerSeries.HasSubst
+      (![MvPowerSeries.X (1 : Fin 3), MvPowerSeries.X (2 : Fin 3)] :
+        Fin 2 → MvPowerSeries (Fin 3) O) :=
+    MvPowerSeries.hasSubst_of_constantCoeff_zero (fun i ↦ by fin_cases i <;> simp)
+  have hB : MvPowerSeries.coeff e ((Phi hπ hf).subst
+        (![MvPowerSeries.X 1, MvPowerSeries.X 2] : Fin 2 → MvPowerSeries (Fin 3) O)) =
+      MvPowerSeries.coeff e (MvPowerSeries.X 1 : MvPowerSeries (Fin 3) O) +
+        MvPowerSeries.coeff e (MvPowerSeries.X 2 : MvPowerSeries (Fin 3) O) := by
+    rw [coeff_subst_eq_of_coeff_eq_outer_mv hasSubst_e12 (fun i ↦ by fin_cases i <;> simp)
+        (fun j hj ↦ coeff_Phi_eq_coeff_PhiPartialSum hπ hf 1 j hj) he,
+      PhiPartialSum_one, MvPowerSeries.subst_add hasSubst_e12,
+      MvPowerSeries.subst_X hasSubst_e12, MvPowerSeries.subst_X hasSubst_e12, map_add]
+    rfl
+  have hΦ12c0 : MvPowerSeries.constantCoeff ((Phi hπ hf).subst
+      (![MvPowerSeries.X 1, MvPowerSeries.X 2] : Fin 2 → MvPowerSeries (Fin 3) O)) = 0 :=
+    MvPowerSeries.constantCoeff_subst_eq_zero hasSubst_e12
+      (fun i ↦ by fin_cases i <;> simp) hΦ0
+  have hasSubst_top : MvPowerSeries.HasSubst
+      (![MvPowerSeries.X 0,
+          (Phi hπ hf).subst
+            (![MvPowerSeries.X 1, MvPowerSeries.X 2] : Fin 2 → MvPowerSeries (Fin 3) O)]
+        : Fin 2 → MvPowerSeries (Fin 3) O) :=
+    MvPowerSeries.hasSubst_of_constantCoeff_zero (fun i ↦ by fin_cases i <;> simp [hΦ12c0])
+  show MvPowerSeries.coeff e ((Phi hπ hf).subst
+      (![MvPowerSeries.X 0,
+          (Phi hπ hf).subst
+            (![MvPowerSeries.X 1, MvPowerSeries.X 2] : Fin 2 → MvPowerSeries (Fin 3) O)]
+        : Fin 2 → MvPowerSeries (Fin 3) O)) = _
+  rw [coeff_subst_eq_of_coeff_eq_outer_mv hasSubst_top (fun i ↦ by fin_cases i <;> simp [hΦ12c0])
+      (fun j hj ↦ coeff_Phi_eq_coeff_PhiPartialSum hπ hf 1 j hj) he,
+    PhiPartialSum_one, MvPowerSeries.subst_add hasSubst_top,
+    MvPowerSeries.subst_X hasSubst_top, MvPowerSeries.subst_X hasSubst_top, map_add]
+  show MvPowerSeries.coeff e (MvPowerSeries.X 0 : MvPowerSeries (Fin 3) O) +
+    MvPowerSeries.coeff e ((Phi hπ hf).subst
+      (![MvPowerSeries.X 1, MvPowerSeries.X 2] : Fin 2 → MvPowerSeries (Fin 3) O)) = _
+  rw [hB, ← add_assoc]
+
+/-- **`F_π` is associative: `F_π(F_π(X, Y), Z) = F_π(X, F_π(Y, Z))`.** Both sides, as elements of
+`MvPowerSeries (Fin 3) O`, have zero constant term (`coeff_PhiAssocLeft_of_degree_le_one` /
+`coeff_PhiAssocRight_of_degree_le_one` at `e = 0`) and the same total-degree-`1` part (both equal
+`coeff e X 0 + coeff e X 1 + coeff e X 2`, by the same two lemmas), and each solves the 3-variable
+functional equation (`subst_PhiAssocLeft_eq_PhiAssocLeft_subst`,
+`subst_PhiAssocRight_eq_PhiAssocRight_subst`). The general finite-index-type uniqueness theorem
+`eq_of_subst_eq_mv_fintype` then identifies them.
+
+**This completes the Lubin-Tate formal group law `F_π` end to end**: existence
+(`subst_Phi_eq_Phi_subst`), uniqueness (`eq_of_subst_eq_mv`), commutativity
+(`subst_swapVars_Phi`), and now associativity. -/
+theorem assoc_Phi (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f) :
+    PhiAssocLeft hπ hf = PhiAssocRight hπ hf := by
+  have hΦ0L : MvPowerSeries.constantCoeff (PhiAssocLeft hπ hf) = 0 := by
+    rw [← MvPowerSeries.coeff_zero_eq_constantCoeff,
+      coeff_PhiAssocLeft_of_degree_le_one hπ hf (by simp)]
+    simp
+  have hΦ0R : MvPowerSeries.constantCoeff (PhiAssocRight hπ hf) = 0 := by
+    rw [← MvPowerSeries.coeff_zero_eq_constantCoeff,
+      coeff_PhiAssocRight_of_degree_le_one hπ hf (by simp)]
+    simp
+  refine eq_of_subst_eq_mv_fintype hπ hf hΦ0L hΦ0R (fun m hm ↦ ?_)
+    (subst_PhiAssocLeft_eq_PhiAssocLeft_subst hπ hf)
+    (subst_PhiAssocRight_eq_PhiAssocRight_subst hπ hf)
+  rw [coeff_PhiAssocLeft_of_degree_le_one hπ hf (le_of_eq hm),
+    coeff_PhiAssocRight_of_degree_le_one hπ hf (le_of_eq hm)]
+
 end LubinTate
 
 end
