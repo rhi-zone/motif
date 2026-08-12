@@ -70,6 +70,16 @@ noncomputable section
 
 open PowerSeries IsLocalRing MvPowerSeries
 
+/-- **A multivariate power series built from its coefficient function**, the multi-index analogue
+of `PowerSeries.mk`. `MvPowerSeries σ R` is definitionally `(σ →₀ ℕ) → R`, so this is the identity
+map; giving it a name (and the `simp` lemma `MvPowerSeries.coeff_mk`) lets a series be specified by
+a coefficient formula without appealing to that definitional unfolding at each use site, exactly as
+`PowerSeries.mk`/`PowerSeries.coeff_mk` do in the univariate case. -/
+def MvPowerSeries.mk {σ R : Type*} [Semiring R] (c : (σ →₀ ℕ) → R) : MvPowerSeries σ R := c
+
+@[simp] theorem MvPowerSeries.coeff_mk {σ R : Type*} [Semiring R] (c : (σ →₀ ℕ) → R)
+    (n : σ →₀ ℕ) : MvPowerSeries.coeff n (MvPowerSeries.mk c) = c n := rfl
+
 namespace LubinTate
 
 variable {O : Type*} [CommRing O] [IsDomain O] [IsDiscreteValuationRing O]
@@ -308,6 +318,216 @@ theorem coeff_subst_add_monomial_mv {ι R S : Type*} [DecidableEq ι] [CommRing 
         · rw [if_neg hnm, finsum_eq_zero_of_forall_eq_zero]
           intro d
           rw [if_neg (fun h ↦ hnm h.1), smul_zero]
+
+/-- The total degree of a bivariate multi-index is the sum of its two entries. -/
+theorem degree_fin_two (m : Fin 2 →₀ ℕ) : m.degree = m 0 + m 1 := by
+  rw [Finsupp.degree_eq_sum, Fin.sum_univ_two]
+
+/-- Extensionality for bivariate multi-indices: agreeing at `0` and at `1` is equality. -/
+theorem finsupp_fin_two_ext {m n : Fin 2 →₀ ℕ} (h0 : m 0 = n 0) (h1 : m 1 = n 1) : m = n := by
+  ext i
+  fin_cases i
+  · exact h0
+  · exact h1
+
+/-- **Two axis-embedded univariate series multiply with independent coefficients.** Substituting
+`X 0` into `f` and `X 1` into `g` produces two bivariate series supported on the two coordinate
+axes, so the `e`-th coefficient of their product is the plain product of univariate coefficients
+`coeff (e 0) f * coeff (e 1) g`. This is the two-series generalization of Mathlib's
+`PowerSeries.coeff_subst_X_zero_subst_mul_X_one` (the `g = f` case), proved the same way:
+`MvPowerSeries.coeff_mul`'s antidiagonal sum collapses to the single splitting
+`e = single 0 (e 0) + single 1 (e 1)`, every other term being killed by
+`PowerSeries.coeff_subst_single`'s axis-purity. -/
+theorem coeff_subst_X_zero_mul_subst_X_one {R : Type*} [CommRing R] (f g : R⟦X⟧)
+    (e : Fin 2 →₀ ℕ) :
+    MvPowerSeries.coeff e (f.subst (MvPowerSeries.X 0 : MvPowerSeries (Fin 2) R) *
+        g.subst (MvPowerSeries.X 1 : MvPowerSeries (Fin 2) R)) =
+      PowerSeries.coeff (e 0) f * PowerSeries.coeff (e 1) g := by
+  rw [MvPowerSeries.coeff_mul,
+    Finset.sum_eq_single (Finsupp.single 0 (e 0), Finsupp.single 1 (e 1)) ?_ ?_]
+  · grind [PowerSeries.coeff_subst_single]
+  · intro b hb hb'
+    by_contra hne
+    rcases ne_zero_and_ne_zero_of_mul hne with ⟨h0, h1⟩
+    simp only [PowerSeries.coeff_subst_single, ne_eq, ite_eq_right_iff, not_forall,
+      exists_prop] at h0 h1
+    apply hb'
+    rw [Prod.ext_iff, ← Finset.mem_antidiagonal.mp hb, h0.1, h1.1]
+    simp
+  · intro he
+    have he' : Finsupp.single 0 (e 0) + Finsupp.single 1 (e 1) = e := by
+      ext i; fin_cases i <;> simp
+    exact absurd (Finset.mem_antidiagonal.mpr he') he
+
+/-- **The outer-position monomial substitution, coefficientwise.** Substituting the *diagonal*
+family `a i := f.subst (X i)` (the univariate `f` embedded along each coordinate axis) into a single
+monomial `monomial m c` gives a series whose `n`-th coefficient factors completely into univariate
+data: `c * coeff (n 0) (f ^ m 0) * coeff (n 1) (f ^ m 1)`.
+
+This is the multivariate counterpart of the univariate step `(C c * X ^ k).subst g = C c * g ^ k`
+used in `LubinTate.subst_phi_eq_phi_subst`, and it is what makes the *outer*-position behaviour of
+a monomial correction computable. The proof combines `MvPowerSeries.subst_monomial` (which turns
+the monomial into `algebraMap c` times `∏ s, (a s) ^ (m s)`), `PowerSeries.subst_pow` (moving each
+power inside the axis embedding, so the factors are `(f ^ m 0).subst (X 0)` and
+`(f ^ m 1).subst (X 1)`), and `coeff_subst_X_zero_mul_subst_X_one` (which factors the coefficient
+of that axis-disjoint product). -/
+theorem coeff_subst_monomial_diag {R : Type*} [CommRing R] {f : R⟦X⟧}
+    (ha : MvPowerSeries.HasSubst
+      (fun i ↦ f.subst (MvPowerSeries.X i) : Fin 2 → MvPowerSeries (Fin 2) R))
+    (m n : Fin 2 →₀ ℕ) (c : R) :
+    MvPowerSeries.coeff n
+        ((MvPowerSeries.monomial m c).subst (fun i ↦ f.subst (MvPowerSeries.X i))) =
+      c * (PowerSeries.coeff (n 0) (f ^ m 0) * PowerSeries.coeff (n 1) (f ^ m 1)) := by
+  have hX : ∀ i : Fin 2, PowerSeries.HasSubst (MvPowerSeries.X i : MvPowerSeries (Fin 2) R) :=
+    fun i ↦ PowerSeries.HasSubst.X i
+  have key : (m.prod fun s e ↦ (f.subst (MvPowerSeries.X s) : MvPowerSeries (Fin 2) R) ^ e) =
+      (f ^ m 0).subst (MvPowerSeries.X 0 : MvPowerSeries (Fin 2) R) *
+        (f ^ m 1).subst (MvPowerSeries.X 1 : MvPowerSeries (Fin 2) R) := by
+    rw [Finsupp.prod_fintype _ _ (fun s ↦ pow_zero _), Fin.prod_univ_two,
+      PowerSeries.subst_pow (hX 0), PowerSeries.subst_pow (hX 1)]
+  rw [MvPowerSeries.subst_monomial ha m c, key]
+  simp only [MvPowerSeries.algebraMap_apply, Algebra.algebraMap_self, RingHom.id_apply,
+    MvPowerSeries.coeff_C_mul]
+  rw [coeff_subst_X_zero_mul_subst_X_one]
+
+/-- **The outer-position monomial-correction identity.** Specializing `coeff_subst_monomial_diag`
+to a series `f` with `coeff 0 f = 0` and `coeff 1 f = u`: at any multi-index `n` of total degree at
+most that of `m`, substituting the diagonal family `a i := f.subst (X i)` into `monomial m c`
+contributes exactly `c * u ^ m.degree` at `n = m` and nothing at all elsewhere.
+
+This is the *outer*-position analogue of `coeff_subst_add_monomial_mv` (which handles the inner
+position), and the exact multivariate replacement for the univariate `c * π ^ (d + 2)` term in
+`LubinTate.subst_phi_eq_phi_subst`, with `m.degree` in place of `d + 2`. The vanishing off the
+diagonal is the multivariate content: when `n ≠ m` but `n.degree ≤ m.degree`, one of the two
+coordinates must satisfy `n i < m i`, and `coeff (n i) (f ^ m i) = 0` there because `f ^ (m i)` has
+order at least `m i`. -/
+theorem coeff_subst_monomial_diag_of_degree_le {R : Type*} [CommRing R] {f : R⟦X⟧} {u : R}
+    (hf0 : PowerSeries.coeff 0 f = 0) (hf1 : PowerSeries.coeff 1 f = u)
+    (ha : MvPowerSeries.HasSubst
+      (fun i ↦ f.subst (MvPowerSeries.X i) : Fin 2 → MvPowerSeries (Fin 2) R))
+    {m n : Fin 2 →₀ ℕ} (hn : n.degree ≤ m.degree) (c : R) :
+    MvPowerSeries.coeff n
+        ((MvPowerSeries.monomial m c).subst (fun i ↦ f.subst (MvPowerSeries.X i))) =
+      if n = m then c * u ^ m.degree else 0 := by
+  rw [coeff_subst_monomial_diag ha m n c]
+  by_cases hnm : n = m
+  · subst hnm
+    rw [if_pos rfl, coeff_pow_self_of_coeff_zero_eq_zero hf0 hf1 (n 0),
+      coeff_pow_self_of_coeff_zero_eq_zero hf0 hf1 (n 1), ← pow_add, degree_fin_two]
+  · rw [if_neg hnm]
+    have hd : n 0 + n 1 ≤ m 0 + m 1 := by
+      rw [← degree_fin_two, ← degree_fin_two]; exact hn
+    have hlt : n 0 < m 0 ∨ n 1 < m 1 := by
+      by_contra hc
+      exact hnm (finsupp_fin_two_ext (by omega) (by omega))
+    have hconst : PowerSeries.constantCoeff f = 0 := by
+      rwa [← PowerSeries.coeff_zero_eq_constantCoeff]
+    have hzero : ∀ k d : ℕ, k < d → PowerSeries.coeff k (f ^ d) = 0 := fun k d hkd ↦
+      PowerSeries.coeff_of_lt_order k
+        (lt_of_lt_of_le (by exact_mod_cast hkd)
+          (PowerSeries.le_order_pow_of_constantCoeff_eq_zero d hconst))
+    rcases hlt with h | h
+    · rw [hzero _ _ h, zero_mul, mul_zero]
+    · rw [hzero _ _ h, mul_zero, mul_zero]
+
+/-- The constant coefficient of a finite sum of monomials at nonzero exponents vanishes. -/
+theorem constantCoeff_sum_monomial {ι S κ : Type*} [DecidableEq ι] [CommRing S] (s : Finset κ)
+    (M : κ → ι →₀ ℕ) (c : κ → S) (hM : ∀ k ∈ s, M k ≠ 0) :
+    MvPowerSeries.constantCoeff (∑ k ∈ s, MvPowerSeries.monomial (M k) (c k)) = 0 := by
+  rw [map_sum]
+  refine Finset.sum_eq_zero fun k hk ↦ ?_
+  rw [← MvPowerSeries.coeff_zero_eq_constantCoeff, MvPowerSeries.coeff_monomial,
+    if_neg (Ne.symm (hM k hk))]
+
+/-- **The inner-position linear-correction identity for a whole batch of monomials.** Iterating
+`coeff_subst_add_monomial_mv` across a `Finset` of simultaneous monomial corrections, all of total
+degree at least `n.degree`: each contributes its own `coeff 1 h • c k` exactly at `n = M k`, and the
+corrections do not interfere. This is what the multivariate recursion needs that the univariate one
+does not — at each total-degree step there is a *batch* of new coefficients (one per multi-index of
+that degree), not a single one. -/
+theorem coeff_subst_add_sum_monomial_mv {ι κ R S : Type*} [DecidableEq ι] [CommRing R] [CommRing S]
+    [Algebra R S] (h : PowerSeries R) {A : MvPowerSeries ι S}
+    (hA : MvPowerSeries.constantCoeff A = 0) {n : ι →₀ ℕ} (s : Finset κ) (M : κ → ι →₀ ℕ)
+    (c : κ → S) (hM : ∀ k ∈ s, M k ≠ 0) (hdeg : ∀ k ∈ s, n.degree ≤ (M k).degree) :
+    MvPowerSeries.coeff n (h.subst (A + ∑ k ∈ s, MvPowerSeries.monomial (M k) (c k))) =
+      MvPowerSeries.coeff n (h.subst A) +
+        ∑ k ∈ s, (if n = M k then PowerSeries.coeff 1 h • c k else 0) := by
+  classical
+  revert hM hdeg
+  induction s using Finset.induction with
+  | empty => intro _ _; simp
+  | @insert a s ha ih =>
+    intro hM hdeg
+    have hmem : ∀ k ∈ s, k ∈ insert a s := fun k hk ↦ Finset.mem_insert_of_mem hk
+    have hA' : MvPowerSeries.constantCoeff
+        (A + ∑ k ∈ s, MvPowerSeries.monomial (M k) (c k)) = 0 := by
+      rw [map_add, hA, constantCoeff_sum_monomial s M c (fun k hk ↦ hM k (hmem k hk)), add_zero]
+    rw [Finset.sum_insert ha, Finset.sum_insert ha,
+      show A + (MvPowerSeries.monomial (M a) (c a) +
+            ∑ k ∈ s, MvPowerSeries.monomial (M k) (c k)) =
+          (A + ∑ k ∈ s, MvPowerSeries.monomial (M k) (c k)) +
+            MvPowerSeries.monomial (M a) (c a) from by ring,
+      coeff_subst_add_monomial_mv h hA' (c a) (hM a (Finset.mem_insert_self a s))
+        (hdeg a (Finset.mem_insert_self a s)),
+      ih (fun k hk ↦ hM k (hmem k hk)) (fun k hk ↦ hdeg k (hmem k hk))]
+    ring
+
+/-- **Multi-index truncation invariance for powers.** If two multivariate series agree on every
+coefficient of total degree at most `N`, so do all their corresponding powers. Multivariate
+replacement for the univariate `X ^ (n + 1) ∣ (b - b')` propagation used in
+`LubinTate.coeff_subst_eq_of_dvd_sub`: total-degree truncation is not a divisibility condition, so
+the propagation is proved directly, by induction on the exponent through
+`MvPowerSeries.coeff_mul`'s antidiagonal (both factors of a splitting of `e` have total degree at
+most `e.degree`). -/
+theorem coeff_pow_eq_of_coeff_eq_mv {ι S : Type*} [DecidableEq ι] [CommRing S]
+    {b b' : MvPowerSeries ι S} {N : ℕ}
+    (hbb : ∀ j : ι →₀ ℕ, j.degree ≤ N → MvPowerSeries.coeff j b = MvPowerSeries.coeff j b')
+    (d : ℕ) {e : ι →₀ ℕ} (he : e.degree ≤ N) :
+    MvPowerSeries.coeff e (b ^ d) = MvPowerSeries.coeff e (b' ^ d) := by
+  induction d generalizing e with
+  | zero => simp
+  | succ d ih =>
+    rw [pow_succ, pow_succ, MvPowerSeries.coeff_mul, MvPowerSeries.coeff_mul]
+    refine Finset.sum_congr rfl fun p hp ↦ ?_
+    rw [Finset.mem_antidiagonal] at hp
+    have hdeg : (p.1 + p.2).degree = p.1.degree + p.2.degree := map_add _ _ _
+    rw [hp] at hdeg
+    rw [ih (by omega), hbb p.2 (by omega)]
+
+/-- **Truncation invariance, inner position, multivariate.** If two admissible multivariate
+substitutands agree in total degree at most `N`, substituting either into a fixed univariate outer
+series gives the same coefficient at every multi-index of total degree at most `N`. Multivariate
+analogue of `LubinTate.coeff_subst_eq_of_dvd_sub`. -/
+theorem coeff_subst_eq_of_coeff_eq_mv {ι R S : Type*} [DecidableEq ι] [CommRing R] [CommRing S]
+    [Algebra R S] (h : PowerSeries R) {b b' : MvPowerSeries ι S}
+    (hb : PowerSeries.HasSubst b) (hb' : PowerSeries.HasSubst b') {N : ℕ}
+    (hbb : ∀ j : ι →₀ ℕ, j.degree ≤ N → MvPowerSeries.coeff j b = MvPowerSeries.coeff j b')
+    {e : ι →₀ ℕ} (he : e.degree ≤ N) :
+    MvPowerSeries.coeff e (h.subst b) = MvPowerSeries.coeff e (h.subst b') := by
+  rw [PowerSeries.coeff_subst hb, PowerSeries.coeff_subst hb']
+  exact finsum_congr fun d ↦ by rw [coeff_pow_eq_of_coeff_eq_mv hbb d he]
+
+/-- **Truncation invariance, outer position, multivariate.** If two univariate outer series agree
+on coefficients `0, …, N`, substituting a fixed multivariate series with zero constant term into
+either gives the same coefficient at every multi-index of total degree at most `N`. Multivariate
+analogue of `LubinTate.coeff_subst_eq_of_dvd_sub_left`, and proved the same way: beyond degree `N`
+the substitutand's powers have order too large to contribute at `e`. -/
+theorem coeff_subst_eq_of_coeff_eq_left_mv {ι R S : Type*} [DecidableEq ι] [CommRing R]
+    [CommRing S] [Algebra R S] {b : MvPowerSeries ι S}
+    (hb0 : MvPowerSeries.constantCoeff b = 0) {h h' : PowerSeries R} {N : ℕ}
+    (hh : ∀ d ≤ N, PowerSeries.coeff d h = PowerSeries.coeff d h')
+    {e : ι →₀ ℕ} (he : e.degree ≤ N) :
+    MvPowerSeries.coeff e (h.subst b) = MvPowerSeries.coeff e (h'.subst b) := by
+  have hb : PowerSeries.HasSubst b := PowerSeries.HasSubst.of_constantCoeff_zero hb0
+  rw [PowerSeries.coeff_subst hb, PowerSeries.coeff_subst hb]
+  refine finsum_congr fun d ↦ ?_
+  by_cases hdn : d ≤ N
+  · rw [hh d hdn]
+  · have hzero : MvPowerSeries.coeff e (b ^ d) = 0 :=
+      MvPowerSeries.coeff_of_lt_order
+        (lt_of_lt_of_le (by exact_mod_cast (by omega : e.degree < d))
+          (MvPowerSeries.le_order_pow_of_constantCoeff_eq_zero d hb0))
+    rw [hzero, smul_zero, smul_zero]
 
 variable {π : O} {f : O⟦X⟧}
 
