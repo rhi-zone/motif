@@ -10109,3 +10109,139 @@ with both sides equal to `Φ.subst (fun i ↦ f.subst (X (swapFin i)))`. Uniquen
 `3b080a2` (outer-position monomial-correction chain), `025de98` (`Φ` assembled + truncation
 invariant), `56e5c92` (existence), `8ddc165` (uniqueness + `F_π` characterization), `c6cbea6`
 (commutativity).
+
+## 17. Phase 2c, eleventh pass (2026-08-12): associativity — 2-variable shortcut refuted, existence
+transports for free, uniqueness at `Fin 3` not attempted
+
+This pass investigated `§16`'s open item 1 (associativity) in two steps: first whether the
+`Fin 3` case could be avoided entirely via a currying trick reusing the `Fin 2` uniqueness theorem
+`eq_of_subst_eq_mv`, then — since it cannot — whether existence transports to `Fin 3` for the two
+specific bracketings without a new recursive construction. It does. Uniqueness at `Fin 3` (needed
+to actually conclude `F_π(F_π(X,Y),Z) = F_π(X,F_π(Y,Z))`) was not attempted this pass.
+
+### The curry-uniqueness-transport shortcut is blocked, confirmed
+
+The idea: view `MvPowerSeries (Fin 3) O` via `Fin 3 ≅ Fin 2 ⊕ Unit` as bivariate power series over
+the base ring `S := MvPowerSeries Unit O` (i.e. `O⟦Z⟧`), and reuse the already-closed `Fin 2`
+uniqueness theorem `eq_of_subst_eq_mv` over `S` in place of `O`. This is blocked, and the block is
+structural, not a fixable technicality:
+
+* `eq_of_subst_eq_mv` requires `[IsDiscreteValuationRing O]` (from the file's ambient `variable`
+  block, `Langlands/LubinTateFunctionalEquationBivariate.lean:106`). Instantiating it at `O := S =
+  MvPowerSeries Unit O` needs an `IsDiscreteValuationRing (MvPowerSeries Unit O)` instance. Mathlib
+  has **no such instance for a power series ring over a general DVR base**. The only
+  `IsDiscreteValuationRing k⟦X⟧`-shaped instance in Mathlib
+  (`Mathlib/RingTheory/PowerSeries/Inverse.lean:288`) is stated for `k` a **field**
+  (`variable {k : Type*} [Field k]`, line 270), not a general DVR — confirmed by grepping every
+  `IsDiscreteValuationRing` instance in Mathlib
+  (`Mathlib/NumberTheory/LocalField/Basic.lean`, `.../NumberField/Completion/FinitePlace.lean`,
+  `.../Padics/PadicIntegers.lean`, `.../PowerSeries/Inverse.lean`,
+  `.../WittVector/DiscreteValuationRing.lean` — none apply to `MvPowerSeries Unit O` for `O` a
+  non-field DVR). This matches the mathematically expected obstruction (a DVR has Krull dimension
+  1; `O⟦Z⟧` over a DVR `O` has dimension 2, since its maximal ideal `(π, Z)` is not principal) —
+  that dimension count itself was **not** independently formalized in Lean this pass (it is not a
+  Mathlib fact either), so it is not asserted as a machine-checked result, only as the reason the
+  needed instance does not and should not exist.
+* Separately and just as decisively: `IsLubinTatePoly π (residueCard S) f` — the hypothesis the
+  curried statement would need — does not even typecheck without that same instance. `LubinTate.lean`
+  defines `IsLubinTatePoly`, `residueCard`, and `residue` under the ambient
+  `variable {O : Type*} [CommRing O] [IsDomain O] [IsDiscreteValuationRing O]`
+  (`Langlands/LubinTate.lean:77`); `residue O : O →+* ResidueField O` and `IsLocalRing.maximalIdeal`
+  both come from the `IsLocalRing` instance that `IsDiscreteValuationRing` provides. With `O`
+  replaced by `S = MvPowerSeries Unit O`, elaborating `IsLubinTatePoly π (residueCard S) f` fails at
+  the same missing instance, before any question of `Finite (ResidueField S)` or Frobenius structure
+  even arises.
+
+So the shortcut is refuted, confirming (with the reason independently grounded in Mathlib's actual
+instance inventory, not just restated) the lead flagged uninvestigated in `§16`.
+
+### Existence transports for free — `PhiAssocLeft`, `PhiAssocRight` sorry-free
+
+Built and proved in `Langlands/LubinTateFunctionalEquationBivariate.lean`, no `Fin 3`-specific
+recursive construction (`PhiState`-`Fin 3` analogue) used at all:
+
+* `solvesFunctionalEq_subst` — **the general closure fact**: if `Ψ : MvPowerSeries σ O` solves
+  `f.subst Ψ = Ψ.subst (fun i ↦ f.subst (X i))` and each `c i : MvPowerSeries τ O` also solves that
+  equation (over index type `τ`), so does the composite `Ψ.subst c`. Stated for arbitrary finite
+  index types `σ`, `τ` and any univariate `f` with zero constant term — general-purpose, not
+  Lubin-Tate-specific, per the repo's Hard Constraints on Mathlib-quality generality. Proved by
+  chaining `subst_subst_mv` and `MvPowerSeries.subst_comp_subst_apply` four times (the same two
+  lemmas `subst_swapVars_Phi` used for commutativity).
+* `solvesFunctionalEq_X` — a bare coordinate variable `X j` solves the equation trivially
+  (`MvPowerSeries.subst_X`).
+* `PhiAssocLeft`, `PhiAssocRight` — `F_π(F_π(X,Y),Z)` and `F_π(X,F_π(Y,Z))` respectively, each
+  assembled as an element of `MvPowerSeries (Fin 3) O` by substituting `Phi hπ hf` (embedded along
+  two different pairs of the three axes via `![X i, X j]`) and a bare coordinate variable into
+  `Phi hπ hf`'s two variables.
+* `subst_PhiAssocLeft_eq_PhiAssocLeft_subst`, `subst_PhiAssocRight_eq_PhiAssocRight_subst` — each
+  of `PhiAssocLeft`/`PhiAssocRight` solves the 3-variable functional equation `f.subst Φ =
+  Φ.subst (fun i : Fin 3 ↦ f.subst (X i))`. Each is two applications of `solvesFunctionalEq_subst`:
+  once to show the inner embedded `Phi hπ hf` composed with `![X i, X j]` solves it (using
+  `subst_Phi_eq_Phi_subst` and `solvesFunctionalEq_X` for the two axis embeddings), then again to
+  show the outer composite (that inner solution paired with the third bare coordinate) solves it.
+
+This confirms the task brief's speculative lead that existence transports compositionally, the
+same way `subst_swapVars_Phi` got commutativity's swapped series to solve the 2-variable equation
+for free. It also confirms the corollary flagged in the brief: the real obstruction to closing
+associativity is specifically **uniqueness** at `Fin 3`, not existence.
+
+### What `Fin 3` uniqueness would need — not attempted this pass
+
+`eq_of_subst_eq_mv`'s proof (`Langlands/LubinTateFunctionalEquationBivariate.lean:1138`) is
+`Fin 2`-specific in its *proof*, not just narratable at a high level — strong induction on total
+degree, at each step reducing to a **batched** per-multi-index linear equation
+(`pi_mul_one_sub_pow_mul_coeff_of_subst_eq_mv`) solved via a shared-unit cancellation. Every piece
+of `Fin 2`-specific enumeration it depends on would need a `Fin 3` analogue:
+
+* `mkIdx`/`degree_fin_two`/`finsupp_fin_two_ext` — at `Fin 3`, multi-indices of total degree `d`
+  are enumerated by a **pair** `(k, l)` with `k + l ≤ d` (there are `(d+1)(d+2)/2` of them, not
+  `d + 1`), not a single `ℕ`. `PhiState`'s batch-indexing scheme (`Finset.range (d + 3)` keyed by
+  one coordinate) would need a genuine 2-dimensional analogue — a `Finset` of pairs, or an
+  equivalent flattening — not just a bigger range.
+* `coeff_subst_X_zero_mul_subst_X_one`/`coeff_subst_monomial_diag` — the outer-position
+  monomial-correction identity needs a **three**-factor axis-disjoint product
+  (`f.subst(X 0) * f.subst(X 1) * f.subst(X 2)`-shaped) in place of the two-factor case built in
+  `§16`; `MvPowerSeries.coeff_mul`'s antidiagonal argument would need to become a ternary
+  splitting.
+* `genTruncMv_succ`/`coeff_PhiPartialSum`-shaped induction and the base cases at total degree `0`
+  and `1` would all need re-derivation with the 3-index enumeration in place of the 2-index one.
+
+Confirmed reusable **unchanged** (already stated over arbitrary index types, and this pass did not
+need to touch them, only rely on their existing generality):
+`coeff_subst_add_sum_monomial_mv`, `coeff_pow_eq_of_coeff_eq_mv`, `coeff_subst_eq_of_coeff_eq_mv`,
+`coeff_subst_eq_of_coeff_eq_left_mv`, `coeff_subst_eq_of_coeff_eq_outer_mv`,
+`coeff_prod_pow_eq_zero_of_degree_lt`, `subst_subst_mv`.
+
+**Scope note, relative to `§16`'s anticipation.** `§16` budgeted for needing a `Fin 3`
+recursive-construction analogue of `PhiState` as well as uniqueness. This pass shows that budget
+was too pessimistic: existence for the two specific series needed for associativity comes for free
+from `solvesFunctionalEq_subst`, so **only the uniqueness theorem** (any two solutions with the
+same linear part are equal, no existence/recursive-construction machinery) needs a `Fin 3` rebuild.
+That is still a substantial rebuild — the 3-index enumeration and the three-factor axis lemma are
+genuinely new combinatorics, not routine generalizations — but it is smaller than what `§16`
+scoped, and is a real, grounded scope reduction. No estimate of effort size (e.g. in "passes") is
+given here since none was measured this pass; `§7`–`§16`'s ten-pass history for the *full* `Fin 2`
+existence+uniqueness build is the closest available reference point, and the `Fin 3` uniqueness-only
+rebuild is a strict subset of that scope.
+
+### What remains, in dependency order
+
+1. **`Fin 3` uniqueness theorem** (`eq_of_subst_eq_mv`-analogue at `Fin 3`) — the sole remaining
+   piece needed to conclude `PhiAssocLeft hπ hf = PhiAssocRight hπ hf`, i.e. associativity. Needs
+   the 3-index multi-index enumeration and three-factor axis-disjoint product described above; the
+   five general-position truncation/composition lemmas listed above are already reusable as-is.
+2. **Packaging as `FormalGroup O`** — unchanged from `§16`, blocked only on item 1.
+3. **Torsion points / the tower** — unchanged from `§16`, independently unblocked by the `Fin 3`
+   gap (uses the univariate functional equation lemma from `Langlands/LubinTateFunctionalEquation.lean`).
+4. **The reciprocity map** — unchanged from `§16`.
+
+### Build status
+
+`nix develop --command lake build` — whole project builds clean, `Build completed successfully
+(8748 jobs)`, no `sorry` anywhere in
+`Langlands/LubinTateFunctionalEquationBivariate.lean` (nor introduced elsewhere this pass).
+
+### Commits
+
+`a449ed1` (`solvesFunctionalEq_subst`, `solvesFunctionalEq_X`, `PhiAssocLeft`/`PhiAssocRight` and
+their functional-equation proofs).
