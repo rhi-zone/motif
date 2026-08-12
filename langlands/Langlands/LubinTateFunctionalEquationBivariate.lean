@@ -1308,6 +1308,207 @@ theorem coeff_swapIdx_Phi (hπ : Irreducible π) (hf : IsLubinTatePoly π (resid
     MvPowerSeries.coeff (swapIdx m) (Phi hπ hf) = MvPowerSeries.coeff m (Phi hπ hf) := by
   rw [← coeff_subst_swapVars, subst_swapVars_Phi]
 
+/-! ### Toward associativity: composition of solutions of the functional equation
+
+Associativity, `F_π(F_π(X, Y), Z) = F_π(X, F_π(Y, Z))`, needs the 3-variable functional equation
+lemma. The two composite series `F_π(F_π(X, Y), Z)` and `F_π(X, F_π(Y, Z))`, viewed as elements of
+`MvPowerSeries (Fin 3) O`, each solve that 3-variable equation **for free**: no new recursive
+construction (`PhiState`-`Fin 3` analogue) is needed, only the general fact that solutions of the
+functional equation are closed under substitution composition, applied to `Phi hπ hf` itself
+(embedded along two different pairs of the three axes) and to the coordinate variables `X i`
+(which solve trivially). Proving `F_π(F_π(X, Y), Z) = F_π(X, F_π(Y, Z))` itself still needs a
+`Fin 3` **uniqueness** theorem, which this section does not attempt. -/
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] in
+/-- **Solutions of the Lubin-Tate functional equation are closed under substitution
+composition.** If `Ψ : MvPowerSeries σ O` solves `f.subst Ψ = Ψ.subst (fun i ↦ f.subst (X i))` and
+each `c i : MvPowerSeries τ O` (the family substituted into `Ψ`'s variables) also solves the same
+equation over the index type `τ`, then the composite `Ψ.subst c` solves it over `τ` as well.
+
+This is a general-purpose closure fact about `PowerSeries.subst`/`MvPowerSeries.subst`, stated for
+arbitrary finite index types `σ`, `τ` and any univariate series `f` with zero constant term — not
+specific to the Lubin-Tate `f`. It is the engine behind associativity's existence half: composing
+`F_π` with itself along different pairs of three axes, or with a bare coordinate variable, produces
+a series solving the 3-variable equation, purely by two applications of this lemma
+(`subst_PhiAssocLeft_eq_PhiAssocLeft_subst`, `subst_PhiAssocRight_eq_PhiAssocRight_subst` below). -/
+theorem solvesFunctionalEq_subst {σ τ : Type*} [Finite σ] [Finite τ]
+    (hf0 : PowerSeries.constantCoeff f = 0)
+    {Ψ : MvPowerSeries σ O} (hΨ0 : MvPowerSeries.constantCoeff Ψ = 0)
+    (hΨ : f.subst Ψ = Ψ.subst (fun i ↦ f.subst (MvPowerSeries.X i)))
+    {c : σ → MvPowerSeries τ O} (hc : MvPowerSeries.HasSubst c)
+    (hcsolve : ∀ i, f.subst (c i) = (c i).subst (fun j ↦ f.subst (MvPowerSeries.X j))) :
+    f.subst (Ψ.subst c) = (Ψ.subst c).subst (fun j ↦ f.subst (MvPowerSeries.X j)) := by
+  have hΨhs : PowerSeries.HasSubst Ψ := PowerSeries.HasSubst.of_constantCoeff_zero hΨ0
+  have hdσ0 : ∀ i : σ, MvPowerSeries.constantCoeff
+      (f.subst (MvPowerSeries.X i) (S := O) (τ := σ)) = 0 :=
+    fun i ↦ PowerSeries.constantCoeff_subst_eq_zero (by simp) f hf0
+  have hdσ : MvPowerSeries.HasSubst
+      (fun i ↦ f.subst (MvPowerSeries.X i) (S := O) (τ := σ)) :=
+    MvPowerSeries.hasSubst_of_constantCoeff_zero hdσ0
+  have hdτ0 : ∀ j : τ, MvPowerSeries.constantCoeff
+      (f.subst (MvPowerSeries.X j) (S := O) (τ := τ)) = 0 :=
+    fun j ↦ PowerSeries.constantCoeff_subst_eq_zero (by simp) f hf0
+  have hdτ : MvPowerSeries.HasSubst
+      (fun j ↦ f.subst (MvPowerSeries.X j) (S := O) (τ := τ)) :=
+    MvPowerSeries.hasSubst_of_constantCoeff_zero hdτ0
+  have step1 : f.subst (Ψ.subst c) = MvPowerSeries.subst c (f.subst Ψ) :=
+    (subst_subst_mv f hΨhs hc).symm
+  have step2 : MvPowerSeries.subst c (f.subst Ψ) = Ψ.subst (fun i ↦ f.subst (c i)) := by
+    rw [hΨ, MvPowerSeries.subst_comp_subst_apply hdσ hc]
+    refine congrArg (fun b ↦ MvPowerSeries.subst b Ψ) (funext fun i ↦ ?_)
+    rw [subst_subst_mv f (PowerSeries.HasSubst.X i) hc, MvPowerSeries.subst_X hc]
+  have step3 : Ψ.subst (fun i ↦ f.subst (c i)) =
+      Ψ.subst (fun i ↦ (c i).subst (fun j ↦ f.subst (MvPowerSeries.X j))) :=
+    congrArg (fun b ↦ MvPowerSeries.subst b Ψ) (funext fun i ↦ hcsolve i)
+  have step4 : Ψ.subst (fun i ↦ (c i).subst (fun j ↦ f.subst (MvPowerSeries.X j))) =
+      (Ψ.subst c).subst (fun j ↦ f.subst (MvPowerSeries.X j)) :=
+    (MvPowerSeries.subst_comp_subst_apply hc hdτ Ψ).symm
+  rw [step1, step2, step3, step4]
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] in
+/-- **A bare coordinate variable solves the functional equation trivially.** `f.subst (X j) =
+(X j).subst (fun i ↦ f.subst (X i))`, since the right side is just `f.subst (X j)` again by
+`MvPowerSeries.subst_X`. This is the base case `solvesFunctionalEq_subst` needs for the coordinate
+`Z` in `F_π(F_π(X, Y), Z)` and for `X` in `F_π(X, F_π(Y, Z))`. -/
+theorem solvesFunctionalEq_X {σ : Type*} [Finite σ] (hf0 : PowerSeries.constantCoeff f = 0)
+    (j : σ) :
+    f.subst (MvPowerSeries.X j : MvPowerSeries σ O) =
+      (MvPowerSeries.X j : MvPowerSeries σ O).subst (fun i ↦ f.subst (MvPowerSeries.X i)) := by
+  have hd0 : ∀ i : σ, MvPowerSeries.constantCoeff
+      (f.subst (MvPowerSeries.X i) (S := O) (τ := σ)) = 0 :=
+    fun i ↦ PowerSeries.constantCoeff_subst_eq_zero (by simp) f hf0
+  have hd : MvPowerSeries.HasSubst
+      (fun i ↦ f.subst (MvPowerSeries.X i) (S := O) (τ := σ)) :=
+    MvPowerSeries.hasSubst_of_constantCoeff_zero hd0
+  rw [MvPowerSeries.subst_X hd]
+
+/-- **`F_π(F_π(X, Y), Z)`, as an element of `MvPowerSeries (Fin 3) O`.** `Φ`'s first variable is
+replaced by `Φ` embedded along axes `0, 1` (i.e. `F_π(X, Y)`), its second variable by the bare
+axis `2` (i.e. `Z`). -/
+noncomputable def PhiAssocLeft (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f) :
+    MvPowerSeries (Fin 3) O :=
+  (Phi hπ hf).subst
+    (![(Phi hπ hf).subst
+          (![MvPowerSeries.X 0, MvPowerSeries.X 1] : Fin 2 → MvPowerSeries (Fin 3) O),
+        MvPowerSeries.X 2] : Fin 2 → MvPowerSeries (Fin 3) O)
+
+/-- **`F_π(X, F_π(Y, Z))`, as an element of `MvPowerSeries (Fin 3) O`.** `Φ`'s first variable is
+replaced by the bare axis `0` (i.e. `X`), its second variable by `Φ` embedded along axes `1, 2`
+(i.e. `F_π(Y, Z)`). -/
+noncomputable def PhiAssocRight (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f) :
+    MvPowerSeries (Fin 3) O :=
+  (Phi hπ hf).subst
+    (![MvPowerSeries.X 0,
+        (Phi hπ hf).subst
+          (![MvPowerSeries.X 1, MvPowerSeries.X 2] : Fin 2 → MvPowerSeries (Fin 3) O)]
+      : Fin 2 → MvPowerSeries (Fin 3) O)
+
+/-- **`F_π(F_π(X, Y), Z)` solves the 3-variable functional equation.** Two applications of
+`solvesFunctionalEq_subst`: the inner embedding `Φ.subst ![X 0, X 1]` solves it because both `X 0`
+and `X 1` do (`solvesFunctionalEq_X`) and `Φ` itself does (`subst_Phi_eq_Phi_subst`); then the
+outer `Φ.subst ![_, X 2]` solves it because that inner embedding and `X 2` both do. No `Fin
+3`-specific recursive construction is used. -/
+theorem subst_PhiAssocLeft_eq_PhiAssocLeft_subst (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) :
+    f.subst (PhiAssocLeft hπ hf) =
+      (PhiAssocLeft hπ hf).subst (fun i ↦ f.subst (MvPowerSeries.X i)) := by
+  have hf0 : PowerSeries.constantCoeff f = 0 := by
+    rw [← PowerSeries.coeff_zero_eq_constantCoeff]; exact hf.1
+  have hΦ0 : MvPowerSeries.constantCoeff (Phi hπ hf) = 0 := constantCoeff_Phi hπ hf
+  have hΦeq : f.subst (Phi hπ hf) =
+      (Phi hπ hf).subst (fun i ↦ f.subst (MvPowerSeries.X i)) := subst_Phi_eq_Phi_subst hπ hf
+  have hasSubst_e01 : MvPowerSeries.HasSubst
+      (![MvPowerSeries.X (0 : Fin 3), MvPowerSeries.X (1 : Fin 3)] :
+        Fin 2 → MvPowerSeries (Fin 3) O) :=
+    MvPowerSeries.hasSubst_of_constantCoeff_zero (fun i ↦ by fin_cases i <;> simp)
+  have hsolve01 : ∀ i : Fin 2, f.subst
+      ((![MvPowerSeries.X (0 : Fin 3), MvPowerSeries.X (1 : Fin 3)] :
+          Fin 2 → MvPowerSeries (Fin 3) O) i) =
+        ((![MvPowerSeries.X (0 : Fin 3), MvPowerSeries.X (1 : Fin 3)] :
+            Fin 2 → MvPowerSeries (Fin 3) O) i).subst (fun j ↦ f.subst (MvPowerSeries.X j)) :=
+    fun i ↦ by fin_cases i <;> exact solvesFunctionalEq_X hf0 _
+  have hΦ01 : f.subst ((Phi hπ hf).subst
+        (![MvPowerSeries.X 0, MvPowerSeries.X 1] : Fin 2 → MvPowerSeries (Fin 3) O)) =
+      ((Phi hπ hf).subst
+          (![MvPowerSeries.X 0, MvPowerSeries.X 1] : Fin 2 → MvPowerSeries (Fin 3) O)).subst
+        (fun j ↦ f.subst (MvPowerSeries.X j)) :=
+    solvesFunctionalEq_subst hf0 hΦ0 hΦeq hasSubst_e01 hsolve01
+  have hΦ01c0 : MvPowerSeries.constantCoeff ((Phi hπ hf).subst
+      (![MvPowerSeries.X 0, MvPowerSeries.X 1] : Fin 2 → MvPowerSeries (Fin 3) O)) = 0 :=
+    MvPowerSeries.constantCoeff_subst_eq_zero hasSubst_e01
+      (fun i ↦ by fin_cases i <;> simp) hΦ0
+  have hasSubst_top : MvPowerSeries.HasSubst
+      (![(Phi hπ hf).subst
+            (![MvPowerSeries.X 0, MvPowerSeries.X 1] : Fin 2 → MvPowerSeries (Fin 3) O),
+          MvPowerSeries.X 2] : Fin 2 → MvPowerSeries (Fin 3) O) :=
+    MvPowerSeries.hasSubst_of_constantCoeff_zero (fun i ↦ by fin_cases i <;> simp [hΦ01c0])
+  have hsolve_top : ∀ i : Fin 2, f.subst
+      ((![(Phi hπ hf).subst
+              (![MvPowerSeries.X 0, MvPowerSeries.X 1] : Fin 2 → MvPowerSeries (Fin 3) O),
+            MvPowerSeries.X 2] : Fin 2 → MvPowerSeries (Fin 3) O) i) =
+        ((![(Phi hπ hf).subst
+                (![MvPowerSeries.X 0, MvPowerSeries.X 1] : Fin 2 → MvPowerSeries (Fin 3) O),
+              MvPowerSeries.X 2] : Fin 2 → MvPowerSeries (Fin 3) O) i).subst
+          (fun j ↦ f.subst (MvPowerSeries.X j)) :=
+    fun i ↦ by
+      fin_cases i
+      · exact hΦ01
+      · exact solvesFunctionalEq_X hf0 _
+  exact solvesFunctionalEq_subst hf0 hΦ0 hΦeq hasSubst_top hsolve_top
+
+/-- **`F_π(X, F_π(Y, Z))` solves the 3-variable functional equation.** The mirror image of
+`subst_PhiAssocLeft_eq_PhiAssocLeft_subst`, with the roles of the two `Φ`-variables swapped: the
+inner embedding is now `Φ.subst ![X 1, X 2]`. -/
+theorem subst_PhiAssocRight_eq_PhiAssocRight_subst (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) :
+    f.subst (PhiAssocRight hπ hf) =
+      (PhiAssocRight hπ hf).subst (fun i ↦ f.subst (MvPowerSeries.X i)) := by
+  have hf0 : PowerSeries.constantCoeff f = 0 := by
+    rw [← PowerSeries.coeff_zero_eq_constantCoeff]; exact hf.1
+  have hΦ0 : MvPowerSeries.constantCoeff (Phi hπ hf) = 0 := constantCoeff_Phi hπ hf
+  have hΦeq : f.subst (Phi hπ hf) =
+      (Phi hπ hf).subst (fun i ↦ f.subst (MvPowerSeries.X i)) := subst_Phi_eq_Phi_subst hπ hf
+  have hasSubst_e12 : MvPowerSeries.HasSubst
+      (![MvPowerSeries.X (1 : Fin 3), MvPowerSeries.X (2 : Fin 3)] :
+        Fin 2 → MvPowerSeries (Fin 3) O) :=
+    MvPowerSeries.hasSubst_of_constantCoeff_zero (fun i ↦ by fin_cases i <;> simp)
+  have hsolve12 : ∀ i : Fin 2, f.subst
+      ((![MvPowerSeries.X (1 : Fin 3), MvPowerSeries.X (2 : Fin 3)] :
+          Fin 2 → MvPowerSeries (Fin 3) O) i) =
+        ((![MvPowerSeries.X (1 : Fin 3), MvPowerSeries.X (2 : Fin 3)] :
+            Fin 2 → MvPowerSeries (Fin 3) O) i).subst (fun j ↦ f.subst (MvPowerSeries.X j)) :=
+    fun i ↦ by fin_cases i <;> exact solvesFunctionalEq_X hf0 _
+  have hΦ12 : f.subst ((Phi hπ hf).subst
+        (![MvPowerSeries.X 1, MvPowerSeries.X 2] : Fin 2 → MvPowerSeries (Fin 3) O)) =
+      ((Phi hπ hf).subst
+          (![MvPowerSeries.X 1, MvPowerSeries.X 2] : Fin 2 → MvPowerSeries (Fin 3) O)).subst
+        (fun j ↦ f.subst (MvPowerSeries.X j)) :=
+    solvesFunctionalEq_subst hf0 hΦ0 hΦeq hasSubst_e12 hsolve12
+  have hΦ12c0 : MvPowerSeries.constantCoeff ((Phi hπ hf).subst
+      (![MvPowerSeries.X 1, MvPowerSeries.X 2] : Fin 2 → MvPowerSeries (Fin 3) O)) = 0 :=
+    MvPowerSeries.constantCoeff_subst_eq_zero hasSubst_e12
+      (fun i ↦ by fin_cases i <;> simp) hΦ0
+  have hasSubst_top : MvPowerSeries.HasSubst
+      (![MvPowerSeries.X 0,
+          (Phi hπ hf).subst
+            (![MvPowerSeries.X 1, MvPowerSeries.X 2] : Fin 2 → MvPowerSeries (Fin 3) O)]
+        : Fin 2 → MvPowerSeries (Fin 3) O) :=
+    MvPowerSeries.hasSubst_of_constantCoeff_zero (fun i ↦ by fin_cases i <;> simp [hΦ12c0])
+  have hsolve_top : ∀ i : Fin 2, f.subst
+      ((![MvPowerSeries.X 0,
+            (Phi hπ hf).subst
+              (![MvPowerSeries.X 1, MvPowerSeries.X 2] : Fin 2 → MvPowerSeries (Fin 3) O)]
+          : Fin 2 → MvPowerSeries (Fin 3) O) i) =
+        ((![MvPowerSeries.X 0,
+              (Phi hπ hf).subst
+                (![MvPowerSeries.X 1, MvPowerSeries.X 2] : Fin 2 → MvPowerSeries (Fin 3) O)]
+            : Fin 2 → MvPowerSeries (Fin 3) O) i).subst (fun j ↦ f.subst (MvPowerSeries.X j)) :=
+    fun i ↦ by
+      fin_cases i
+      · exact solvesFunctionalEq_X hf0 _
+      · exact hΦ12
+  exact solvesFunctionalEq_subst hf0 hΦ0 hΦeq hasSubst_top hsolve_top
+
 end LubinTate
 
 end
