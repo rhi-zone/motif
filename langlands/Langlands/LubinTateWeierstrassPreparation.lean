@@ -1,5 +1,6 @@
 import Mathlib.RingTheory.PowerSeries.WeierstrassPreparation
 import Langlands.LubinTate
+import Langlands.NonarchimedeanPowerSeriesEval
 
 /-!
 # Weierstrass preparation for Lubin-Tate power series
@@ -44,20 +45,31 @@ classical theory requires — not a narrowing of scope, a hypothesis genuinely u
   polynomial `P : O[X]` of degree exactly `residueCard O` and a unit power series `u : O⟦X⟧` with
   `f = P * u`.
 
+* `norm_eval_eq_one_of_isUnit`/`eval_ne_zero_of_isUnit`: the unit factor `u` of any Weierstrass
+  factorization evaluates, at any point of `K`'s maximal ideal, to something of norm exactly `1` —
+  in particular never `0`. Built from a new general lemma
+  `NonarchimedeanPowerSeriesEval.norm_eval_sub_algebraMap_constantCoeff_le` (`eval f x` lies within
+  `‖x‖` of `f`'s constant term, algebra-mapped into `K` — the general form of the existing
+  `norm_eval_le`, which is its `constantCoeff f = 0` case) plus the ultrametric "isosceles
+  triangle" law: a unit's algebra-mapped constant term has norm exactly `1`
+  (`norm_algebraMap_eq_one_of_isUnit`), strictly greater than the `< 1` distance `eval u x` can
+  have moved from it, so `‖eval u x‖` is forced to equal that `1`.
+
 ## What this does not do
 
 **Does not yet connect the factorization to `piTorsion`.** Showing `piTorsion hπ hf 1` (the set of
 `x` in `K`'s maximal ideal with `eval f x = 0`) coincides with `P`'s roots in `K`'s maximal ideal
-needs: (a) `eval` compatibility with the factorization (`eval f x = eval P x * eval u x`, from
-`NonarchimedeanPowerSeriesEval.eval_mul`), (b) `eval u x ≠ 0` for `x` in the maximal ideal (`u`'s
-constant term is a unit, so `eval u x` stays close to it in the ultrametric — not yet proved here),
-(c) identifying `NonarchimedeanPowerSeriesEval.eval` of `(P : O⟦X⟧)` with `Polynomial.eval x P`
-(routine, not yet done), and (d) **root-counting**: showing `P` (which is Eisenstein — a
+still needs: (a) `eval` compatibility with the factorization itself (`eval f x = eval P x *
+eval u x`, from `NonarchimedeanPowerSeriesEval.eval_mul` — routine given `f = (P : O⟦X⟧) * u` and
+both factors' coefficients are `O`-valued hence bounded by `hOK`, not yet assembled), (b)
+identifying `NonarchimedeanPowerSeriesEval.eval` of `(P : O⟦X⟧)` with `Polynomial.aeval x P`
+(routine, not yet done), and (c) **root-counting**: showing `P` (which is Eisenstein — a
 `Polynomial.IsDistinguishedAt` polynomial is automatically `IsWeaklyEisensteinAt`, and here the
 degree-`0` coefficient has valuation exactly `1` since `f`'s linear coefficient is `π`) has exactly
-`q` *distinct* roots in `K`. That last step is separability, not (yet) a Weierstrass-preparation
-consequence — genuinely new content, not attempted here. See `ROADMAP.md` for the precise
-remaining state.
+`q` *distinct* roots in `K`. That last step is separability, not a Weierstrass-preparation
+consequence — genuinely new content, not attempted here. `eval u x ≠ 0` (this file's last result)
+is exactly what turns "`eval f x = 0`" into "`eval P x = 0`" once (a)-(b) are in place, so it is a
+real piece of the route, not a detour. See `ROADMAP.md` for the precise remaining state.
 
 ## References
 
@@ -114,6 +126,68 @@ theorem exists_isWeierstrassFactorization_of_isLubinTatePoly
   refine ⟨P, u, hPu.isDistinguishedAt, hPu.isUnit, hPu.eq_mul, ?_⟩
   rw [hPu.natDegree_eq_toNat_order_map, order_map_residue_eq hf]
   rfl
+
+/-! ## Toward `piTorsion`: the unit factor never vanishes on the maximal ideal -/
+
+variable {K : Type*} [NormedField K] [IsUltrametricDist K] [CompleteSpace K] [Algebra O K]
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)]
+  [IsAdicComplete (IsLocalRing.maximalIdeal O) O] [IsUltrametricDist K] [CompleteSpace K] in
+/-- **A unit of `O`, algebra-mapped into `K`, has norm exactly `1`**, given `O`'s image lies in
+`K`'s closed unit ball. Both `a` and `a⁻¹` map with norm `≤ 1` (`hOK`), and their product maps to
+`1`; the two bounds force equality. Same argument as
+`Langlands.PrincipalUnitsSuccessiveApproximation.norm_approxUnit_eq_one`, specialized from
+`Oˣ`-valued limits down to a single element. -/
+theorem norm_algebraMap_eq_one_of_isUnit (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {a : O}
+    (ha : IsUnit a) : ‖algebraMap O K a‖ = 1 := by
+  obtain ⟨u, rfl⟩ := ha
+  have h1 : ‖algebraMap O K (u : O)‖ ≤ 1 := hOK _
+  have h2 : ‖algebraMap O K ((u⁻¹ : Oˣ) : O)‖ ≤ 1 := hOK _
+  have hmul : algebraMap O K (u : O) * algebraMap O K ((u⁻¹ : Oˣ) : O) = 1 := by
+    rw [← map_mul]
+    simp
+  have h3 : (1 : ℝ) ≤ ‖algebraMap O K (u : O)‖ := by
+    calc (1 : ℝ) = ‖(1 : K)‖ := norm_one.symm
+      _ = ‖algebraMap O K (u : O) * algebraMap O K ((u⁻¹ : Oˣ) : O)‖ := by rw [hmul]
+      _ = ‖algebraMap O K (u : O)‖ * ‖algebraMap O K ((u⁻¹ : Oˣ) : O)‖ := norm_mul _ _
+      _ ≤ ‖algebraMap O K (u : O)‖ * 1 := by gcongr
+      _ = ‖algebraMap O K (u : O)‖ := mul_one _
+  exact le_antisymm h1 h3
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)]
+  [IsAdicComplete (IsLocalRing.maximalIdeal O) O] in
+/-- **The unit factor `u` of a Weierstrass factorization never vanishes under evaluation on the
+maximal ideal.** `eval u x` lies within `‖x‖ < 1` of `algebraMap O K (constantCoeff u)`
+(`NonarchimedeanPowerSeriesEval.norm_eval_sub_algebraMap_constantCoeff_le`), which itself has norm
+exactly `1` (`norm_algebraMap_eq_one_of_isUnit`, since `u` a unit of `O⟦X⟧` forces `constantCoeff u`
+to be a unit of `O`, `PowerSeries.isUnit_constantCoeff`); the ultrametric "isosceles triangle" law
+(`IsUltrametricDist.norm_add_eq_max_of_norm_ne_norm`) then forces `‖eval u x‖` to be exactly `1` as
+well, in particular nonzero. -/
+theorem norm_eval_eq_one_of_isUnit (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {u : O⟦X⟧}
+    (hu : IsUnit u) {x : K} (hx : ‖x‖ < 1) :
+    ‖NonarchimedeanPowerSeriesEval.eval u x‖ = 1 := by
+  have hcoeffs : ∀ n, ‖algebraMap O K (PowerSeries.coeff n u)‖ ≤ 1 := fun n ↦ hOK _
+  have hconst : ‖algebraMap O K (PowerSeries.constantCoeff u)‖ = 1 :=
+    norm_algebraMap_eq_one_of_isUnit hOK (PowerSeries.isUnit_constantCoeff u hu)
+  have hclose : ‖NonarchimedeanPowerSeriesEval.eval u x -
+      algebraMap O K (PowerSeries.constantCoeff u)‖ ≤ ‖x‖ :=
+    NonarchimedeanPowerSeriesEval.norm_eval_sub_algebraMap_constantCoeff_le hcoeffs hx
+  have hne : ‖algebraMap O K (PowerSeries.constantCoeff u)‖ ≠
+      ‖NonarchimedeanPowerSeriesEval.eval u x -
+        algebraMap O K (PowerSeries.constantCoeff u)‖ := by
+    rw [hconst]
+    exact (lt_of_le_of_lt hclose hx).ne'
+  have := IsUltrametricDist.norm_add_eq_max_of_norm_ne_norm hne
+  rwa [add_sub_cancel, hconst, max_eq_left (lt_of_le_of_lt hclose hx).le] at this
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)]
+  [IsAdicComplete (IsLocalRing.maximalIdeal O) O] in
+theorem eval_ne_zero_of_isUnit (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {u : O⟦X⟧}
+    (hu : IsUnit u) {x : K} (hx : ‖x‖ < 1) : NonarchimedeanPowerSeriesEval.eval u x ≠ 0 := by
+  intro h
+  have := norm_eval_eq_one_of_isUnit hOK hu hx
+  rw [h, norm_zero] at this
+  exact one_ne_zero this.symm
 
 end LubinTate
 

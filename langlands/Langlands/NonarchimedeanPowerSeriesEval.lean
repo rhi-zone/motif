@@ -153,6 +153,26 @@ theorem norm_eval_le {f : PowerSeries R}
         _ ≤ ‖x‖ ^ 1 := pow_le_pow_of_le_one (norm_nonneg x) hx.le (by omega)
         _ = ‖x‖ := pow_one _
 
+/-- **`eval f x` lies within `‖x‖` of `f`'s constant term, algebra-mapped into `K`** — the
+general form of `norm_eval_le` (which is the `constantCoeff f = 0` case, where the target
+`algebraMap R K (constantCoeff f)` is `0`). Splits `eval f x` off at index `0`
+(`Summable.tsum_eq_zero_add`), identifies the index-`0` summand with `algebraMap R K (constantCoeff
+f)`, and bounds the remaining tail exactly as `norm_eval_le` does. -/
+theorem norm_eval_sub_algebraMap_constantCoeff_le {f : PowerSeries R}
+    (hf : ∀ n, ‖algebraMap R K (PowerSeries.coeff n f)‖ ≤ 1) {x : K} (hx : ‖x‖ < 1) :
+    ‖eval f x - algebraMap R K (PowerSeries.constantCoeff f)‖ ≤ ‖x‖ := by
+  have h0 : evalSummand f x 0 = algebraMap R K (PowerSeries.constantCoeff f) := by
+    unfold evalSummand
+    rw [PowerSeries.coeff_zero_eq_constantCoeff, pow_zero, mul_one]
+  have hsplit : eval f x =
+      evalSummand f x 0 + ∑' n, evalSummand f x (n + 1) :=
+    (summable_evalSummand hf hx).tsum_eq_zero_add
+  rw [hsplit, h0, add_sub_cancel_left]
+  refine (IsUltrametricDist.norm_tsum_le _).trans (ciSup_le fun n ↦ ?_)
+  calc ‖evalSummand f x (n + 1)‖ ≤ ‖x‖ ^ (n + 1) := norm_evalSummand_le hf x (n + 1)
+    _ ≤ ‖x‖ ^ 1 := pow_le_pow_of_le_one (norm_nonneg x) hx.le (by omega)
+    _ = ‖x‖ := pow_one _
+
 /-- **Evaluation is additive**, on the domain where both series have algebra-mapped-norm-bounded
 coefficients. Proved by matching `PowerSeries.coeff_add` (`coeff` is an `R`-linear map) against the
 ultrametric bound `‖a + b‖ ≤ max ‖a‖ ‖b‖ ≤ 1` needed to see `f + g`'s own coefficients are bounded,
