@@ -127,6 +127,54 @@ theorem exists_isWeierstrassFactorization_of_isLubinTatePoly
   rw [hPu.natDegree_eq_toNat_order_map, order_map_residue_eq hf]
   rfl
 
+/-! ## The Weierstrass factor `P`'s own low-degree coefficients
+
+Toward separability of `P` (`ROADMAP.md`'s remaining gap): `P`'s constant coefficient is not merely
+in the maximal ideal (as `IsDistinguishedAt` already gives) but *exactly* `0`, and `P`'s linear
+coefficient is not merely in the maximal ideal but an *associate of `π` itself* — i.e. a
+uniformizer, valuation exactly `1`. Both facts come from comparing `f`'s own defining congruences
+(`coeff 0 f = 0`, `coeff 1 f = π`) against the factorization `f = (P : O⟦X⟧) * u` at degrees `0`
+and `1`, using that `u`'s constant coefficient is a unit. -/
+
+omit [Finite (ResidueField O)] [IsAdicComplete (IsLocalRing.maximalIdeal O) O] in
+/-- **`P`'s constant coefficient is exactly `0`.** `f`'s constant coefficient is `0`
+(`IsLubinTatePoly`'s first congruence) and equals `P.coeff 0 * constantCoeff u`
+(`PowerSeries.constantCoeff` is a ring homomorphism, applied to `f = (P : O⟦X⟧) * u`); since `u`'s
+constant coefficient is a unit (`PowerSeries.isUnit_constantCoeff`), in particular nonzero (`O` a
+domain), the domain cancels it. -/
+theorem coeff_zero_eq_zero_of_eq_mul {P : O[X]} {u : O⟦X⟧} (hu : IsUnit u) {f : O⟦X⟧}
+    (heq : f = (P : O⟦X⟧) * u) (hf0 : PowerSeries.coeff 0 f = 0) : P.coeff 0 = 0 := by
+  have hmul : PowerSeries.constantCoeff f =
+      P.coeff 0 * PowerSeries.constantCoeff u := by
+    rw [heq, map_mul, Polynomial.constantCoeff_coe]
+  rw [PowerSeries.coeff_zero_eq_constantCoeff] at hf0
+  rw [hf0] at hmul
+  exact (mul_eq_zero.mp hmul.symm).resolve_right
+    (PowerSeries.isUnit_constantCoeff u hu).ne_zero
+
+omit [Finite (ResidueField O)] [IsAdicComplete (IsLocalRing.maximalIdeal O) O] in
+/-- **`P`'s linear coefficient is an associate of `π`.** `f`'s linear coefficient is `π`
+(`IsLubinTatePoly`'s second congruence) and equals `P.coeff 0 * coeff 1 u + P.coeff 1 * coeff 0 u`
+(`PowerSeries.coeff_mul` at `n = 1`, `Finset.antidiagonal 1 = {(0, 1), (1, 0)}`); since
+`P.coeff 0 = 0` (`coeff_zero_eq_zero_of_eq_mul`), this collapses to
+`P.coeff 1 * constantCoeff u = π`, exhibiting `P.coeff 1 = π * (constantCoeff u)⁻¹` as an
+associate of `π` (`constantCoeff u` a unit). In a discrete valuation ring this is exactly
+"valuation `1`", the sharp input a Newton-polygon-style separability argument for `P` needs (as
+opposed to the weaker "valuation `≥ 1`" that `IsDistinguishedAt`/Eisenstein alone supplies). -/
+theorem coeff_one_associated_of_eq_mul {P : O[X]} {u : O⟦X⟧} (hu : IsUnit u) {f : O⟦X⟧}
+    (heq : f = (P : O⟦X⟧) * u) (hf0 : PowerSeries.coeff 0 f = 0) (hf1 : PowerSeries.coeff 1 f = π) :
+    Associated (P.coeff 1) π := by
+  have hP0 : P.coeff 0 = 0 := coeff_zero_eq_zero_of_eq_mul hu heq hf0
+  have hanti : Finset.antidiagonal 1 = {((0 : ℕ), (1 : ℕ)), (1, 0)} := rfl
+  have hmul : PowerSeries.coeff 1 f =
+      P.coeff 0 * PowerSeries.coeff 1 u + P.coeff 1 * PowerSeries.coeff 0 u := by
+    rw [heq, PowerSeries.coeff_mul, hanti]
+    simp [Polynomial.coeff_coe]
+  rw [hP0, zero_mul, zero_add, hf1, PowerSeries.coeff_zero_eq_constantCoeff] at hmul
+  refine ⟨(PowerSeries.isUnit_constantCoeff u hu).unit, ?_⟩
+  rw [IsUnit.unit_spec]
+  exact hmul.symm
+
 /-! ## Toward `piTorsion`: the unit factor never vanishes on the maximal ideal -/
 
 variable {K : Type*} [NormedField K] [IsUltrametricDist K] [CompleteSpace K] [Algebra O K]
