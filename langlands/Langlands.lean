@@ -18,6 +18,7 @@ import Langlands.HeightOneSpectrumRationalPrimeTower
 import Langlands.HenselianResidueLift
 import Langlands.IdeleGroup
 import Langlands.LubinTate
+import Langlands.LubinTateFormalGroupEvalAssoc
 import Langlands.MonogenicIntegralClosure
 import Langlands.MonogenicMaximalOrder
 import Langlands.NonarchimedeanCauchyProduct

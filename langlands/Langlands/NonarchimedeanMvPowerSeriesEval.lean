@@ -191,6 +191,38 @@ theorem evalMv_one (y : σ → K) : evalMv (1 : MvPowerSeries σ R) y = 1 := by
   rw [tsum_eq_single 0 (by intro n hn; rw [hterm]; simp [hn])]
   rw [hterm]; simp
 
+omit [Fintype σ] [Nonempty σ] [IsUltrametricDist K] [CompleteSpace K] in
+/-- The coefficients of a coordinate variable `X j`, algebra-mapped into `K`, are trivially bounded
+by `1` (each is `0` or `1`). -/
+theorem coeff_bound_X_mv (j : σ) : ∀ n : σ →₀ ℕ,
+    ‖algebraMap R K (MvPowerSeries.coeff n (MvPowerSeries.X j : MvPowerSeries σ R))‖ ≤ 1 := by
+  intro n
+  rw [MvPowerSeries.coeff_X]
+  split <;> simp
+
+omit [Nonempty σ] [IsUltrametricDist K] [CompleteSpace K] in
+/-- **Evaluating a coordinate variable returns that coordinate**: `evalMv (X j) z = z j`. Only the
+multi-index `Finsupp.single j 1` contributes. -/
+theorem evalMv_X (j : σ) (z : σ → K) :
+    evalMv (MvPowerSeries.X j : MvPowerSeries σ R) z = z j := by
+  have hterm : ∀ n : σ →₀ ℕ,
+      evalSummandMv (MvPowerSeries.X j : MvPowerSeries σ R) z n =
+        if n = Finsupp.single j 1 then z j else 0 := by
+    intro n
+    unfold evalSummandMv
+    rw [MvPowerSeries.coeff_X]
+    by_cases h : n = Finsupp.single j 1
+    · subst h
+      rw [if_pos rfl, if_pos rfl, map_one, one_mul,
+        Finset.prod_eq_single j
+          (fun i _ hij ↦ by rw [Finsupp.single_eq_of_ne' hij.symm, pow_zero])
+          (by simp)]
+      simp
+    · rw [if_neg h, if_neg h, map_zero, zero_mul]
+  unfold evalMv
+  rw [tsum_eq_single (Finsupp.single j 1) (by intro n hn; rw [hterm, if_neg hn])]
+  rw [hterm, if_pos rfl]
+
 omit [Fintype σ] [Nonempty σ] [CompleteSpace K] in
 /-- **Coefficient boundedness is preserved by multiplication.** `coeff n (Φ * Ψ)` is a sum, over
 `Finset.HasAntidiagonal.antidiagonal n`, of products of bounded coefficients; the nonempty-sum
