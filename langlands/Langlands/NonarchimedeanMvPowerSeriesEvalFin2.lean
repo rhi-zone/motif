@@ -271,6 +271,110 @@ theorem evalMv_pow {Φ : MvPowerSeries (Fin 2) R}
       rw [pow_succ, pow_succ, evalMv_mul (coeff_bound_pow_mv hΦ m) hΦ hy0 hy1,
         evalMv_pow hΦ hy0 hy1 m]
 
+omit [IsUltrametricDist K] [CompleteSpace K] in
+/-- Extensionality for bivariate multi-indices: agreeing at `0` and at `1` is equality. Local
+restatement (not imported from `Langlands.LubinTateFunctionalEquationBivariate.finsupp_fin_two_ext`),
+matching this file's existing convention of keeping `degree_fin_two` independent of the Lubin-Tate
+development. -/
+theorem finsupp_fin_two_ext {m n : Fin 2 →₀ ℕ} (h0 : m 0 = n 0) (h1 : m 1 = n 1) : m = n := by
+  ext i
+  fin_cases i
+  · exact h0
+  · exact h1
+
+omit [IsUltrametricDist K] [CompleteSpace K] in
+/-- **A bivariate multi-index has total degree `1` exactly when it is one of the two "axis"
+multi-indices** `Finsupp.single 0 1` or `Finsupp.single 1 1`. The combinatorial fact underlying the
+quadratic tail bound below: the only multi-indices of total degree `≤ 1` are `0` and these two. -/
+theorem degree_fin_two_eq_one_iff {n : Fin 2 →₀ ℕ} :
+    n.degree = 1 ↔ n = Finsupp.single 0 1 ∨ n = Finsupp.single 1 1 := by
+  constructor
+  · intro hn
+    rw [degree_fin_two] at hn
+    rcases Nat.eq_zero_or_pos (n 0) with h0 | h0
+    · right
+      refine finsupp_fin_two_ext ?_ ?_
+      · rw [Finsupp.single_eq_of_ne (show (0 : Fin 2) ≠ 1 by decide)]; exact h0
+      · rw [Finsupp.single_eq_same]; omega
+    · left
+      refine finsupp_fin_two_ext ?_ ?_
+      · rw [Finsupp.single_eq_same]; omega
+      · rw [Finsupp.single_eq_of_ne (show (1 : Fin 2) ≠ 0 by decide)]; omega
+  · rintro (rfl | rfl) <;> rw [degree_fin_two] <;> simp
+
+/-- **The bivariate quadratic tail bound**: `evalMv Φ y` lies within `(max ‖y 0‖ ‖y 1‖) ^ 2` of
+`Φ`'s degree-`1` linear approximation `(coeff (single 0 1) Φ) * y 0 + (coeff (single 1 1) Φ) * y 1`,
+given `Φ` has zero constant term. The bivariate analogue of
+`Langlands.NonarchimedeanPowerSeriesEval.norm_eval_sub_coeff_one_mul_le`: splits `evalMv Φ y` off at
+the three multi-indices of total degree `≤ 1` (`0`, `Finsupp.single 0 1`, `Finsupp.single 1 1`,
+via `Summable.sum_add_tsum_compl`), identifies the index-`0` summand as `0` (via `hΦ0`) and the two
+degree-`1` summands as the two linear terms, and bounds the remaining tail (every other multi-index,
+necessarily of total degree `≥ 2` by `degree_fin_two_eq_one_iff`) by `(max ‖y 0‖ ‖y 1‖) ^ 2`, via the
+same per-term geometric bound `norm_evalSummandMv_le` `norm_evalMv_le` already uses. -/
+theorem norm_evalMv_sub_linear_le {Φ : MvPowerSeries (Fin 2) R}
+    (hΦ : ∀ n, ‖algebraMap R K (MvPowerSeries.coeff n Φ)‖ ≤ 1)
+    (hΦ0 : MvPowerSeries.constantCoeff Φ = 0) {y : Fin 2 → K}
+    (hy0 : ‖y 0‖ < 1) (hy1 : ‖y 1‖ < 1) :
+    ‖evalMv Φ y -
+        (algebraMap R K (MvPowerSeries.coeff (Finsupp.single 0 1) Φ) * y 0 +
+          algebraMap R K (MvPowerSeries.coeff (Finsupp.single 1 1) Φ) * y 1)‖ ≤
+      (max ‖y 0‖ ‖y 1‖) ^ 2 := by
+  classical
+  set r := max ‖y 0‖ ‖y 1‖ with hrdef
+  have hr0 : (0 : ℝ) ≤ r := le_trans (norm_nonneg _) (le_max_left _ _)
+  have hr1 : r < 1 := max_lt hy0 hy1
+  set s : Finset (Fin 2 →₀ ℕ) := {0, Finsupp.single 0 1, Finsupp.single 1 1} with hsdef
+  have hsum := (summable_evalSummandMv hΦ hy0 hy1).sum_add_tsum_compl (s := s)
+  have h0ns : (0 : Fin 2 →₀ ℕ) ≠ Finsupp.single 0 1 := by
+    intro h; have := congrArg (fun (m : Fin 2 →₀ ℕ) => m 0) h; simp at this
+  have h0ns' : (0 : Fin 2 →₀ ℕ) ≠ Finsupp.single 1 1 := by
+    intro h; have := congrArg (fun (m : Fin 2 →₀ ℕ) => m 1) h; simp at this
+  have hns : (Finsupp.single (0 : Fin 2) 1) ≠ Finsupp.single 1 1 := by
+    intro h; have := congrArg (fun (m : Fin 2 →₀ ℕ) => m 0) h; simp at this
+  have hmem0 : (0 : Fin 2 →₀ ℕ) ∉
+      insert (Finsupp.single 0 1) ({Finsupp.single 1 1} : Finset (Fin 2 →₀ ℕ)) := by
+    simp only [Finset.mem_insert, Finset.mem_singleton]
+    exact not_or.mpr ⟨h0ns, h0ns'⟩
+  have hmem1 : (Finsupp.single (0 : Fin 2) 1) ∉
+      ({Finsupp.single 1 1} : Finset (Fin 2 →₀ ℕ)) := by
+    simp only [Finset.mem_singleton]; exact hns
+  have hsval : ∑ x ∈ s, evalSummandMv Φ y x =
+      algebraMap R K (MvPowerSeries.coeff (Finsupp.single 0 1) Φ) * y 0 +
+        algebraMap R K (MvPowerSeries.coeff (Finsupp.single 1 1) Φ) * y 1 := by
+    rw [hsdef, Finset.sum_insert hmem0, Finset.sum_insert hmem1, Finset.sum_singleton]
+    have hterm0 : evalSummandMv Φ y 0 = 0 := by
+      unfold evalSummandMv
+      rw [MvPowerSeries.coeff_zero_eq_constantCoeff, hΦ0, map_zero, zero_mul]
+    have hterm10 : evalSummandMv Φ y (Finsupp.single 0 1) =
+        algebraMap R K (MvPowerSeries.coeff (Finsupp.single 0 1) Φ) * y 0 := by
+      unfold evalSummandMv; rw [Fin.prod_univ_two]; simp
+    have hterm01 : evalSummandMv Φ y (Finsupp.single 1 1) =
+        algebraMap R K (MvPowerSeries.coeff (Finsupp.single 1 1) Φ) * y 1 := by
+      unfold evalSummandMv; rw [Fin.prod_univ_two]; simp
+    rw [hterm0, hterm10, hterm01, zero_add]
+  unfold evalMv
+  rw [← hsum, hsval, add_sub_cancel_left]
+  refine IsUltrametricDist.norm_tsum_le_of_forall_le_of_nonneg (by positivity) (fun x ↦ ?_)
+  have hxnotmem : (x : Fin 2 →₀ ℕ) ∉ s := by
+    have hx2 := x.2
+    rw [Set.mem_compl_iff, Finset.mem_coe] at hx2
+    exact hx2
+  have hxdeg : 2 ≤ (x : Fin 2 →₀ ℕ).degree := by
+    by_contra hlt
+    push Not at hlt
+    have hcase : (x : Fin 2 →₀ ℕ).degree = 0 ∨ (x : Fin 2 →₀ ℕ).degree = 1 := by omega
+    have hmemLit : ∀ z : Fin 2 →₀ ℕ, z = 0 ∨ z = Finsupp.single 0 1 ∨ z = Finsupp.single 1 1 →
+        z ∈ ({0, Finsupp.single 0 1, Finsupp.single 1 1} : Finset (Fin 2 →₀ ℕ)) := by
+      intro z hz; simp only [Finset.mem_insert, Finset.mem_singleton]; tauto
+    rcases hcase with h0 | h1
+    · exact hxnotmem (hmemLit _ (Or.inl ((Finsupp.degree_eq_zero_iff _).mp h0)))
+    · rcases degree_fin_two_eq_one_iff.mp h1 with h | h
+      · exact hxnotmem (hmemLit _ (Or.inr (Or.inl h)))
+      · exact hxnotmem (hmemLit _ (Or.inr (Or.inr h)))
+  calc ‖evalSummandMv Φ y (x : Fin 2 →₀ ℕ)‖ ≤ r ^ (x : Fin 2 →₀ ℕ).degree :=
+        norm_evalSummandMv_le hΦ y _
+    _ ≤ r ^ 2 := pow_le_pow_of_le_one hr0 hr1.le hxdeg
+
 end NonarchimedeanMvPowerSeriesEvalFin2
 
 end
