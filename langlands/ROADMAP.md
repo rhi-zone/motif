@@ -11479,3 +11479,113 @@ on every file this pass touched: `LubinTateFunctionalEquationBivariate.lean`,
 ### Commits
 
 `206d79b` (`swapIdxEquiv`, `FPiEval_comm`, `FPiEval_PhiInv_eq_zero'`).
+
+## 26. Phase 2c, twentieth pass (2026-08-13): **general-`σ` evaluation base layer built —
+step 1 of `§25`'s two-step associativity plan, done as general-`σ` rather than `Fin 3`-hardcoded**
+
+`§25` scoped step 1 as "mechanical" — build `evalMv3`/`NonarchimedeanMvPowerSeriesEvalFin3` by
+replacing `Fin.prod_univ_two`/`degree_fin_two` with `Finset.prod`/generic `Finsupp.degree` facts —
+and left open whether generalizing to `Fin n`/a general finite index type would cost anything extra
+over hardcoding `Fin 3`. This pass checked that question against Mathlib's actual statements before
+choosing a shape, per the task's instruction not to anchor on `Fin 3` without checking.
+
+### The generalization question: checked, not assumed — costs nothing extra
+
+Confirmed by reading Mathlib source (not by re-assertion) that every ingredient
+`NonarchimedeanMvPowerSeriesEvalFin2` uses is *already* stated by Mathlib for an arbitrary finite
+`σ`, not specialized to `Fin 2`:
+
+* `Finsupp.degree_eq_sum : [Fintype σ] → f.degree = ∑ i, f i` — general `σ`, confirmed in
+  `Mathlib.Data.Finsupp.Weight`. The `Fin 2` file's local `degree_fin_two` restatement
+  (`n.degree = n 0 + n 1` via `Fin.sum_univ_two`) was never necessary; it can be dropped entirely
+  in the general version by calling `Finsupp.degree_eq_sum` directly.
+* `Finsupp.finite_of_degree_lt : [Finite σ] → (n : ℕ) → {f | f.degree < n}.Finite` — general `σ`,
+  same file; the `Fin 2` file already called this generically (`(σ := Fin 2)`), so no change needed
+  there.
+* The multiplicative-bound step (`max ‖y 0‖ ‖y 1‖` → `r ^ n.degree` via `Fin.prod_univ_two` +
+  `pow_add`) generalizes via `Finset.prod_le_prod` (nonneg termwise `≤`) and
+  `Finset.prod_pow_eq_pow_sum` (`∏ i ∈ s, a ^ f i = a ^ ∑ i ∈ s, f i`), both already stated for an
+  arbitrary `Finset ι`/`CommMonoid`.
+* The coefficient-boundedness-under-multiplication step
+  (`Finset.Nonempty.norm_sum_le_sup'_norm`) was already `σ`-agnostic in the `Fin 2` file (it bounds
+  a sum over `Finset.HasAntidiagonal.antidiagonal n : Finset ((σ →₀ ℕ) × (σ →₀ ℕ))`, not over `σ`
+  itself); `Finsupp.instHasAntidiagonal` (`Mathlib.Data.Finsupp.Antidiagonal`) requires only
+  `[DecidableEq σ]`, no finiteness.
+* `IsUltrametricDist.summable_of_tendsto_zero` is stated for an arbitrary index type already (noted
+  by `§23`), so it transfers to `σ →₀ ℕ` with no change either way.
+
+So the *only* `Fin 2`-specific code in the existing file was hand-unfolding
+`Fin.sum_univ_two`/`Fin.prod_univ_two` where the general `Finset.prod`/`Finsupp.degree_eq_sum`
+lemmas would have worked directly — meaning the general-`σ` version is not merely "no more
+expensive" than a `Fin 3`-hardcoded file, it is shorter (one fewer local lemma) and the general
+lemma calls are no harder to invoke than the specialized ones. Built the general version.
+
+### `Langlands/NonarchimedeanMvPowerSeriesEval.lean`: new, general-`σ`, `Fin 3` free
+
+New file, namespace `NonarchimedeanMvPowerSeriesEval`, variables
+`{σ R K : Type*} [Fintype σ] [Nonempty σ] [DecidableEq σ] [CommRing R] [NormedField K]
+[IsUltrametricDist K] [CompleteSpace K] [Algebra R K]` (`[Nonempty σ]` needed so
+`Finset.univ.sup'` — the general analogue of `max ‖y 0‖ ‖y 1‖`, since `ℝ` has no `OrderBot` and
+so cannot use plain `Finset.sup` — has a nonempty witness; both `Fin 2` and `Fin 3` satisfy this
+for free). Mirrors `NonarchimedeanMvPowerSeriesEvalFin2` theorem-for-theorem, generalized:
+
+* `evalSummandMv`, `norm_evalSummandMv_le` (bound now `(Finset.univ.sup' _ fun i ↦ ‖y i‖) ^
+  n.degree`), `tendsto_evalSummandMv_cofinite_zero`, `summable_evalSummandMv`.
+* `evalMv`, `hasSum_evalMv`, `norm_evalMv_le`, `evalMv_eq_zero_of_zero`, `evalMv_one`.
+* `coeff_bound_one_mv`, `coeff_bound_mul_mv`, `coeff_bound_pow_mv`.
+* `evalMv_mul`, `evalMv_pow` — the multiplicative-structure lemmas `§25`'s step 1 targeted.
+
+Every theorem carries a minimal `omit [...] in` (unused-section-variable linter run to a clean
+fixpoint across several iterations — `Fintype`/`Nonempty`/`DecidableEq` are each really needed only
+where the proof actually touches `Finset.univ`, `Finset.univ.sup'`-nonemptiness, or
+`Finset.HasAntidiagonal`, not uniformly across the file).
+
+**`Fin 3` recovered for free, confirmed by instantiation, not merely by type-checking the
+generalization argument in the abstract**: a scratch smoke-test file (not committed) instantiated
+`σ := Fin 3` against `evalMv`, `evalMv_mul`, `evalMv_pow` and built successfully — `Fintype (Fin
+3)`, `Nonempty (Fin 3)`, `DecidableEq (Fin 3)` all resolve automatically, no bespoke `Fin 3` layer
+needed at all, exactly as the generalization argument predicted.
+
+`NonarchimedeanMvPowerSeriesEvalFin2.lean` is left untouched — existing Lubin-Tate-specific proofs
+(`LubinTateFormalGroupEval.lean`, `LubinTateTorsionPoints.lean`, etc.) depend on it, and migrating
+them onto the new general file is a separate, out-of-scope refactor this pass did not attempt.
+
+### What was explicitly not attempted this pass, per scope
+
+The two `Fin 3`-arity eval-subst compatibilities `§25` flagged as genuinely new-shaped — not a
+repeat of Lemma A or Lemma S — were **not started**:
+
+1. A Lemma-A-analogue: multivariate *outer* `Φ` substituted by a family where *one component is
+   itself a nontrivial bivariate composite* `Φ.subst ![Y₀, Y₁]`, not a univariate-diagonal-embed
+   the way Lemma S's family was.
+2. A Lemma-S-analogue for the resulting nested structure.
+
+Both remain exactly as sized and scoped by `§25` — this pass changed only what the base layer they
+sit on top of looks like (general `σ` instead of hypothetically `Fin 3`-hardcoded), not their
+difficulty or shape.
+
+### Build status
+
+`nix develop --command lake build` (run from `langlands/`) — whole project builds clean, `Build
+completed successfully (8754 jobs)`, no `sorry` in the new file (confirmed by `grep -n sorry` on
+`NonarchimedeanMvPowerSeriesEval.lean` — no hits) or anywhere else in the project.
+
+### What remains, in dependency order
+
+1. **The two `Fin 3`-arity eval-subst compatibilities** for the specific nesting shape `assoc'`
+   needs (Lemma-A-analogue: multivariate outer `Φ` substituted by a family with one genuinely
+   bivariate composite component; Lemma-S-analogue for the resulting nested structure) — now
+   unblocked on the base layer (this pass), comparable in size to `§24`'s Lemma A + Lemma S pass or
+   larger, per `§25`'s assessment (unchanged, re-confirmed as still accurate this pass).
+2. **Associativity evaluated**, hence a literal `AddCommGroup` instance on `↥(piTorsion hπ hf n)`
+   (or `AddSubgroup`-style packaging) — blocked on (1). Every other `AddGroup` axiom (identity,
+   both-sided inverse, closure) is already available (`§25`).
+3. **The size computation** `|piTorsion hπ hf 1| = q` — blocked on (2), or on a separate
+   root-counting argument not yet investigated.
+4. **`K_n = K(F_π[π^n])`, `[K_n : K]`, total ramification** — blocked on (2)/(3), and separately
+   still needs the abstract-`O`-to-concrete-`HeightOneSpectrum` bridge (unchanged since `§19`–`§25`).
+5. **The reciprocity map** — the eventual target, joining this thread to `§6ai`.
+
+### Commits
+
+`0d7801b` (`NonarchimedeanMvPowerSeriesEval.lean`: `evalMv`/`evalMv_mul`/`evalMv_pow`, general `σ`).
