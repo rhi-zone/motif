@@ -11758,3 +11758,134 @@ added (see the anomaly note above). `grep -n sorry` on every file this pass touc
 lemmas; `Langlands.lean` build-target fix), `f96af23` (`LubinTateFormalGroupEvalAssoc.lean`:
 `FPiEval_assoc`; `evalMv_X`/`coeff_bound_X_mv`), `3d88c64` (`LubinTateTorsionGroup.lean`:
 `piTorsionAddCommGroup`).
+
+## 28. Phase 2c, twenty-second pass (2026-08-13): **base-field embedding, `K_1 = K(F_π[π])`, and
+`[u]_F` as a genuine formal-group endomorphism of `F_π` for `u ∈ Oˣ`**
+
+`§27`'s pointer-forward named `K_1 := K(F_π[π])` and the `Oˣ`-endomorphism machinery underlying
+`Gal(K_n/K) ↪ (O/π^n)ˣ` as the next steps. This pass closed the first two (base-field embedding,
+`K_1`'s definition) and the formal (pre-evaluation) half of the third (`[u]_F` as an endomorphism
+of the formal group law), following the task's staged decomposition exactly — each step gated on
+the previous closing cleanly.
+
+### Step 1–2: base-field embedding and `K_1` — CLOSED, `Langlands/LubinTateFieldTower.lean` (new)
+
+**The precise hypothesis is `[FaithfulSMul O K]`, not a bespoke `Function.Injective (algebraMap O
+K)`.** Mathlib already supplies exactly the construction the task's Option A called for:
+`FractionRing.liftAlgebra : [Field K] → [Algebra R K] → [FaithfulSMul R K] → Algebra (FractionRing
+R) K`, built internally as `RingHom.toAlgebra (IsFractionRing.lift (FaithfulSMul.algebraMap_injective
+R K))` — `IsFractionRing.lift`'s own signature needs `hg : Function.Injective g` for `g : A →+* L`
+with `L` a field, and `FaithfulSMul R K` is definitionally that injectivity fact phrased the way
+Mathlib's fraction-ring API wants it. Mathlib marks `liftAlgebra` **not** an instance ("creates a
+diamond when `K = FractionRing R`"), so it is activated via `attribute [local instance]
+FractionRing.liftAlgebra`, scoped to this one file — no diamond risk since `K` here is an
+arbitrary evaluation field, never literally `FractionRing O` in this development.
+`FractionRing.isScalarTower_liftAlgebra` (also supplied by Mathlib under the same local-instance
+activation) gives `IsScalarTower O (FractionRing O) K`, compatible with the pre-existing `Algebra O
+K`.
+
+`K_1 hπ hf := IntermediateField.adjoin (FractionRing O) (piTorsion (K := K) hπ hf 1 : Set K)` then
+typechecks directly against `IntermediateField.adjoin (F : Type*) [Field F] {E} [Field E] [Algebra
+F E] (S : Set E) : IntermediateField F E` (`Field (FractionRing O)` is Mathlib's own instance for a
+domain's fraction field; `Field K` comes from `NormedField K` already in scope).
+
+### Step 3: `[u]_F`, the units endomorphism of `F_π` — CLOSED as a formal identity,
+`Langlands/LubinTateUnitsEndomorphism.lean` (new)
+
+**`phiU hπ hf u := PowerSeries.mk (phiCoeff hπ (u : O) hf hf)`** for `u : Oˣ` — the univariate
+functional equation lemma's intertwining series for `f` with itself, at linear coefficient `(u :
+O)`. This needed no new coefficient recursion: `phiState`/`phiCoeff`/`subst_phi_eq_phi_subst`
+(`§8`–`§10`) were already fully general in their linear-coefficient argument, confirmed by this
+pass rather than assumed — `subst_phiU_eq_phiU_subst` is exactly `subst_phi_eq_phi_subst hπ (u :
+O) hf hf` with no further argument.
+
+**The genuinely new content is two composition-closure facts**, neither of which existed in the
+repo (confirmed by grep before writing either):
+
+* `solvesFunctionalEq_subst_embed` : a univariate solution `h` of `f.subst h = h.subst f`, embedded
+  along one axis of a multivariate index type (`h.subst (X i)`), again solves the
+  multivariate-embedded functional equation. The general-`h` version of
+  `LubinTateFunctionalEquationBivariate.solvesFunctionalEq_X` (the `h = X` special case).
+* `solvesFunctionalEq_subst_outer` : a univariate solution `h`, substituted with a *multivariate*
+  solution `Ψ` (`h.subst Ψ`, univariate outer / multivariate inner), again solves the multivariate
+  functional equation. This is the composition order `solvesFunctionalEq_subst` does **not**
+  cover — that lemma is multivariate-outer/family-inner; this one is univariate-outer/single-
+  multivariate-inner. Both were derived from the definitions of `subst`/`HasSubst` before writing
+  any Lean, per the task's explicit warning against guessing the lemma shape: both reduce, by the
+  same six-step reassociation chain (`f.subst(h.subst A) = (f.subst h).subst A = (h.subst f).subst
+  A = h.subst(f.subst A) = h.subst(A.subst family) = (h.subst A).subst family`, for `A := X i` or
+  `A := Ψ`), to two applications of a univariate/univariate-then-multivariate composition fact.
+
+**A real Mathlib gap found and routed around, not papered over**: that composition fact is
+literally `PowerSeries.subst_comp_subst_apply`'s statement, but that lemma carries a base-ring
+implicit (`{A : Type*}[CommRing A]{R : Type*}[CommRing R][Algebra A R]...`, from its enclosing
+section, needed only for the section's `HasSubst` API, not for this particular statement) that
+never appears in the conclusion — so when the second substitutand is genuinely multivariate,
+instance search for `Algebra A R` gets stuck on an unconstrained `A` (`typeclass instance problem
+is stuck`, reproduced and confirmed, not guessed at, by direct `lake build` before working around
+it). `subst_subst_univ_mv` reproves the same statement directly through
+`PowerSeries.subst_def`/`MvPowerSeries.subst_comp_subst_apply` (whose base ring is fixed
+unambiguously by the conclusion), sidestepping the gap entirely; downstream call sites use
+`have`-with-explicit-ascription (not bare `rw`) to keep Lean's expected-type-directed elaboration
+pinning every metavariable early, which is what actually made the calls go through after the first
+several `rw`-based attempts hit the identical stuck-instance error twice in a row (the CLAUDE.md
+stop-and-diagnose signal, followed here rather than retried blindly).
+
+**`subst_Phi_phiU_eq_phiU_subst_Phi` : `[u]_F` is a genuine endomorphism of `F_π`** —
+`Φ.subst (fun i ↦ (phiU hπ hf u).subst (X i)) = (phiU hπ hf u).subst Φ`, i.e. `Φ(u·X, u·Y) =
+u·Φ(X, Y)`. Both sides are elements of `MvPowerSeries (Fin 2) O` with zero constant term (via
+`MvPowerSeries.constantCoeff_subst_eq_zero`/`PowerSeries.constantCoeff_subst_eq_zero`) and linear
+part `u·X + u·Y` at every total-degree-`1` multi-index (computed directly via
+`coeff_subst_eq_of_coeff_eq_outer_mv`/`coeff_subst_eq_of_coeff_eq_mv` truncating `Φ` to
+`PhiPartialSum 1 = X + Y`, then `PowerSeries.coeff_subst_single`/`coeff_subst_X_zero_add_X_one` to
+extract the coefficient `u` on each side); each side solves the bivariate functional equation via
+`solvesFunctionalEq_subst` + `solvesFunctionalEq_subst_embed` (left) and
+`solvesFunctionalEq_subst_outer` (right). `eq_of_subst_eq_mv`'s `hlin` hypothesis only asks the two
+candidates' linear coefficients to agree *with each other* (not to be literally `1`), confirmed
+directly from its statement rather than assumed, so it applies unchanged with `u` in place of `1`.
+
+### Step 4 (evaluation, group action): not reached — precise remaining gap
+
+Steps 1–3 filled the pass; step 4 needs, at minimum:
+
+1. **`eval (phiU hπ hf u) : K → K`ish transport of `subst_Phi_phiU_eq_phiU_subst_Phi` through
+   `evalMv`/`eval_subst_G`**, mirroring `LubinTateFormalGroupEvalAssoc.lean`'s technique, to get
+   `FPiEval hπ hf (eval (phiU hπ hf u) a) (eval (phiU hπ hf u) b) = eval (phiU hπ hf u) (FPiEval hπ
+   hf a b)` at concrete `a, b` in the maximal ideal of `K`.
+2. **`eval (phiU hπ hf u)` maps `piTorsion hπ hf n` into itself** — needs the evaluated identity
+   composed with `eval_iter_FPiEval`/`iter`-commutation facts already in
+   `LubinTateTorsionPoints.lean`, not yet checked against this pass's new `phiU`.
+3. **The action laws**: `phiU hπ hf 1 = X` (identity acts trivially — not yet proved; `phiCoeff
+   hπ 1 hf hf` vs `phiCoeff`'s uniqueness would need `eq_of_coeff_zero_eq_zero_of_coeff_one_eq_of_subst_eq`
+   applied against the trivial solution `X`) and `phiU hπ hf u ∘ phiU hπ hf v = phiU hπ hf (u*v)`
+   (composition — needs a *third* composition-closure fact, univariate-into-univariate this time,
+   likely closer to `LubinTateIterate.lean`'s existing techniques than to this pass's two new
+   lemmas, plus uniqueness to identify the composite with `phiU hπ hf (u*v)` by matching linear
+   coefficients `u*v`).
+
+None of this was attempted this pass; the diagnosis above is the honest state, not a forced close.
+
+### Build status
+
+`nix develop --command lake build` (run from `langlands/`) — whole project builds clean, `Build
+completed successfully (8766 jobs)`. `grep -rn sorry` on every file this pass touched
+(`LubinTateFieldTower.lean`, `LubinTateUnitsEndomorphism.lean`, `Langlands.lean`) — no hits.
+
+### What remains, in dependency order
+
+1. **Step 4 above** — evaluate `[u]_F` at torsion points, show it maps `piTorsion hπ hf n` into
+   itself, and establish the `Oˣ`-action laws (identity, composition).
+2. **The size computation** `|piTorsion hπ hf 1| = q`, unchanged since `§27` — needs a strengthened
+   hypothesis on `K` (e.g. `K ⊇ K_1`, now that `K_1` exists as a concrete term to state that
+   hypothesis against) and a power-series root-counting development (Weierstrass preparation /
+   Newton polygon).
+3. **`[K_1 : K]`, `Gal(K_1/K) ↪ Oˣ`, total ramification** — needs (1) and (2) together, plus the
+   abstract-`O`-to-concrete-`HeightOneSpectrum` bridge (unchanged since `§19`).
+4. **The reciprocity map** — the eventual target, joining this thread to `§6ai`.
+
+### Commits
+
+`8653298` (`LubinTateFieldTower.lean`: `FractionRing.liftAlgebra` activated locally, `K_1`),
+`6a7ac5f` (`LubinTateUnitsEndomorphism.lean`: `phiU`, `subst_subst_univ_mv`,
+`solvesFunctionalEq_subst_embed`, `solvesFunctionalEq_subst_outer`,
+`subst_Phi_phiU_eq_phiU_subst_Phi`).
