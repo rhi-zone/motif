@@ -12352,3 +12352,125 @@ completed successfully (8769 jobs)` (up from `8768` in §31: exactly the one new
 `spectralNorm_eq_norm_coeff_zero_rpow_of_aeval_eq_zero`,
 `LubinTate.divX_isWeaklyEisensteinAt_and_associated`,
 `LubinTate.spectralNorm_eq_of_isLubinTatePoly_root`; `Langlands.lean`: import added).
+
+## 33. Phase 2c, twenty-seventh pass (2026-08-14): **separability of `Q := P.divX` closed via the
+tame-ramification route §32 identified — both flagged Mathlib gaps confirmed available exactly as
+described; the splitting-field gap and `|piTorsion hπ hf 1| = q` remain open**
+
+Continues §32's "bounded next step" (the tame-ramification derivative argument, needing a
+nonarchimedean norm-extension fact for `L` and a finite-sum ultrametric domination lemma, both
+flagged as "not yet checked to exist in the needed form"). Both were checked, by direct source
+inspection, before use, per the `lean-proof-writing` skill's verify-before-use rule:
+
+* `isNonarchimedean_spectralNorm : IsNonarchimedean (spectralNorm K L)`
+  (`Mathlib.Analysis.Normed.Unbundled.SpectralNorm`) — unconditional given
+  `[NontriviallyNormedField K] [IsUltrametricDist K] [Algebra.IsAlgebraic K L]` (no `CompleteSpace K`
+  needed for this particular lemma, though the ambient section already carries it). `spectralAlgNorm K L`
+  bundles the same fact as a genuine `AlgebraNorm K L` on all of `L`, not just at algebraic elements
+  individually — confirmed to already close the gap §32 flagged, no new work needed.
+* `IsNonarchimedean.apply_sum_eq_of_lt` (`Mathlib.Algebra.Order.Ring.IsNonarchimedean`) — exactly the
+  finite-sum domination lemma needed: `f` nonarchimedean, `f_neg : ∀ a, f a = f (-a)`, one summand `l k`
+  strictly dominating every other summand in `f`-norm, gives `f (∑ l i) = f (l k)`. Confirmed already
+  available, unconditional, no new work needed.
+
+### What was proved, sorry-free (all in `Langlands/LubinTateEisensteinQ.lean`, extending §32's file)
+
+* `Polynomial.aeval_derivative_ne_zero_of_isEisensteinAt_of_natDegree_norm_eq_one` : the general,
+  `Q`-independent tame-ramification criterion at the `K[X]` level. For `Qk : K[X]` monic and
+  irreducible with a *sharp* Eisenstein constant term (`‖Qk.coeff 0‖ = c` exactly, `0 < c < 1`, and
+  `‖Qk.coeff i‖ ≤ c` for `i < Qk.natDegree`) and a *tame* degree (`‖(Qk.natDegree : K)‖ = 1` — the
+  norm-level shadow of "coprime to the residue characteristic"), every root `α` in an algebraic
+  extension `L / K` is a simple root: `Polynomial.aeval α Qk.derivative ≠ 0`. Proof: `spectralNorm K L α
+  = c ^ (1/n : ℝ)` exactly (§32's reversal lemma), hence `spectralNorm K L (α ^ m) = c ^ (m/n : ℝ)` for
+  every `m` (`isPowMul_spectralNorm`); writing `aeval α Qk.derivative` as the sum `∑ m ∈ range n,
+  Qk.derivative.coeff m • α ^ m` (valid since `Qk.derivative.natDegree = n - 1` exactly — its top
+  coefficient is `(n : K) ≠ 0` from tameness, via `Polynomial.coeff_derivative` and monic-ness), the
+  `m = n - 1` term has `spectralNorm` *exactly* `c ^ ((n-1)/n : ℝ)` while every other term has
+  `spectralNorm ≤ c ^ ((n+m)/n : ℝ) < c ^ ((n-1)/n : ℝ)` strictly (`‖Qk.coeff (m+1)‖ ≤ c`,
+  `‖(m+1:K)‖ ≤ 1` via `IsUltrametricDist.norm_natCast_le_one`, and `Real.rpow_lt_rpow_of_exponent_gt`
+  since `c < 1` makes `x ↦ c ^ x` strictly antitone). `IsNonarchimedean.apply_sum_eq_of_lt` then gives
+  `spectralNorm K L (aeval α Qk.derivative) = c ^ ((n-1)/n : ℝ) ≠ 0`, so the polynomial evaluates
+  nonzero (contrapositive of `spectralNorm_zero`). **This is exactly §31/§32's classical
+  derivative-valuation argument, formalized without any characteristic hypothesis** (the whole point of
+  tame ramification: `n`'s coprimality to `p` is encoded purely as a norm condition, uniform across
+  equal- and mixed-characteristic).
+* `Polynomial.separable_of_isEisensteinAt_of_natDegree_norm_eq_one` : the same hypotheses conclude
+  `Qk.Separable` directly, via Mathlib's `Polynomial.separable_iff_derivative_ne_zero` (`{F} [Field F]
+  {f : F[X]} (hf : Irreducible f) : f.Separable ↔ derivative f ≠ 0` — unconditional on characteristic).
+  Only the existence of *one* root `α` in *some* algebraic extension is needed: `Qk.derivative ≠ 0` is a
+  fact about the polynomial `Qk` alone, so a single nonzero evaluation already forces it.
+* `LubinTate.separable_map_of_isWeaklyEisensteinAt_associated` : the `O`-level bridge, translating `Q`'s
+  Eisenstein-with-associate-constant-term data (`hQweak`, `hQ0 : Associated (Q.coeff 0) π`) plus a
+  "tame degree" hypothesis `hQn : IsUnit (Q.natDegree : O)` into the `K`-level hypotheses above, using
+  `norm_algebraMap_eq_one_of_isUnit` (§30, already in `LubinTateWeierstrassPreparation.lean`) twice —
+  once for the unit witnessing `Associated`, once for the unit witnessing tameness — plus `hQweak.mem`,
+  `hπ.maximalIdeal_eq`, `Ideal.mem_span_singleton`, and `hOK` for the coefficient bound. Needs an
+  explicit extra hypothesis `hπnorm : ‖algebraMap O K π‖ < 1`: `hOK`'s uniform `≤ 1` bound on all of `O`
+  does not, by itself, force a *nonunit* to land at norm *strictly* less than `1` (that is exactly the
+  "the embedding is valuation-compatible, not merely bounded" content) — matching the `hπnorm`/`hπ0`
+  convention already used elsewhere in this repo (e.g. `NonarchimedeanExponentialUnitsFiltration.lean`).
+* `LubinTate.separable_map_divX_of_isLubinTatePoly` : specializes the bridge to `Q := P.divX`, reusing
+  `divX_isWeaklyEisensteinAt_and_associated` exactly as `spectralNorm_eq_of_isLubinTatePoly_root`
+  (§32) does. **This closes §32's separability gap** — the tame-ramification route it identified but
+  did not attempt — given `IsUnit (P.divX.natDegree : O)` and `‖algebraMap O K π‖ < 1` as explicit
+  hypotheses (both true in the concrete Lubin-Tate application — `P.divX.natDegree = residueCard O - 1`
+  is automatically a unit since `residueCard O` is a prime power so `residueCard O - 1 ≡ -1 mod p`, and
+  `π` a uniformizer with a valuation-compatible embedding gives `‖algebraMap O K π‖ < 1` — but neither
+  derivation is attempted here, matching `divX_isWeaklyEisensteinAt_and_associated`'s existing `hPdeg2`
+  convention of taking an always-true-in-application fact as an explicit hypothesis rather than
+  re-deriving it inline, since no caller needing the concrete instantiation exists yet).
+
+**Both irreducibility and separability of `Q` are now closed**, generally and reusably — the
+`K[X]`-level lemmas (`aeval_derivative_ne_zero_...`, `separable_of_isEisensteinAt_...`) have no
+dependence on `O`, Lubin-Tate, or any DVR structure at all, and are stated for *any* sharp-Eisenstein
+monic irreducible polynomial with tame degree over any complete nonarchimedean field.
+
+### Not attempted this pass: gap 2 (splitting-field hypothesis) and `|piTorsion hπ hf 1| = q`
+
+§31's gap 2 — `piTorsion`'s ambient `K` is not assumed to contain `Q`'s (or `P`'s) roots, so
+`|piTorsion hπ hf 1| = q` is false as literally stated — is untouched. Every theorem landed this pass
+is deliberately stated for an arbitrary algebraic extension `L / K` containing a root `α` (the
+generality a future splitting-field construction will need), but no such construction was attempted:
+building it needs (a) constructing/obtaining a splitting field of `Q` over `K` (or an `IsAlgClosed K`
+hypothesis), (b) `Q` irreducible + separable + splits ⇒ exactly `Q.natDegree` distinct roots (a Mathlib
+lemma combining `Polynomial.Separable` with `Polynomial.roots`/`rootSet` cardinality — not yet located,
+not searched for this pass), (c) `P = X * Q` giving `P`'s roots as `{0} ∪ Q`'s roots, disjoint since
+`Q.coeff 0 ≠ 0` (`0` is not a root of `Q`), so `|P.roots| = 1 + (residueCard O - 1) = residueCard O = q`,
+and (d) combining with `exists_piTorsion_one_eq_aeval_roots` (§31) under the added splitting-field
+hypothesis. None of (a)–(d) attempted.
+
+Also not attempted: deriving `IsUnit (P.divX.natDegree : O)` from `residueCard O` being a prime power,
+and deriving `‖algebraMap O K π‖ < 1` from `hOK`/`hπ` (this needs either an additional hypothesis
+package or a genuinely separate compatibility argument) — both left as explicit hypotheses to
+`separable_map_divX_of_isLubinTatePoly`, ready for a caller once one exists.
+
+### Build status
+
+`nix develop --command lake build` (run from `langlands/`) — whole project builds clean, `Build
+completed successfully (8769 jobs)` (job count unchanged from §32: no new file, only new declarations
+in the existing `Langlands/LubinTateEisensteinQ.lean`). `grep -rn sorry Langlands/LubinTateEisensteinQ.lean`
+— no hits.
+
+### What remains, in dependency order, toward `|piTorsion hπ hf 1| = q`
+
+1. **A splitting-field or `IsAlgClosed` hypothesis, and likely a reordering of the construction**
+   (§31 gap 2, unchanged) — size count inside a splitting field of `Q`, then transport to `K_1`, rather
+   than assuming `K` already splits `Q`. Now unblocked on the separability side (irreducibility and
+   separability of `Q` are both closed, generally); the remaining work is purely about roots-in-a-field
+   counting (irreducible + separable + splits ⇒ exactly `natDegree` distinct roots) and the
+   `P = X * Q` root-set bookkeeping.
+2. **`IsUnit (P.divX.natDegree : O)` and `‖algebraMap O K π‖ < 1` for the concrete Lubin-Tate `Q`** —
+   small, self-contained facts (prime-power-minus-one coprimality; a valuation-compatibility hypothesis
+   already assumed elsewhere in the repo under the `hπnorm` convention) needed to actually invoke
+   `separable_map_divX_of_isLubinTatePoly`, not yet derived.
+3. **`[K_1 : K]`, `Gal(K_1/K) ↪ Oˣ`, total ramification** — unchanged since `§27`–`§29`, needs (1)–(2)
+   above plus the abstract-`O`-to-concrete-`HeightOneSpectrum` bridge (unchanged since `§19`).
+4. **The reciprocity map** — the eventual target, joining this thread to `§6ai`.
+
+### Commits
+
+`e125094` (`Langlands/LubinTateEisensteinQ.lean`:
+`Polynomial.aeval_derivative_ne_zero_of_isEisensteinAt_of_natDegree_norm_eq_one`,
+`Polynomial.separable_of_isEisensteinAt_of_natDegree_norm_eq_one`,
+`LubinTate.separable_map_of_isWeaklyEisensteinAt_associated`,
+`LubinTate.separable_map_divX_of_isLubinTatePoly`).
