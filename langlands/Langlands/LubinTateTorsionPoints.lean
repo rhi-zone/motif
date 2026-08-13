@@ -151,6 +151,20 @@ theorem FPiEval_PhiInv_eq_zero (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (
   rw [hfam] at key
   exact key.symm
 
+/-- **`i_{F_π}(x)` is also a *left* additive inverse: `F_π(i_{F_π}(x), x) = 0`.** The other-sided
+inverse law, obtained "for free" from `FPiEval_PhiInv_eq_zero` (the right-sided law) via
+`FPiEval_comm` (`F_π`'s commutativity, evaluated) — no separate formal identity needed, unlike the
+general case where only a one-sided inverse law is assumed. -/
+theorem FPiEval_PhiInv_eq_zero' (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) {x : K} (hx : ‖x‖ < 1) :
+    FPiEval hπ hf (eval (PhiInv hπ hf) x) x = 0 := by
+  have hPhiInvBound : ∀ k, ‖algebraMap O K (PowerSeries.coeff k (PhiInv hπ hf))‖ ≤ 1 :=
+    fun k ↦ hOK _
+  have hInvNorm : ‖eval (PhiInv hπ hf) x‖ < 1 :=
+    lt_of_le_of_lt (norm_eval_le hPhiInvBound (by simp [constantCoeff_PhiInv hπ hf]) hx) hx
+  rw [FPiEval_comm hOK hπ hf hInvNorm hx]
+  exact FPiEval_PhiInv_eq_zero hOK hπ hf hx
+
 /-- **`ROADMAP.md` §23's "Fact E"**: the `[π^n]`-endomorphism `eval (iter f n)` commutes with
 concrete `F_π`-addition. Chains `LubinTateIterate.subst_iter_Phi`'s formal identity
 `(iter f n).subst Φ = Φ.subst (fun i ↦ (iter f n).subst (X i))` through `evalMv` at `y = ![a, b]`:

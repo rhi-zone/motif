@@ -92,6 +92,38 @@ theorem hasSum_FPiEval (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (hπ : Ir
     (show ‖(![a, b] : Fin 2 → K) 0‖ < 1 by simpa using ha)
     (show ‖(![a, b] : Fin 2 → K) 1‖ < 1 by simpa using hb)
 
+/-- **`F_π(a, b) = F_π(b, a)`, evaluated at concrete elements.** No eval-subst compatibility is
+needed here (unlike `FPiEval`'s closure facts): both sides are literally the same `tsum`, up to
+reindexing along `swapIdxEquiv` and using `coeff_swapIdx_Phi` (`F_π`'s coefficientwise
+commutativity) to identify corresponding terms. Concretely, reindexing
+`HasSum (evalSummandMv Φ ![b, a]) (FPiEval b a)` along `swapIdxEquiv` turns its summand at `n`
+into `algebraMap (coeff (swapIdx n) Φ) * b ^ n 1 * a ^ n 0`, which `coeff_swapIdx_Phi` and
+commutativity of multiplication identify with `evalSummandMv Φ ![a, b] n`; `HasSum.unique` against
+`hasSum_FPiEval` at `a, b` then gives the result. -/
+theorem FPiEval_comm (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) {a b : K} (ha : ‖a‖ < 1) (hb : ‖b‖ < 1) :
+    FPiEval hπ hf a b = FPiEval hπ hf b a := by
+  have hab : HasSum (evalSummandMv (Phi hπ hf) ![a, b]) (FPiEval hπ hf a b) :=
+    hasSum_FPiEval hOK hπ hf ha hb
+  have hba : HasSum (evalSummandMv (Phi hπ hf) ![b, a]) (FPiEval hπ hf b a) :=
+    hasSum_FPiEval hOK hπ hf hb ha
+  have hreindex : HasSum
+      (evalSummandMv (Phi hπ hf) ![b, a] ∘ swapIdxEquiv) (FPiEval hπ hf b a) :=
+    (Equiv.hasSum_iff swapIdxEquiv).mpr hba
+  have hfun : evalSummandMv (Phi hπ hf) ![b, a] ∘ swapIdxEquiv =
+      evalSummandMv (Phi hπ hf) ![a, b] := by
+    funext n
+    show evalSummandMv (Phi hπ hf) ![b, a] (swapIdx n) = evalSummandMv (Phi hπ hf) ![a, b] n
+    unfold evalSummandMv
+    rw [Fin.prod_univ_two, Fin.prod_univ_two]
+    show algebraMap O K (MvPowerSeries.coeff (swapIdx n) (Phi hπ hf)) *
+        (b ^ (swapIdx n) 0 * a ^ (swapIdx n) 1) =
+        algebraMap O K (MvPowerSeries.coeff n (Phi hπ hf)) * (a ^ n 0 * b ^ n 1)
+    rw [coeff_swapIdx_Phi, swapIdx_apply_zero, swapIdx_apply_one]
+    ring
+  rw [hfun] at hreindex
+  exact (hreindex.unique hab).symm
+
 end LubinTate
 
 end

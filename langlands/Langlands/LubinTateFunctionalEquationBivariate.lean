@@ -1224,6 +1224,15 @@ theorem degree_swapIdx (m : Fin 2 →₀ ℕ) : (swapIdx m).degree = m.degree :=
   rw [degree_fin_two (swapIdx m), degree_fin_two m, swapIdx_apply_zero, swapIdx_apply_one]
   omega
 
+/-- **`swapIdx` as a self-equivalence of bivariate multi-indices**, packaging the involution
+`swapIdx_swapIdx` for use in reindexing `tsum`/`HasSum` along `swapIdx` (e.g. to transport
+`F_π`'s coefficientwise commutativity, `coeff_swapIdx_Phi`, to concrete evaluation). -/
+def swapIdxEquiv : (Fin 2 →₀ ℕ) ≃ (Fin 2 →₀ ℕ) where
+  toFun := swapIdx
+  invFun := swapIdx
+  left_inv := swapIdx_swapIdx
+  right_inv := swapIdx_swapIdx
+
 /-- The variable-swapping substitution family `(X, Y) ↦ (Y, X)`. -/
 def swapVars {S : Type*} [CommRing S] : Fin 2 → MvPowerSeries (Fin 2) S :=
   fun i ↦ MvPowerSeries.X (swapFin i)
