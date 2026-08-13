@@ -11356,3 +11356,126 @@ on every file this pass touched: `NonarchimedeanMvPowerSeriesEvalFin2.lean`,
 `piTorsion` addition/inverse closure, identity-law bonus lemmas, all in
 `LubinTateTorsionPoints.lean`, plus `evalMv_eq_zero_of_zero`/`norm_evalMv_le` in
 `NonarchimedeanMvPowerSeriesEvalFin2.lean`).
+
+## 25. Phase 2c, nineteenth pass (2026-08-13): **Lemma P (commutativity) CLOSED, both-sided
+inverse law CLOSED for free; associativity re-confirmed as the genuine blocker, not mechanical**
+
+`§24` flagged Lemma P (`FPiEval` commutativity, evaluated) as "plausibly cheap" and left it
+unattempted, and re-scoped associativity as blocked on a genuinely new `Fin 3`-arity
+eval-subst stack, asking a future pass to verify both assessments rather than assume them. This
+pass verified and closed the first, used it to close the other-sided inverse law for free, and
+verified (concretely, against Mathlib's actual statements, not by re-assertion) that the second
+assessment was accurate — no mechanical shortcut exists.
+
+### Lemma P: closed — `FPiEval_comm`, `F_π(a, b) = F_π(b, a)` evaluated
+
+`Langlands/LubinTateFunctionalEquationBivariate.lean`: new `swapIdxEquiv : (Fin 2 →₀ ℕ) ≃
+(Fin 2 →₀ ℕ)`, packaging the involution `swapIdx_swapIdx` (already present) as a self-equivalence,
+for use in reindexing a `tsum`/`HasSum` along `swapIdx`.
+
+`Langlands/LubinTateFormalGroupEval.lean`: new `FPiEval_comm`. Confirms `§24`'s assessment exactly:
+**no eval-subst compatibility was needed at all.** `hasSum_FPiEval` at `(b, a)`, reindexed along
+`swapIdxEquiv`, turns the summand at `n` into `algebraMap (coeff (swapIdx n) Φ) * b ^ n 1 * a ^ n 0`;
+`coeff_swapIdx_Phi` (`§17`/`§18`'s coefficientwise commutativity, already closed) identifies
+`coeff (swapIdx n) Φ` with `coeff n Φ`, and commutativity of multiplication in `K` finishes the
+term-by-term match with `evalSummandMv Φ ![a, b] n`. `HasSum.unique` against `hasSum_FPiEval` at
+`(a, b)` closes it. **Closed on the first build attempt** — genuinely cheaper than Lemma A/Lemma S,
+as predicted (pure reindexing, no geometric-series/double-interchange argument).
+
+### Both-sided inverse: closed for free — `FPiEval_PhiInv_eq_zero'`
+
+`Langlands/LubinTateTorsionPoints.lean`: new `FPiEval_PhiInv_eq_zero'`
+(`F_π(i_{F_π}(x), x) = 0`, the left-sided inverse law), obtained by applying `FPiEval_comm` to the
+already-closed right-sided `FPiEval_PhiInv_eq_zero` — exactly the "for free from commutativity"
+route `§24` anticipated, no separate formal identity needed. Together with `FPiEval_zero`/
+`FPiEval_zero'` (identity laws, `§24`) and `FPiEval_PhiInv_eq_zero`/`FPiEval_PhiInv_eq_zero'`
+(both-sided inverse), every `AddGroup` axiom except associativity is now available at the
+evaluated level.
+
+### Associativity: re-confirmed as the genuine blocker — checked concretely, not re-asserted
+
+Read Mathlib's actual statements before re-confirming `§24`'s diagnosis, rather than trusting the
+prior pass's conclusion at face value:
+
+* `Mathlib.RingTheory.FormalGroup.Basic`'s `FormalGroup.assoc` field is stated using
+  `name_power_vars Y₀, Y₁, Y₂ over R` (`Mathlib.Tactic.Ring.NamePowerVars`) — confirmed by reading
+  the macro's use elsewhere in the same file: this names `Y₀, Y₁, Y₂ : MvPowerSeries (Fin 3) R`
+  (three genuinely independent free variables), so `assoc`'s identity is stated, unavoidably, as an
+  equation of `MvPowerSeries (Fin 3) R` elements — not reducible to two applications of a
+  `Fin 2`-indexed identity.
+* Checked directly whether a **currying shortcut** avoids needing `Fin 3` (or an equivalent
+  three-degrees-of-freedom) construction: could `F_π(F_π(a,b), c) = F_π(a, F_π(b,c))` be derived by
+  applying `FormalGroup.assoc'` (the general-`σ`-index transport lemma, confirmed present) twice
+  with `σ := Fin 2` substitutands, evaluated via the already-built `Fin 2` machinery only? No —
+  `assoc'`'s three substitutands `f₀, f₁, f₂` need to represent `a`, `b`, `c` as **three
+  simultaneously-independent** slots; any choice of `f₀ f₁ f₂ : MvPowerSeries (Fin 2) R` has at
+  most two independent formal degrees of freedom, so no assignment can carry three independent
+  concrete values through `subst` at once. This is a structural obstruction, not a matter of
+  cleverness — confirming `§24`'s point that the new nesting shape is genuinely `Fin 3`-arity, not
+  a relabeling of `Fin 2` work.
+* Checked whether the general-finite-index-type route that made the `Fin 3` **uniqueness** theorem
+  (`§18`, formal side) cheap would transfer to the **evaluation** (convergence/`tsum`) side. It does
+  not transfer directly: the uniqueness theorem's cost was purely combinatorial (enumerating
+  multi-indices, antidiagonal splitting), and Mathlib already supplies the general-`σ` versions of
+  those primitives (`Finsupp.finite_of_degree_eq`, `MvPowerSeries.coeff_prod`), which is exactly why
+  that theorem was cheap. Evaluation is different: no file in this repo yet defines `evalMv` for a
+  general finite index type or even for `Fin 3` specifically (confirmed:
+  `Langlands/NonarchimedeanMvPowerSeriesEvalFin2.lean` is `Fin 2`-hardcoded throughout, and no
+  `NonarchimedeanMvPowerSeriesEvalFin3.lean`/general-`σ` analogue exists in `Langlands/`). Building
+  it is mechanical in itself (replace `Fin.prod_univ_two`/`degree_fin_two` with `Finset.prod`/generic
+  `Finsupp.degree` facts), but is only the **base layer** — the two new eval-subst compatibilities
+  `§24` scoped (a Lemma-A-analogue with a genuinely new nesting shape: multivariate *outer* `Φ`
+  substituted by a family where *one component is itself a nontrivial bivariate composite*
+  `Φ.subst ![Y₀,Y₁]`, not a univariate-diagonal-embed the way Lemma S's family was; and a Lemma-S-
+  analogue for the resulting nested structure) are the expensive part, and neither is a restatement
+  of Lemma A or Lemma S — confirmed again this pass, not merely repeated from `§24`.
+
+**Conclusion, re-confirmed**: associativity at concrete points needs a real new construction
+(`evalMv3`/general-`σ` `evalMv` base layer, cheap; plus two new eval-subst compatibilities at a
+genuinely new nesting shape, comparable in size to `§24`'s entire Lemma A + Lemma S pass or larger).
+**Not attempted this pass** — attempting it without room to finish and verify would leave something
+broken, which the task's constraints rule out. This is the same-sized obstacle `§24` diagnosed, now
+checked against Mathlib's actual definitions rather than re-asserted.
+
+### `piTorsion` `AddSubgroup`/`AddCommGroup` packaging: still not reached, for the same reason
+
+Every `AddGroup` axiom except associativity is now available at the evaluated level (identity,
+both-sided inverse, closure under addition — all closed). Literal Mathlib group-structure packaging
+on `↥(piTorsion hπ hf n)` under `F_π`-addition remains blocked on associativity alone, per `§24`'s
+scoping (unchanged this pass).
+
+### The size computation `|piTorsion hπ hf 1| = q`: not attempted
+
+Per `§24`'s own scoping, this is blocked on group structure existing (or, at minimum, needs a
+separate root-counting argument not investigated this pass — not newly investigated this pass
+either, since the group-structure blocker is unchanged).
+
+### What remains, in dependency order
+
+1. **`evalMv3`/`NonarchimedeanMvPowerSeriesEvalFin3`** (or a `σ`-parametrized generalization of
+   `NonarchimedeanMvPowerSeriesEvalFin2`) — the base convergence/`tsum` layer for three variables.
+   Mechanical (replace `Fin.prod_univ_two`/`degree_fin_two` with `Finset.prod`/generic
+   `Finsupp.degree` facts), not yet built.
+2. **Two `Fin 3`-arity eval-subst compatibilities** for the specific nesting shape `assoc'` needs
+   (Lemma-A-analogue: multivariate outer `Φ` substituted by a family with one genuinely bivariate
+   composite component; Lemma-S-analogue for the resulting nested structure) — blocked on (1), and
+   the genuine new work, comparable in size to `§24`'s Lemma A + Lemma S pass or larger.
+3. **Associativity evaluated**, hence a literal `AddCommGroup` instance on `↥(piTorsion hπ hf n)`
+   (or `AddSubgroup`-style packaging) — blocked on (1)–(2). Every other `AddGroup` axiom (identity,
+   both-sided inverse, closure) is already available.
+4. **The size computation** `|piTorsion hπ hf 1| = q` — blocked on (3), or on a separate
+   root-counting argument not yet investigated.
+5. **`K_n = K(F_π[π^n])`, `[K_n : K]`, total ramification** — blocked on (3)/(4), and separately
+   still needs the abstract-`O`-to-concrete-`HeightOneSpectrum` bridge (unchanged since `§19`–`§24`).
+6. **The reciprocity map** — the eventual target, joining this thread to `§6ai`.
+
+### Build status
+
+`nix develop --command lake build` (run from `langlands/`) — whole project builds clean, `Build
+completed successfully (8754 jobs)`, no `sorry` in any touched file (confirmed by `grep -n sorry`
+on every file this pass touched: `LubinTateFunctionalEquationBivariate.lean`,
+`LubinTateFormalGroupEval.lean`, `LubinTateTorsionPoints.lean` — no hits).
+
+### Commits
+
+`206d79b` (`swapIdxEquiv`, `FPiEval_comm`, `FPiEval_PhiInv_eq_zero'`).
