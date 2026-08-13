@@ -23,6 +23,7 @@ import Langlands.LubinTateFormalGroupEvalAssoc
 import Langlands.LubinTateTorsionGroup
 import Langlands.LubinTateUnitsAction
 import Langlands.LubinTateUnitsEndomorphism
+import Langlands.LubinTateWeierstrassPreparation
 import Langlands.MonogenicIntegralClosure
 import Langlands.MonogenicMaximalOrder
 import Langlands.NonarchimedeanCauchyProduct
