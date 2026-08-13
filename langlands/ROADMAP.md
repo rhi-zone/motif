@@ -12015,3 +12015,93 @@ completed successfully (8767 jobs)`. `grep -rn sorry` on every file this pass to
 `eval_zero_of_coeff_zero_eq_zero`), `d37eb71` (`LubinTateUnitsAction.lean`: `eval_phiU_FPiEval`,
 `mem_piTorsion_eval_phiU`, `phiU_one_eq_X`, `solvesFunctionalEq_subst_univ`,
 `phiU_subst_phiU_eq_phiU_mul`, `piTorsionSMul`, `piTorsionMulAction`).
+
+## 30. Phase 2c, twenty-fourth pass (2026-08-14): **Weierstrass preparation — a major premise
+correction (Mathlib already has it), specialized to `f`, plus the unit-factor non-vanishing lemma**
+
+The task brief for this pass named Weierstrass preparation as "confirmed absent from Mathlib for
+this repo's setting" and asked for it to be built from scratch, general-purpose, Mathlib quality —
+matching `§28`'s and earlier passes' scoping of the functional-equation-lemma and exp/log threads as
+multi-pass foundational efforts. **That premise was checked, not assumed, and found false**: `grep`
+across `.lake/packages/mathlib/Mathlib` for `Weierstrass` turns up
+`Mathlib/RingTheory/PowerSeries/WeierstrassPreparation.lean` (Jz Pan, 2025) — read in full before
+writing anything — which already proves the general theorem, with existence *and* uniqueness, for
+power series over any complete local ring, essentially verbatim to Washington's *Introduction to
+Cyclotomic Fields* Proposition 7.2 / Theorem 7.3. This is new (2025) content that a pre-existing
+`grep`/`loogle` pass evidently missed; this pass's first real finding is the correction itself. No
+successive-approximation infrastructure was built from scratch this pass — reinventing an already-
+proved Mathlib theorem would have been waste, not progress. The actual work was specializing
+Mathlib's general statement to the Lubin-Tate setting and starting the bridge to `piTorsion`.
+
+### `Langlands/LubinTateWeierstrassPreparation.lean` (new)
+
+* `map_residue_ne_zero`, `order_map_residue_eq`: `IsLubinTatePoly`'s third congruence,
+  `f.map (residue O) = X ^ q` *exactly* (not just the weaker low-degree congruence classically used
+  to define the Weierstrass degree), supplies both of Mathlib's needed inputs — `f.map (residue O)
+  ≠ 0` (since `X ^ q ≠ 0` in a field's power series ring) and `(f.map (residue O)).order = q`
+  *read off directly*, not discovered. **This confirms the task brief's suggested simplification**
+  ("the relevant statement may be simpler than fully general Weierstrass prep... the Weierstrass
+  degree is read directly off the given congruence") — genuinely available for `f`, though it turned
+  out to matter only for identifying Mathlib's output degree, not for the construction itself
+  (Mathlib's proof doesn't discover the degree either; it's a hypothesis threaded through, called
+  `order` there).
+* `exists_isWeierstrassFactorization_of_isLubinTatePoly`: `f = P * u`, `P : O[X]` distinguished
+  (monic, all lower coefficients in `𝔪`) of degree exactly `q := residueCard O`, `u : O⟦X⟧` a unit
+  power series. A direct specialization of Mathlib's `PowerSeries.exists_isWeierstrassFactorization`
+  via the two lemmas above, plus one new hypothesis on `O`:
+  `[IsAdicComplete (IsLocalRing.maximalIdeal O) O]` — the literal formalization of "complete DVR",
+  the standing hypothesis of classical Lubin-Tate theory that this repo's `O` (previously only
+  `IsDomain`/`IsDiscreteValuationRing`/finite residue field) had not yet needed to state. Not a
+  narrowing of scope: it's a hypothesis the argument genuinely uses (Mathlib's own theorem requires
+  it), added honestly rather than worked around.
+* `norm_algebraMap_eq_one_of_isUnit`: a unit of `O`, algebra-mapped into `K` (`hOK`'s closed-unit-
+  ball convention), has norm exactly `1` — both it and its inverse map with norm `≤ 1`, forcing
+  equality. Same argument as `Langlands.PrincipalUnitsSuccessiveApproximation.norm_approxUnit_eq_one`,
+  specialized from a limit of units down to a single element.
+* `norm_eval_eq_one_of_isUnit`/`eval_ne_zero_of_isUnit`: **the unit factor `u` never vanishes under
+  evaluation on the maximal ideal** — `‖eval u x‖ = 1` for `‖x‖ < 1`, hence `eval u x ≠ 0`. Built on
+  a new general lemma landed in `Langlands/NonarchimedeanPowerSeriesEval.lean`,
+  `norm_eval_sub_algebraMap_constantCoeff_le` (`‖eval f x - algebraMap R K (constantCoeff f)‖ ≤
+  ‖x‖`, the general form of the existing `norm_eval_le`, which is exactly its `constantCoeff f = 0`
+  case — same `Summable.tsum_eq_zero_add` splitting-off-the-head-term technique), combined with the
+  ultrametric "isosceles triangle" law (`IsUltrametricDist.norm_add_eq_max_of_norm_ne_norm`): `eval
+  u x` sits strictly closer than `1` to a point of norm exactly `1` (`u`'s algebra-mapped constant
+  term, a unit), so its own norm is forced to equal that `1`.
+
+### Build status
+
+`nix develop --command lake build` (run from `langlands/`) — whole project builds clean, `Build
+completed successfully (8768 jobs)`. `grep -rn sorry` on both touched files — no hits.
+
+### What remains, in dependency order, toward `|piTorsion hπ hf 1| = q`
+
+1. **Assemble `eval f x = eval P x * eval u x`** from `f = (P : O⟦X⟧) * u`
+   (`exists_isWeierstrassFactorization_of_isLubinTatePoly`) via
+   `NonarchimedeanPowerSeriesEval.eval_mul` — routine (both factors' coefficients are `O`-valued,
+   hence bounded by `hOK`), not yet assembled.
+2. **Identify `NonarchimedeanPowerSeriesEval.eval (↑P) x` with `Polynomial.aeval x P`** — `P` is a
+   genuine polynomial, so its `eval` (a `tsum`) is actually a finite sum; not yet done, but should
+   follow from `Polynomial.coeff_coe` plus a finite-support `tsum` lemma.
+3. **Combine (1)-(2) with `eval_ne_zero_of_isUnit`** (this pass's last result) to get: for `x` in
+   `K`'s maximal ideal, `eval f x = 0 ↔ Polynomial.aeval x P = 0` — turning `piTorsion hπ hf 1` into
+   exactly the roots of `P` in the maximal ideal. This is where this pass's non-vanishing lemma pays
+   off; it is not a detour from the `piTorsion` goal.
+4. **Root-counting: show `P` has exactly `q` *distinct* roots in `K`.** `P` is automatically
+   Eisenstein (`Polynomial.IsDistinguishedAt` extends `IsWeaklyEisensteinAt`), and its degree-`0`
+   coefficient has valuation exactly `1` (since `f`'s linear coefficient is `π` and `f = P * u` with
+   `u` a unit — needs checking, not yet done). Eisenstein gives irreducibility over `Frac(O)`
+   (Mathlib: `Polynomial.IsWeaklyEisensteinAt`/Eisenstein criterion file) but **not by itself
+   separability** — that needs an additional argument (e.g. via the formal derivative, or via `K`
+   containing a degree-`q` totally ramified extension and general ramification theory). Genuinely
+   new content; not attempted this pass. This is the actual remaining mathematical gap, now sharply
+   localized (it was previously obscured by the larger "no Weierstrass prep at all" gap).
+5. **`[K_1 : K]`, `Gal(K_1/K) ↪ Oˣ`, total ramification** — unchanged since `§27`/`§28`/`§29`, needs
+   (4) above plus the abstract-`O`-to-concrete-`HeightOneSpectrum` bridge (unchanged since `§19`).
+6. **The reciprocity map** — the eventual target, joining this thread to `§6ai`.
+
+### Commits
+
+`e2c2b14` (`Langlands/LubinTateWeierstrassPreparation.lean`: `map_residue_ne_zero`,
+`order_map_residue_eq`, `exists_isWeierstrassFactorization_of_isLubinTatePoly`), `7bf53b2`
+(`norm_algebraMap_eq_one_of_isUnit`, `norm_eval_eq_one_of_isUnit`, `eval_ne_zero_of_isUnit`;
+`Langlands/NonarchimedeanPowerSeriesEval.lean`: `norm_eval_sub_algebraMap_constantCoeff_le`).
