@@ -2,6 +2,7 @@ import Mathlib.RingTheory.DiscreteValuationRing.Basic
 import Mathlib.RingTheory.LocalRing.ResidueField.Basic
 import Mathlib.RingTheory.PowerSeries.Basic
 import Mathlib.SetTheory.Cardinal.NatCard
+import Mathlib.FieldTheory.Finite.Basic
 
 /-!
 # Lubin-Tate power series: the defining congruences, and existence of `f_π`
@@ -96,6 +97,30 @@ variable [Finite (ResidueField O)]
 /-- The residue field of a discrete valuation ring is finite (by hypothesis) and a field, hence
 has at least two elements. -/
 theorem two_le_residueCard : 2 ≤ residueCard O := Finite.one_lt_card
+
+/-- **`n : O` is a unit whenever `n + 1 = residueCard O`.** General discrete-valuation-ring fact
+about any local ring with finite residue field (not Lubin-Tate-specific): if `n + 1` is exactly the
+residue field's cardinality, then `n`'s image in the residue field is `-1 ≠ 0`
+(`(n : ResidueField O) = (residueCard O : ResidueField O) - 1 = 0 - 1 = -1`, using
+`FiniteField.cast_card_eq_zero` for the middle step), hence `n` itself is a unit of `O`
+(`IsLocalRing.residue_ne_zero_iff_isUnit`). This is the "tame degree" fact needed for `IsUnit
+(P.divX.natDegree : O)` when `P.divX.natDegree = residueCard O - 1`. -/
+theorem isUnit_natCast_of_add_one_eq_residueCard {n : ℕ} (hn : n + 1 = residueCard O) :
+    IsUnit ((n : O)) := by
+  rw [← IsLocalRing.residue_ne_zero_iff_isUnit]
+  haveI : Fintype (ResidueField O) := Fintype.ofFinite _
+  have hcard : (residueCard O : ℕ) = Fintype.card (ResidueField O) := Nat.card_eq_fintype_card
+  have hz : (Fintype.card (ResidueField O) : ResidueField O) = 0 :=
+    FiniteField.cast_card_eq_zero (ResidueField O)
+  have hresn : IsLocalRing.residue O (n : O) = (n : ResidueField O) := map_natCast _ n
+  rw [hresn]
+  have hcast : ((n : ℕ) : ResidueField O) + 1 = 0 := by
+    have : ((n + 1 : ℕ) : ResidueField O) = 0 := by rw [hn, hcard]; exact hz
+    push_cast at this
+    exact this
+  intro hcontra
+  rw [hcontra, zero_add] at hcast
+  exact one_ne_zero hcast
 
 /-- **The standard explicit witness `f₀ := π • X + X ^ q`.** -/
 def basicPoly (π : O) (q : ℕ) : O⟦X⟧ := PowerSeries.C π * X + X ^ q
