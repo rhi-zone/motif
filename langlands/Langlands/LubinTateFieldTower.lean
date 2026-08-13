@@ -158,6 +158,47 @@ theorem splits_map_K_1_of_splits
       (mem_piTorsion_one_of_root_divX_map hOK hπ hπnorm hf hu heq hPdist hPdeg2 hx)
   exact IntermediateField.splits_of_splits (F := K_1 (O := O) (K := K) hπ hf) hsplit' hF
 
+omit [IsUltrametricDist K] [CompleteSpace K] in
+/-- **`[Frac(O)(α) : Frac(O)] = q - 1` for any single root `α` of `Q := P.divX`'s image in `K`** —
+pure minimal-polynomial theory, no group action or splitting hypothesis needed (unlike `K_1` itself,
+which adjoins *all* of `piTorsion hπ hf 1` at once). `Q' := P.divX` base-changed to `Frac(O)` is
+monic and irreducible (`Polynomial.irreducible_map_of_isWeaklyEisensteinAt_associated`, specialized
+at `K := FractionRing O`, i.e. Gauss's lemma applied to `Frac(O)` itself); `α`'s vanishing on `Q`'s
+image in `K` transports down to vanishing on `Q'` via `Polynomial.aeval_map_algebraMap` applied
+twice (once to strip `K`'s map, once to reinterpret the result as `Q'`'s map into `K` through the
+scalar tower `O → Frac(O) → K`), so `Q' = minpoly (FractionRing O) α`
+(`minpoly.eq_of_irreducible_of_monic`) and `IntermediateField.adjoin.finrank` gives the degree
+directly as `Q'.natDegree = P.divX.natDegree = residueCard O - 1`. -/
+theorem finrank_adjoin_of_aeval_divX_map_eq_zero (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) {P : O[X]} {u : O⟦X⟧} (hu : IsUnit u)
+    (heq : f = (P : O⟦X⟧) * u) (hPdist : P.IsDistinguishedAt (maximalIdeal O))
+    (hPdeg : P.natDegree = residueCard O) {x : K}
+    (hx : Polynomial.aeval x (P.divX.map (algebraMap O K)) = 0) :
+    Module.finrank (FractionRing O) (IntermediateField.adjoin (FractionRing O) ({x} : Set K))
+      = residueCard O - 1 := by
+  have hf0 : PowerSeries.coeff 0 f = 0 := hf.1
+  have hf1 : PowerSeries.coeff 1 f = π := hf.2.1
+  have hPdeg2 : 2 ≤ P.natDegree := hPdeg ▸ two_le_residueCard
+  obtain ⟨hQmonic, hQweak, hQdeg, hQ0assoc⟩ :=
+    divX_isWeaklyEisensteinAt_and_associated hu heq hf0 hf1 hPdist hPdeg2
+  set Q' : (FractionRing O)[X] := P.divX.map (algebraMap O (FractionRing O)) with hQ'def
+  have hQ'irr : Irreducible Q' :=
+    Polynomial.irreducible_map_of_isWeaklyEisensteinAt_associated hπ hQmonic hQweak hQdeg hQ0assoc
+  have hQ'monic : Q'.Monic := hQmonic.map _
+  haveI := FractionRing.isScalarTower_liftAlgebra O K
+  have hxQ' : Polynomial.aeval x Q' = Polynomial.aeval x P.divX :=
+    Polynomial.aeval_map_algebraMap (FractionRing O) x P.divX
+  have haevalQO : Polynomial.aeval x P.divX = 0 := by
+    rw [← Polynomial.aeval_map_algebraMap K x P.divX]
+    exact hx
+  have hx' : Polynomial.aeval x Q' = 0 := hxQ'.trans haevalQO
+  have hInt : IsIntegral (FractionRing O) x := ⟨Q', hQ'monic, hx'⟩
+  have hmin : Q' = minpoly (FractionRing O) x :=
+    minpoly.eq_of_irreducible_of_monic hQ'irr hx' hQ'monic
+  rw [IntermediateField.adjoin.finrank hInt, ← hmin, hQ'def,
+    Polynomial.natDegree_map_eq_of_injective (IsFractionRing.injective O (FractionRing O)),
+    Polynomial.natDegree_divX_eq_natDegree_tsub_one, hPdeg]
+
 end LubinTate
 
 end
