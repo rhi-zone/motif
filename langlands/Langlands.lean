@@ -18,6 +18,7 @@ import Langlands.HeightOneSpectrumRationalPrimeTower
 import Langlands.HenselianResidueLift
 import Langlands.IdeleGroup
 import Langlands.LubinTate
+import Langlands.LubinTateEisensteinQ
 import Langlands.LubinTateFieldTower
 import Langlands.LubinTateFormalGroupEvalAssoc
 import Langlands.LubinTateTorsionGroup
