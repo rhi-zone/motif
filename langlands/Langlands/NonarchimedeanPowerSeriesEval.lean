@@ -173,6 +173,33 @@ theorem norm_eval_sub_algebraMap_constantCoeff_le {f : PowerSeries R}
     _ ≤ ‖x‖ ^ 1 := pow_le_pow_of_le_one (norm_nonneg x) hx.le (by omega)
     _ = ‖x‖ := pow_one _
 
+/-- **`eval f x` lies within `‖x‖ ^ 2` of `f`'s linear approximation `(coeff 1 f) * x`**, given
+`f` has zero constant term. The tail-valuation estimate underlying the classical "`[u]_F(X) ≡ uX`
+modulo quadratic order" fact: splits `eval f x` off at indices `0` and `1`
+(`Summable.sum_add_tsum_nat_add 2`), identifies the index-`0` summand as `0` (via `hf0`) and the
+index-`1` summand as `(coeff 1 f) * x`, and bounds the remaining tail (indices `≥ 2`) by `‖x‖ ^ 2`
+exactly as `norm_eval_sub_algebraMap_constantCoeff_le` bounds its tail by `‖x‖ ^ 1`. -/
+theorem norm_eval_sub_coeff_one_mul_le {f : PowerSeries R}
+    (hf : ∀ n, ‖algebraMap R K (PowerSeries.coeff n f)‖ ≤ 1)
+    (hf0 : PowerSeries.constantCoeff f = 0) {x : K} (hx : ‖x‖ < 1) :
+    ‖eval f x - algebraMap R K (PowerSeries.coeff 1 f) * x‖ ≤ ‖x‖ ^ 2 := by
+  have hsplit : (∑ i ∈ Finset.range 2, evalSummand f x i) + ∑' i, evalSummand f x (i + 2) =
+      eval f x :=
+    (summable_evalSummand hf hx).sum_add_tsum_nat_add 2
+  have h0 : evalSummand f x 0 = 0 := by
+    unfold evalSummand
+    rw [PowerSeries.coeff_zero_eq_constantCoeff, hf0, map_zero, zero_mul]
+  have h1 : evalSummand f x 1 = algebraMap R K (PowerSeries.coeff 1 f) * x := by
+    unfold evalSummand
+    rw [pow_one]
+  have hrange : ∑ i ∈ Finset.range 2, evalSummand f x i =
+      algebraMap R K (PowerSeries.coeff 1 f) * x := by
+    rw [Finset.sum_range_succ, Finset.sum_range_one, h0, h1, zero_add]
+  rw [← hsplit, hrange, add_sub_cancel_left]
+  refine (IsUltrametricDist.norm_tsum_le _).trans (ciSup_le fun n ↦ ?_)
+  calc ‖evalSummand f x (n + 2)‖ ≤ ‖x‖ ^ (n + 2) := norm_evalSummand_le hf x (n + 2)
+    _ ≤ ‖x‖ ^ 2 := pow_le_pow_of_le_one (norm_nonneg x) hx.le (by omega)
+
 /-- **Evaluation is additive**, on the domain where both series have algebra-mapped-norm-bounded
 coefficients. Proved by matching `PowerSeries.coeff_add` (`coeff` is an `R`-linear map) against the
 ultrametric bound `‖a + b‖ ≤ max ‖a‖ ‖b‖ ≤ 1` needed to see `f + g`'s own coefficients are bounded,
