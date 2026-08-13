@@ -160,6 +160,68 @@ theorem mem_piTorsion_one_of_root_divX_map [DecidableEq K]
   rw [iter_one]
   exact (eval_eq_zero_iff_aeval_eq_zero hOK hu heq hxnorm).mpr haevalP
 
+omit [Finite (ResidueField O)] [IsFractionRing O K] in
+/-- **A nonzero element of `piTorsion hπ hf 1` is a root of `Q := P.divX`'s image in `K`.** The
+reverse of `mem_piTorsion_one_of_root_divX_map`'s root-membership direction, extracted from the
+`hSmem` block of `card_piTorsion_one_eq_residueCard`'s proof: unlike that theorem, this needs no
+splitting hypothesis (`hsplit`) at all — `P = X * Q` (`Polynomial.X_mul_divX_add`) makes `aeval x P
+= x * aeval x Q`, so a nonzero root of `P` (which `x` is, `eval_eq_zero_iff_aeval_eq_zero`) forces
+`aeval x Q = 0` directly. -/
+theorem aeval_divX_map_eq_zero_of_mem_piTorsion_one_ne_zero
+    (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O} (hπ : Irreducible π) {f : O⟦X⟧}
+    (hf : IsLubinTatePoly π (residueCard O) f) {P : O[X]} {u : O⟦X⟧} (hu : IsUnit u)
+    (heq : f = (P : O⟦X⟧) * u) {x : K} (hx : x ∈ piTorsion (K := K) hπ hf 1) (hx0 : x ≠ 0) :
+    Polynomial.aeval x (P.divX.map (algebraMap O K)) = 0 := by
+  obtain ⟨hxnorm, hxzero⟩ := hx
+  have hf0 : PowerSeries.coeff 0 f = 0 := hf.1
+  rw [iter_one] at hxzero
+  have haevalP : Polynomial.aeval x P = 0 :=
+    (eval_eq_zero_iff_aeval_eq_zero hOK hu heq hxnorm).mp hxzero
+  have hPfact : P = Polynomial.X * P.divX := by
+    have hXid := Polynomial.X_mul_divX_add P
+    rw [coeff_zero_eq_zero_of_eq_mul hu heq hf0, Polynomial.C_0, add_zero] at hXid
+    exact hXid.symm
+  have hprod : x * Polynomial.aeval x P.divX = 0 := by
+    rw [← haevalP]
+    conv_rhs => rw [hPfact]
+    rw [map_mul, Polynomial.aeval_X]
+  rcases mul_eq_zero.mp hprod with hx0' | hQ0
+  · exact absurd hx0' hx0
+  · rw [Polynomial.aeval_map_algebraMap K x P.divX]; exact hQ0
+
+omit [Finite (ResidueField O)] in
+/-- **The exact norm of a nonzero element of `piTorsion hπ hf 1`.** Combines
+`aeval_divX_map_eq_zero_of_mem_piTorsion_one_ne_zero` (nonzero torsion is a root of `Q`'s image)
+with `spectralNorm_eq_of_isLubinTatePoly_root` (the exact root-valuation fact) specialized at `L :=
+K` exactly as `norm_lt_one_of_aeval_divX_eq_zero` does — every nonzero element of `piTorsion hπ hf
+1` has the *same* norm, `‖algebraMap O K π‖ ^ (1 / Q.natDegree : ℝ)`, no splitting hypothesis
+needed. The load-bearing "same exact valuation" fact behind the minimum-spacing argument. -/
+theorem norm_eq_rpow_of_mem_piTorsion_one_ne_zero
+    (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O} (hπ : Irreducible π)
+    {f : O⟦X⟧} (hf : IsLubinTatePoly π (residueCard O) f)
+    {P : O[X]} {u : O⟦X⟧} (hu : IsUnit u) (heq : f = (P : O⟦X⟧) * u)
+    (hPdist : P.IsDistinguishedAt (maximalIdeal O)) (hPdeg2 : 2 ≤ P.natDegree)
+    {x : K} (hx : x ∈ piTorsion (K := K) hπ hf 1) (hx0 : x ≠ 0) :
+    ‖x‖ = ‖algebraMap O K π‖ ^ (1 / (P.divX.natDegree : ℝ)) := by
+  have hf0 : PowerSeries.coeff 0 f = 0 := hf.1
+  have hf1 : PowerSeries.coeff 1 f = π := hf.2.1
+  have hα : Polynomial.aeval x (P.divX.map (algebraMap O K)) = 0 :=
+    aeval_divX_map_eq_zero_of_mem_piTorsion_one_ne_zero hOK hπ hf hu heq hx hx0
+  have hkey := spectralNorm_eq_of_isLubinTatePoly_root (L := K) hu heq hf0 hπ hf1 hPdist hPdeg2 hα
+  have hxeq : algebraMap K K x = x := by rw [Algebra.algebraMap_self]; rfl
+  have hspec : spectralNorm K K x = ‖x‖ := by rw [← hxeq]; exact spectralNorm_extends x
+  rw [hspec] at hkey
+  obtain ⟨hQmonic, hQweak, hQdeg, hQ0assoc⟩ :=
+    divX_isWeaklyEisensteinAt_and_associated hu heq hf0 hf1 hPdist hPdeg2
+  have hc0eq : ‖algebraMap O K (P.divX.coeff 0)‖ = ‖algebraMap O K π‖ := by
+    obtain ⟨v, hv⟩ := hQ0assoc
+    have hmul : algebraMap O K (P.divX.coeff 0) * algebraMap O K (v : O) = algebraMap O K π := by
+      rw [← map_mul, hv]
+    have hvnorm : ‖algebraMap O K (v : O)‖ = 1 := norm_algebraMap_eq_one_of_isUnit hOK v.isUnit
+    have := congrArg norm hmul
+    rwa [norm_mul, hvnorm, mul_one] at this
+  rw [hkey, hc0eq]
+
 /-- **The capstone: `Nat.card (piTorsion hπ hf 1) = residueCard O`.** `piTorsion hπ hf 1` is
 exactly `insert 0 (Q.map (algebraMap O K)).roots.toFinset` as a subset of `K` (`P = X * Q`,
 `Polynomial.X_mul_divX_add`, so `aeval x P = x * aeval x Q`, vanishing iff `x = 0` or `x` is a root
