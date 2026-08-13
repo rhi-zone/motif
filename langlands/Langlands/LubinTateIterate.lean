@@ -98,6 +98,11 @@ noncomputable def iter (f : S⟦X⟧) : ℕ → S⟦X⟧
 
 theorem iter_succ (f : S⟦X⟧) (n : ℕ) : iter f (n + 1) = f.subst (iter f n) := rfl
 
+/-- **The first iterate is `f` itself.** `iter f 1 = f.subst (iter f 0) = f.subst X = f`, the last
+step via `PowerSeries.X_subst` (substituting the identity is the identity, unconditionally). -/
+@[simp] theorem iter_one (f : S⟦X⟧) : iter f 1 = f := by
+  rw [iter_succ, iter_zero, PowerSeries.X_subst]
+
 theorem constantCoeff_iter {f : S⟦X⟧} (hf0 : PowerSeries.constantCoeff f = 0) :
     ∀ n, PowerSeries.constantCoeff (iter f n) = 0
   | 0 => by simp

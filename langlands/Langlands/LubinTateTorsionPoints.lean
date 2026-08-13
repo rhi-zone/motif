@@ -5,6 +5,7 @@ import Langlands.NonarchimedeanMvPowerSeriesEvalSubstDiagonal
 import Langlands.LubinTateIterate
 import Langlands.LubinTateFormalGroupEval
 import Langlands.FormalGroupInverse
+import Langlands.LubinTateWeierstrassPreparation
 
 /-!
 # `π^n`-torsion points of `F_π`, concretely defined
@@ -42,6 +43,8 @@ composite evaluated multivariately) — this is not yet built anywhere in this r
 @[expose] public section
 
 noncomputable section
+
+open scoped Polynomial
 
 namespace LubinTate
 
@@ -336,6 +339,27 @@ theorem mem_piTorsion_PhiInv (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (h�
     lt_of_le_of_lt (norm_eval_le hfn hfn0 hInvNorm) hInvNorm
   rw [FPiEval_zero hOK hπ hf hzNorm] at hE
   exact hE.symm
+
+/-! ## `piTorsion hπ hf 1` is exactly the root set of a Weierstrass-preparation factor -/
+
+omit [Finite (ResidueField O)] in
+/-- **`piTorsion hπ hf 1` is the zero set, on the maximal ideal, of the degree-`q` distinguished
+polynomial `P` from `f`'s Weierstrass factorization.** `iter f 1 = f`
+(`LubinTateIterate.iter_one`) identifies `piTorsion hπ hf 1` with `f`'s own zero set on the maximal
+ideal; `eval_eq_zero_iff_aeval_eq_zero` (built from the factorization `f = (P : O⟦X⟧) * u` and the
+unit factor's non-vanishing) turns that into `P`'s zero set under `Polynomial.aeval`. Existential
+in `P` (rather than naming a canonical one) since the Weierstrass factorization itself is only
+known to exist, not to be canonically chosen. -/
+theorem exists_piTorsion_one_eq_aeval_roots [IsAdicComplete (IsLocalRing.maximalIdeal O) O]
+    (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) :
+    ∃ P : O[X], P.IsDistinguishedAt (IsLocalRing.maximalIdeal O) ∧ P.natDegree = residueCard O ∧
+      piTorsion (K := K) hπ hf 1 = {x : K | ‖x‖ < 1 ∧ Polynomial.aeval x P = 0} := by
+  obtain ⟨P, u, hPdist, hu, heq, hPdeg⟩ := exists_isWeierstrassFactorization_of_isLubinTatePoly hf
+  refine ⟨P, hPdist, hPdeg, ?_⟩
+  ext x
+  simp only [piTorsion, Set.mem_setOf_eq, iter_one]
+  exact and_congr_right fun hx ↦ eval_eq_zero_iff_aeval_eq_zero hOK hu heq hx
 
 end LubinTate
 

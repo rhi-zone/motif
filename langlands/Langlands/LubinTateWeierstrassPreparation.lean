@@ -189,6 +189,26 @@ theorem eval_ne_zero_of_isUnit (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {
   rw [h, norm_zero] at this
   exact one_ne_zero this.symm
 
+/-! ## The zero set of `f` on the maximal ideal is exactly the zero set of `P` -/
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)]
+  [IsAdicComplete (IsLocalRing.maximalIdeal O) O] in
+/-- **`eval f x = 0 ↔ Polynomial.aeval x P = 0`, for `x` in the maximal ideal.** Given a
+Weierstrass factorization `f = (P : O⟦X⟧) * u` with `u` a unit: `eval f x = eval P x * eval u x`
+(`NonarchimedeanPowerSeriesEval.eval_mul`, both factors' coefficients bounded by `hOK`), `eval P x`
+is identified with `Polynomial.aeval x P`
+(`NonarchimedeanPowerSeriesEval.eval_coe_eq_aeval`), and `eval u x ≠ 0`
+(`eval_ne_zero_of_isUnit`, this file's previous result) lets a product vanish only through its
+first factor. -/
+theorem eval_eq_zero_iff_aeval_eq_zero (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {P : O[X]}
+    {u : O⟦X⟧} (hu : IsUnit u) {f : O⟦X⟧} (heq : f = (P : O⟦X⟧) * u) {x : K} (hx : ‖x‖ < 1) :
+    NonarchimedeanPowerSeriesEval.eval f x = 0 ↔ Polynomial.aeval x P = 0 := by
+  have hPcoeff : ∀ n, ‖algebraMap O K (PowerSeries.coeff n (P : O⟦X⟧))‖ ≤ 1 := fun n ↦ hOK _
+  have hucoeff : ∀ n, ‖algebraMap O K (PowerSeries.coeff n u)‖ ≤ 1 := fun n ↦ hOK _
+  rw [heq, NonarchimedeanPowerSeriesEval.eval_mul hPcoeff hucoeff hx,
+    NonarchimedeanPowerSeriesEval.eval_coe_eq_aeval, mul_eq_zero,
+    or_iff_left (eval_ne_zero_of_isUnit hOK hu hx)]
+
 end LubinTate
 
 end

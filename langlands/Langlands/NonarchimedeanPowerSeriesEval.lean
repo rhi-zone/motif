@@ -327,6 +327,23 @@ theorem eval_pow {f : PowerSeries R}
   | n + 1 => by
       rw [pow_succ, pow_succ, eval_mul (coeff_bound_pow hf n) hf hx, eval_pow hf hx n]
 
+omit [IsUltrametricDist K] [CompleteSpace K] in
+/-- **Evaluation of a coerced polynomial agrees with `Polynomial.aeval`.** No coefficient-bound or
+`‖x‖ < 1` hypothesis is needed: a polynomial's coefficients vanish above its `natDegree`
+(`Polynomial.coeff_eq_zero_of_natDegree_lt`), so the defining `tsum` has finite support and reduces
+(`tsum_eq_sum`) to exactly the finite sum `Polynomial.eval₂_eq_sum_range` uses to define
+`Polynomial.aeval` (`Polynomial.aeval_def`) — the two sides are termwise identical via
+`Polynomial.coeff_coe` (`(↑P : PowerSeries R).coeff n = P.coeff n`). -/
+theorem eval_coe_eq_aeval (P : Polynomial R) (x : K) :
+    eval (P : PowerSeries R) x = Polynomial.aeval x P := by
+  unfold eval
+  rw [tsum_eq_sum (s := Finset.range (P.natDegree + 1)) fun n hn ↦ by
+      unfold evalSummand
+      rw [Polynomial.coeff_coe,
+        Polynomial.coeff_eq_zero_of_natDegree_lt (by simpa using hn), map_zero, zero_mul],
+    Polynomial.aeval_def, Polynomial.eval₂_eq_sum_range]
+  exact Finset.sum_congr rfl fun n _ ↦ by unfold evalSummand; rw [Polynomial.coeff_coe]
+
 end NonarchimedeanPowerSeriesEval
 
 end
