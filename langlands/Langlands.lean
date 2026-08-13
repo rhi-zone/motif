@@ -19,6 +19,7 @@ import Langlands.HenselianResidueLift
 import Langlands.IdeleGroup
 import Langlands.LubinTate
 import Langlands.LubinTateFormalGroupEvalAssoc
+import Langlands.LubinTateTorsionGroup
 import Langlands.MonogenicIntegralClosure
 import Langlands.MonogenicMaximalOrder
 import Langlands.NonarchimedeanCauchyProduct
