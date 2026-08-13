@@ -12105,3 +12105,120 @@ completed successfully (8768 jobs)`. `grep -rn sorry` on both touched files — 
 `order_map_residue_eq`, `exists_isWeierstrassFactorization_of_isLubinTatePoly`), `7bf53b2`
 (`norm_algebraMap_eq_one_of_isUnit`, `norm_eval_eq_one_of_isUnit`, `eval_ne_zero_of_isUnit`;
 `Langlands/NonarchimedeanPowerSeriesEval.lean`: `norm_eval_sub_algebraMap_constantCoeff_le`).
+
+## 31. Phase 2c, twenty-fifth pass (2026-08-14): **`piTorsion hπ hf 1` identified with `P`'s root
+set; the two remaining gaps toward `|piTorsion hπ hf 1| = q` sharply localized, neither closed**
+
+Continues `§30`'s three numbered remaining steps (assemble `eval f x = eval P x * eval u x`,
+identify `eval (↑P) x` with `Polynomial.aeval x P`, combine into `piTorsion hπ hf 1 = P`'s roots)
+plus a serious, bounded attempt at step 4 (separability of `P`). Steps 1–3 closed completely; step 4
+did not close, and the investigation sharpened *why* into two precisely-named gaps rather than one
+vague "separability is hard" note.
+
+### Steps 1–3: closed
+
+* `Langlands/LubinTateIterate.lean`: `iter_one : iter f 1 = f`, via `iter_succ`/`iter_zero`/
+  `PowerSeries.X_subst` (substituting the identity is the identity, unconditionally — no
+  `HasSubst` hypothesis needed for this direction, unlike `PowerSeries.subst_X`).
+* `Langlands/NonarchimedeanPowerSeriesEval.lean`: `eval_coe_eq_aeval` — `eval (↑P) x =
+  Polynomial.aeval x P` for any polynomial `P` (general lemma, no coefficient-bound or `‖x‖ < 1`
+  hypothesis needed at all: a polynomial's coefficients vanish above its `natDegree`, so the
+  defining `tsum` has finite support and `tsum_eq_sum` reduces it to exactly the finite sum
+  `Polynomial.eval₂_eq_sum_range` uses to define `aeval`, termwise identical via
+  `Polynomial.coeff_coe`).
+* `Langlands/LubinTateWeierstrassPreparation.lean`: `eval_eq_zero_iff_aeval_eq_zero` — for `x` in
+  the maximal ideal, `eval f x = 0 ↔ Polynomial.aeval x P = 0`, combining `NonarchimedeanPowerSeriesEval.eval_mul`
+  (both factors' coefficients bounded by `hOK`), `eval_coe_eq_aeval`, and `§30`'s
+  `eval_ne_zero_of_isUnit` (a product with a nonzero second factor vanishes only through the first).
+* `Langlands/LubinTateTorsionPoints.lean`: `exists_piTorsion_one_eq_aeval_roots` — `∃ P`,
+  distinguished of degree `q`, with `piTorsion hπ hf 1 = {x | ‖x‖ < 1 ∧ Polynomial.aeval x P = 0}`.
+  Existential in `P` (the factorization is only known to exist, not canonically chosen), imports
+  `LubinTateWeierstrassPreparation` (no cycle: that file does not import `LubinTateTorsionPoints` or
+  anything downstream of it).
+
+### A useful sub-piece toward step 4, landed as a real lemma
+
+`Langlands/LubinTateWeierstrassPreparation.lean` gains `coeff_zero_eq_zero_of_eq_mul` (`P`'s
+constant coefficient is **exactly `0`**, not merely in the maximal ideal — `f`'s own constant term
+is `0`, `constantCoeff` is a ring hom applied to `f = (P : O⟦X⟧) * u`, and `u`'s constant term being
+a unit, hence nonzero (`O` a domain), cancels) and `coeff_one_associated_of_eq_mul` (`P`'s **linear**
+coefficient is an *associate* of `π` — valuation exactly `1`, not merely `≥ 1` — via the two-term
+`PowerSeries.coeff_mul` expansion at `Finset.antidiagonal 1 = {(0,1),(1,0)}`, collapsing once `P`'s
+constant term is known to be `0`). These are the sharp inputs a Newton-polygon-style separability
+argument needs, beyond what `IsDistinguishedAt` (Eisenstein, giving only `≥ 1`) supplies on its own.
+
+**Corollary discovered along the way, correcting a premise in this pass's own task brief**: `P` is
+*not* irreducible. Its constant term is exactly `0` (`coeff_zero_eq_zero_of_eq_mul`), so `X ∣ P` —
+`P = X * Q` with `Q` of degree `q - 1`. The root `0` (already known to lie in `piTorsion`,
+`zero_mem_piTorsion`) accounts for one of `P`'s `q` roots directly; it is `Q`, not `P`, that is the
+genuine Eisenstein-with-sharp-constant-term polynomial the classical argument needs (`Q`'s own
+constant term is `Q.coeff 0 = P.coeff 1`, the associate of `π` just proved). Mathlib's
+`Polynomial.irreducible_of_eisenstein_criterion` requires exactly this stronger `coeff 0 ∉ P^2`
+hypothesis (not merely `∈ P`) as a separate argument `h0`; it was not checked for `Q` this pass
+(only the underlying valuation fact `Associated (P.coeff 1) π` it would need), and irreducibility of
+`Q` was not attempted.
+
+### Step 4: not closed. Two distinct, precisely-named gaps
+
+1. **No separability argument for `Q` was built.** The classical route (Serre, *Local Fields* Ch.
+   IV; Washington, *Cyclotomic Fields* Thm 7.3) is a Newton-polygon computation: `Q` Eisenstein of
+   degree `q - 1` with constant term of valuation exactly `1` forces every root to have valuation
+   exactly `1/(q-1)`; a formal-derivative valuation comparison (`Q'(α) = (\text{const term of }Q)`'s
+   associate `π` dominating a strictly-smaller term built from `q`, the residue characteristic
+   power) then shows `Q'(α) ≠ 0` at every root, i.e. every root is simple. **Confirmed by direct
+   search, not assumed: Mathlib has no Newton polygon file** (`grep -rl NewtonPolygon
+   .lake/packages/mathlib/Mathlib/` — zero hits) **and no lemma computing valuations of roots of an
+   Eisenstein polynomial** — `Mathlib/RingTheory/Polynomial/Eisenstein/{Basic,Criterion,
+   Distinguished,IsIntegral}.lean` (the full contents of that directory) cover irreducibility
+   (`irreducible_of_eisenstein_criterion`) and integral-closure consequences only, nothing about
+   root valuations or separability. Building this from scratch needs: extending `O`'s (or `K`'s)
+   valuation/norm to a field actually containing `Q`'s roots (see gap 2 — this is itself not yet
+   available), a two-sided ultrametric bound pinning down each root's norm, and the derivative
+   estimate, handling the equal-characteristic case (where the residue characteristic power `q`
+   literally vanishes in `O`, by the Cohen structure theorem for equal-characteristic complete DVRs —
+   making the derivative estimate the *easier* sub-case, not harder) versus mixed-characteristic
+   uniformly. This is a genuinely separate multi-lemma development, comparable in scope to this
+   repo's `exp`/`log` or eval-subst threads (each of which took multiple passes), not a corollary of
+   anything already in place. **Not attempted.**
+2. **`K` is not assumed to contain `Q`'s (or `P`'s) roots, and the size claim is false without such
+   a hypothesis** — already identified in `§29`'s "size computation... attempted, and found to need
+   a hypothesis" note, unaffected by anything in this pass or `§30`: `piTorsion`'s `K` carries only
+   `NormedField`/`IsUltrametricDist`/`CompleteSpace`/`[Algebra O K]`; for `K` the base field itself,
+   `piTorsion hπ hf 1 = {0}`, size `1` not `q`. Closing `|piTorsion hπ hf 1| = q` needs an added
+   hypothesis (`[IsAlgClosed K]`, or `K ⊇ K_1` — the very extension `§29`'s "pointer forward" names,
+   making this genuinely circular as literally stated: the size computation and the field-extension
+   construction depend on each other, so the right order is presumably size-computation-inside-a-
+   splitting-field-of-`Q`-over-`Frac O`, then transport, not size-computation-inside-arbitrary-`K`
+   directly). Not attempted.
+
+Both gaps are stated precisely so a future pass does not have to rediscover them: gap 1 needs
+Newton-polygon/root-valuation machinery for `Q` (not `P`) that does not exist anywhere in Mathlib or
+this repo; gap 2 needs a splitting-field hypothesis and probably a reordering of the construction
+(size count inside a splitting field, before/instead of inside the eventual `K_1`).
+
+### Build status
+
+`nix develop --command lake build` (run from `langlands/`) — whole project builds clean, `Build
+completed successfully (8768 jobs)`. `grep -rn sorry` on every file this pass touched
+(`Langlands/LubinTateIterate.lean`, `Langlands/NonarchimedeanPowerSeriesEval.lean`,
+`Langlands/LubinTateWeierstrassPreparation.lean`, `Langlands/LubinTateTorsionPoints.lean`) — no
+hits (one textual occurrence of the word "sorry" inside a docstring sentence, not a tactic).
+
+### What remains, in dependency order, toward `|piTorsion hπ hf 1| = q`
+
+1. **Newton-polygon / root-valuation machinery for `Q := P / X`** (gap 1 above) — a genuinely new,
+   multi-lemma Mathlib-quality development; no shortcut found.
+2. **A splitting-field or `IsAlgClosed` hypothesis, and likely a reordering of the construction**
+   (gap 2 above) — size count inside a splitting field of `Q`, then transport to `K_1`, rather than
+   assuming `K` already splits `Q`.
+3. **`[K_1 : K]`, `Gal(K_1/K) ↪ Oˣ`, total ramification** — unchanged since `§27`–`§29`, needs (1)–(2)
+   above plus the abstract-`O`-to-concrete-`HeightOneSpectrum` bridge (unchanged since `§19`).
+4. **The reciprocity map** — the eventual target, joining this thread to `§6ai`.
+
+### Commits
+
+`ce583f2` (`Langlands/LubinTateIterate.lean`: `iter_one`; `Langlands/NonarchimedeanPowerSeriesEval.lean`:
+`eval_coe_eq_aeval`; `Langlands/LubinTateWeierstrassPreparation.lean`:
+`eval_eq_zero_iff_aeval_eq_zero`; `Langlands/LubinTateTorsionPoints.lean`:
+`exists_piTorsion_one_eq_aeval_roots`), `9a6c670` (`Langlands/LubinTateWeierstrassPreparation.lean`:
+`coeff_zero_eq_zero_of_eq_mul`, `coeff_one_associated_of_eq_mul`).

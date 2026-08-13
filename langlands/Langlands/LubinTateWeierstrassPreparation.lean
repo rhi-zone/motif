@@ -55,21 +55,55 @@ classical theory requires — not a narrowing of scope, a hypothesis genuinely u
   (`norm_algebraMap_eq_one_of_isUnit`), strictly greater than the `< 1` distance `eval u x` can
   have moved from it, so `‖eval u x‖` is forced to equal that `1`.
 
+* `coeff_zero_eq_zero_of_eq_mul`/`coeff_one_associated_of_eq_mul`: `P`'s constant coefficient is
+  exactly `0` (not merely in the maximal ideal), and `P`'s linear coefficient is an *associate* of
+  `π` — valuation exactly `1`, not merely `≥ 1`. Both come from comparing `f`'s own defining
+  congruences against `f = (P : O⟦X⟧) * u` at degrees `0` and `1`, using that `u`'s constant term is
+  a unit. This is the sharp Newton-polygon-style input a separability argument for `P` needs, beyond
+  what `IsDistinguishedAt`/Eisenstein alone supplies.
+
 ## What this does not do
 
-**Does not yet connect the factorization to `piTorsion`.** Showing `piTorsion hπ hf 1` (the set of
-`x` in `K`'s maximal ideal with `eval f x = 0`) coincides with `P`'s roots in `K`'s maximal ideal
-still needs: (a) `eval` compatibility with the factorization itself (`eval f x = eval P x *
-eval u x`, from `NonarchimedeanPowerSeriesEval.eval_mul` — routine given `f = (P : O⟦X⟧) * u` and
-both factors' coefficients are `O`-valued hence bounded by `hOK`, not yet assembled), (b)
-identifying `NonarchimedeanPowerSeriesEval.eval` of `(P : O⟦X⟧)` with `Polynomial.aeval x P`
-(routine, not yet done), and (c) **root-counting**: showing `P` (which is Eisenstein — a
-`Polynomial.IsDistinguishedAt` polynomial is automatically `IsWeaklyEisensteinAt`, and here the
-degree-`0` coefficient has valuation exactly `1` since `f`'s linear coefficient is `π`) has exactly
-`q` *distinct* roots in `K`. That last step is separability, not a Weierstrass-preparation
-consequence — genuinely new content, not attempted here. `eval u x ≠ 0` (this file's last result)
-is exactly what turns "`eval f x = 0`" into "`eval P x = 0`" once (a)-(b) are in place, so it is a
-real piece of the route, not a detour. See `ROADMAP.md` for the precise remaining state.
+**`piTorsion hπ hf 1` is now identified with `P`'s zero set** — see
+`Langlands.LubinTate.eval_eq_zero_iff_aeval_eq_zero` (this file) and
+`Langlands.LubinTate.exists_piTorsion_one_eq_aeval_roots`
+(`Langlands/LubinTateTorsionPoints.lean`): `piTorsion hπ hf 1 = {x | ‖x‖ < 1 ∧ Polynomial.aeval x
+P = 0}`. What remains toward `|piTorsion hπ hf 1| = q` is root-counting, and it splits into two
+genuinely separate gaps (`ROADMAP.md` §31 records both in full):
+
+1. **Separability of `P` is not attempted, and `P` itself is *not* irreducible** (so no Eisenstein
+   irreducibility criterion applies to `P` directly): `coeff_zero_eq_zero_of_eq_mul` shows `P`'s
+   constant term is exactly `0`, i.e. `X ∣ P`, so `P = X * Q` for `Q : O[X]` of degree `q - 1` — the
+   root `0` (already known: `zero_mem_piTorsion`) accounts for one of `P`'s `q` roots, and it is `Q`,
+   not `P`, that is the genuine Eisenstein polynomial the classical argument needs: `Q`'s own
+   constant term is `Q.coeff 0 = P.coeff 1` (shifting indices by the `X` factor), an associate of `π`
+   (`coeff_one_associated_of_eq_mul`) — valuation exactly `1`, the sharp non-`P²`-membership Mathlib's
+   `Polynomial.irreducible_of_eisenstein_criterion` needs and `IsDistinguishedAt`/
+   `IsWeaklyEisensteinAt` alone do not supply (that hypothesis was not yet checked for `Q` here,
+   only the underlying valuation fact it would need). The classical separability argument itself
+   (Serre, *Local Fields* Ch. IV; Washington, Thm 7.3) is a Newton-polygon computation on `Q`: every
+   root has valuation exactly `1/(q-1)`, then a formal-derivative valuation comparison shows
+   `Q'(α) ≠ 0` at every root. Mathlib has **no Newton polygon file at all** (`grep -rl NewtonPolygon
+   .lake/packages/mathlib/Mathlib/` — no hits) and no "valuation of roots of an Eisenstein
+   polynomial" lemma; `Mathlib/RingTheory/Polynomial/Eisenstein/{Basic,Criterion,Distinguished,
+   IsIntegral}.lean` cover irreducibility and integral-closure facts only, not root valuations.
+   Building the valuation-of-roots machinery from scratch — extending `O`'s valuation to a field
+   containing `Q`'s roots, an ultrametric argument bounding each root's norm from both sides, then
+   the derivative estimate — is a separate multi-lemma development comparable in scope to this
+   repo's `exp`/`log` or eval-subst threads, not a one-off consequence of Weierstrass preparation.
+   Not attempted this pass.
+2. **`K` is not assumed to contain `P`'s roots**, and the statement is false without such a
+   hypothesis: `piTorsion`/this file's `K` carries only `NormedField`/`IsUltrametricDist`/
+   `CompleteSpace`/`[Algebra O K]` — for `K` the base field itself, `piTorsion hπ hf 1 = {0}` (size
+   `1`, not `q`). This gap was already identified and documented in `ROADMAP.md`'s `§29`/`§28`
+   thread (search "size computation `|piTorsion hπ hf 1| = q`: attempted, and found to need a
+   hypothesis") before this file existed; it is unaffected by this pass's `piTorsion`-`P`
+   identification and still needs `K ⊇ K_1` (the very field extension this whole thread is building
+   toward) or `[IsAlgClosed K]`.
+
+Neither gap is closed here. Everything proved this pass is a real, complete, `sorry`-free step
+toward closing them (the `piTorsion`-`P` identification, and the sharp linear-coefficient valuation
+fact `coeff_one_associated_of_eq_mul` that gap 1's argument needs as its base case), not a detour.
 
 ## References
 
