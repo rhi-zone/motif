@@ -13086,3 +13086,145 @@ successfully (8770 jobs)`. No `sorry` introduced.
 ### Commits
 
 `368b062` (`Langlands/NonarchimedeanPowerSeriesEval.lean`: `norm_eval_sub_coeff_one_mul_le`).
+
+## 39. Phase 2c, thirty-third pass (2026-08-14): **§38's root-spacing gap closed via a group-law
+route avoiding any discriminant/different computation — the mod-`π` factoring assembled on top of
+it — freeness/transitivity/`K_1 = Frac(O)(α)` not attempted this pass, deliberately**
+
+### The hypothesis: verified, with one correction, one already-existing bridge, no invalidation
+
+The task brief for this pass proposed: the `F_π`-difference of two distinct nonzero torsion points
+is itself a nonzero torsion point, hence has the *same* exact norm as every other nonzero torsion
+point (`spectralNorm_eq_of_isLubinTatePoly_root`); combined with a new bivariate quadratic tail
+bound for `F_π`-addition, the ultrametric isosceles-triangle principle should upgrade this to an
+*exact* minimum-spacing fact, with no discriminant/different computation needed. **Checked directly,
+this worked exactly as sketched**, with the following clarifications against the brief's own
+uncertainty flags:
+
+* **The `Q'(α)` separability-proof machinery (`Polynomial.aeval_derivative_ne_zero_of_isEisensteinAt_
+  of_natDegree_norm_eq_one`, `LubinTateEisensteinQ.lean`) was a red herring, exactly as the brief
+  suspected** — not used anywhere in this pass. The route that worked uses only the *root-valuation*
+  half of that file (`spectralNorm_eq_of_isLubinTatePoly_root`), not the derivative/separability
+  argument built on top of it.
+* **`spectralNorm K K x = ‖x‖` did *not* need a new bridge lemma** — it already existed, inline in
+  `LubinTate.norm_lt_one_of_aeval_divX_eq_zero` (`LubinTateRootCount.lean`, from an earlier pass):
+  `Algebra.algebraMap_self` + `spectralNorm_extends`. This pass's new exact-norm lemma
+  (`norm_eq_rpow_of_mem_piTorsion_one_ne_zero`, below) reuses that exact two-line pattern, just
+  concluding equality instead of `< 1`.
+* **The needed exponent hypothesis is `residueCard O ≥ 2`** (i.e. `P.divX.natDegree ≥ 1`), **not**
+  the `≥ 3` §38's own (different, unrelated) sketch estimated. `residueCard O ≥ 2` is unconditionally
+  true (`two_le_residueCard`) for every instantiation of this repo's Lubin-Tate hypotheses, so the
+  spacing theorem and the mod-`π` factoring built on it both hold with **no extra numeric
+  hypothesis** beyond what is already standing. (§38's `q ≥ 3` guess arose from a *different*
+  comparison — bounding `‖(u:O)-(v:O)‖ ≤ c` against `‖α‖^2 = c^{2/(q-1)}` directly, which does need
+  `q ≥ 3` for `c ≤ c^{2/(q-1)}` — this pass's route compares against the *spacing value*
+  `c^{1/(q-1)}` instead, which only needs `2/(q-1) > 1/(q-1)` and `1 + 1/(q-1) > 1/(q-1)`, both true
+  for `q ≥ 2`.)
+* **One genuine addition beyond the brief's sketch**: turning the `F_π`-difference `γ` into a
+  concrete `K`-element needed the *reverse* direction of `mem_piTorsion_one_of_root_divX_map` —
+  "nonzero torsion ⟹ root of `Q`'s image" — which did not previously exist as a standalone lemma (it
+  was inlined inside `card_piTorsion_one_eq_residueCard`'s proof, entangled with the `hsplit`-only
+  needed for the *other* direction). Extracted as
+  `aeval_divX_map_eq_zero_of_mem_piTorsion_one_ne_zero` (`LubinTateRootCount.lean`) — genuinely
+  needs no `hsplit`, confirmed by direct inspection of the inlined proof it was lifted from.
+
+### New lemmas, in dependency order, each built and independently checked
+
+* `NonarchimedeanMvPowerSeriesEvalFin2.finsupp_fin_two_ext`,
+  `NonarchimedeanMvPowerSeriesEvalFin2.degree_fin_two_eq_one_iff` (new, general, no Lubin-Tate
+  content): a bivariate multi-index `n : Fin 2 →₀ ℕ` has `n.degree = 1` exactly when `n =
+  Finsupp.single 0 1` or `n = Finsupp.single 1 1` — the combinatorial fact isolating `Φ`'s two
+  linear-coefficient multi-indices from everything of higher degree.
+* `NonarchimedeanMvPowerSeriesEvalFin2.norm_evalMv_sub_linear_le` (new, general): the bivariate
+  quadratic tail bound, `‖evalMv Φ y - (c₁₀ * y 0 + c₀₁ * y 1)‖ ≤ (max ‖y 0‖ ‖y 1‖) ^ 2` for `Φ` with
+  zero constant term (`c₁₀`, `c₀₁` its two degree-`1` coefficients). Splits `evalMv Φ y` at the three
+  multi-indices of degree `≤ 1` via Mathlib's `Summable.sum_add_tsum_compl`, bounds the tail via the
+  existing `norm_evalSummandMv_le`. The bivariate analogue of
+  `NonarchimedeanPowerSeriesEval.norm_eval_sub_coeff_one_mul_le` (§38), general-purpose, not
+  Lubin-Tate-specific — matches the repo's existing convention of building tail bounds separately
+  from their specializations.
+* `LubinTate.aeval_divX_map_eq_zero_of_mem_piTorsion_one_ne_zero`,
+  `LubinTate.norm_eq_rpow_of_mem_piTorsion_one_ne_zero` (`LubinTateRootCount.lean`, new): every
+  nonzero element of `piTorsion hπ hf 1` is a root of `Q := P.divX`'s image in `K` (no `hsplit`
+  needed), hence has the *same* exact norm `c ^ (1/(q-1) : ℝ)`, `c := ‖algebraMap O K π‖`.
+* `LubinTate.norm_eval_PhiInv_add_le`, `LubinTate.norm_FPiEval_sub_add_le`
+  (`LubinTateTorsionSpacing.lean`, new): the two Lubin-Tate-specific specializations of the quadratic
+  tail bounds — `i_{F_π}(x) ≈ -x` (from `coeff_one_PhiInv = -1`) and `F_π(a,b) ≈ a+b` (from `Φ`'s
+  linear part being `X+Y`, `coeff_Phi_of_degree_eq_one`) — both to quadratic order.
+* `LubinTate.norm_sub_eq_rpow_of_mem_piTorsion_one_ne_zero_of_ne` (`LubinTateTorsionSpacing.lean`,
+  new, **the main spacing theorem**): for distinct nonzero `α, β ∈ piTorsion hπ hf 1`, `‖α - β‖ = c ^
+  (1/(q-1) : ℝ)` exactly — the *same* value every nonzero torsion point's own norm takes. Proof:
+  `γ := F_π(α, i_{F_π}(β))` is a nonzero torsion point (`mem_piTorsion_FPiEval`,
+  `mem_piTorsion_PhiInv`, nonzero via `piTorsionAddCommGroup`'s `sub_ne_zero` — `γ` is literally the
+  coercion of the group-subtraction `⟨α,hα⟩ - ⟨β,hβ⟩`, `coe_piTorsion_add`/`coe_piTorsion_neg`); the
+  two quadratic bounds above show `‖γ - (α-β)‖ ≤ c^{2/(q-1)}`, strictly less than `‖γ‖ = c^{1/(q-1)}`
+  (needs only `q ≥ 2`); `IsUltrametricDist.norm_add_eq_max_of_norm_ne_norm` (Mathlib's ultrametric
+  isosceles-triangle lemma) then forces `‖α-β‖ = ‖γ‖` exactly.
+* `LubinTate.eval_phiU_eq_of_dvd_sub` (`LubinTateModPiFactoring.lean`, new, **the mod-`π`
+  factoring**): for `u, v : Oˣ` with `π ∣ ((u:O)-(v:O))` and `α` nonzero torsion, `eval (phiU hπ hf
+  u) α = eval (phiU hπ hf v) α` exactly. Both sides are within `c^{2/(q-1)}` or `c^{q/(q-1)}` of each
+  other (quadratic closeness bound `norm_eval_sub_coeff_one_mul_le` + `coeff_one_phiU`, telescoped
+  against the `u ≡ v` bound `‖algebraMap O K ((u:O)-(v:O))‖ ≤ c`), both strictly below the spacing
+  value `c^{1/(q-1)}`; if the two evaluations were distinct, the spacing theorem (both nonzero) or
+  `norm_eq_rpow_of_mem_piTorsion_one_ne_zero` directly (one zero) would force them exactly
+  `c^{1/(q-1)}` apart — contradiction. **This closes §37/§38's mod-`π` factoring gap.**
+
+### Build status
+
+`nix develop --command lake build` (from `langlands/`) — whole project builds clean, `Build
+completed successfully (8770 jobs)`. `grep -rn sorry` on every new file — no hits. No pre-existing
+file was modified; all new content is additive (two new lemmas appended to
+`LubinTateRootCount.lean`, one new section appended to `NonarchimedeanMvPowerSeriesEvalFin2.lean`,
+two new files).
+
+### Where the chain stops, and why
+
+**Stopping point: the mod-`π` factoring (`eval_phiU_eq_of_dvd_sub`), one step past §37/§38's
+"spacing" target.** Freeness of the induced `(O/π)ˣ`-action, transitivity, and `K_1 = Frac(O)(α)`
+were **not attempted this pass**, deliberately, matching the task brief's own standard ("a solid,
+well-documented stop... is a fine outcome"):
+
+* **The `(O/π)ˣ`-action itself is not yet defined anywhere in the repo.** `eval_phiU_eq_of_dvd_sub`
+  shows the *hypotheses* for such an action's well-definedness (`Oˣ`'s action factors through the
+  quotient map `Oˣ → (O/π)ˣ` at the level of evaluation), but assembling that into an actual
+  `MulAction (O/π)ˣ ↥(piTorsion hπ hf 1 \ {0})` — choosing a concrete model for `(O/π)ˣ` compatible
+  with this repo's `O`/`Oˣ` conventions, defining the induced `SMul`, and re-proving the `MulAction`
+  laws through the quotient — is new construction work not started here.
+* **Freeness of that action** (`[u]_F(α) = α ⟹ u ≡ 1 mod π`) needs a *different* argument than the
+  factoring above: factoring says the action is *well-defined* mod `π`; freeness needs a *separate*
+  fact that `eval (phiU hπ hf u) α = α` forces `u ≡ 1`. Not investigated this pass — plausibly a
+  similar spacing-style argument (comparing `eval (phiU u) α` against `α` itself via the same
+  quadratic bound, using `coeff_one_phiU`, then invoking distinctness against `1`'s own orbit), but
+  this is speculation, not checked.
+* **Transitivity** (a counting argument once freeness is available, `card_piTorsion_one_eq_residueCard`
+  giving `q - 1` nonzero torsion points against `|(O/π)ˣ| = q - 1`) is entirely unattempted, and
+  itself needs `|(O/π)ˣ| = residueCard O - 1` established for whatever concrete model of `(O/π)ˣ` is
+  chosen — not yet connected to `card_piTorsion_one_eq_residueCard`'s use of `residueCard O` (defined
+  via `Nat.card (ResidueField O)`, presumably related but not verified equal to `|(O/π)ˣ|` in this
+  pass).
+* **`K_1 = Frac(O)(α)`**: blocked on transitivity exactly as §37 found; `finrank_adjoin_of_aeval_
+  divX_map_eq_zero` (§37) remains the one piece already available independent of all of the above.
+
+### Updated dependency order toward `[K_1 : K] = q - 1`
+
+1. ~~Tail-valuation estimate~~ — closed §38.
+2. ~~Root-spacing / discreteness bound~~ — **closed this pass**
+   (`norm_sub_eq_rpow_of_mem_piTorsion_one_ne_zero_of_ne`).
+3. ~~The mod-`π` factoring of the action~~ — **closed this pass** (`eval_phiU_eq_of_dvd_sub`).
+4. **A concrete `(O/π)ˣ`-action** on `piTorsion hπ hf 1 \ {0}`, assembled from (3) — needs choosing
+   and wiring a model for `(O/π)ˣ`; not started.
+5. **Freeness** of that action — a new argument, not (3) itself; not started, plausibly
+   spacing-style but unchecked.
+6. **Transitivity**, a counting argument from (4)+(5) plus `|(O/π)ˣ| = q-1` connected to
+   `card_piTorsion_one_eq_residueCard`; not started.
+7. `K_1 = Frac(O)(α)`, hence `[K_1:K] = q-1` — assembled from (6) plus
+   `finrank_adjoin_of_aeval_divX_map_eq_zero` (§37).
+8. `Gal(K_1/K) ≅ (O/π)ˣ`, then the reciprocity map (`§6ai`).
+
+### Commits
+
+`0f84ac9` (`NonarchimedeanMvPowerSeriesEvalFin2.lean`: `norm_evalMv_sub_linear_le` and
+prerequisites), `87bfd1f` (`LubinTateRootCount.lean`: `aeval_divX_map_eq_zero_of_mem_piTorsion_one_
+ne_zero`, `norm_eq_rpow_of_mem_piTorsion_one_ne_zero`), `0b904ac` (new file
+`LubinTateTorsionSpacing.lean`: `norm_sub_eq_rpow_of_mem_piTorsion_one_ne_zero_of_ne` and
+prerequisites), `cfa3bdb` (new file `LubinTateModPiFactoring.lean`: `eval_phiU_eq_of_dvd_sub`).
