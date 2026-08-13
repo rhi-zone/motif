@@ -12769,3 +12769,113 @@ completed successfully (8769 jobs)` (one new file, `Langlands/LubinTateRootCount
 `norm_algebraMap_adicCompletionIntegers_le_one`,
 `instFiniteResidueFieldAdicCompletionIntegers`,
 `card_piTorsion_one_eq_residueCard_of_adicCompletion`).
+
+## 36. Phase 2c, thirtieth pass (2026-08-14): **the root-membership half-lemma extracted; `hsplit`
+transports to `K_1` — closed, but not the way §35 anticipated**
+
+Closes both items §35 left open: extracts the root-membership half of `hSmem`
+(`card_piTorsion_one_eq_residueCard`'s proof) as a standalone lemma, and wires the `hsplit`-to-`K_1`
+transport §35 Part 2 located but did not attempt. Neither closed exactly the way §35's pointer-
+forward expected — both needed real investigation, not direct construction, and one investigation
+found the anticipated obstacle (an `Algebra O K_1` instance) unnecessary, while the other hit a
+genuine (non-mathematical) Lean elaboration issue that needed diagnosis, not a guess.
+
+### Part 1: the root-membership lemma (`Langlands/LubinTateRootCount.lean`)
+
+**`LubinTate.mem_piTorsion_one_of_root_divX_map`**: extracted exactly as §35 scoped it — `∀ x ∈
+(P.divX.map (algebraMap O K)).roots.toFinset, x ∈ piTorsion hπ hf 1` — from the root case of
+`hSmem`'s forward direction inside `card_piTorsion_one_eq_residueCard`'s proof. The extraction was
+mechanical (the existing proof lines, unchanged, now live in the standalone lemma); the only real
+edit was refactoring `card_piTorsion_one_eq_residueCard` itself to call it instead of inlining the
+same steps, and adding `[DecidableEq K]` (needed once `.roots.toFinset` appears in the lemma's own
+*signature*, not just inside a `classical`-guarded proof body) plus `omit [Finite (ResidueField O)]
+in` (the lemma, like `norm_lt_one_of_aeval_divX_eq_zero` before it, never uses that hypothesis).
+Sorry-free, no new axioms.
+
+### Part 2: the `hsplit`-transport to `K_1` (`Langlands/LubinTateFieldTower.lean`)
+
+**`LubinTate.splits_map_K_1_of_splits`**: given `hsplit` for `Q := P.divX` over `K`, `Q` (viewed as
+a polynomial over `Frac(O)`, its natural base field) splits over `K_1` too — `K_1`'s generators
+(`piTorsion hπ hf 1`) already contain every root of `Q`'s image in `K` (Part 1's lemma), so
+`IntermediateField.splits_of_splits` applies directly once that root-set inclusion and a
+`Polynomial.map_map`/`IsScalarTower.algebraMap_eq` re-association through `Frac(O)` are in place.
+Both steps §35 flagged as needed for this — and neither closed the way §35 expected:
+
+**The `Algebra O K_1` instance was flagged as needed. It is not.** §35 anticipated needing to
+compose `Algebra O (FractionRing O)` with `Algebra (FractionRing O) K_1` into a fresh `Algebra O
+K_1`, and flagged the diamond risk of that composite disagreeing with the standing `Algebra O K`
+chain. Investigation found this unnecessary: `IntermediateField.splits_of_splits`'s conclusion type
+only ever needs the *primary* `Algebra (FractionRing O) K_1` structure — the one `IntermediateField`
+supplies automatically for any intermediate field, no construction required. Stating
+`splits_map_K_1_of_splits`'s conclusion as `Q` (mapped first into `Frac(O)`, then into `K_1`)
+splitting — rather than as `Q.map (algebraMap O K_1)` splitting — sidesteps the need for a second
+`O`-to-`K_1` map entirely. This is not a workaround: it is the more natural statement (`K_1` is an
+intermediate field *of* `Frac(O)`, so its natural role is receiving polynomials from `Frac(O)`, not
+from `O` directly), and it means there was no diamond to resolve here after all — the anticipated
+obstacle dissolved under inspection rather than needing to be built around.
+
+**A hand-built `Algebra O K_1` (attempted first, before the above was found) hit a real, but
+non-mathematical, Lean elaboration issue — diagnosed by minimized reproduction, not guessed at.**
+Building `Algebra O K_1` directly via `RingHom.codRestrict (algebraMap O K) (K_1 hπ hf) ...` and
+`.toAlgebra` produced `typeclass instance problem is stuck: IsFractionRing O ?m` at several
+call sites, with the goal's `O`/`K` slots showing as unresolved metavariables. This looked at first
+like an instance diamond (multiple competing `Algebra`/`FaithfulSMul` paths), but a from-scratch
+minimized reproduction (a disposable test file, bisected down from the full failing build) showed
+the actual trigger: **even the bare goal `Field (K_1 hπ hf)` reproducibly gets stuck whenever `K_1`
+is applied to *any* explicit argument without `O` and `K` pinned first** — confirmed by replacing
+`K_1`'s body with `IntermediateField.adjoin (FractionRing O) (∅ : Set K)` and its arguments with an
+unrelated `n : ℕ`, and the stuck error persisted identically (`O` and `K` both showing as
+metavariables). This ruled out `piTorsion`, `FractionRing.liftAlgebra`, and every custom instance in
+the file as the cause — it is a narrow Lean elaboration-order issue: typeclass search on an
+under-elaborated application's result type runs before the application's own implicit arguments are
+resolved. **Fix, confirmed by the same reproduction**: supply `O` and `K` explicitly at every `K_1`
+call site, `K_1 (O := O) (K := K) hπ hf` — after which the stuck error disappears completely, in
+both the minimized repro and the real theorem. This fix is applied throughout
+`splits_map_K_1_of_splits`. (The hand-built `Algebra O K_1` instance itself was then dropped, once
+Part 2's first finding made it unnecessary — but the elaboration fix remains load-bearing for the
+`K_1 (O := O) (K := K) hπ hf` applications the final theorem does still need.)
+
+**Also strengthens the whole file's `K` hypothesis** from `[FaithfulSMul O K]` to `[IsFractionRing O
+K]`: Part 1's lemma (like `card_piTorsion_one_eq_residueCard` itself) genuinely needs `K = Frac(O)`
+for Gauss's lemma (irreducibility of `Q` over `O` vs. over `K`), not merely a normed field containing
+`O`'s bounded image — checked directly by reading `LubinTateEisensteinQ.lean`'s
+`Polynomial.irreducible_map_of_isWeaklyEisensteinAt_associated`, the one place `[IsFractionRing O K]`
+is actually used in that chain. `K_1` has no caller anywhere else in the repo, so strengthening its
+file's hypothesis is free (confirmed: `grep -rln "import Langlands.LubinTateFieldTower" Langlands/`
+returns nothing). `[IsFractionRing O K]` implies `[FaithfulSMul O K]`
+(`IsFractionRing.injective` + `faithfulSMul_iff_algebraMap_injective`), so `FractionRing.liftAlgebra`
+still applies unchanged; the derivation is packaged as `faithfulSMul_of_isFractionRing`.
+
+### Build status
+
+`nix develop --command lake build` (run from `langlands/`) — whole project builds clean, `Build
+completed successfully (8770 jobs)`. `grep -rn sorry Langlands/LubinTateFieldTower.lean
+Langlands/LubinTateRootCount.lean` — no hits. No `linter.unusedSectionVars` warnings from either
+file (both `omit`-annotated correctly).
+
+### What remains, in dependency order, toward `[K_1 : K] = q - 1` and `Gal(K_1/K) ≅ (O/π)ˣ`
+
+1. ~~`hsplit` transports to `K_1`~~ — **closed** (this pass), stated over `Frac(O)`:
+   `LubinTate.splits_map_K_1_of_splits`. `hsplit` for `K` itself remains a hypothesis that must
+   still be checked directly (unaffected — this was always the negative half of §35's framing
+   question, not something this pass's positive-half closure changes).
+2. **`[K_1 : K] = q - 1`** — combine `card_piTorsion_one_eq_residueCard` with `K_1`'s definition
+   and the `piTorsionAddCommGroup` structure (`LubinTateTorsionGroup.lean`) to identify `K_1`'s
+   degree with the torsion group's order, likely via a primitive-element or Kummer-style argument
+   (the torsion group being cyclic of order `q - 1` — not yet stated or proved). Not attempted this
+   pass; `splits_map_K_1_of_splits`'s splitting fact is a necessary ingredient (a primitive-element
+   argument needs the minimal polynomial of a generator to split) but the degree computation itself
+   is separate, unstarted work.
+3. **`Gal(K_1/K) ≅ (O/π)ˣ`** — the classical Lubin-Tate reciprocity input, needs (2) plus a Galois
+   action of `(O/π)ˣ` on `piTorsion hπ hf 1` (via the endomorphism structure `LubinTateUnitsAction.lean`
+   already has some machinery for — not yet connected to this thread).
+4. **The reciprocity map** — the eventual target, joining this thread to `§6ai`.
+
+### Commits
+
+`f45cfe9` (`Langlands/LubinTateRootCount.lean`: extract
+`LubinTate.mem_piTorsion_one_of_root_divX_map` from `hSmem`'s forward direction, refactor
+`card_piTorsion_one_eq_residueCard` to call it).
+`fc220d4` (`Langlands/LubinTateFieldTower.lean`: `LubinTate.splits_map_K_1_of_splits`, the
+`hsplit`-to-`K_1` transport; strengthens the file's `K` hypothesis to `[IsFractionRing O K]`
+throughout).
