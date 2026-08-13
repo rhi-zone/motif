@@ -12474,3 +12474,163 @@ in the existing `Langlands/LubinTateEisensteinQ.lean`). `grep -rn sorry Langland
 `Polynomial.separable_of_isEisensteinAt_of_natDegree_norm_eq_one`,
 `LubinTate.separable_map_of_isWeaklyEisensteinAt_associated`,
 `LubinTate.separable_map_divX_of_isLubinTatePoly`).
+
+## 34. Phase 2c, twenty-eighth pass (2026-08-14): **`|piTorsion hπ hf 1| = q` closed — the
+root-counting capstone of the whole Lubin-Tate torsion-point thread — given `Q` splits completely
+inside `K`; the tame-degree hypothesis is now derived in general, `‖algebraMap O K π‖ < 1` remains
+open by genuine necessity**
+
+Closes §33's item 2 (the tame-degree unit fact) in general, and item 1 (the splitting-field
+root-counting gap) under the correctly-scoped hypothesis, completing the arc §28–§33 built toward:
+`piTorsion hπ hf 1` (§24, the concrete `π`-torsion points of the Lubin-Tate formal group `F_π`) is
+identified with the root set of a distinguished polynomial `P` via Weierstrass preparation (§29–§31,
+`exists_piTorsion_one_eq_aeval_roots`); `P = X * Q` with `Q := P.divX` genuinely Eisenstein
+(associate-constant-term, not merely `≥ 1`-valuation, §31); `Q`'s irreducibility and root valuation
+close via a `spectralNorm`-reversal shortcut that sidesteps Newton polygons entirely (§32); `Q`'s
+separability closes via the classical tame-ramification derivative argument, formalized with no
+characteristic hypothesis (§33). This pass supplies the two hypotheses §33 left open and assembles
+everything into the literal cardinality statement.
+
+### Part 1a: the tame-degree hypothesis, now general (`Langlands/LubinTate.lean`)
+
+`LubinTate.isUnit_natCast_of_add_one_eq_residueCard {n : ℕ} (hn : n + 1 = residueCard O) : IsUnit
+((n : O))` — a general discrete-valuation-ring fact (any local ring `O` with finite residue field,
+no DVR/domain hypothesis even needed beyond what `residueCard`/`ResidueField` already require):
+`n`'s image in the residue field is `-1 ≠ 0` (`(n : ResidueField O) = (residueCard O : ResidueField
+O) - 1 = 0 - 1 = -1`, the middle step via `FiniteField.cast_card_eq_zero` bridged from `Nat.card` to
+`Fintype.card` via `Nat.card_eq_fintype_card`/`Fintype.ofFinite`, since this repo's `residueCard`
+uses `Nat.card` + `Finite`, not `Fintype`), hence a unit (`IsLocalRing.residue_ne_zero_iff_isUnit`).
+Both Mathlib lemma names named in the task brief (`IsLocalRing.residue_ne_zero_iff_isUnit`,
+`FiniteField.cast_card_eq_zero`) were confirmed to exist exactly as described via loogle before use;
+the only real content was the `Nat.card`-vs-`Fintype.card` bridge, not previously spelled out.
+Instantiated for the concrete case as `Q.natDegree + 1 = residueCard O` (`Q := P.divX`,
+`Q.natDegree = residueCard O - 1` from Weierstrass preparation's `P.natDegree = residueCard O`),
+inlined directly in Part 3's assembly rather than as a separate specialized lemma (no benefit to
+naming it twice). Needed the file to gain a new import, `Mathlib.FieldTheory.Finite.Basic`, for
+`FiniteField.cast_card_eq_zero`.
+
+### Part 1b: `‖algebraMap O K π‖ < 1` — confirmed, by direct investigation, still not derivable
+
+Grepped every file for callers of `IsLubinTatePoly`, `exists_isLubinTatePoly`, and `piTorsion`
+outside the `LubinTate*.lean` files themselves (`FormalGroupInverse.lean`,
+`NonarchimedeanPowerSeriesEvalSubstMvIn.lean`, `NonarchimedeanMvPowerSeriesEvalSubstDiagonal.lean`
+each turned up only as internal machinery *for* the Lubin-Tate thread, or documentation
+cross-references — none instantiate this repo's abstract Lubin-Tate `O`/`K` typeclass package
+(`[NormedField K] [IsUltrametricDist K] [CompleteSpace K] [Algebra O K]` + pointwise bound `hOK`)
+against a concrete `HeightOneSpectrum`/`adicCompletion` pair). Confirms §33's premise directly rather
+than assuming it: `norm_algebraMap_uniformizer_lt_one` /
+`norm_algebraMap_adicCompletion_uniformizer_lt_one`
+(`Langlands/PrincipalUnitsSuccessiveApproximation.lean`) prove exactly this fact, but only in a
+setting with `[Valued K ℤᵐ⁰]` and `O` literally `v.adicCompletionIntegers K` — genuinely more
+structure than the Lubin-Tate thread's `K` carries. `hπnorm : ‖algebraMap O K π‖ < 1` therefore
+stays an explicit hypothesis on `LubinTate.card_piTorsion_one_eq_residueCard` (below), exactly as it
+already was on `separable_map_divX_of_isLubinTatePoly`. This is not a gap left by oversight — it is
+the honest state of the currently-standing abstract package, and closing it needs either (i) a
+concrete instantiation of the whole Lubin-Tate thread against a real `HeightOneSpectrum`/
+`adicCompletion` pair (where the fact becomes free, per the pattern above), or (ii) strengthening the
+abstract package itself with a `[Valued K Γ]`-style assumption. Neither is attempted.
+
+### Part 2 + 3: the splitting-field root-counting design decision, and the capstone
+(`Langlands/LubinTateRootCount.lean`, new file)
+
+**The scoping choice.** `piTorsion hπ hf 1` is a literal `Set K`, not a subset of some auxiliary
+field — so the task brief's open design question ("any splitting field, treated purely
+algebraically" vs. "`K` itself already contains the roots") resolves in favor of the second option:
+the hypothesis `(P.divX.map (algebraMap O K)).Splits` (`Q`'s image already splits completely inside
+`K` itself), rather than constructing an abstract splitting field `L` and then needing a further,
+unbuilt transport step back down to `K` to say anything about `piTorsion`. This specializes
+`LubinTateEisensteinQ.lean`'s general `L / K` machinery (`spectralNorm_eq_of_isLubinTatePoly_root`,
+`separable_map_of_isWeaklyEisensteinAt_associated`) at `L := K`: `Algebra.IsAlgebraic K K` resolves
+automatically (`Algebra.IsAlgebraic.of_finite` + the standing `Module.Finite.self` instance), and
+`spectralNorm K K x = ‖x‖` follows from Mathlib's `spectralNorm_extends` combined with
+`Algebra.algebraMap_self : algebraMap K K = RingHom.id K`.
+
+**General root-counting fact**, no Lubin-Tate content:
+`Polynomial.roots_toFinset_card_eq_natDegree_of_separable_of_splits {L} [Field L] [DecidableEq L]
+{Qk : L[X]} (hsep : Qk.Separable) (hsplit : Qk.Splits) : Qk.roots.toFinset.card = Qk.natDegree` — a
+separable polynomial that splits completely has exactly `natDegree` distinct roots. Assembled from
+three Mathlib lemmas, each verified via loogle before use: `Polynomial.nodup_roots` (separability ⟹
+no repeated roots in the multiset), `Polynomial.Splits.natDegree_eq_card_roots` (splitting ⟹ the
+multiset's cardinality-with-multiplicity is exactly `natDegree`), and
+`Multiset.toFinset_card_of_nodup` (no-repeats ⟹ the underlying finset has the same cardinality as
+the multiset). Mathlib's modern `Polynomial.Splits` (`Mathlib.Algebra.Polynomial.Splits`) is already
+a single-field predicate (`f ∈ Submonoid.closure ({C a} ∪ {X + C a})`), matching exactly what
+`Polynomial.SplittingField.splits`/the `L := K` specialization need — no two-field `Splits (φ : K →+*
+L)` API to bridge.
+
+**`norm_lt_one_of_aeval_divX_eq_zero`**: any root `x : K` of `Q.map (algebraMap O K)` automatically
+satisfies `‖x‖ < 1` — no separate filtering hypothesis needed. Specializes
+`spectralNorm_eq_of_isLubinTatePoly_root` at `L := K` to get `‖x‖ = ‖algebraMap O K (Q.coeff 0)‖ ^
+(1/Q.natDegree : ℝ)`, then `‖algebraMap O K (Q.coeff 0)‖ = ‖algebraMap O K π‖ < 1` (the associate-of-`π`
+fact, `hQ0assoc`, transported through norms exactly as `separable_map_of_isWeaklyEisensteinAt_associated`
+already does inline) and `Real.rpow_lt_one` to conclude `‖x‖ < 1`.
+
+**`LubinTate.card_piTorsion_one_eq_residueCard`** — the capstone:
+
+```
+theorem card_piTorsion_one_eq_residueCard
+    (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O} (hπ : Irreducible π)
+    (hπnorm : ‖algebraMap O K π‖ < 1) {f : O⟦X⟧} (hf : IsLubinTatePoly π (residueCard O) f)
+    {P : O[X]} {u : O⟦X⟧} (hu : IsUnit u) (heq : f = (P : O⟦X⟧) * u)
+    (hPdist : P.IsDistinguishedAt (maximalIdeal O)) (hPdeg : P.natDegree = residueCard O)
+    (hsplit : (P.divX.map (algebraMap O K)).Splits) :
+    Nat.card (piTorsion (K := K) hπ hf 1) = residueCard O
+```
+
+Proof: `P = X * Q` (`Polynomial.X_mul_divX_add` plus `P.coeff 0 = 0`, `coeff_zero_eq_zero_of_eq_mul`),
+so `aeval x P = x * aeval x Q` and vanishes iff `x = 0` or `x` is a root of `Q`'s image
+(`Polynomial.aeval_map_algebraMap` bridges the `O`-algebra and `K`-algebra `aeval`s at `Q`/`Q.map
+(algebraMap O K)`). `0` is not among `Q`'s roots (`Q.coeff 0` an associate of `π ≠ 0`, so nonzero,
+so `algebraMap O K (Q.coeff 0) ≠ 0` by injectivity, so `eval 0 (Q.map ...) ≠ 0`). Every genuine root
+of `Q`'s image automatically satisfies `‖x‖ < 1` (`norm_lt_one_of_aeval_divX_eq_zero`), so no
+separate norm-filtering step is needed once membership in `insert 0 Q.map(...).roots.toFinset` is
+established. `Nat.subtype_card` converts the resulting `x ∈ S ↔ x ∈ piTorsion hπ hf 1` pointwise
+equivalence directly into the `Nat.card` statement (`S.card = residueCard O` via
+`Finset.card_insert_of_notMem` — Mathlib's current name, `_of_not_mem` having been renamed — plus
+the root-counting fact above and `P.divX.natDegree = residueCard O - 1` from `hPdeg`).
+
+**This is the size computation the whole `piTorsion`/Weierstrass-preparation/`Q`-separability arc
+(§24, §28–§33) was built toward — a major milestone for the Lubin-Tate torsion-point thread.** It is
+not unconditional: it needs `hπnorm` (Part 1b, genuinely open) and `hsplit` (that `Q` already splits
+inside `K`, true once `K ⊇ K_1` but not before) as explicit hypotheses. Both are exactly the
+hypotheses classical Lubin-Tate theory needs at this point too (the classical argument implicitly
+works inside a field already containing all the torsion points), so this is not a weakening of the
+target statement — it is the correctly-scoped version of it, given this repo's abstract `O`/`K`
+package.
+
+### Build status
+
+`nix develop --command lake build` (run from `langlands/`) — whole project builds clean, `Build
+completed successfully (8769 jobs)` (one new file, `Langlands/LubinTateRootCount.lean`).
+`grep -rn sorry Langlands/LubinTate.lean Langlands/LubinTateRootCount.lean` — no hits (the only
+non-tactic mentions of "sorry" anywhere in `Langlands/*.lean` are prose in unrelated files' module
+docstrings, e.g. `LubinTateWeierstrassPreparation.lean`'s "sorry-free step").
+
+### What remains, in dependency order, toward `[K_1 : K] = q - 1` and `Gal(K_1/K) ≅ (O/π)ˣ`
+
+1. **`‖algebraMap O K π‖ < 1`** (Part 1b, unchanged from §33) — needs either a concrete
+   `HeightOneSpectrum`/`adicCompletion` instantiation of the whole Lubin-Tate thread, or a
+   `[Valued K Γ]`-style strengthening of the abstract package.
+2. **`hsplit : (P.divX.map (algebraMap O K)).Splits`** — true once `K ⊇ K_1 := K(F_π[π])`
+   (`Langlands.LubinTateFieldTower.K_1`), but no lemma yet connects `K_1`'s construction (adjoining
+   `piTorsion hπ hf 1` itself) back to "`Q`'s image splits inside `K_1`" — this is circular-looking
+   but not actually circular (`K_1` is defined as the field generated by the torsion points as a
+   *set*, independent of knowing its size; showing `Q` splits over `K_1` needs a separate argument,
+   e.g. that `K_1` is normal over `K` or built explicitly as `Q`'s splitting field). Not attempted.
+3. **`[K_1 : K] = q - 1`** — once (1)–(2) close, combine `card_piTorsion_one_eq_residueCard` with
+   `K_1`'s definition as `IntermediateField.adjoin (FractionRing O) (piTorsion hπ hf 1 : Set K)`
+   (`LubinTateFieldTower.lean`) and the `piTorsionAddCommGroup` structure (`LubinTateTorsionGroup.lean`)
+   to identify `K_1`'s degree with the torsion group's order, likely via a primitive-element or
+   Kummer-style argument (the torsion group being cyclic of order `q - 1` under `F_π`-addition
+   restricted to nonzero points — not yet stated or proved).
+4. **`Gal(K_1/K) ≅ (O/π)ˣ`** — the classical Lubin-Tate reciprocity input, needs (3) plus a Galois
+   action of `(O/π)ˣ` on `piTorsion hπ hf 1` (via the endomorphism structure `LubinTateUnitsAction.lean`
+   already has some machinery for — not yet connected to this thread).
+5. **The reciprocity map** — the eventual target, joining this thread to `§6ai`.
+
+### Commits
+
+`a464b7c` (`Langlands/LubinTate.lean`: `LubinTate.isUnit_natCast_of_add_one_eq_residueCard`).
+`5a0907f` (`Langlands/LubinTateRootCount.lean`, new file:
+`Polynomial.roots_toFinset_card_eq_natDegree_of_separable_of_splits`,
+`LubinTate.norm_lt_one_of_aeval_divX_eq_zero`, `LubinTate.card_piTorsion_one_eq_residueCard`).
