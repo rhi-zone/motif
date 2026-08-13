@@ -11889,3 +11889,129 @@ completed successfully (8766 jobs)`. `grep -rn sorry` on every file this pass to
 `6a7ac5f` (`LubinTateUnitsEndomorphism.lean`: `phiU`, `subst_subst_univ_mv`,
 `solvesFunctionalEq_subst_embed`, `solvesFunctionalEq_subst_outer`,
 `subst_Phi_phiU_eq_phiU_subst_Phi`).
+
+## 29. Phase 2c, twenty-third pass (2026-08-13): **the `Oˣ`-action on `π^n`-torsion, closed —
+`Gal(K_1/K) ≅ (O/π)ˣ`'s actual algebraic content**
+
+`§28`'s step 4 (evaluate `[u]_F`, close torsion under it, establish the action laws) closed in
+full, all four sub-parts, in dependency order, following the task's staged decomposition exactly.
+New file `Langlands/LubinTateUnitsAction.lean`.
+
+### The recurring footgun, reproduced and routed around (not guessed at)
+
+Drafting the first new lemma (`iter f n` commuting with any series that commutes with `f`) as
+dot-notation `(iter f n).subst h = h.subst (iter f n)` reproduced `LubinTateIterate.iter_succ'`'s
+documented `deterministic timeout at whnf`: with **both** substitutand and substituted series
+univariate, nested dot notation elaborates against `MvPowerSeries.subst` (whose namespace also
+matches `R⟦X⟧`'s reducible head) and unification diverges. Fixed by switching to the prefix
+`PowerSeries.subst a g` form throughout — exactly `iter_succ'`/`iter_add`'s own established
+convention — for every univariate/univariate composition in this pass's new lemmas
+(`subst_iter_eq_iter_subst`, `solvesFunctionalEq_subst_univ`, and every `have`/`calc` step built
+from them). Mixed-arity compositions (univariate into multivariate or vice versa, as in
+`eval_phiU_FPiEval`) did **not** trigger this — confirmed by the pass compiling clean on first
+`lake build`, not assumed — since the multivariate side pins notation resolution unambiguously; the
+repo's usual dot-notation style was kept there.
+
+### Two new generic groundwork lemmas — CLOSED, `LubinTateIterate.lean` /
+`NonarchimedeanPowerSeriesEval.lean`
+
+* `LubinTate.subst_iter_eq_iter_subst` (`LubinTateIterate.lean`, fully generic `CommRing S`, no
+  Lubin-Tate specifics): a series `h` commuting with `f` under substitution
+  (`PowerSeries.subst h f = PowerSeries.subst f h`) commutes with every iterate of `f`. Induction on
+  `n` via `PowerSeries.subst_comp_subst_apply`'s reassociation, the identical technique
+  `iter_succ'`/`iter_add` already use (peel the outer `f` off `iter f (n+1)`, apply the inductive
+  hypothesis, reassociate `h` back outside).
+* `NonarchimedeanPowerSeriesEval.eval_zero_of_coeff_zero_eq_zero` (fully generic, any `R`/`K`):
+  evaluating a series with zero constant term at `0` gives `0`. Generalizes the inline argument
+  `LubinTateTorsionPoints.eval_iter_zero` already used (that file's proof left untouched — minimal
+  churn — the new lemma is used only by this pass's new code).
+
+### Step 1: `eval_phiU_FPiEval` — CLOSED, **`[u]_F` respects `F_π`-addition at concrete points**
+
+`eval (phiU hπ hf u) (F_π(a, b)) = F_π(eval (phiU hπ hf u) a, eval (phiU hπ hf u) b)`. Transports
+`subst_Phi_phiU_eq_phiU_subst_Phi` through `evalMv`, by **literally the same code shape** as
+`LubinTateTorsionPoints.eval_iter_FPiEval`'s treatment of `iter f n` — confirmed, not assumed,
+before writing: `fun i ↦ (phiU hπ hf u).subst (X i)` (the family `subst_Phi_phiU_eq_phiU_subst_Phi`
+uses) is definitionally `NonarchimedeanMvPowerSeriesEvalFin2.diagEmbed (phiU hπ hf u)`, so both
+"Lemma A" (`eval_subst_A`) and "Lemma S" (`eval_subst_S`) apply unchanged, via the identical
+type-ascription maneuver `eval_iter_FPiEval`'s `keyDiag` uses to bridge the dot-notation-stated
+endomorphism fact to the `diagEmbed`-stated form.
+
+**Not needed for the `MulAction` itself** — see step 2's note.
+
+### Step 2: `mem_piTorsion_eval_phiU` — CLOSED, **`[u]_F` maps `π^n`-torsion into itself**
+
+Does **not** go through `Φ`/`FPiEval` at all, unlike step 1 or `ROADMAP.md`'s anticipated route:
+`piTorsion` is defined purely via `eval (iter f n) x = 0`, so only the *univariate* functional
+equation matters. `subst_phiU_eq_phiU_subst` (`f` commutes with `phiU hπ hf u`) propagates to `iter
+f n` via the new `subst_iter_eq_iter_subst`; two applications of
+`NonarchimedeanPowerSeriesEvalSubst.eval_subst` (univariate/univariate, one each direction) reduce
+`eval (iter f n) (eval (phiU hπ hf u) x)` to `eval (phiU hπ hf u) (eval (iter f n) x) = eval (phiU
+hπ hf u) 0 = 0` (the last step via the new `eval_zero_of_coeff_zero_eq_zero`).
+
+### Step 3: `phiU_one_eq_X` — CLOSED, **`[1]_F = X`**
+
+`X` satisfies the same univariate functional equation as `phiU hπ hf 1`, with the same linear
+coefficient `1` (`f.subst X = X.subst f` reduces to `f = f` via `PowerSeries.X_subst`/`subst_X`), so
+`LubinTateFunctionalEquation.eq_of_coeff_zero_eq_zero_of_coeff_one_eq_of_subst_eq` (the intertwining
+series's own uniqueness theorem) identifies them directly — no new machinery, exactly as `ROADMAP.md`
+anticipated ("`X` itself should satisfy the same functional equation... by inspection").
+
+### Step 4: `solvesFunctionalEq_subst_univ` + `phiU_subst_phiU_eq_phiU_mul` — CLOSED,
+**`[u]_F ∘ [v]_F = [uv]_F`**
+
+**The third composition-closure fact `ROADMAP.md` anticipated**, univariate-into-univariate this
+time (`solvesFunctionalEq_subst_embed`/`_outer`, `§28`'s two, are multivariate-shaped): if `h1` and
+`h2` both commute with `f`, so does `h1 ∘ h2` (`PowerSeries.subst h2 h1`). Same six-step
+`subst_comp_subst_apply` reassociation chain as the other two composition-closure facts, in prefix
+form per the footgun note above. Combined with uniqueness — `PowerSeries.subst (phiU hπ hf v) (phiU
+hπ hf u)` and `phiU hπ hf (u * v)` solve the same functional equation with the same linear
+coefficient `u * v` (`LubinTateIterate.coeff_one_subst` + `Units.val_mul`) — this identifies `[u]_F
+∘ [v]_F` with `[uv]_F`.
+
+### The action itself — CLOSED, `piTorsionSMul` / `piTorsionMulAction`
+
+**A genuine `MulAction Oˣ ↥(piTorsion hπ hf n)`**, `u • x := eval (phiU hπ hf u) x`. Assembles
+exactly like `LubinTateTorsionGroup.piTorsionAddCommGroup`: `@[reducible] def`s (not instances,
+since they depend on the non-instance hypotheses `hOK`/`hπ`/`hf`), `one_smul` from `phiU_one_eq_X` +
+`eval_X`, `mul_smul` from `phiU_subst_phiU_eq_phiU_mul` transported through `eval_subst`. **This is
+the actual algebraic content behind `Gal(K_1/K) ≅ (O/π)ˣ`**: `Oˣ` genuinely acts on the torsion
+points, by group-action laws proved from the Lubin-Tate functional equation, not asserted.
+
+`eval_phiU_FPiEval` (step 1) is proved but not consumed by the `MulAction` construction — it shows
+`[u]_F` is compatible with `piTorsionAddCommGroup`'s addition (i.e. acts by group endomorphisms),
+independently meaningful for the eventual Galois-module structure but not upgraded to a
+`DistribMulAction` this pass (that bundling is future work, not attempted, not blocked on anything
+new).
+
+### Build status
+
+`nix develop --command lake build` (run from `langlands/`) — whole project builds clean, `Build
+completed successfully (8767 jobs)`. `grep -rn sorry` on every file this pass touched
+(`LubinTateIterate.lean`, `NonarchimedeanPowerSeriesEval.lean`, `LubinTateUnitsAction.lean`,
+`Langlands.lean`) — no hits.
+
+### What remains, in dependency order
+
+1. **Upgrade `piTorsionMulAction` to a `DistribMulAction`** (optional strengthening): bundle
+   `eval_phiU_FPiEval` (already proved) and `eval_phiU_zero`-type facts (`eval_zero_of_
+   coeff_zero_eq_zero` applied to `phiU`, already available) as `smul_add`/`smul_zero`, making the
+   `Oˣ`-action manifestly one by `piTorsionAddCommGroup` endomorphisms — not attempted this pass,
+   not needed for `Gal(K_1/K) ≅ (O/π)ˣ` itself.
+2. **The size computation** `|piTorsion hπ hf 1| = q`, unchanged since `§27`/`§28` — needs a
+   strengthened hypothesis on `K` (e.g. `K ⊇ K_1`, using the concrete `K_1` from `§28`) and a
+   power-series root-counting development (Weierstrass preparation / Newton polygon).
+3. **`[K_1 : K]`, `Gal(K_1/K) ↪ Oˣ`, total ramification** — needs (2) above and the
+   abstract-`O`-to-concrete-`HeightOneSpectrum` bridge (unchanged since `§19`), plus identifying the
+   Galois action on `K_1` with this pass's `piTorsionMulAction` (not yet stated — the Galois group
+   acts on `K_1` as a field automorphism group; this pass's action is on the *torsion-point set*
+   `piTorsion hπ hf 1 ⊆ K`, which generates `K_1` by definition (`§28`), but the equivalence of the
+   two actions is not yet formalized).
+4. **The reciprocity map** — the eventual target, joining this thread to `§6ai`.
+
+### Commits
+
+`8152ddd` (`LubinTateIterate.lean`/`NonarchimedeanPowerSeriesEval.lean`: `subst_iter_eq_iter_subst`,
+`eval_zero_of_coeff_zero_eq_zero`), `d37eb71` (`LubinTateUnitsAction.lean`: `eval_phiU_FPiEval`,
+`mem_piTorsion_eval_phiU`, `phiU_one_eq_X`, `solvesFunctionalEq_subst_univ`,
+`phiU_subst_phiU_eq_phiU_mul`, `piTorsionSMul`, `piTorsionMulAction`).
