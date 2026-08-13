@@ -12879,3 +12879,128 @@ file (both `omit`-annotated correctly).
 `fc220d4` (`Langlands/LubinTateFieldTower.lean`: `LubinTate.splits_map_K_1_of_splits`, the
 `hsplit`-to-`K_1` transport; strengthens the file's `K` hypothesis to `[IsFractionRing O K]`
 throughout).
+
+## 37. Phase 2c, thirty-first pass (2026-08-14): **premise correction on the transitivity task —
+`Oˣ` is not finite in this setting, so no counting argument gives transitivity for free;
+`[Frac(O)(α):Frac(O)] = q-1` closed for a single root, standalone; transitivity itself and
+`K_1 = Frac(O)(α)` investigated and found to need genuinely new valuation infrastructure, not
+built this pass**
+
+### The premise problem, checked directly
+
+The task brief handed to this pass assumed a counting argument: "`Oˣ` has order `q-1` too... so if
+the action is free it's automatically transitive." **This is false for the general setting this
+repo formalizes.** `O` only carries `[Finite (ResidueField O)]` — `O` itself is not assumed finite
+(`O = ℤ_p` is a valid instantiation of every hypothesis in scope, and `Oₚˣ` is uncountable). No
+counting argument via `|Oˣ| = |piTorsion \ {0}|` is available; the classical route is that the
+`Oˣ`-action on `piTorsion hπ hf 1` **factors through the finite quotient `Oˣ ↠ (O/π)ˣ`** (order
+`q - 1`), and that quotient action, not `Oˣ` itself, is what must be shown simply transitive.
+
+### Part 1: `[Frac(O)(α) : Frac(O)] = q - 1` for a single root — closed, no transitivity needed
+
+`LubinTate.finrank_adjoin_of_aeval_divX_map_eq_zero` (`Langlands/LubinTateFieldTower.lean`): for
+any `x ∈ K` with `Polynomial.aeval x (P.divX.map (algebraMap O K)) = 0` (i.e. any root of `Q :=
+P.divX`'s image, equivalently any nonzero element of `piTorsion hπ hf 1`),
+`Module.finrank (FractionRing O) (IntermediateField.adjoin (FractionRing O) ({x} : Set K)) =
+residueCard O - 1`. Pure minimal-polynomial theory: `Q' := P.divX.map (algebraMap O (FractionRing
+O))` is monic and irreducible over `Frac(O)` (`Polynomial.irreducible_map_of_isWeaklyEisensteinAt_
+associated`, `LubinTateEisensteinQ.lean`, specialized at `K := FractionRing O` itself — Gauss's
+lemma applied to `Frac(O)` over `O`), `x`'s vanishing on `Q`'s image in `K` transports down to
+vanishing on `Q'` via `Polynomial.aeval_map_algebraMap` applied twice (through the scalar tower `O
+→ Frac(O) → K`, using the already-local `FractionRing.isScalarTower_liftAlgebra` instance), so `Q'
+= minpoly (FractionRing O) x` (`minpoly.eq_of_irreducible_of_monic`) and
+`IntermediateField.adjoin.finrank` reads the degree straight off `Q'.natDegree = P.divX.natDegree =
+residueCard O - 1`. No `hOK`, no `hπnorm`, no `Oˣ`-action anywhere in the proof — genuinely
+independent of the transitivity question, exactly as the task brief anticipated it might be.
+
+This is deliberately *weaker* than `K_1 := Frac(O)(F_π[π])` (`LubinTateFieldTower.K_1`, which
+adjoins the whole torsion set `piTorsion hπ hf 1`, not a single element): `[Frac(O)(x):Frac(O)] =
+q-1` alone does not give `[K_1:K] = q-1` without also knowing `Frac(O)(x) = K_1`, i.e. that
+adjoining one root already contains every other root — which is exactly where transitivity (or an
+equivalent) is needed.
+
+### Part 2: transitivity — investigated, not closed; here is exactly what is missing
+
+Checked `Langlands/LubinTateUnitsEndomorphism.lean` (`phiU`'s construction) and
+`Langlands/LubinTateFunctionalEquation.lean` (`phiState`/`phiCoeff`, what `phiU` unfolds to)
+directly, rather than assuming a shape for the missing lemma:
+
+* **`phiU hπ hf u`'s linear coefficient is exactly `(u : O)`** (`coeff_one_phiU`, already in the
+  repo) — this part of the classical "`[u]_F(X) ≡ uX` mod higher order terms" fact is present.
+* **Every higher coefficient (`phiCoeff hπ (u:O) hf hf n` for `n ≥ 2`) is defined via
+  `hdvd.choose`** — the equation-compiler's choice witness for `π ∣ (some expression in the
+  previous partial sum, `f`, and `u`)`, extracted from `uniformizer_dvd_coeff_subst_sub_subst`
+  (`phiState`, `Langlands/LubinTateFunctionalEquation.lean:391`). Mathematically this is a
+  well-defined function of `u` (the ambient equation forces a unique value, since
+  `π * (1 - π^(d+1))` is a nonzerodivisor in the domain `O`), but there is **no closed form** for
+  it in terms of `u` alone — it depends on `f`'s full coefficient sequence through a genuine
+  recursion, not a simple formula. This means the natural approach "read off `phiU u`'s
+  coefficients mod `π` directly from `u`'s reduction" does not work by inspection; it would need an
+  inductive argument through the recursion itself.
+* **What is actually needed for the `Oˣ ↠ (O/π)ˣ` factoring is not coefficient control on `phiU` as
+  a formal series, but a *valuation estimate at evaluation***: for `x ∈ piTorsion hπ hf 1 \ {0}`
+  (norm `‖x‖ = c^{1/(q-1)}` exactly, `c := ‖algebraMap O K π‖`, by
+  `LubinTate.spectralNorm_eq_of_isLubinTatePoly_root` specialized at `L := K`, already available)
+  and `u, v ∈ Oˣ` with `u ≡ v (mod π)`, one needs `eval (phiU hπ hf u) x = eval (phiU hπ hf v) x`
+  exactly (not merely close) to get the level-1 factoring — the classical proof compares
+  `eval (phiU hπ hf u) x` to `u • x` via a Newton-polygon-flavored bound on the tail
+  `Σ_{n≥2} coeff n (phiU u) · x^n`, then a separate argument that `x`'s exact valuation `1/(q-1)`
+  forces the *equality* (not just closeness) once combined with `piTorsion hπ hf 1`'s exact size
+  `q` (`card_piTorsion_one_eq_residueCard`). None of this two-part argument exists in the repo yet.
+* **A concrete, checked, buildable-looking half-step that is *not yet built*:** `NonarchimedeanPowerSeriesEval.lean`
+  already has `norm_eval_sub_algebraMap_constantCoeff_le` (bounding `eval f x` against `f`'s
+  constant term by `‖x‖`) but no coefficient-`1` analogue (`‖eval f x - coeff 1 f • x‖ ≤ ‖x‖ ^ 2`) —
+  checked directly, confirmed absent (`grep -n "coeff 1\|coeff_one" Langlands/NonarchimedeanPowerSeriesEval.lean`
+  finds nothing of this shape). Such a bound looks provable by the same "split off the first two
+  terms of the `tsum`" technique `norm_eval_sub_algebraMap_constantCoeff_le` already uses, and would
+  give `‖eval (phiU u) x - u • x‖ ≤ ‖x‖ ^ 2 < ‖x‖`. **This alone is not the level-1 factoring
+  fact** — going from "`eval (phiU u) x` is `‖x‖`-close to `u • x`" to "`eval (phiU u) x = eval
+  (phiU v) x` exactly when `u ≡ v (mod π)`" needs a further argument (roughly: the difference
+  `eval (phiU u) x - eval (phiU v) x` must itself be shown to lie in `piTorsion hπ hf 1`'s "smaller"
+  strata, or the whole level-1 torsion set must be shown to have no room for two distinct points
+  within `‖x‖^2` of each other — a separate, uninvestigated combinatorial/valuation step). Flagged
+  as a plausible **first** brick, not a complete plan — not attempted this pass.
+
+**Honest assessment: transitivity is a genuinely new, multi-lemma undertaking** (a tail-valuation
+bound on `phiU`'s evaluation, *plus* a separate argument turning "close" into "equal" at the
+level-1 torsion set's exact size/spacing, *plus* assembling the resulting `(O/π)ˣ`-action's
+freeness/transitivity from that), not a one-session close. This matches the task brief's own
+warning and the prior-thread premise-check; nothing here should be read as "should work" without a
+build.
+
+### `K_1 = Frac(O)(α)` and the full capstone `[K_1:K] = q-1`: not closed, blocked on Part 2
+
+Since transitivity (or an equivalent normality-of-a-single-root argument) did not close, `K_1 =
+Frac(O)(α)` (adjoining one root already contains all of `piTorsion hπ hf 1`) was not attempted
+beyond the investigation above. `IntermediateField.splits_of_splits`/`IsSplittingField` machinery
+was considered as an alternative route (checked: does `Q` splitting completely, plus `Frac(O)(α)`
+containing *a* root, force `Frac(O)(α)` to contain *all* roots? — no, not in general, without
+either normality of `Frac(O)(α)/Frac(O)` or the Galois-conjugacy of roots under `Aut(K_1/K)`, both
+of which themselves need the group action this pass could not close). No alternative route was
+found. `[K_1:K] = q-1` (the capstone) and `IsGalois K K_1` therefore remain open.
+
+### Build status
+
+`nix develop --command lake build` (run from `langlands/`) — whole project builds clean, `Build
+completed successfully (8770 jobs)`. `grep -rn sorry Langlands/LubinTateFieldTower.lean` — no hits.
+
+### What remains, in dependency order, toward `[K_1 : K] = q - 1` and `Gal(K_1/K) ≅ (O/π)ˣ`
+
+1. **The tail-valuation estimate** `‖eval f x - (coeff 1 f) • x‖ ≤ ‖x‖ ^ 2` for bounded-coefficient
+   `f` with `constantCoeff f = 0` — a concrete, scoped addition to `NonarchimedeanPowerSeriesEval.lean`,
+   provable by the same technique as `norm_eval_sub_algebraMap_constantCoeff_le`; not yet built.
+2. **The "close ⟹ equal" step** turning that estimate into `eval (phiU u) x = eval (phiU v) x`
+   exactly for `u ≡ v (mod π)` — genuinely new, no identified technique yet (see Part 2 above).
+3. **The induced `(O/π)ˣ`-action's freeness and transitivity** on `piTorsion hπ hf 1 \ {0}` (size
+   `q - 1`, from `card_piTorsion_one_eq_residueCard`) — once (1)-(2) give the factoring, this is a
+   counting argument (free action of a group of order `q-1` on a set of size `q-1` is transitive),
+   not attempted since (1)-(2) are prerequisites.
+4. **`K_1 = Frac(O)(α)`, hence `[K_1:K] = q-1`** — assembled from (3) plus
+   `finrank_adjoin_of_aeval_divX_map_eq_zero` (this pass).
+5. **`Gal(K_1/K) ≅ (O/π)ˣ`** — needs (4) plus `IsGalois K K_1` (from `splits_map_K_1_of_splits` +
+   separability, both already available) and an explicit isomorphism from the `(O/π)ˣ`-action.
+6. **The reciprocity map** — the eventual target, joining this thread to `§6ai`.
+
+### Commits
+
+`ceb5b0d` (`Langlands/LubinTateFieldTower.lean`: `LubinTate.finrank_adjoin_of_aeval_divX_map_eq_zero`).
