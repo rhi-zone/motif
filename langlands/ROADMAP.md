@@ -12634,3 +12634,138 @@ docstrings, e.g. `LubinTateWeierstrassPreparation.lean`'s "sorry-free step").
 `5a0907f` (`Langlands/LubinTateRootCount.lean`, new file:
 `Polynomial.roots_toFinset_card_eq_natDegree_of_separable_of_splits`,
 `LubinTate.norm_lt_one_of_aeval_divX_eq_zero`, `LubinTate.card_piTorsion_one_eq_residueCard`).
+
+## 35. Phase 2c, twenty-ninth pass (2026-08-14): **`hπnorm` closed via concrete
+`HeightOneSpectrum`/`adicCompletion` instantiation; `hsplit`/`K_1` framing question investigated and
+answered (not free, but transports downward, via a located but not-yet-wired Mathlib lemma)**
+
+Closes §34's item 1 (`‖algebraMap O K π‖ < 1`, Part 1b) exactly the way that pass predicted: by
+instantiating the whole abstract Lubin-Tate `O`/`K` package against a concrete
+`HeightOneSpectrum`/`adicCompletion` pair. Investigates (but does not close) §34's item 2, the
+`hsplit`/`K_1` framing question, with a precise positive/negative answer and a located Mathlib
+lemma for the next pass to wire in.
+
+### Part 1: the concrete instantiation (`Langlands/LubinTateRootCountConcrete.lean`, new file)
+
+No caller anywhere in the repo had instantiated this thread's abstract `O`/`K` package (`[NormedField
+K] [IsUltrametricDist K] [CompleteSpace K] [Algebra O K] [IsFractionRing O K]` on a complete DVR `O`
+with finite residue field) against a concrete `v.adicCompletionIntegers F` / `v.adicCompletion F`
+pair before. Checking what already existed: `IsDomain`, `IsFractionRing (v.adicCompletionIntegers K)
+(v.adicCompletion K)`, and (transitively, via the repo's `.Compatible`-instance chain connecting
+`ValuativeRel.valuation` to `Valued.v`) `IsDiscreteValuationRing (v.adicCompletionIntegers K)` were
+already available from `Langlands/NormMapResidueCompatibility.lean` and `Langlands/NormMap.lean`,
+even though both files state their instances inside a two-field-tower (`R S K L`, `v w`) variable
+block — Lean's automatic variable-pruning means each instance only actually depends on the
+single-field data it mentions (confirmed directly: e.g.
+`norm_algebraMap_adicCompletion_uniformizer_lt_one` is called elsewhere in the repo with exactly
+three explicit arguments, `K v hπ`, confirming `S`/`L`/`w` are not part of its real signature despite
+being declared inside that block). `NontriviallyNormedField (v.adicCompletion F)` and
+`CompleteSpace (v.adicCompletion F)` were already available (`Langlands/NormMap.lean`,
+Mathlib's `AdicValuation.lean`); `IsUltrametricDist (v.adicCompletion F)` resolves automatically once
+those are in place (confirmed via the existing pattern `haveI : IsUltrametricDist K := inferInstance`
+in `Langlands/HenselianValuation.lean`).
+
+The one genuinely missing piece was `Finite (ResidueField (v.adicCompletionIntegers F))`: not
+automatic from a bare Dedekind domain (a height-one quotient `A ⧸ v.asIdeal` need not be finite in
+general — e.g. function fields over an infinite constant field), so supplied as the natural
+hypothesis `Finite (A ⧸ v.asIdeal)`, transported across the previously-built
+`residueFieldQuotientRingEquiv : (A ⧸ v.asIdeal) ≃+* ResidueField (v.adicCompletionIntegers F)`
+(`Langlands/AdicCompletionIntegersResidue.lean`, commit `8b60f27`) via `Finite.of_equiv` (needing
+`.toEquiv` to drop from `RingEquiv` to plain `Equiv` — the only real friction hit in this pass, a
+one-line fix).
+
+**`IsDedekindDomain.HeightOneSpectrum.card_piTorsion_one_eq_residueCard_of_adicCompletion`** — the
+concrete instantiation: given `Finite (A ⧸ v.asIdeal)` and the same Weierstrass-factorization /
+`hsplit` data `LubinTate.card_piTorsion_one_eq_residueCard` needs, `hOK` and `hπnorm` are both
+discharged automatically (`norm_algebraMap_adicCompletionIntegers_le_one`, this pass's one-line proof
+via `Valued.toNormedField.norm_le_one_iff`; and the pre-existing
+`norm_algebraMap_adicCompletion_uniformizer_lt_one`), leaving no open norm hypotheses — only the
+structural data (`Finite (A ⧸ v.asIdeal)`, the factorization, `hsplit`) remains explicit. This closes
+§34 Part 1b's gap exactly as predicted there: "(i) a concrete instantiation of the whole Lubin-Tate
+thread against a real `HeightOneSpectrum`/`adicCompletion` pair (where the fact becomes free, per the
+pattern above)".
+
+### Part 2: the `hsplit`/`K_1` framing question — investigated, answered, not formalized
+
+**The question** (§34's item 2, task brief's framing prompt): does `K_1 := IntermediateField.adjoin
+(FractionRing O) (piTorsion hπ hf 1 : Set K)` (`Langlands/LubinTateFieldTower.lean`) being *defined*
+by adjoining the torsion points mean `Q := P.divX` automatically splits over `K_1`, resolving
+`hsplit` "by construction"?
+
+**Answer: no, not by construction alone — but yes, conditionally, once `hsplit` holds for the ambient
+`K`.** Direct evidence, read from `card_piTorsion_one_eq_residueCard`'s own proof
+(`Langlands/LubinTateRootCount.lean`, the `hSmem` block, lines 185–226): the set-membership
+characterization `piTorsion hπ hf 1 = {0} ∪ (Q.map (algebraMap O K)).roots.toFinset` is proved
+**without ever using `hsplit`** — `hsplit` is used only afterward, to *count* that root set
+(`hcard`), not to establish which elements belong to it. This means `piTorsion hπ hf 1`, viewed
+purely as a subset of `K`, only ever contains as many of `Q`'s roots as already happen to lie in `K`.
+Since `K_1 ⊆ K` and `K_1` is generated *from* `piTorsion hπ hf 1` (not from an abstract splitting
+field disjoint from `K`), adjoining torsion points cannot manufacture roots `K` itself doesn't
+already have — so if `hsplit` fails for `K`, `K_1`'s construction cannot repair that; the hypothesis
+genuinely has to be checked against `K`, not discharged by `K_1`'s definition. This is not a
+weakening: it is a direct read of what the existing proof actually establishes, not a new argument.
+
+**The positive half**: *given* `hsplit` holds for `K` (so `piTorsion hπ hf 1` already has its full
+size `residueCard O`, `Q`'s roots and all), it transports **downward** to `K_1` for free — `Q`'s
+roots are, by `hSmem`, exactly `K_1`'s generators (`piTorsion hπ hf 1 \ {0}`), hence literally
+elements of `K_1` by `IntermediateField.subset_adjoin`, and `Q`'s coefficients already come from `O`
+(hence from `FractionRing O ⊆ K_1`). Located the exact Mathlib lemma for this:
+`IntermediateField.splits_of_splits {K L} [Field K] [Field L] [Algebra K L] {p : K[X]} {F :
+IntermediateField K L} (h : (p.map (algebraMap K L)).Splits) (hF : ∀ x ∈ p.rootSet L, x ∈ F) :
+(p.map (algebraMap K F)).Splits` (`Mathlib.FieldTheory.SplittingField.IsSplittingField`) — exactly
+the "roots already inside a sub-structure ⟹ splits already over that sub-structure" fact needed,
+confirmed to exist via direct read of the Mathlib source (not loogled from memory, the file was read
+in full).
+
+**Not wired in this pass.** Applying `IntermediateField.splits_of_splits` at `K := FractionRing O`
+(Mathlib's `K`, not this repo's — the base field, confusingly reusing the same letter), `L := ` this
+repo's `K`, `F := K_1`, needs `Q` re-expressed as a polynomial over `FractionRing O` (`Q.map
+(algebraMap O (FractionRing O))`, using `Polynomial.map_map` + `IsScalarTower.algebraMap_eq` to
+relate its double-map to `Q.map (algebraMap O K)` directly) and, most substantially, a fresh
+`Algebra O K_1` instance — `K_1` currently only has `Algebra (FractionRing O) K_1` from its
+`IntermediateField` structure; connecting `O` to it needs composing with `Algebra O (FractionRing
+O)`, and this repo's hard constraint against diamond-shaped workarounds means that composite instance
+needs to be built and checked for compatibility with the existing `Algebra O K` (via `K_1 ↪ K`)
+carefully, not assembled under time pressure. Also needs the root-membership half-lemma (`∀ x ∈
+(Q.map (algebraMap O K)).roots.toFinset, x ∈ piTorsion hπ hf 1`) extracted as a standalone
+declaration — currently only inlined inside `hSmem`'s forward direction, reusable via the
+already-public `norm_lt_one_of_aeval_divX_eq_zero` plus the same `X_mul_divX_add`/
+`eval_eq_zero_iff_aeval_eq_zero` steps `card_piTorsion_one_eq_residueCard`'s proof already uses.
+None of this is attempted here; it is scoped precisely for whichever pass picks it up next.
+
+### Build status
+
+`nix develop --command lake build` (run from `langlands/`) — whole project builds clean, `Build
+completed successfully (8769 jobs)` (one new file, `Langlands/LubinTateRootCountConcrete.lean`).
+`grep -n sorry Langlands/LubinTateRootCountConcrete.lean` — no hits.
+
+### What remains, in dependency order, toward `[K_1 : K] = q - 1` and `Gal(K_1/K) ≅ (O/π)ˣ`
+
+1. ~~`‖algebraMap O K π‖ < 1`~~ — **closed** (Part 1 above), for the concrete
+   `HeightOneSpectrum`/`adicCompletion` instantiation. The abstract-package version
+   (`LubinTate.card_piTorsion_one_eq_residueCard`, not the `_of_adicCompletion` specialization) still
+   carries `hπnorm` as an explicit hypothesis by design — the abstract package alone still cannot
+   supply it, only the concrete instantiation can.
+2. **`hsplit` transports to `(P.divX.map (algebraMap O K_1)).Splits`, given `hsplit` for `K`** — the
+   positive half of Part 2 above, located (`IntermediateField.splits_of_splits`) but not wired: needs
+   (a) an `Algebra O K_1` instance built carefully against the existing `Algebra O K`, (b) the
+   root-membership half of `hSmem` extracted as a standalone lemma, (c) the `Q.map` re-association
+   through `FractionRing O`. `hsplit` w.r.t. the ambient `K` itself remains a hypothesis that must
+   still be checked directly — it is not implied by `K_1`'s mere definition (the negative half of
+   Part 2).
+3. **`[K_1 : K] = q - 1`** — once (2) closes at the `K_1` level, combine
+   `card_piTorsion_one_eq_residueCard` with `K_1`'s definition and the `piTorsionAddCommGroup`
+   structure (`LubinTateTorsionGroup.lean`) to identify `K_1`'s degree with the torsion group's
+   order, likely via a primitive-element or Kummer-style argument (the torsion group being cyclic of
+   order `q - 1` — not yet stated or proved).
+4. **`Gal(K_1/K) ≅ (O/π)ˣ`** — the classical Lubin-Tate reciprocity input, needs (3) plus a Galois
+   action of `(O/π)ˣ` on `piTorsion hπ hf 1` (via the endomorphism structure `LubinTateUnitsAction.lean`
+   already has some machinery for — not yet connected to this thread).
+5. **The reciprocity map** — the eventual target, joining this thread to `§6ai`.
+
+### Commits
+
+`e4d4b4d` (`Langlands/LubinTateRootCountConcrete.lean`, new file:
+`norm_algebraMap_adicCompletionIntegers_le_one`,
+`instFiniteResidueFieldAdicCompletionIntegers`,
+`card_piTorsion_one_eq_residueCard_of_adicCompletion`).
