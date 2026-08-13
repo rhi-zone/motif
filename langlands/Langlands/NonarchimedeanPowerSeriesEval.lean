@@ -241,6 +241,21 @@ theorem eval_X (x : K) : eval (PowerSeries.X : PowerSeries R) x = x := by
   rw [hterm]; simp
 
 omit [IsUltrametricDist K] [CompleteSpace K] in
+/-- **Evaluating any series with zero constant term at `0` gives `0`.** Every summand vanishes
+termwise: the constant term because `coeff 0 f = 0`, every other term because `0 ^ n = 0` for
+`n ≥ 1`. No convergence argument is needed. -/
+theorem eval_zero_of_coeff_zero_eq_zero {f : PowerSeries R} (hf0 : PowerSeries.coeff 0 f = 0) :
+    eval f (0 : K) = 0 := by
+  have hterm : ∀ n, evalSummand f (0 : K) n = 0 := by
+    intro n
+    unfold evalSummand
+    match n with
+    | 0 => rw [hf0, map_zero, zero_mul]
+    | n + 1 => rw [pow_succ, mul_zero, mul_zero]
+  unfold eval
+  simp [hterm]
+
+omit [IsUltrametricDist K] [CompleteSpace K] in
 /-- The coefficients of `X : PowerSeries R`, algebra-mapped into `K`, are trivially bounded by
 `1`. -/
 theorem coeff_bound_X :

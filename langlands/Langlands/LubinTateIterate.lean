@@ -169,6 +169,40 @@ theorem coeff_one_iter {f : S⟦X⟧} {π : S} (hf0 : PowerSeries.coeff 0 f = 0)
       rw [iter_succ, coeff_one_subst h0 f, hf1, coeff_one_iter hf0 hf1 n]
       ring
 
+/-- **A series commuting with `f` under substitution commutes with every iterate of `f`.**
+`h ∘ f = f ∘ h` (`PowerSeries.subst h f = PowerSeries.subst f h`) propagates to `h ∘ f^{(n)} =
+f^{(n)} ∘ h` for every `n`, by induction on `n` via `PowerSeries.subst_comp_subst_apply`'s
+reassociation, exactly the technique `iter_succ'`/`iter_add` already use (peel the outer `f` off
+`iter f (n+1)`, apply the inductive hypothesis, then reassociate `h` back outside).
+
+Written throughout in the prefix form `PowerSeries.subst a g` rather than `g.subst a`, for the
+reason `iter_succ'` documents: with both series univariate, nested dot notation elaborates against
+`MvPowerSeries.subst` and diverges (`deterministic timeout at whnf`) rather than failing cleanly —
+reproduced here before being routed around, not guessed at. -/
+theorem subst_iter_eq_iter_subst {f h : S⟦X⟧} (hf0 : PowerSeries.constantCoeff f = 0)
+    (hh0 : PowerSeries.constantCoeff h = 0)
+    (hcomm : PowerSeries.subst h f = PowerSeries.subst f h) :
+    ∀ n, PowerSeries.subst h (iter f n) = PowerSeries.subst (iter f n) h
+  | 0 => by
+      have hh' : PowerSeries.HasSubst h := PowerSeries.HasSubst.of_constantCoeff_zero' hh0
+      rw [iter_zero, PowerSeries.subst_X hh', PowerSeries.X_subst]
+  | n + 1 => by
+      have hf' : PowerSeries.HasSubst f := PowerSeries.HasSubst.of_constantCoeff_zero' hf0
+      have hh' : PowerSeries.HasSubst h := PowerSeries.HasSubst.of_constantCoeff_zero' hh0
+      have hiter' : PowerSeries.HasSubst (iter f n) := hasSubst_iter hf0 n
+      have ih := subst_iter_eq_iter_subst hf0 hh0 hcomm n
+      calc PowerSeries.subst h (iter f (n + 1))
+          = PowerSeries.subst h (PowerSeries.subst f (iter f n)) := by rw [iter_succ' hf0]
+        _ = PowerSeries.subst (PowerSeries.subst h f) (iter f n) :=
+            PowerSeries.subst_comp_subst_apply hf' hh' (iter f n)
+        _ = PowerSeries.subst (PowerSeries.subst f h) (iter f n) := by rw [hcomm]
+        _ = PowerSeries.subst f (PowerSeries.subst h (iter f n)) :=
+            (PowerSeries.subst_comp_subst_apply hh' hf' (iter f n)).symm
+        _ = PowerSeries.subst f (PowerSeries.subst (iter f n) h) := by rw [ih]
+        _ = PowerSeries.subst (PowerSeries.subst f (iter f n)) h :=
+            PowerSeries.subst_comp_subst_apply hiter' hf' h
+        _ = PowerSeries.subst (iter f (n + 1)) h := by rw [← iter_succ' hf0]
+
 end General
 
 variable {O : Type*} [CommRing O] [IsDomain O] [IsDiscreteValuationRing O]
