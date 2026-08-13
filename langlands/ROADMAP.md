@@ -13004,3 +13004,85 @@ completed successfully (8770 jobs)`. `grep -rn sorry Langlands/LubinTateFieldTow
 ### Commits
 
 `ceb5b0d` (`Langlands/LubinTateFieldTower.lean`: `LubinTate.finrank_adjoin_of_aeval_divX_map_eq_zero`).
+
+## 38. Phase 2c, thirty-second pass (2026-08-14): **the "freeness + counting" reframing checked and
+found impossible as literally stated — `Oˣ` cannot act freely on a finite set at all; the
+tail-valuation estimate (§37 item 1) built and merged; the root-spacing step (§37 item 2) confirmed
+as the real remaining obstruction, not attempted**
+
+### The reframing's literal premise is false, more sharply than §37 already found
+
+The task brief for this pass proposed: show the `Oˣ`-action on `piTorsion hπ hf 1 \ {0}` is *free*
+(`[u]_F(α) = α` for nonzero torsion `α` implies `u = 1` in `Oˣ`), then invoke "free action of a
+group of size `q-1` on a set of size `q-1` is transitive," citing `|Oˣ| = q - 1`. §37 already
+flagged `|Oˣ| = q-1` as false (`O` only carries `[Finite (ResidueField O)]`, not `[Finite O]`; `O =
+ℤ_p` is a valid instance and `Oₚˣ` is uncountable — reconfirmed directly this pass by re-reading the
+`variable` blocks in `LubinTateUnitsAction.lean:77-78` and `LubinTateRootCount.lean:81-82`, both
+`[Finite (ResidueField O)]` only, no finiteness on `O` itself).
+
+Checking the *freeness* half of the brief directly (independent of the counting half) turns up
+something stronger than "no counting argument is available": **literal freeness of the `Oˣ` action
+on `piTorsion hπ hf 1 \ {0}` is impossible whenever `Oˣ` is infinite**, full stop, by orbit-stabilizer
+alone. `piTorsion hπ hf 1` is *finite* (`card_piTorsion_one_eq_residueCard`, size `q`, `§34`) even
+though `O`/`Oˣ` are not, so `\{0}` has size `q-1` and the action gives a group homomorphism `Oˣ →
+Sym(piTorsion hπ hf 1 \ {0})` into a *finite* group of order `(q-1)!`. If the action were free at
+even a single point `α`, orbit-stabilizer would give `|Oˣ| = |orbit(α)| ≤ q - 1`, forcing `Oˣ`
+finite — contradicting `Oˣ` infinite in the `O = ℤ_p` instance. So "if `[u]_F(α) = α` then `u = 1`
+(in `Oˣ`)" is **false as a general theorem of this repo's hypotheses**, not merely unproven; no
+amount of searching for a proof technique would have closed it. What *is* true and *is* the correct
+target (already identified by §37, sharpened here for precision) is freeness of the **induced
+`(O/π)ˣ`-action**, i.e. `[u]_F(α) = α ⟹ u ≡ 1 (mod π)` — a fundamentally different, weaker claim that
+first requires the mod-`π` factoring (§37 Part 2) to even be *stated*, since without it there is no
+`(O/π)ˣ`-action to ask a freeness question about.
+
+### Item 1 of §37's remaining list: built and merged
+
+`NonarchimedeanPowerSeriesEval.norm_eval_sub_coeff_one_mul_le` (new, `NonarchimedeanPowerSeriesEval.lean`):
+for `f` with `constantCoeff f = 0` and every algebra-mapped coefficient of norm `≤ 1`, `‖eval f x -
+(algebraMap R K (coeff 1 f)) * x‖ ≤ ‖x‖ ^ 2` for `‖x‖ < 1`. Same technique as the file's existing
+`norm_eval_sub_algebraMap_constantCoeff_le`, one index further out: split `eval f x` via
+`Summable.sum_add_tsum_nat_add 2` into its degree-`0`/degree-`1` terms plus a tail, the degree-`0`
+term vanishes (`constantCoeff f = 0`), the degree-`1` term is exactly `(coeff 1 f) * x`, and the tail
+(indices `≥ 2`) is bounded by `‖x‖ ^ 2` via the same per-term geometric bound
+(`norm_evalSummand_le`) `norm_eval_le` already uses. Combined with `coeff_one_phiU` (coefficient `1`
+of `phiU hπ hf u` is exactly `(u : O)`, already in the repo), this gives, for `x ∈ piTorsion hπ hf 1`,
+`‖eval (phiU hπ hf u) x - (u : O) • x‖ ≤ ‖x‖ ^ 2` — the quadratic-order closeness half of the
+classical "`[u]_F(X) ≡ uX` mod higher terms" fact, now available as a checked lemma.
+
+### Item 2 of §37's remaining list: examined, confirmed to need new ramification infrastructure, not attempted
+
+Sketched (not formalized) what turning this closeness into the required exact equality would need:
+for `u ≡ v (mod π)` and `x ∈ piTorsion hπ hf 1 \ {0}`, `‖eval (phiU u) x - eval (phiU v) x‖ ≤
+max(‖x‖^2, ‖((u:O) - (v:O)) • x‖) ≤ ‖x‖^2` for `q > 3` (since `u - v = π * w` gives
+`‖algebraMap O K (u-v)‖ ≤ c := ‖algebraMap O K π‖`, and `‖x‖ = c^{1/(q-1)}` exactly by
+`spectralNorm_eq_of_isLubinTatePoly_root`, so `c ≤ ‖x‖^2 = c^{2/(q-1)}` iff `2/(q-1) ≤ 1` iff `q ≥
+3`). Both `eval (phiU u) x` and `eval (phiU v) x` lie in `piTorsion hπ hf 1` (`mem_piTorsion_eval_phiU`,
+already available), a *finite* set of size `q`. Turning "within `‖x‖^2`" into "equal" needs a
+**minimum-spacing bound**: that any two *distinct* elements of `piTorsion hπ hf 1` are strictly
+farther apart than `‖x‖^2`. This is not a corollary of anything currently in the repo — it is a
+genuine ramification-theoretic fact (root-spacing of the Eisenstein-flavored polynomial `Q`, related
+to the different/discriminant of the extension `Frac(O)(F_π[π])/Frac(O)`) with no started
+infrastructure. Not attempted this pass; flagged, not built, per the task brief's own standard for
+honest reporting.
+
+### Build status
+
+`nix develop --command lake build` (from `langlands/`) — whole project builds clean, `Build completed
+successfully (8770 jobs)`. No `sorry` introduced.
+
+### Updated dependency order toward `[K_1 : K] = q - 1`
+
+1. ~~Tail-valuation estimate~~ — **closed this pass** (`norm_eval_sub_coeff_one_mul_le`).
+2. **Root-spacing / discreteness bound** on `piTorsion hπ hf 1`'s distinct elements, strong enough to
+   turn "within `‖x‖^2`" into "equal" — genuinely new ramification infrastructure, not started.
+3. The mod-`π` factoring `Oˣ ↠ (O/π)ˣ` of the action, assembled from (1)+(2).
+4. The induced `(O/π)ˣ`-action's freeness (`[u]_F(α)=α ⟹ u ≡ 1 mod π`, **not** `u = 1` in `Oˣ` — see
+   the impossibility finding above) and transitivity on `piTorsion hπ hf 1 \ {0}` (finite, size
+   `q-1`) — a counting argument once (3) is available.
+5. `K_1 = Frac(O)(α)`, hence `[K_1:K] = q-1` — assembled from (4) plus
+   `finrank_adjoin_of_aeval_divX_map_eq_zero` (§37).
+6. `Gal(K_1/K) ≅ (O/π)ˣ`, then the reciprocity map (`§6ai`).
+
+### Commits
+
+`368b062` (`Langlands/NonarchimedeanPowerSeriesEval.lean`: `norm_eval_sub_coeff_one_mul_le`).
