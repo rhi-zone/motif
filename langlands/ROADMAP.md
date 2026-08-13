@@ -11589,3 +11589,172 @@ completed successfully (8754 jobs)`, no `sorry` in the new file (confirmed by `g
 ### Commits
 
 `0d7801b` (`NonarchimedeanMvPowerSeriesEval.lean`: `evalMv`/`evalMv_mul`/`evalMv_pow`, general `σ`).
+
+## 27. Phase 2c, twenty-first pass (2026-08-13): **the Lubin-Tate torsion-point group is COMPLETE —
+associativity evaluated CLOSED, `F_π[π^n]` packaged as an `AddCommGroup`**
+
+**This closes the Lubin-Tate torsion-point group.** `§24`–`§26` left exactly one `AddGroup` axiom
+open at the evaluated level (associativity), and scoped the blocker as *two* genuinely new-shaped
+eval-subst compatibilities ("Lemma-A-analogue" + "Lemma-S-analogue"). This pass found that **one**
+sufficiently general lemma subsumes both, proved it, used it to close associativity, and assembled
+the group structure.
+
+### The shape question: one general lemma, not two new ones — checked against the actual definitions
+
+`PhiAssocLeft = Φ.subst A` with `A : Fin 2 → MvPowerSeries (Fin 3) O`, `A 0 = Φ.subst ![X 0, X 1]`
+(a genuinely bivariate composite embedded in 3-variable space), `A 1 = X 2` (a bare coordinate) —
+read off the definition (`LubinTateFunctionalEquationBivariate.lean`, ~line 1673), not assumed.
+This is neither Lemma A's shape (univariate outer, single substitutand) nor Lemma S's (diagonal
+family, one univariate `g` reused along every axis). But the *family* is the only thing that
+differs, so stating the compatibility for a **completely unconstrained** family removes the shape
+question rather than answering it twice: `§25`/`§26`'s "Lemma-S-analogue" never has to be stated,
+because the general lemma's `A` is arbitrary. Confirmed by construction, not by argument — the
+associativity proof below calls exactly one lemma, twice.
+
+### `Langlands/NonarchimedeanMvPowerSeriesEvalSubstGeneral.lean`: new — `eval_subst_G`
+
+`eval_subst_G : evalMv (Φ.subst A) z = evalMv Φ (fun i ↦ evalMv (A i) z)` for
+`Φ : MvPowerSeries τ R`, `A : τ → MvPowerSeries σ R` (each component with zero constant term and
+algebra-mapped-norm-bounded coefficients), `z : σ → K` with every coordinate of norm `< 1`; `τ` and
+`σ` arbitrary `Fintype`/`Nonempty`/`DecidableEq` index types. Built on `§26`'s general-`σ`
+`evalMv`. Same double-series-interchange skeleton as the two earlier eval-subst files (outer index
+`d : τ →₀ ℕ`, inner `n : σ →₀ ℕ`, `T (d, n) := algebraMap (coeff d Φ) * evalSummandMv (∏ i, A i ^
+d i) z n`, grouped both ways via `HasSum.prod_fiberwise`), with supporting lemmas
+`coeff_bound_prod_mv`, `evalMv_prod`, `evalMv_prod_pow`, `coeff_eq_zero_prod_pow_of_degree_lt`,
+`coeff_subst_finset_degree_G`, `hasSum_row_e_G`, `hasSum_row_d_G`, `tendsto_T_cofinite_zero_G`,
+`norm_evalMv_lt_one`.
+
+**It was in fact cheaper than Lemma S, as `§26`'s successor-pass note predicted it might be.** The
+step that made `eval_subst_S` expensive — its `d`-row sum, which had to be hand-built as a product
+of two independent univariate geometric series (`HasSum.mul_of_nonarchimedean` plus the bespoke
+`finsuppFin2EquivProdNat : (Fin 2 →₀ ℕ) ≃ ℕ × ℕ` reindexing) because no multivariate
+multiplicativity existed at the time — is here a single `HasSum.mul_left` on `hasSum_evalMv` for
+the one series `∏ i, A i ^ d i`, because `§26`'s general-`σ` `evalMv_mul`/`evalMv_pow` lift to
+`Finset` products by plain `Finset.induction_on` (`evalMv_prod`/`evalMv_prod_pow`). No bespoke
+reindexing equivalence appears anywhere in the new file.
+
+Also added to `Langlands/NonarchimedeanMvPowerSeriesEval.lean`: `evalMv_X` (`evalMv (X j) z = z j`)
+and `coeff_bound_X_mv`.
+
+### A real anomaly found and fixed: the new general file was not in the build target
+
+`§26` reported "whole project builds clean, `Build completed successfully (8754 jobs)`" for the pass
+that added `NonarchimedeanMvPowerSeriesEval.lean` — the *same* job count `§25` reported. Chasing
+that coincidence rather than accepting it: `Langlands.lean` (the default `lean_lib` target's root)
+never imported the new file, and `lake build` only builds the root's transitive imports, so the
+whole-project build was not in fact covering it. It does build (`lake build
+Langlands.NonarchimedeanMvPowerSeriesEval`, verified this pass) — so `§26`'s content claim stands —
+but its *build-status* claim was checked against a build that did not include it. `Langlands.lean`
+now imports every file this thread has added; the job count moves accordingly (8754 → 8764).
+
+### Associativity evaluated: CLOSED — `Langlands/LubinTateFormalGroupEvalAssoc.lean` (new)
+
+* `evalMv_eq_FPiEval` : the general-`σ` `evalMv` at `σ := Fin 2` is **definitionally** the
+  `Fin 2`-specialized `evalMv` that `FPiEval` is defined by (both are the same `tsum`) — `rfl`.
+  So the general machinery applies to the existing `Fin 2` development with no migration, which is
+  why `NonarchimedeanMvPowerSeriesEvalFin2.lean` could be left untouched (`§26`'s deferral of that
+  refactor cost nothing).
+* `evalMv_subst_pair` : `evalMv (Φ.subst ![X i, X j]) z = FPiEval (z i) (z j)` — one `eval_subst_G`
+  application plus `evalMv_X`.
+* `evalMv_PhiAssocLeft` / `evalMv_PhiAssocRight` : `evalMv (PhiAssocLeft) ![a,b,c] =
+  FPiEval (FPiEval a b) c` and the mirror. One `eval_subst_G` application at the mixed outer family,
+  one inside `evalMv_subst_pair`. Every coefficient bound `eval_subst_G` asks for is `hOK` applied
+  pointwise (all series have coefficients in `O`); the only hypothesis needing an argument is the
+  composite component's zero constant term (`MvPowerSeries.constantCoeff_subst_eq_zero`).
+* **`FPiEval_assoc : F_π(F_π(a, b), c) = F_π(a, F_π(b, c))`** for `‖a‖, ‖b‖, ‖c‖ < 1 — `assoc_Phi`
+  (`§18`'s formal associativity) rewritten through the two identifications.
+
+### `piTorsion` as an `AddCommGroup`: CLOSED — `Langlands/LubinTateTorsionGroup.lean` (new)
+
+`piTorsionAddCommGroup (hOK) (hπ) (hf) (n) : AddCommGroup ↥(piTorsion hπ hf n)`, assembled from
+existing pieces exactly as `§25` anticipated — no fact was reproved:
+
+| field | supplied by |
+| --- | --- |
+| `add` well-defined | `mem_piTorsion_FPiEval` (`§24`) |
+| `neg` well-defined | `mem_piTorsion_PhiInv` (`§24`) |
+| `zero` well-defined | `zero_mem_piTorsion` |
+| `add_assoc` | `FPiEval_assoc` (**this pass**) |
+| `zero_add` / `add_zero` | `FPiEval_zero` / `FPiEval_zero'` (`§24`) |
+| `neg_add_cancel` | `FPiEval_PhiInv_eq_zero'` (`§25`) |
+| `add_comm` | `FPiEval_comm` (`§25`) |
+
+It is **not** an `AddSubgroup K` — the law is `F_π`-addition, not `K`'s addition — and it is a
+`def`, not an `instance`, since it depends on the non-instance hypotheses `hOK`/`hπ`/`hf`. Two
+mechanical wrinkles worth recording: the structure must be built with `letI`-introduced
+`Add`/`Zero`/`Neg` in scope (otherwise `nsmulRec`/`zsmulRec` cannot elaborate, and the `nsmul_*`/
+`zsmul_*` default proofs fail), and a `def` of class type must be `@[reducible]`.
+`coe_piTorsion_add`/`coe_piTorsion_neg` record by `rfl` that the structure's operations really are
+`FPiEval` and `eval (PhiInv hπ hf)` — i.e. the group is the intended one, not an accidentally
+well-typed different structure.
+
+### The complete arc, now that it lands
+
+1. **The functional equation lemma** (`§8`–`§10`): `f ∈ ℱ_π` (`IsLubinTatePoly`: `coeff 0 f = 0`,
+   `coeff 1 f = π`, `f ≡ X^q mod 𝔪`), and the univariate lemma producing the unique solution of
+   `f ∘ φ = φ ∘ f`-type equations coefficient by coefficient.
+2. **The 2-variable functional equation lemma and `F_π`** (`§11`–`§16`): `PhiState`'s recursion
+   builds `Φ = Phi hπ hf : MvPowerSeries (Fin 2) O` with `f(Φ(X,Y)) = Φ(f(X), f(Y))`, normalized by
+   `Φ ≡ X + Y (mod deg 2)`; uniqueness (`eq_of_subst_eq_mv`) makes it *the* Lubin-Tate formal group
+   law.
+3. **The formal group axioms** (`§17`–`§20`): commutativity (`subst_swapVars_Phi`), associativity
+   (`assoc_Phi`, via the general finite-index-type uniqueness theorem applied to `PhiAssocLeft`/
+   `PhiAssocRight`, both solving the 3-variable equation by closure under substitution
+   composition), the `[π^n]` iterates, and the formal inverse `i_{F_π}` — `F_π` packaged as a
+   Mathlib `FormalGroup O`.
+4. **Evaluation at concrete points** (`§21`–`§23`, `§26`): a from-scratch nonarchimedean evaluation
+   layer (`eval`, `evalMv`; `PowerSeries.aeval`'s `IsLinearTopology` stack is not usable here),
+   including multiplicativity, and the eval-subst compatibilities — Lemma A, Lemma S (`§24`), and
+   now the general `eval_subst_G`.
+5. **The torsion points** (`§24`–`§25`): `piTorsion hπ hf n = {x | ‖x‖ < 1 ∧ eval (iter f n) x = 0}`
+   with closure under `F_π`-addition and inverse, the identity laws, commutativity.
+6. **The group** (this pass): associativity evaluated, hence `AddCommGroup ↥(piTorsion hπ hf n)`.
+
+**Pointer forward (not part of this pass):** the natural next step is `K_1 := K(F_π[π])` and the
+field-extension tower `K_n := K(F_π[π^n])` — the group structure is exactly what makes that tower
+meaningful (`F_π[π^n]` as a module over `O/π^n`, `Gal(K_n/K) ↪ (O/π^n)ˣ`, total ramification, and
+ultimately the reciprocity map joining this thread to `§6ai`).
+
+### The size computation `|piTorsion hπ hf 1| = q`: attempted, and found to need a hypothesis the
+current statement does not have — documented rather than forced
+
+Two distinct gaps, both checked against this repo's actual contents:
+
+1. **The statement is not true as scoped.** `piTorsion` is defined over an *arbitrary* complete
+   ultrametric `K` with `[Algebra O K]`. For `K` the base field itself the only `π`-torsion point in
+   the maximal ideal is `0`, so the count is `1`, not `q`. A correct statement needs `K` to contain
+   the roots (`IsAlgClosed`, or `K ⊇ K_1` — which is the very extension step 5's pointer names).
+   No such hypothesis exists on `piTorsion` today.
+2. **The counting argument is absent.** `f` is a general *power series* satisfying the two
+   congruences, not a polynomial, so counting its roots in the open unit disc is a Weierstrass
+   preparation / Newton polygon statement. Confirmed by search: no file under `Langlands/` mentions
+   Weierstrass preparation or Newton polygons, and `IsAlgClosed` appears only in
+   `ResidueField.lean`, `UnramifiedExtension.lean`, `WeilGroup.lean`, `HenselianResidueLift.lean` —
+   none of them about root counts for power series.
+
+So this is not "blocked on group structure" any more (that blocker is gone); it is blocked on a
+separate root-counting development plus a strengthened hypothesis on `K`. Not attempted further.
+
+### Build status
+
+`nix develop --command lake build` (run from `langlands/`) — whole project builds clean, `Build
+completed successfully (8764 jobs)`, and the target now genuinely covers every file this thread has
+added (see the anomaly note above). `grep -n sorry` on every file this pass touched
+(`NonarchimedeanMvPowerSeriesEvalSubstGeneral.lean`, `NonarchimedeanMvPowerSeriesEval.lean`,
+`LubinTateFormalGroupEvalAssoc.lean`, `LubinTateTorsionGroup.lean`, `Langlands.lean`) — no hits.
+
+### What remains, in dependency order
+
+1. **The size computation** `|piTorsion hπ hf 1| = q` — needs a strengthened hypothesis on `K` and a
+   power-series root-counting development (Weierstrass preparation / Newton polygon), per the
+   diagnosis above.
+2. **`K_n = K(F_π[π^n])`, `[K_n : K]`, total ramification** — needs (1), and separately still needs
+   the abstract-`O`-to-concrete-`HeightOneSpectrum` bridge (unchanged since `§19`).
+3. **The reciprocity map** — the eventual target, joining this thread to `§6ai`.
+
+### Commits
+
+`288133d` (`NonarchimedeanMvPowerSeriesEvalSubstGeneral.lean`: `eval_subst_G` and its supporting
+lemmas; `Langlands.lean` build-target fix), `f96af23` (`LubinTateFormalGroupEvalAssoc.lean`:
+`FPiEval_assoc`; `evalMv_X`/`coeff_bound_X_mv`), `3d88c64` (`LubinTateTorsionGroup.lean`:
+`piTorsionAddCommGroup`).
