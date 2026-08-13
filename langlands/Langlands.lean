@@ -21,6 +21,7 @@ import Langlands.LubinTate
 import Langlands.LubinTateFieldTower
 import Langlands.LubinTateFormalGroupEvalAssoc
 import Langlands.LubinTateTorsionGroup
+import Langlands.LubinTateUnitsEndomorphism
 import Langlands.MonogenicIntegralClosure
 import Langlands.MonogenicMaximalOrder
 import Langlands.NonarchimedeanCauchyProduct
