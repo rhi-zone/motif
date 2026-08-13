@@ -12222,3 +12222,133 @@ hits (one textual occurrence of the word "sorry" inside a docstring sentence, no
 `eval_eq_zero_iff_aeval_eq_zero`; `Langlands/LubinTateTorsionPoints.lean`:
 `exists_piTorsion_one_eq_aeval_roots`), `9a6c670` (`Langlands/LubinTateWeierstrassPreparation.lean`:
 `coeff_zero_eq_zero_of_eq_mul`, `coeff_one_associated_of_eq_mul`).
+
+## 32. Phase 2c, twenty-sixth pass (2026-08-14): **root valuation of `Q` closed — no Newton
+polygon needed, correcting §31's premise; irreducibility of `Q` also closed; separability not
+closed, but a concrete tame-ramification route identified**
+
+Investigated §31 gap 1 ("Newton-polygon/root-valuation machinery for `Q := P.divX`... a genuinely
+new, multi-lemma... development; no shortcut found") by checking whether
+`TotallyRamifiedEisenstein.lean`'s existing `spectralNorm` machinery, run in the direction opposite
+to how that file uses it, gives root valuation directly. **It does — confirmed by a working Lean
+proof, not assumed.** §31's "needs full Newton polygon" premise is corrected: no Newton polygon
+machinery was built or needed.
+
+### The reversal, and why it works
+
+Mathlib's `spectralNorm.spectralNorm_eq_norm_coeff_zero_rpow` (`Mathlib.Analysis.Normed.Unbundled.
+SpectralNorm`) is unconditional for *any* `x : L` algebraic over a complete normed field `K`:
+`spectralNorm K L x = ‖(minpoly K x).coeff 0‖ ^ (1 / (minpoly K x).natDegree : ℝ)`.
+`TotallyRamifiedEisenstein.lean` only ever uses it *forward* (a known `spectralNorm` hypothesis ⇒
+facts about `minpoly`'s coefficients). Run *backward*: if a monic `Qk : K[X]` is irreducible and `α`
+is a root of `Qk`, then `Qk = minpoly K α` exactly (`minpoly.eq_of_irreducible_of_monic`), so the
+identity pins `spectralNorm K L α` down directly from `Qk`'s own constant coefficient — no
+Newton-polygon computation, no two-sided ultrametric bound, needed. This reduces the entire problem
+to irreducibility of `Q` (over `O`, then over `K := Frac(O)`), which follows from Mathlib's
+`Polynomial.irreducible_of_eisenstein_criterion` given the sharp `coeff 0 ∉ 𝔪 ^ 2` hypothesis — a
+direct consequence of "associate of a uniformizer" in any DVR, not previously in Mathlib (checked:
+loogle "Associated, Irreducible, Ideal.span" and a repo grep for a sq-nonmembership lemma both came
+up empty) but a two-line proof once stated.
+
+### What was proved, sorry-free
+
+New file `Langlands/LubinTateEisensteinQ.lean` (imported into `Langlands.lean`):
+
+* `not_mem_sq_maximalIdeal_of_associated` : general DVR fact — an associate `a` of an irreducible `π`
+  is never in `𝔪 ^ 2`. Via `𝔪 = span {π}` (`Irreducible.maximalIdeal_eq`) so `𝔪 ^ 2 = span {π ^ 2}`
+  (`Ideal.span_singleton_pow`); if `a = π ^ 2 * c` and `a * u = π` (`u` the unit witnessing
+  `Associated`), cancelling one copy of `π` (domain, `π ≠ 0`) forces `π` itself to be a unit,
+  contradicting irreducibility.
+* `Polynomial.irreducible_of_isWeaklyEisensteinAt_associated` /
+  `irreducible_map_of_isWeaklyEisensteinAt_associated` : a monic, `IsWeaklyEisensteinAt 𝔪`,
+  positive-degree polynomial over a DVR with constant term an associate of a uniformizer is
+  irreducible over the DVR (`irreducible_of_eisenstein_criterion`, `not_mem_sq_maximalIdeal_of_associated`
+  supplying the sharp hypothesis, `Monic.isPrimitive` the primitivity hypothesis) and, given
+  `[IsFractionRing O K]`, over `K := Frac(O)` too (Gauss's lemma,
+  `Polynomial.Monic.irreducible_iff_irreducible_map_fraction_map`, needing `IsIntegrallyClosed O` —
+  obtained via `PrincipalIdealRing.to_uniqueFactorizationMonoid` plus Mathlib's
+  `UniqueFactorizationMonoid.instIsIntegrallyClosed`, which needed an explicit
+  `import Mathlib.RingTheory.Polynomial.RationalRoot` not pulled in transitively by
+  `Mathlib.RingTheory.Polynomial.GaussLemma` — confirmed by a standalone reproduction, not guessed,
+  after the instance failed to resolve without it).
+* `spectralNorm_eq_norm_coeff_zero_rpow_of_aeval_eq_zero` : the general, `Q`-independent reversal
+  lemma described above — for `Qk : K[X]` monic and irreducible and `α : L` a root, `spectralNorm K L
+  α = ‖Qk.coeff 0‖ ^ (1 / Qk.natDegree : ℝ)` exactly. Needs `[NontriviallyNormedField K]
+  [IsUltrametricDist K] [CompleteSpace K] [Algebra.IsAlgebraic K L]` — confirmed the exact hypothesis
+  list by direct build-and-fix (an initial guess omitting `IsUltrametricDist K` failed to elaborate;
+  `TotallyRamifiedEisenstein.lean`'s own use of the same Mathlib lemma independently corroborates it's
+  needed).
+* `LubinTate.divX_isWeaklyEisensteinAt_and_associated` : assembles `P`'s `IsDistinguishedAt` data
+  (from Weierstrass preparation) with `coeff_zero_eq_zero_of_eq_mul`/`coeff_one_associated_of_eq_mul`
+  (§31) into exactly the hypotheses the general lemmas above need for `Q := P.divX` (`P = X * Q` via
+  `P.coeff 0 = 0`, `Polynomial.divX`/`Polynomial.coeff_divX`/`Polynomial.natDegree_divX_eq_natDegree_
+  tsub_one`), given `2 ≤ P.natDegree` (always true: `P.natDegree = residueCard O` and
+  `LubinTate.two_le_residueCard`, though this pass leaves that instantiation to the caller rather than
+  wiring it in, since no caller needing the concrete `residueCard` instantiation exists yet).
+* `LubinTate.spectralNorm_eq_of_isLubinTatePoly_root` : the full specialization — for any root `α` of
+  `Q.map (algebraMap O K)` in an algebraic extension `L / K` (`K := Frac(O)`), `spectralNorm K L α =
+  ‖algebraMap O K (P.divX.coeff 0)‖ ^ (1 / P.divX.natDegree : ℝ)` exactly. **This is the sharp
+  root-valuation fact `ROADMAP.md`'s classical Newton-polygon argument was expected to need for §31's
+  step 4 — obtained without a Newton polygon.**
+
+**Both irreducibility of `Q` (over `O` and over `K`) and the exact valuation of every root of `Q` are
+now closed, generally and reusably** — not `q`-specific narrow shims, but general lemmas about any DVR
+and any Eisenstein-with-sharp-constant-term polynomial.
+
+### Separability of `Q`: not closed, but a concrete route is now identifiable (not attempted)
+
+Root valuation alone does not give separability (a repeated root has the same valuation as a simple
+one) — §31's derivative-valuation argument is still needed. Investigating what it would take:
+
+* **`Q`'s degree `n := q - 1` is *automatically* coprime to the residue characteristic `p`.** Since
+  `q = residueCard O` is a prime power `p ^ f` (any finite field's cardinality), `q - 1 ≡ -1 ≢ 0
+  (mod p)`. This means `Q` is automatically **tamely** ramified — the easy case of the classical
+  derivative argument (§31 already flagged the *other* case, equal characteristic where `q` itself
+  vanishes in `O`, as the easier sub-case for a different reason; tame ramification is a second,
+  independent simplification available regardless of characteristic, not previously noted). Under tame
+  ramification, `n` is a unit of `O` (its residue-field image is nonzero since `p ∤ n`), so the
+  leading term of `Q'(α) = n α^{n-1} + \sum_{i<n-1} i \, a_i \alpha^{i-1}` has valuation exactly `(n-1)/n`
+  while every other term has valuation `> (n-1)/n` (using `v(a_i) ≥ 1` for `i < n` from `Q`'s
+  Eisenstein-ness), so `Q'(α) ≠ 0` and every root is simple — the standard tame-ramification argument,
+  now *directly available* given this pass's exact root valuations.
+* **Not attempted**: turning this into a Lean proof needs (a) a "nonarchimedean-ness" (ultrametric
+  strong triangle inequality) fact for the norm `Q'(α)` is measured in — `spectralAlgNorm K L` or an
+  extension of it to all of `L`, not just algebraic elements individually, not yet checked to exist in
+  the needed form — and (b) a finite-sum ultrametric domination lemma (one term strictly larger than
+  all others ⇒ the sum has exactly that term's norm), which is standard but not yet assembled here.
+  This is a bounded, concrete next step — smaller than a full Newton-polygon development, but still a
+  real multi-lemma piece of work, not a one-line corollary of what's landed this pass.
+
+### Gap 2 (splitting-field hypothesis) and `|piTorsion hπ hf 1| = q`: unaffected, not attempted
+
+§31's gap 2 (`piTorsion`'s ambient `K` is not assumed to contain `Q`'s roots) is untouched by this
+pass. `spectralNorm_eq_norm_coeff_zero_rpow_of_aeval_eq_zero` is deliberately stated for an arbitrary
+algebraic `L / K` containing the root, which is the generality a future splitting-field construction
+will need, but no such construction was attempted. `|piTorsion hπ hf 1| = q` remains open.
+
+### Build status
+
+`nix develop --command lake build` (run from `langlands/`) — whole project builds clean, `Build
+completed successfully (8769 jobs)` (up from `8768` in §31: exactly the one new file).
+`grep -rn sorry Langlands/LubinTateEisensteinQ.lean` — no hits.
+
+### What remains, in dependency order, toward `|piTorsion hπ hf 1| = q`
+
+1. **Separability of `Q`** — the tame-ramification derivative argument sketched above: a nonarchimedean
+   norm-extension fact for `L` plus a finite-sum ultrametric domination lemma, then the term-by-term
+   valuation comparison. Concrete and bounded, not attempted.
+2. **A splitting-field or `IsAlgClosed` hypothesis, and likely a reordering of the construction**
+   (§31 gap 2, unchanged) — size count inside a splitting field of `Q`, then transport to `K_1`, rather
+   than assuming `K` already splits `Q`.
+3. **`[K_1 : K]`, `Gal(K_1/K) ↪ Oˣ`, total ramification** — unchanged since `§27`–`§29`, needs (1)–(2)
+   above plus the abstract-`O`-to-concrete-`HeightOneSpectrum` bridge (unchanged since `§19`).
+4. **The reciprocity map** — the eventual target, joining this thread to `§6ai`.
+
+### Commits
+
+`13d4f71` (`Langlands/LubinTateEisensteinQ.lean` (new file): `not_mem_sq_maximalIdeal_of_associated`,
+`Polynomial.irreducible_of_isWeaklyEisensteinAt_associated`,
+`Polynomial.irreducible_map_of_isWeaklyEisensteinAt_associated`,
+`spectralNorm_eq_norm_coeff_zero_rpow_of_aeval_eq_zero`,
+`LubinTate.divX_isWeaklyEisensteinAt_and_associated`,
+`LubinTate.spectralNorm_eq_of_isLubinTatePoly_root`; `Langlands.lean`: import added).
