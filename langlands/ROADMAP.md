@@ -13228,3 +13228,169 @@ prerequisites), `87bfd1f` (`LubinTateRootCount.lean`: `aeval_divX_map_eq_zero_of
 ne_zero`, `norm_eq_rpow_of_mem_piTorsion_one_ne_zero`), `0b904ac` (new file
 `LubinTateTorsionSpacing.lean`: `norm_sub_eq_rpow_of_mem_piTorsion_one_ne_zero_of_ne` and
 prerequisites), `cfa3bdb` (new file `LubinTateModPiFactoring.lean`: `eval_phiU_eq_of_dvd_sub`).
+
+## 40. Phase 2c, thirty-fourth pass (2026-08-14): **steps 1-3 toward `[K_1:K] = q-1` closed
+(genuine `(O/π)ˣ`-action, freeness, transitivity) — but a critical finding stops the arc: `hsplit`
+is jointly unsatisfiable with `[IsFractionRing O K]` whenever `residueCard O ≥ 3`, making
+`card_piTorsion_one_eq_residueCard` and everything built on it (including this pass's own
+transitivity result) vacuously true outside the trivial case `q = 2`. Steps 4-5 not attempted,
+deliberately, once this was found.**
+
+### Steps 1-2: the `(ResidueField O)ˣ`-action and its freeness — closed, self-contained
+
+**Step 1** (`Langlands/LubinTateResidueUnitsAction.lean`): `residueUnitsMap : Oˣ →*
+(ResidueField O)ˣ := Units.map (IsLocalRing.residue O)` is surjective
+(`residueUnitsMap_surjective`, from `IsLocalRing.residue_surjective` + `residue_ne_zero_iff_isUnit`)
+and its fibers are exactly the `u ≡ v (mod π)` classes (`residueUnitsMap_eq_iff_dvd_sub`, via
+`hπ.maximalIdeal_eq : maximalIdeal O = Ideal.span {π}` and `Ideal.mem_span_singleton`). Combined
+with `§39`'s `eval_phiU_eq_of_dvd_sub` (extended to all of `piTorsion hπ hf 1` including `0`,
+`eval_phiU_eq_of_dvd_sub'`), this gives `piTorsionSMul_eq_of_residueUnitsMap_eq`: the `Oˣ`-action is
+constant on `residueUnitsMap`'s fibers. `residuePiTorsionMulAction : MulAction (ResidueField O)ˣ
+↥(piTorsion hπ hf 1)` is then built by lifting `piTorsionMulAction`'s `•` along a chosen
+`Oˣ`-preimage (`Function.surjInv residueUnitsMap_surjective`); `one_smul`/`mul_smul` transport from
+`piTorsionMulAction`'s own laws plus the fiber-constancy fact, applied to the pairs of `Oˣ`-witnesses
+`residueUnitsMap` (a monoid hom) sends to the same value by construction
+(`Function.rightInverse_surjInv` + `map_one`/`map_mul`). No generic Mathlib "quotient a MulAction
+through a surjective hom constant on fibers" combinator was found (checked via loogle, none fit); the
+construction is hand-built but short.
+
+**Step 2** (`Langlands/LubinTateResidueUnitsFreeness.lean`): the task brief flagged this as
+"plausible but unverified", speculating it might need the same spacing machinery as the mod-`π`
+factoring. **It does not — a simpler argument closes it directly.**
+`dvd_sub_of_eval_phiU_eq`, the converse of `eval_phiU_eq_of_dvd_sub`: if `eval (phiU u) α = eval
+(phiU v) α` for `α` nonzero torsion, then `π ∣ (u - v)`. Proof: suppose not; then `(u:O)-(v:O)` is a
+**unit** (`O` local, `IsLocalRing.notMem_maximalIdeal`), so `‖algebraMap O K ((u:O)-(v:O))‖ = 1`
+*exactly* (`norm_algebraMap_eq_one_of_isUnit`) — not merely `≤ 1`. Combining this with the two
+quadratic-closeness bounds (`norm_eval_sub_coeff_one_mul_le` + `coeff_one_phiU`, `§38`) and the
+assumed equality forces `‖α‖ ≤ ‖α‖ ^ 2`, contradicting `0 < ‖α‖ < 1`. **No minimum-spacing fact is
+needed** — the exact norm-`1` property of a non-multiple-of-`π` unit does the job more directly than
+`§39`'s spacing theorem did for the forward direction. `eq_one_of_residuePiTorsion_smul_eq_self`
+specializes this (`v := 1`, via `phiU_one_eq_X`) to freeness of `residuePiTorsionMulAction`.
+
+### Step 3: transitivity — formally closed, but see the finding below
+
+`Langlands/LubinTateResidueUnitsTransitivity.lean`: `orbit_image_eq_piTorsion_sdiff_zero` — for
+nonzero `α ∈ piTorsion hπ hf 1`, the image in `K` of the `(ResidueField O)ˣ`-orbit of `α` equals
+`piTorsion hπ hf 1 \ {0}`. Route: `0` is a global fixed point
+(`residuePiTorsion_smul_zero`, `eval_zero_of_coeff_zero_eq_zero`), so orbits of nonzero points stay
+nonzero (`ne_zero_of_mem_orbit_of_ne_zero`, via invertibility of the group action); freeness gives
+`stabilizer (ResidueField O)ˣ α = ⊥` (`stabilizer_eq_bot`, `Subgroup.eq_bot_iff_forall`); `MulAction.
+index_stabilizer` + `Subgroup.index_bot` + `Nat.card_units` (a `GroupWithZero` fact, `ResidueField O`
+a field) give `(orbit (ResidueField O)ˣ α).ncard = residueCard O - 1`
+(`ncard_orbit_eq`); `card_piTorsion_one_eq_residueCard` gives `(piTorsion hπ hf 1 \ {0}).ncard =
+residueCard O - 1` too (`ncard_piTorsion_one_sdiff_zero`); `Set.eq_of_subset_of_ncard_le` on the
+orbit's image (a subset of the same finite cardinality) forces equality — the classical "free action
+of a group of order `q-1` on a set of size `q-1` is transitive" counting argument, exactly as the
+task brief anticipated, once freeness was available.
+
+### The critical finding: `hsplit` is unsatisfiable for `residueCard O ≥ 3`
+
+Before attempting step 4 (`K_1 = Frac(O)(α)`), which needs `orbit_image_eq_piTorsion_sdiff_zero` (and
+hence `card_piTorsion_one_eq_residueCard`, which takes `hsplit : (P.divX.map (algebraMap O
+K)).Splits` as an explicit hypothesis), a check of whether `hsplit` can ever actually be discharged
+in this repo's own standing hypotheses turned up a serious problem, verified directly (not assumed):
+
+* **`[IsFractionRing O K]`** — required throughout `LubinTateRootCount.lean`/`LubinTateFieldTower.lean`
+  since `§30`/`§36` (Gauss's lemma needs it) — **forces `K` to be (canonically isomorphic to)
+  `Frac(O)` itself**, by the very definition of `IsLocalization`/`IsFractionRing`
+  (`IsLocalization.surj` : every element of `K` is literally a ratio of two elements of `O`).
+* **`Q := P.divX`'s image in `K` is irreducible over `K` itself**, not merely over an abstractly
+  separate `Frac(O)`: `Polynomial.irreducible_map_of_isWeaklyEisensteinAt_associated`
+  (`LubinTateEisensteinQ.lean`) is stated generically for *any* field `K'` with `[Algebra O K']
+  [IsFractionRing O K']` — specializing `K' := K` (this repo's own ambient `K`, which already
+  carries `[IsFractionRing O K]`) gives `Irreducible (P.divX.map (algebraMap O K))` directly, using
+  only the Eisenstein data `card_piTorsion_one_eq_residueCard` already computes
+  (`divX_isWeaklyEisensteinAt_and_associated`).
+* **An irreducible polynomial of degree `≥ 2` has no root in its own base field**
+  (`Polynomial.degree_eq_one_of_irreducible_of_root`, standard), hence cannot split completely there
+  either (`Polynomial.Splits.natDegree_eq_card_roots` would force a root to exist when
+  `natDegree ≥ 1`).
+
+Since `P.divX.natDegree = residueCard O - 1` (`hPdeg ▸ Polynomial.natDegree_divX_eq_natDegree_tsub_one`),
+`hsplit` and irreducibility-of-degree-`≥2` are **jointly inconsistent whenever `residueCard O ≥ 3`**.
+This was verified as an actual, buildable Lean theorem, not asserted from hand-reasoning alone:
+`false_of_isFractionRing_splits_irreducible` (`Langlands/LubinTateHsplitVacuity.lean`, general,
+no Lubin-Tate content — `Irreducible p`, `p.Splits`, `2 ≤ p.natDegree` are jointly false for any
+`p : K[X]`) and its Lubin-Tate specialization `false_of_hsplit_of_two_le_divX_natDegree` (same file),
+both `sorry`-free and independently `lake build`-checked.
+
+**Consequence.** `card_piTorsion_one_eq_residueCard` (`§34`), `K_1`, `finrank_adjoin_of_
+aeval_divX_map_eq_zero` (`§37`), `splits_map_K_1_of_splits` (`§36`), and this pass's own
+`orbit_image_eq_piTorsion_sdiff_zero` are all **vacuously true** for `residueCard O ≥ 3` — their
+hypotheses (`hsplit` combined with the standing `[IsFractionRing O K]`) can never be jointly
+satisfied by any actual `O`/`K`/`π`/`f`/`P` in that regime, so none of these theorems make any
+assertion about a genuine instantiation there. They are non-vacuously meaningful only at
+`residueCard O = 2` (`P.divX.natDegree = 1`, where every degree-`1` polynomial trivially splits over
+its own base field, and the whole arc collapses to the trivial extension `K_1 = K`, `Gal(K_1/K) =
+1`) — a case with no interesting ramification theory, since `q = 2` is a degenerate corner of
+Lubin-Tate theory rather than its content. **This is not a flaw in any individual proof — every
+theorem cited above remains a logically valid implication `hsplit → …` — it is a discovery that the
+`hsplit` *design choice* itself (adopted in `§33`'s docstring: "given the choice between any
+splitting field... and `K` itself already contains the roots, the second is adopted here") silently
+assumed something that cannot hold in the setting the whole arc was built to formalize: `[IsFractionRing
+O K]` and "`K` already contains the (ramified) torsion points" are mutually exclusive whenever those
+torsion points generate a nontrivial extension, which is exactly the interesting case.**
+
+Steps 4 (`K_1 = Frac(O)(α)`) and 5 (the capstone `[K_1:K] = q-1`) were **not attempted** once this
+was found: building them on top of `orbit_image_eq_piTorsion_sdiff_zero` would produce more
+formally-valid-but-vacuous conditional theorems, not genuine progress, and would misrepresent the
+state of the arc if reported as "closed" without this caveat front and center.
+
+### What would actually be needed to fix this
+
+The `hsplit`-as-hypothesis design (`§33` onward) needs to be replaced with a construction where `K_1`
+is built as a genuine **field extension** of `K`, not a subfield of a `K` assumed to already contain
+all `π`-torsion points. Concretely: either (a) work inside an algebraic closure or a fixed completion
+of an algebraic closure of `K` (dropping `[IsFractionRing O K]` for the *torsion-generating* field
+while keeping it for `O` itself as `K`'s own ring of integers), and define `K_1` as
+`IntermediateField K (AlgebraicClosure K)`'s adjoin of the torsion points there, or (b) construct
+`K_1` directly as `SplittingField` of `Q` over `K` (`Polynomial.SplittingField`,
+`Polynomial.IsSplittingField`) rather than assuming a pre-existing ambient field contains the roots.
+Both are substantially larger undertakings than anything attempted in `§33`-`§40` — they require
+revisiting the abstract `O`/`K` typeclass package's very shape, not just adding lemmas on top of it.
+This is new architectural work, not a missing lemma.
+
+### Steps 1-2 remain genuine, non-vacuous progress
+
+Unlike step 3, **steps 1 and 2 do not depend on `hsplit` at all** — `residuePiTorsionMulAction` and
+its freeness (`eq_one_of_residuePiTorsion_smul_eq_self`) hold for *any* nonzero `α ∈ piTorsion hπ hf
+1`, regardless of whether such an `α` exists non-vacuously for a given `O`/`K`/`π`/`f`. They are
+honest, general facts about the action and remain useful once the `hsplit` design is fixed (per the
+routes above) and the arc resumes on solid ground.
+
+### Full arc summary (`§10`-`§40`), for the next thread
+
+This closes out a long-running effort (`§10` on) building the Lubin-Tate formal group `F_π` from
+scratch: the functional equation and its formal-power-series solution (`§14`-`§23`), the bivariate
+evaluation machinery and formal-group laws (`§20`-`§26`), the `π^n`-torsion point group as a genuine
+`AddCommGroup` (`§27`, `LubinTateTorsionGroup.lean`) and `Oˣ`-action (`§29`, `LubinTateUnitsAction.lean`),
+root-counting via Weierstrass preparation and Eisenstein/Gauss machinery (`§30`-`§35`,
+`card_piTorsion_one_eq_residueCard`), the field tower `K_1` and its degree for a single root
+(`§36`-`§37`, `finrank_adjoin_of_aeval_divX_map_eq_zero`), the exact root-spacing theorem and mod-`π`
+factoring (`§38`-`§39`), and now the genuine `(O/π)ˣ`-action with freeness and transitivity
+(`§40`, this pass) — **all mathematically sound as conditional results**, but the final assembly
+into the headline `[K_1:K] = q-1` is blocked by the `hsplit` design issue documented above, discovered
+only now because this was the first pass to actually need `hsplit` and transitivity *together* in a
+context where their joint satisfiability mattered.
+
+### Build status
+
+`nix develop --command lake build` (from `langlands/`) — whole project builds clean, `Build completed
+successfully (8770 jobs)`. `grep -rn sorry` on every new file this pass — no hits.
+
+### Report to the user: does `[K_1:K] = q-1` close?
+
+**No.** Steps 1-3 closed as stated (genuine, checked theorems); step 3's own content
+(`orbit_image_eq_piTorsion_sdiff_zero`) is vacuous for `residueCard O ≥ 3` due to the `hsplit`
+inconsistency found this pass. Steps 4-5 were not attempted once this was found, since building them
+on a vacuous step 3 would not be genuine progress. The precise blocker is
+`Langlands/LubinTateHsplitVacuity.lean`'s `false_of_hsplit_of_two_le_divX_natDegree` — not "needs more
+work" but a specific, checked mathematical inconsistency in the `hsplit` design adopted in `§33`.
+
+### Commits
+
+`ebbd18a` (`LubinTateResidueUnitsAction.lean`: `residuePiTorsionMulAction`, step 1), `b7f85cb`
+(`LubinTateResidueUnitsFreeness.lean`: `dvd_sub_of_eval_phiU_eq`, `eq_one_of_residuePiTorsion_smul_eq_self`,
+step 2), `452794b` (`LubinTateResidueUnitsTransitivity.lean`: `orbit_image_eq_piTorsion_sdiff_zero`,
+step 3), `561eb6b` (`LubinTateHsplitVacuity.lean`: the critical finding,
+`false_of_isFractionRing_splits_irreducible`, `false_of_hsplit_of_two_le_divX_natDegree`).
