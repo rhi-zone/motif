@@ -118,6 +118,48 @@ theorem norm_lt_one_of_aeval_divX_eq_zero {P : O[X]} {u : O⟦X⟧} (hu : IsUnit
     exact_mod_cast hQdeg
   exact Real.rpow_lt_one (norm_nonneg _) hπnorm hn0
 
+omit [Finite (ResidueField O)] in
+/-- **A root of `Q := P.divX`'s image in `K` lies in `piTorsion hπ hf 1`.** The root-membership
+half of `piTorsion hπ hf 1 = {0} ∪ (Q.map (algebraMap O K)).roots.toFinset` (the `hSmem` block
+inside `card_piTorsion_one_eq_residueCard`'s proof below), extracted standalone: it needs only that
+`x` is a root of `Q`'s image, not that `Q` splits completely (`hsplit` is never used here — the
+proof only uses `norm_lt_one_of_aeval_divX_eq_zero`, `X_mul_divX_add`, and
+`eval_eq_zero_iff_aeval_eq_zero`). Reused by `card_piTorsion_one_eq_residueCard`'s own proof, and by
+`Langlands.LubinTateFieldTower`'s transport of `hsplit` down to `K_1 := K(F_π[π])`
+(`ROADMAP.md`'s `hsplit`/`K_1` framing question: `K_1`'s generators are exactly `Q`'s roots once
+`hsplit` holds for `K`, so this is the fact that makes those generators already lie in
+`piTorsion hπ hf 1`, hence — trivially — in `K_1` itself). -/
+theorem mem_piTorsion_one_of_root_divX_map [DecidableEq K]
+    (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O} (hπ : Irreducible π)
+    (hπnorm : ‖algebraMap O K π‖ < 1) {f : O⟦X⟧} (hf : IsLubinTatePoly π (residueCard O) f)
+    {P : O[X]} {u : O⟦X⟧} (hu : IsUnit u) (heq : f = (P : O⟦X⟧) * u)
+    (hPdist : P.IsDistinguishedAt (maximalIdeal O)) (hPdeg2 : 2 ≤ P.natDegree)
+    {x : K} (hx : x ∈ (P.divX.map (algebraMap O K)).roots.toFinset) :
+    x ∈ piTorsion (K := K) hπ hf 1 := by
+  classical
+  have hf0 : PowerSeries.coeff 0 f = 0 := hf.1
+  have hf1 : PowerSeries.coeff 1 f = π := hf.2.1
+  rw [Multiset.mem_toFinset, Polynomial.mem_roots'] at hx
+  obtain ⟨-, hroot⟩ := hx
+  have haevalQ : Polynomial.aeval x (P.divX.map (algebraMap O K)) = 0 := by
+    rw [Polynomial.aeval_def, Algebra.algebraMap_self, Polynomial.eval₂_id]
+    exact hroot
+  have hxnorm : ‖x‖ < 1 :=
+    norm_lt_one_of_aeval_divX_eq_zero hu heq hf0 hπ hf1 hPdist hPdeg2 hOK hπnorm haevalQ
+  refine ⟨hxnorm, ?_⟩
+  have haevalQO : Polynomial.aeval x P.divX = 0 := by
+    rw [← Polynomial.aeval_map_algebraMap K x P.divX]
+    exact haevalQ
+  have hPfact : P = Polynomial.X * P.divX := by
+    have hXid := Polynomial.X_mul_divX_add P
+    rw [coeff_zero_eq_zero_of_eq_mul hu heq hf0, Polynomial.C_0, add_zero] at hXid
+    exact hXid.symm
+  have haevalP : Polynomial.aeval x P = 0 := by
+    conv_lhs => rw [hPfact]
+    rw [map_mul, Polynomial.aeval_X, haevalQO, mul_zero]
+  rw [iter_one]
+  exact (eval_eq_zero_iff_aeval_eq_zero hOK hu heq hxnorm).mpr haevalP
+
 /-- **The capstone: `Nat.card (piTorsion hπ hf 1) = residueCard O`.** `piTorsion hπ hf 1` is
 exactly `insert 0 (Q.map (algebraMap O K)).roots.toFinset` as a subset of `K` (`P = X * Q`,
 `Polynomial.X_mul_divX_add`, so `aeval x P = x * aeval x Q`, vanishing iff `x = 0` or `x` is a root
@@ -188,22 +230,7 @@ theorem card_piTorsion_one_eq_residueCard
     constructor
     · rintro (rfl | hx)
       · exact zero_mem_piTorsion hπ hf 1
-      · rw [Multiset.mem_toFinset, Polynomial.mem_roots'] at hx
-        obtain ⟨-, hroot⟩ := hx
-        have haevalQ : Polynomial.aeval x (P.divX.map (algebraMap O K)) = 0 := by
-          rw [Polynomial.aeval_def, Algebra.algebraMap_self, Polynomial.eval₂_id]
-          exact hroot
-        have hxnorm : ‖x‖ < 1 :=
-          norm_lt_one_of_aeval_divX_eq_zero hu heq hf0 hπ hf1 hPdist hPdeg2 hOK hπnorm haevalQ
-        refine ⟨hxnorm, ?_⟩
-        have haevalQO : Polynomial.aeval x P.divX = 0 := by
-          rw [← Polynomial.aeval_map_algebraMap K x P.divX]
-          exact haevalQ
-        have haevalP : Polynomial.aeval x P = 0 := by
-          conv_lhs => rw [hPfact]
-          rw [map_mul, Polynomial.aeval_X, haevalQO, mul_zero]
-        rw [iter_one]
-        exact (eval_eq_zero_iff_aeval_eq_zero hOK hu heq hxnorm).mpr haevalP
+      · exact mem_piTorsion_one_of_root_divX_map hOK hπ hπnorm hf hu heq hPdist hPdeg2 hx
     · rintro ⟨hxnorm, hxzero⟩
       rw [iter_one] at hxzero
       have haevalP : Polynomial.aeval x P = 0 :=
