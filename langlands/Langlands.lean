@@ -81,6 +81,7 @@ import Langlands.TotallyRamifiedResidueField
 import Langlands.TotallyRamifiedUniformizer
 import Langlands.TotallyRamifiedWildConcreteExample
 import Langlands.TowerBundle
+import Langlands.TowerBundleResidueField
 import Langlands.TwoGeneratorMonogenic
 import Langlands.ValueGroupCyclic
 import Langlands.WeilDeligneRepresentation
