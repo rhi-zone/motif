@@ -215,4 +215,39 @@ theorem henselianLocalRing_of_comap_eq
   have h := henselianLocalRing_of_valuationSubring M
   rwa [valuationSubring_valuation_ofValuation_eq A] at h
 
+/-- **`↥A` is `(maximalIdeal ↥A)`-adically complete, for `A : ValuationSubring M` lying over a
+complete discretely valued `𝒪[K]` with finite residue field, `M / K` finite.**
+
+Same `letI` bundle and the same transport as `henselianLocalRing_of_comap_eq`, using
+`isAdicComplete_of_valuationSubring` (`Langlands.UnramifiedExtension`) in place of
+`henselianLocalRing_of_valuationSubring`. The conclusion `IsAdicComplete (IsLocalRing.maximalIdeal
+↥A) ↥A` is stated purely in terms of `A`'s own `CommRing`/`Ideal` structure — no topology, hence no
+dependence on which of the (mutually non-defeq) `NontriviallyNormedField` instances on `M` the
+`letI` bundle happens to use internally — so it transports across
+`valuationSubring_valuation_ofValuation_eq` exactly as `HenselianLocalRing ↥A` does. -/
+theorem isAdicComplete_of_comap_eq
+    (A : ValuationSubring M)
+    (hA : A.comap (algebraMap K M) = (ValuativeRel.valuation K).valuationSubring)
+    (hR : Valuation.RankOne A.valuation)
+    (hfin : Finite (IsLocalRing.ResidueField A)) :
+    letI := hR
+    letI : Valued M A.ValueGroup := Valued.mk' A.valuation
+    letI : NontriviallyNormedField M := Valued.toNontriviallyNormedField M A.ValueGroup
+    letI : ValuativeRel M := ValuativeRel.ofValuation (NormedField.valuation (K := M))
+    IsAdicComplete (IsLocalRing.maximalIdeal ↥A) ↥A := by
+  letI := hR
+  letI : Valued M A.ValueGroup := Valued.mk' A.valuation
+  letI : NontriviallyNormedField M := Valued.toNontriviallyNormedField M A.ValueGroup
+  haveI : IsUltrametricDist M := inferInstance
+  haveI : CompleteSpace M := exists_completeSpace_of_finiteDimensional K A hA
+  letI : ValuativeRel M := ValuativeRel.ofValuation (NormedField.valuation (K := M))
+  haveI : (NormedField.valuation (K := M)).Compatible :=
+    Valuation.Compatible.ofValuation (NormedField.valuation (K := M))
+  haveI : IsDiscreteValuationRing ↥(ValuativeRel.valuation M).valuationSubring :=
+    isDiscreteValuationRing_valuation_valuationSubring_of_finiteDimensional K A hA hR
+  haveI : Finite (IsLocalRing.ResidueField ↥(ValuativeRel.valuation M).valuationSubring) := by
+    rw [valuationSubring_valuation_ofValuation_eq A]; exact hfin
+  have h := isAdicComplete_of_valuationSubring M
+  rwa [valuationSubring_valuation_ofValuation_eq A] at h
+
 end LocalField
