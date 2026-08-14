@@ -13394,3 +13394,127 @@ work" but a specific, checked mathematical inconsistency in the `hsplit` design 
 step 2), `452794b` (`LubinTateResidueUnitsTransitivity.lean`: `orbit_image_eq_piTorsion_sdiff_zero`,
 step 3), `561eb6b` (`LubinTateHsplitVacuity.lean`: the critical finding,
 `false_of_isFractionRing_splits_irreducible`, `false_of_hsplit_of_two_le_divX_natDegree`).
+
+## 41. Phase 2c, thirty-fifth pass (2026-08-14): **the `K_1` rearchitecture — `SplittingField`
+construction and the norm/valuation extension both built and `lake build`-clean; the root-count
+re-derivation for `K_1` (steps 4-5) not attempted this pass.**
+
+This pass was a direct course-correction on `§40`'s finding: `hsplit` (`Q := P.divX`'s image
+splitting completely *inside `K` itself*) is jointly unsatisfiable with the standing
+`[IsFractionRing O K]` whenever `residueCard O ≥ 3`, making the old `K_1`
+(`IntermediateField.adjoin (FractionRing O) (piTorsion hπ hf 1 : Set K)`,
+`Langlands/LubinTateFieldTower.lean`) and everything built on `hsplit` vacuously true outside the
+degenerate case `q = 2`. The brief called for rebuilding `K_1` as a genuine field *extension*,
+per the two routes `§40` sketched: (a) work inside a fixed algebraic closure, or (b) construct
+`K_1` directly as `Polynomial.SplittingField` of `Q` over `K`. **Route (b) was taken.**
+
+### Step 0: re-verifying the vacuity proof, and auditing the "reusable" files
+
+Before any rearchitecture, both were checked directly (not taken on faith):
+
+* **`false_of_isFractionRing_splits_irreducible` / `false_of_hsplit_of_two_le_divX_natDegree`**
+  (`LubinTateHsplitVacuity.lean`) were re-read in full. The argument is a standard, correctly
+  formalized fact: an irreducible polynomial of degree `≥ 2` over a field has no root in that field
+  (`Polynomial.degree_eq_one_of_irreducible_of_root`), so `Splits.natDegree_eq_card_roots` (which
+  would force a root to exist for a splitting polynomial of positive degree) cannot hold alongside
+  irreducibility of degree `≥ 2`. Combined with `Q`'s irreducibility over `K` itself (Gauss's lemma,
+  `[IsFractionRing O K]` forcing `K = Frac(O)` up to canonical isomorphism), the inconsistency holds
+  as stated. No error found; the finding stands.
+* **`LubinTateTorsionSpacing.lean`, `LubinTateModPiFactoring.lean`, `LubinTateResidueUnitsAction.lean`,
+  `LubinTateResidueUnitsFreeness.lean`** were re-read line by line: none of their theorems take
+  `hsplit` as a hypothesis, and none of their proof routes touch it (they instead use
+  `norm_eq_rpow_of_mem_piTorsion_one_ne_zero` and `aeval_divX_map_eq_zero_of_mem_piTorsion_one_ne_zero`
+  from `LubinTateRootCount.lean`, both explicitly `omit`-ed against needing `hsplit`, and in the
+  freeness file's case even `omit [IsFractionRing O K]` on the specific lemma used). They remain
+  genuine, non-vacuous facts about whatever nonzero elements of `piTorsion hπ hf 1` happen to already
+  exist in the ambient field, independent of whether that field contains *all* of `Q`'s roots. This
+  confirmed the brief's expectation and is why they were not touched this pass.
+
+### Step 1-3: `K_1` rebuilt via `Polynomial.SplittingField`, and the norm/valuation extension
+
+**`Langlands/LubinTateSplittingField.lean`** (new file):
+
+* **`K_1 (P : O[X]) := (P.divX.map (algebraMap O K)).SplittingField`** — a genuine extension of `K`
+  (not a subfield of `K`), built by Mathlib to contain `Q`'s roots by definition. `Field`, `Algebra K
+  K_1`, `FiniteDimensional K K_1`, and (derived) `Algebra.IsAlgebraic K K_1`
+  (`Algebra.IsAlgebraic.of_finite`) all come from Mathlib's own `Polynomial.SplittingField`
+  instances, unconditionally.
+* **`splits_K_1` : `Q` splits completely over `K_1`, for free** —
+  `Polynomial.SplittingField.splits`, literally the defining property of a splitting field. This
+  replaces `hsplit` as a *hypothesis* with a *theorem*, closing the exact gap `§40` identified.
+* **The norm/valuation extension — found already built in Mathlib, not built from scratch.** The
+  brief flagged this as potentially "its own significant piece" (the classical "a finite extension
+  of a complete nonarchimedean field carries a canonical extension of the norm, and is itself
+  complete" fact). Investigation found Mathlib already has it, under `spectralNorm`
+  (`Mathlib.Analysis.Normed.Unbundled.SpectralNorm`), which this repo already uses elsewhere
+  (`LubinTateEisensteinQ.lean`'s general `L/K` root-valuation lemmas) but had not yet turned into an
+  actual `NormedField` instance on an extension field:
+  - `spectralNorm.normedField K K_1 : NormedField K_1`, given `[NontriviallyNormedField K]
+    [Algebra.IsAlgebraic K K_1]` (the latter automatic from `FiniteDimensional`).
+  - `IsUltrametricDist K_1`, from `isNonarchimedean_spectralNorm` (needs `[IsUltrametricDist K]`)
+    via `IsUltrametricDist.isUltrametricDist_of_isNonarchimedean_norm`.
+  - `spectralNorm.completeSpace K K_1 : CompleteSpace K_1`, a genuine Mathlib `instance` whenever
+    `[FiniteDimensional K K_1]` (always true for a splitting field).
+  - `spectralNorm_extends : spectralNorm K L (algebraMap K L k) = ‖k‖` — the extended norm restricts
+    to `K`'s own norm on `K`'s image, which is exactly what makes `K_1.hOK_transport` and
+    `K_1.hπnorm_transport` (this repo's two standing per-application hypotheses, transported to
+    `K_1` unchanged) provable directly, with no new estimate needed.
+* **`Algebra O K_1`** is built as the composite `(algebraMap K K_1).comp (algebraMap O K)`
+  (`RingHom.toAlgebra`) — the only `O → K_1` map available, since there is exactly one `O → K` map
+  (`K`'s own) and exactly one further `K → K_1` map (`K_1`'s own); no second, independently-built
+  `O → K_1` map exists to disagree with it. `IsScalarTower O K K_1` is recorded
+  (`K_1.isScalarTower`) so downstream lemmas expecting the tower see it directly.
+
+All of this is `@[expose] public`, `noncomputable`, `sorry`-free, and independently
+`lake build`-verified (`Langlands.LubinTateSplittingField` alone, then the whole project:
+`Build completed successfully (8770 jobs)`, zero warnings on the new file itself).
+
+### What this pass did NOT attempt: steps 4-5 (root-count/degree for `K_1`, transitivity, capstone)
+
+`[IsFractionRing O K_1]` is **not** claimed, and is in fact false in the interesting case: `K_1`
+properly extends `K` (hence `Frac(O)`) whenever `Q` has degree `≥ 2`. This means
+`LubinTateRootCount.lean`'s theorems that *need* `[IsFractionRing O K]` on their own ambient field —
+`card_piTorsion_one_eq_residueCard`, `mem_piTorsion_one_of_root_divX_map` — do **not** transfer to
+`K_1` by direct specialization; they were proved for "the field that already equals `Frac(O)`", and
+`K_1` is not that field. Re-deriving them for `K_1` needs a genuinely different argument keyed to
+`K_1`'s own defining property (`Q` splits by construction, not by hypothesis) and the *general*,
+`L`-parametrized root-valuation lemmas `LubinTateEisensteinQ.lean` already has
+(`spectralNorm_eq_of_isLubinTatePoly_root`, stated for any algebraic `L / K` — exactly `K_1`'s
+shape, with `K` retaining `[IsFractionRing O K]` as the *base*, not `L`). The separability half looks
+tractable the same way (`Polynomial.Separable.map` should transport `Q`'s separability from `K` to
+`K_1` directly, since `K_1`'s embedding of `K` is injective), but re-assembling the full counting
+argument (`piTorsion hπ hf 1 = {0} ∪ Q.roots.toFinset` inside `K_1`, using `K_1`'s own `eval`/`Algebra
+O K_1` instances built this pass) is real work not attempted here — it needs `piTorsion` itself
+instantiated at `K := K_1` with this pass's fresh instances, and every root-membership lemma in
+`LubinTateRootCount.lean` re-proved in that setting, not merely re-cited. This is the next pass's
+scope.
+
+### The old, now-flagged-vacuous code
+
+`LubinTateFieldTower.lean`'s old `K_1`, `LubinTateRootCount.lean`'s `card_piTorsion_one_eq_residueCard`,
+`LubinTateRootCountConcrete.lean`'s `card_piTorsion_one_eq_residueCard_of_adicCompletion`, and
+`LubinTateResidueUnitsTransitivity.lean`'s `orbit_image_eq_piTorsion_sdiff_zero` were **not deleted**
+— each remains a logically valid `hsplit → …` implication, and deleting them would lose real (if
+conditionally vacuous) proof engineering. Each file's module docstring now carries an explicit `⚠️
+VACUOUS whenever residueCard O ≥ 3` warning, naming the exact blocker and pointing to
+`LubinTateSplittingField.lean` as the replacement, so no future pass mistakes them for genuine,
+non-vacuous results without reading the warning first.
+
+### Build status
+
+`nix develop --command lake build` (from `langlands/`) — whole project builds clean, `Build completed
+successfully (8770 jobs)`. `grep -rn sorry` on `LubinTateSplittingField.lean` — no hits.
+
+### Report to the user: does the rearchitecture close `[K_1:K] = q-1`?
+
+**No, not yet — but the piece flagged as potentially the largest single obstacle (norm/valuation
+extension to the new `K_1`) is done, and `hsplit` is now a theorem (`splits_K_1`) rather than an
+unsatisfiable hypothesis.** What closed this pass: the vacuity proof re-verified correct; the
+"reusable machinery" audit confirmed (four files genuinely independent of `hsplit`); `K_1` rebuilt as
+`Polynomial.SplittingField`, with `Field`/`Algebra`/`FiniteDimensional`/`NormedField`/
+`IsUltrametricDist`/`CompleteSpace` instances all wired and `lake build`-clean, `Q` splitting over it
+by construction, and both of this repo's standing per-application norm hypotheses (`hOK`, `hπnorm`)
+transported down unchanged. What remains open, honestly: `piTorsion` has not yet been instantiated at
+`K_1` with these fresh instances, so no root-count, degree, or `(O/π)ˣ`-action fact has actually been
+re-proved for `K_1` itself — steps 4 and 5, and reconnecting the (already-independent) spacing/
+mod-`π`-factoring/action/freeness machinery to `K_1`, are next-pass work, not done here.
