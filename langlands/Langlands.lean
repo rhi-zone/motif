@@ -77,6 +77,7 @@ import Langlands.TotallyRamifiedNormResidue
 import Langlands.TotallyRamifiedNormResidueImage
 import Langlands.TotallyRamifiedNormSurjective
 import Langlands.TotallyRamifiedResidueField
+import Langlands.TotallyRamifiedUniformizer
 import Langlands.TotallyRamifiedWildConcreteExample
 import Langlands.TowerBundle
 import Langlands.TwoGeneratorMonogenic
