@@ -14537,3 +14537,137 @@ Two distinct things must still be built, and neither is a re-application of what
 Also still open, unchanged by this pass: no concrete `O := v.adicCompletionIntegers F` instantiation
 of the new residue-field/uniformizer theorems is carried out, so `hϖnorm` above is discharged nowhere
 yet; and `Gal(K_2/K_1)` (the level-2 analogue of `§44`'s `Gal(K_1/K) ≃* (O/π)ˣ`) is untouched.
+
+## 50. Phase 2c, forty-third pass (2026-08-14): gap 3 closed generally; the full `[K_2:K_1]=q`
+statement confirmed to need infrastructure that does not exist yet, not just a missing lemma.
+
+Picked up `§49`'s two open targets: the full `[K_2:K_1] = q` statement, and a general (not
+`K_1`-specific) `ValuativeRel`-wiring fix for "gap 3."
+
+### Target 2 (attempted first, since it scopes cleanly): gap 3 — **closed, generally**
+
+`§49`'s `Langlands/TowerBundle.lean` already showed the shape: build the
+`[ValuativeRel]`/`[Compatible]`/`[IsDiscreteValuationRing]` bundle on a moving base `M` from a
+`ValuationSubring A : ValuationSubring M` lying over `𝒪[K]` plus a `[RankOne A.valuation]`
+instance, via `Valued.mk' A.valuation` — *not* by attaching `ValuativeRel` globally to a field that
+already carries its own `NormedField` instance (that route was checked and rejected: `K_1` already
+has a `spectralNorm`-based `NontriviallyNormedField` instance
+(`LubinTate.K_1.instNontriviallyNormedField`, `Langlands/LubinTateSplittingField.lean`), and
+building a *second*, `Valued.mk'`-based one on the same type reproduces the exact instance diamond
+`TowerBundle.lean`'s own docstring already diagnoses — confirmed by re-reading that docstring
+before writing anything, not assumed). The bundle is built and discarded inside each theorem
+application; nothing is left as a global instance on any concrete field.
+
+`Langlands/TowerBundleResidueField.lean` (new, sorry-free) supplies the two `_of_valuationSubring`
+variants `TowerBundle.lean`'s docstring named as needed:
+
+* `LocalField.residueField_map_bijective_of_isUniformizer_of_valuationSubring` :
+  `Langlands.TotallyRamifiedResidueField.residueField_map_bijective_of_isUniformizer`, transported
+  to a moving base `M`.
+* `LocalField.irreducible_of_isUniformizer_of_valuationSubring` :
+  `Langlands.TotallyRamifiedUniformizer.irreducible_of_isUniformizer`, transported the same way.
+
+Both are stated for an *arbitrary* `M` — not `K_1`, not any concrete instantiation — so the fix is
+general in exactly the sense the Hard Constraint asks: reusable at every tower level (`K_1 → K_2`,
+`K_2 → K_3`, …) once a `ValuationSubring` lying over the previous level is in hand, not a one-off
+patch that will need repeating.
+
+**Why a new file, not an addition to `TowerBundle.lean`.**
+`Langlands.TotallyRamifiedResidueField`/`Langlands.TotallyRamifiedUniformizer` import
+`Langlands.MonogenicIntegralClosure`, which imports `Langlands.TowerBundle` — adding either import
+to `TowerBundle.lean` directly closes an import cycle (`TowerBundle → TotallyRamifiedResidueField →
+MonogenicIntegralClosure → TowerBundle`, hit and diagnosed by `lake build`, not anticipated).
+`TowerBundleResidueField.lean` sits downstream of all three instead.
+
+**A real subtlety the build surfaced.** Unlike `adjoin_eq_integralClosure_of_isUniformizer_of_
+valuationSubring` (whose conclusion is a bare `Algebra.adjoin = integralClosure` equation, needing
+no `IsLocalRing`/residue-field instance to *state*), this pass's two new theorems conclude
+`Function.Bijective (ResidueField.map …)` / `Irreducible (⟨π, _⟩ : ↥(integralClosure …))`, which
+need `IsLocalRing ↥(integralClosure ↥(valuation M).valuationSubring N)` resolved just to
+*typecheck the statement* — before any proof-body `haveI`. That instance
+(`LocalField.isDiscreteValuationRing_integralClosure`,
+`Langlands/MonogenicIntegralClosure.lean`) needs the *whole* bundle
+(`IsUltrametricDist M`, `CompleteSpace M`, `Compatible`, `IsDiscreteValuationRing (valuation
+M).valuationSubring`) present as `letI`s in the statement's own `let`-chain, not merely built inside
+the proof as `TowerBundle.lean`'s own theorem gets away with. Two build failures (each `IsLocalRing
+… failed to synthesize`) before this was diagnosed and the missing `letI`s added — within the
+"two identical errors" stop-and-diagnose budget, not past it.
+
+Full `nix develop -c lake build` clean, `8790` jobs. `grep -n sorry` on
+`Langlands/TowerBundleResidueField.lean` — no hits. Commit `24cfc64`.
+
+**What is not done**: no concrete instantiation of either new theorem at `M := K_1 P` (i.e., no
+`Algebra.IsSeparable (K_1 P) N` or degree-`q` generator supplied for a genuine `N`). That is
+blocked on the next item, not on anything in this section.
+
+### Target 1: the full `[K_2:K_1]=q` statement — **confirmed to need real, unbuilt infrastructure**
+
+The task brief asked, as its first check, whether `K_1⟮β⟯ = K_2` could be gotten more cheaply here
+than the `n=1` case's transitivity argument, via a splitting/degree-counting shortcut. Checked
+directly, not assumed: `Module.finrank (K_1 P) (K_2 P₂) = residueCard O` and `K_1⟮β⟯ = ⊤` (inside
+`K_2`) are **equivalent**, by the tower law — `K_1⟮β⟯` already has degree exactly `q =
+P₂k.natDegree` (`§49`'s `exists_finrank_adjoin_eq_residueCard_K_2`), so `[K_2 : K_1] = q ·
+[K_2 : K_1⟮β⟯]`, and the headline statement is exactly `[K_2 : K_1⟮β⟯] = 1`. There is no
+degree-counting route to the headline statement that bypasses proving `K_1⟮β⟯` contains every root
+of `P₂k` — the equivalence is exact, not merely the easiest-looking route.
+
+The only route this repo has for "every root lies in `K_1⟮β⟯`" is the classical one, and it does
+not reduce to the `n=1` argument by substitution: at `n=1`, roots of `Qk` differ by the
+`(ResidueField O)ˣ`-*scalar* action `[u]_F(α)` (`orbit_image_eq_piTorsion_sdiff_zero_K_1`); at
+`n=2`, two roots `β, β'` of `f(X) - α` (both solving `f(X) = α` for the *same* fixed `α`) differ by
+**formal-group-addition translation** — `f(β -_F β') = f(β) -_F f(β') = α -_F α = 0`, so `β -_F β'`
+is `π`-torsion, i.e. `β' = β +_F t` for `t` a `π`-torsion point — a genuinely different group
+action (additive-translation-by-torsion-points, not the multiplicative `Oˣ`-scaling used at level
+1) that this repo has never built.
+
+Checked directly against the repo, not inferred: `Langlands/LubinTateTorsionPoints.lean`'s own
+module docstring states plainly, under "What this does not do": **"No group structure. Closure of
+`piTorsion` under `F_π`-addition (`Langlands.LubinTate.FPiEval`) and under additive inverses
+(`Langlands.LubinTate.PhiInv`) both need evaluation to commute with formal
+substitution/composition, in the bivariate-outer shape … not yet built anywhere in this repo."**
+That bivariate-outer eval-subst compatibility is itself substantial, not a one-line generalization:
+`Langlands/NonarchimedeanPowerSeriesEvalSubst.lean`'s already-closed *univariate*-into-univariate
+case (`eval (g.subst h) x = eval g (eval h x)`) needed a genuine double-series-interchange argument
+over `T : ℕ × ℕ → K`, with a nontrivial finiteness lemma to make the interchange legal — the
+bivariate-outer case is expected to reuse that structure but is not a restatement of it.
+
+So the dependency chain the full `[K_2:K_1]=q` statement needs, none of which exists, is: (1)
+bivariate-outer eval-subst compatibility (`evalMv Φ … = eval (subst …) …`), (2) `F_π`-addition
+closure of `piTorsion`, (3) additive-inverse closure, (4) an `AddGroup`/torsion-translation action
+on roots of `f(X) - α`, (5) a transitivity/orbit-counting argument for that action (the `π²`-torsion
+analogue of `§44`'s counting argument, not a copy of it — the acting group and the set it acts on
+are both different from level 1), (6) reassembly into `K_1⟮β⟯ = ⊤`. This matches — and, via the
+tower-law equivalence and the direct docstring citation above, *confirms rather than merely
+repeats* — `§49`'s own citation of this as `"§46's step 2, still unstarted."` Not attempted this
+pass: forcing any piece of this chain without (1) built first would either be unsound (no bridge
+from the abstract action to `K_1⟮β⟯`-membership) or need a `sorry`, both excluded by this arc's
+standing constraints. No file was written for Target 1 this pass.
+
+### What remains, precisely, to iterate to `K_3`
+
+* **Target 1's six-item chain above** — genuinely unstarted, likely several further passes' worth
+  (the univariate eval-subst precedent alone was a full pass).
+* **`K_2` needs its own `spectralNorm`-based metric structure** before *anything* at the `K_2 →
+  K_3` step (or even a concrete instantiation of this pass's Target-2 lemmas at `M := K_1 P`, `N :=
+  K_2`) can proceed: checked directly, `Langlands/LubinTateTowerStepConcrete.lean`'s `K_2` currently
+  has only `Field`/`Algebra K' _`/`IsSplittingField` instances (`K_2.instField`, `K_2.instAlgebra`,
+  `K_2.instIsSplittingField`) — no `NontriviallyNormedField`/`IsUltrametricDist`/`CompleteSpace`,
+  unlike `K_1` (`LubinTate.K_1.instNontriviallyNormedField` etc.,
+  `Langlands/LubinTateSplittingField.lean`). Building these for `K_2` is expected to mirror `K_1`'s
+  construction closely (same `spectralNorm.nontriviallyNormedField`/`spectralNorm.completeSpace`
+  route) but is a genuine, separate piece of work, not automatic from `K_2`'s definition.
+  `Algebra.IsSeparable (K_1 P) K_2` — needed both for that metric structure's completeness
+  argument and as a hypothesis of this pass's Target-2 lemmas — is likewise not yet proved; the
+  `n=1` analogue (`separable_divX_map_K`) used an Eisenstein/norm argument that itself needs `K_1`'s
+  spectral norm, so it cannot be proved before `K_2`'s metric structure without care about
+  ordering.
+* **This pass's Target-2 lemmas are ready to receive `M := K_1 P` once the above lands**: `A :=
+  integralClosureValuationSubring ↥𝒪[K] (K_1 P)`, `hA :=
+  LocalField.comap_integralClosureValuationSubring K (K_1 P)`
+  (`Langlands/TowerValuationSubring.lean`), and `hR` from `LocalField.exists_rankOne_compatible K
+  (K_1 P) A hA` (`Langlands/HenselianValuation.lean`) are all already-available terms — checked
+  directly, not merely presumed available by analogy — so no *further* general infrastructure is
+  needed on the `ValuativeRel`-wiring side; only `K_2`'s missing metric/separability instances
+  stand between "the lemmas exist" and "the lemmas apply at level 2."
+* **`Gal(K_2/K_1)`** (the level-2 analogue of `§44`'s `Gal(K_1/K) ≃* (O/π)ˣ`) remains untouched, and
+  depends on Target 1 closing first.
