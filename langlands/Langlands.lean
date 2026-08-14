@@ -32,6 +32,7 @@ import Langlands.LubinTateRootCountConcrete
 import Langlands.LubinTateSplittingField
 import Langlands.LubinTateSplittingFieldDegree
 import Langlands.LubinTateSplittingFieldDegreeConcrete
+import Langlands.LubinTateSplittingFieldDVR
 import Langlands.LubinTateSplittingFieldTorsion
 import Langlands.LubinTateTorsionGroup
 import Langlands.LubinTateTowerStep
