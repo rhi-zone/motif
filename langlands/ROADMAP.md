@@ -13915,3 +13915,49 @@ self-contained next task** — not attempted here, since it is a rename touching
     that with `§44`'s isomorphism to give local class field theory for the totally ramified part.
     This is the first point in the arc where the two phases meet, and it needs (a) first — the map
     is defined on the whole tower, not at a single level.
+
+### `§45`: build-hygiene fix — the `§44` capstone chain was never reached by the top-level `lake build`
+
+**What was found.** `§44`'s report claimed "8771 jobs, clean" for the top-level `lake build`, but
+that number was stale: `Langlands.lean` (the top-level aggregator) never imported the `§41`–`§44`
+chain (`LubinTateSplittingField.lean` → `LubinTateSplittingFieldTorsion.lean` →
+`LubinTateSplittingFieldDegree.lean` → `LubinTateSplittingFieldDegreeConcrete.lean` →
+`LubinTateGaloisResidueUnits.lean`). The only thing masking this: both the new `K_1`
+(`LubinTateSplittingField.lean`, `def K_1 (P : O[X]) : Type _ := ...SplittingField`) and the old,
+`§40`-flagged-vacuous `K_1` (`LubinTateFieldTower.lean`, `def K_1 (hπ hf) : IntermediateField
+(FractionRing O) K`) share the fully-qualified name `LubinTate.K_1` — genuinely different
+definitions, not compatible overloads. Since `LubinTateFieldTower.lean` was already imported by
+`Langlands.lean` but the new chain was not, the collision never actually fired at compile time; the
+whole `§41`–`§44` chain was silently skipped instead. `lake build Langlands.LubinTateGaloisResidueUnits`
+(run as an explicit target, which is how `§44` was actually verified) compiled it in isolation and
+never touched the old `K_1`, so the gap went unnoticed.
+
+**Resolution.**
+* Renamed the old `K_1` (and its sole consumer, `splits_map_K_1_of_splits` →
+  `splits_map_K_1_old_of_splits`) to `K_1_old` in `LubinTateFieldTower.lean`, with an updated module
+  docstring recording the rename and why. Not deleted: `finrank_adjoin_of_aeval_divX_map_eq_zero` in
+  the same file is a separate, still-well-formed (if likewise `hsplit`/root-existence-vacuous under
+  `residueCard O ≥ 3`) theorem, and nothing in the task called for gutting content beyond resolving
+  the name collision itself.
+  Confirmed safe: nothing else in the repo imports `LubinTateFieldTower.lean` or references
+  `K_1`/`splits_map_K_1_of_splits`/`finrank_adjoin_of_aeval_divX_map_eq_zero` in actual code (only in
+  docstring prose) — the old file had zero downstream code dependents anywhere.
+* Added the missing imports to `Langlands.lean` so the full new chain is actually reached by the
+  top-level build.
+* A broader audit (transitive-closure check of every `import Langlands.X` from `Langlands.lean` down,
+  against the full file list in `Langlands/`) found **12 files total** were unreached before this
+  fix — not just the 5 explicitly named in the bug report:
+  `LubinTateGaloisResidueUnits`, `LubinTateHsplitVacuity`, `LubinTateModPiFactoring`,
+  `LubinTateResidueUnitsAction`, `LubinTateResidueUnitsFreeness`, `LubinTateResidueUnitsTransitivity`,
+  `LubinTateRootCountConcrete`, `LubinTateSplittingField`, `LubinTateSplittingFieldDegree`,
+  `LubinTateSplittingFieldDegreeConcrete`, `LubinTateSplittingFieldTorsion`,
+  `LubinTateTorsionSpacing`. All 12 are now reached: adding the `§41`–`§44` chain's direct imports to
+  `Langlands.lean` pulled the rest in transitively (confirmed by re-running the same closure check
+  after the fix — 0 unreached out of 127 files in `Langlands/`).
+
+**Verification.** Top-level `lake build` (no explicit target) now completes with **8783 jobs,
+successfully** (up from the previously-reported, stale 8771 — the delta reflects the
+newly-actually-compiled chain). `grep -rn '\bsorry\b' Langlands/*.lean` across the whole tree returns
+only prose mentions of "sorry-free"/"sorry-laden" inside docstrings — no live `sorry` tactics
+anywhere, including in the now-actually-compiled `§41`–`§44` files. Exactly one `def K_1` remains
+repo-wide (`LubinTateSplittingField.lean`); the collision is fully resolved.
