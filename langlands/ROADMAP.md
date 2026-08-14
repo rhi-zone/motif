@@ -13961,3 +13961,163 @@ newly-actually-compiled chain). `grep -rn '\bsorry\b' Langlands/*.lean` across t
 only prose mentions of "sorry-free"/"sorry-laden" inside docstrings — no live `sorry` tactics
 anywhere, including in the now-actually-compiled `§41`–`§44` files. Exactly one `def K_1` remains
 repo-wide (`LubinTateSplittingField.lean`); the collision is fully resolved.
+
+## 46. Phase 2c, thirty-ninth pass (2026-08-14): **scoping and a first closed piece of the `K_n`
+tower generalization — the Eisenstein-existence half of the general inductive tower step.**
+
+`§44`'s natural-next-step list named generalizing `n = 1` to the full tower `K_n := K(F_π[π^n])`,
+`[K_n : K] = q^{n-1}(q-1)`, `Gal(K_n/K) ≃* (O/π^n)ˣ`. A prior research-only pass (no Lean written)
+scoped this and proposed building the general inductive tower step plus a `ValuativeRel ↔
+spectralNorm`/`NormedField` bridge reusing `TotallyRamifiedEisenstein.isEisensteinAt_minpoly_of_
+isUniformizer`. This pass re-verified those findings against the live code, found the bridge as
+originally framed is not actually load-bearing for the Eisenstein-existence step, and closed that
+step as a genuinely general, sorry-free theorem.
+
+### Re-verification of the prior pass's findings
+
+All checked directly against the live code, not re-assumed:
+
+* **`piTorsion hπ hf n` is already generic over `n`** (`Langlands/LubinTateTorsionPoints.lean`) —
+  confirmed. `Langlands.LubinTate.iter` (`Langlands/LubinTateIterate.lean`) and `isLubinTatePoly_iter
+  : IsLubinTatePoly (π^n) (q^n) (iter f n)` are likewise already fully generic; no new definition was
+  needed for either, as claimed.
+* **The DIRECT route (Weierstrass-prepare `iter f n` itself) is dead for `n ≥ 2`** — confirmed by
+  direct computation, not assumed. `LubinTateIterate.coeff_one_iter : coeff 1 (iter f n) = π ^ n`
+  and `LubinTateWeierstrassPreparation.coeff_one_associated_of_eq_mul` together force the naive
+  Weierstrass factor's own `Q_n.coeff 0` to be an associate of `π ^ n`, hence in `𝔪 ^ n ⊆ 𝔪 ^ 2` once
+  `n ≥ 2` — exactly what `Polynomial.irreducible_of_eisenstein_criterion`'s sharp `coeff 0 ∉ 𝔪 ^ 2`
+  hypothesis excludes.
+* **The classical route is inductive over fields**, `K_n = K_{n-1}(α_n)` with `f(α_n) = α_{n-1}` —
+  confirmed as the right target, and confirmed independently by `ROADMAP.md`'s own `§44` "natural
+  next steps" note (written before this pass, from the other side): "neither [root count nor
+  transitivity for `π^n`-torsion] is a mechanical lift of the `n = 1` case."
+* **`isEisensteinAt_minpoly_of_isUniformizer` (`Langlands/TotallyRamifiedEisenstein.lean`)
+  structurally matches the "generator of torsion is a uniformizer ⟹ Eisenstein" step needed, but
+  lives in the `ValuativeRel`/`valuationSubring` formalism** — confirmed, and this is a *correction*
+  to the prior pass's framing, not a re-statement of it: that theorem's own hypothesis (`hram :
+  ‖(ϖ:K)‖ = spectralNorm K L π ^ n`) is *already* phrased purely in `spectralNorm`/`NormedField`
+  terms, per its own module docstring's "the final hypothesis design" section — the file was
+  deliberately rearchitected in an earlier pass to avoid a `RankOne`/`ValuationSubring`-on-`L`
+  detour. What remains tied to `ValuativeRel` is only the *conclusion*'s ambient ring, `O :=
+  ↥(ValuativeRel.valuation K).valuationSubring` — not the analytic content of the argument.
+* **Whether `O_{n-1}` (the "next-level ring of integers") is itself a complete DVR with the same
+  residue field as `O`** — confirmed still not derivable from existing machinery, and confirmed to
+  be the single largest remaining gap (see below).
+* **`exists_generator_K_1`** — one correction: it lives in
+  `Langlands/LubinTateSplittingFieldDegree.lean`, not `LubinTateSplittingFieldDegreeConcrete.lean` as
+  the brief stated (the latter only supplies non-vacuity certificates for it).
+
+### The formalism bridge: searched for, found unnecessary for this step, wall identified precisely
+for the step it *would* be needed for
+
+`grep`-searched `Langlands/*.lean` for `RankOne`/`Valued`/`diamond`-style bridge patterns. Found none
+purpose-built for "abstract `hOK`-style `O` ↔ `ValuativeRel`-canonical valuation subring" — what
+exists is `Langlands/HenselianValuation.lean`'s `NormedFieldValuativeRelBridge` section (bridges a
+*given* `ValuativeRel K` to the norm, not an abstract `O`), and `ROADMAP.md`'s own long-tracked **"gap
+3"** (`grep -n "gap 3" ROADMAP.md`): threading `TotallyRamifiedEisenstein.lean`'s `ValuativeRel`
+bundle into the `HeightOneSpectrum`/adic-completion setting, independently investigated across (at
+least) the thirty-ninth through forty-second Phase 2b passes (`§`s in the 2190–2470 line range) and
+found, every time, to be **avoidable** for the specific results those passes needed — but never
+closed in general. The forty-first pass's empirical finding (re-read, not re-run this pass) is the
+sharpest data point: at *concrete* instantiations (`O := v.adicCompletionIntegers F`, `K :=
+v.adicCompletion F`) every instance `isEisensteinAt_minpoly_of_isUniformizer` needs resolves via
+`#synth` — the gap is not about instance availability there, only about the theorem's two
+*hypotheses* (`hram`, `hgen`).
+
+**For the Eisenstein-existence step this pass closes, no such bridge is needed at all — checked by
+reading exactly which hypotheses each ingredient requires, not assumed.** `PowerSeries.
+exists_isWeierstrassFactorization` (Mathlib) needs only `g.map (residue O') ≠ 0` and `[IsAdicComplete
+(maximalIdeal O') O']` — no norm, no `ValuativeRel`. `LubinTateEisensteinQ.lean`'s
+`Polynomial.irreducible_of_isWeaklyEisensteinAt_associated`/`irreducible_map_of_
+isWeaklyEisensteinAt_associated` need only `[IsDiscreteValuationRing O']` (plus `IsFractionRing O'
+K'` for the mapped version) — no norm either. **The wall is real, but sits one step later than the
+prior pass located it**: `isEisensteinAt_minpoly_of_isUniformizer`'s proof needs `hcoeffs : ∀ i,
+(minpoly K π).coeff i ∈ O`, obtained via `mem_valuationSubring_iff_norm_le_one` — i.e. it needs `O` to
+contain *every* norm-`≤1` element of `K`, strictly stronger than the `hOK`-style "`O`'s own image
+lands in the closed unit ball" hypothesis this whole arc otherwise uses. Closing that for an
+*abstract* `O'` needs proving `O'` literally *is* (or is isomorphic to) a `ValuativeRel`-canonical
+valuation subring — restating gap 3 in this arc's vocabulary, not solving it. This file's own module
+docstring ("Why no bridge is needed for this half") records the precise reasoning.
+
+### What got built — `Langlands/LubinTateTowerStep.lean` (new file), sorry-free
+
+The Eisenstein-existence half of one inductive tower step, parametrized over an **arbitrary** moving
+base `O'` (not hardcoded to `n = 2`, not a substitution instance of the `n = 1` theorems):
+
+* `coeff_zero_associated_of_eq_mul` : general coefficient-shift lemma, the index-`0` analogue of
+  `LubinTateWeierstrassPreparation.coeff_one_associated_of_eq_mul` at a general (possibly nonzero)
+  target coefficient — simpler than the original, since there is no lower-index term to cancel.
+* `shifted f ψ α' := (f.map ψ) - C α'` : the base-changed, shifted power series `f(X) - α'` at a
+  moving base `O'`, `ψ : O →+* O'` the tower's composite embedding so far.
+* `coeff_zero_shifted` : `(shifted f ψ α').coeff 0 = -α'`.
+* `map_residue_shifted` : `(shifted f ψ α').map (residue O') = X ^ q`, given `α' ∈ 𝔪_{O'}` and `[
+  IsLocalHom ψ]` — pushing `f`'s own congruence forward along the induced residue-field map
+  `IsLocalRing.ResidueField.map ψ`.
+* `exists_isWeierstrassFactorization_shifted` : `shifted f ψ α'` has a Weierstrass factorization `P'
+  * u'` over `O'`, `P'` distinguished of degree `q`, with `P'.coeff 0` an associate of `α'`.
+* `isEisensteinAt_shifted` : `P'` **itself** — no `divX` peel, unlike the `n = 1` case — is
+  Eisenstein at `𝔪_{O'}`. The `n = 1` step needed `Q := P.divX` because `0` is a trivial root of `P`
+  (`f(0) = 0`); here `0` is *not* a root of `shifted f ψ α'` (its constant term is `-α' ≠ 0`), so `P'`
+  is directly the Eisenstein polynomial, matching the classical fact that `[K_n : K_{n-1}] = q`
+  (full degree `q`, not `q - 1`) for `n ≥ 2`.
+* `irreducible_shifted` / `irreducible_map_shifted` : `P'` (resp. its image over `K' := Frac(O')`) is
+  irreducible — direct corollaries via `LubinTateEisensteinQ.lean`'s existing, already fully general
+  lemmas (unmodified).
+
+**From `irreducible_map_shifted`, the spectral-norm and separability facts the induction needs come
+for free**, with no new lemma required: `LubinTateEisensteinQ.lean`'s
+`spectralNorm_eq_norm_coeff_zero_rpow_of_aeval_eq_zero` and
+`Polynomial.separable_of_isEisensteinAt_of_natDegree_norm_eq_one` are already stated for an arbitrary
+monic irreducible polynomial over an arbitrary complete nonarchimedean field, with no `n`- or
+Lubin-Tate-specific content — they apply to `P'.map (algebraMap O' K')` verbatim once `K'` is
+supplied, exactly as they already apply to `Q := P.divX` at `n = 1`. This confirms the task brief's
+instruction to reuse those lemmas' *techniques* as general lemmas parametrized over an arbitrary
+base: they turned out to already be general enough, requiring no re-derivation at all.
+
+**Build status.** `nix develop -c lake build` (top-level, `LubinTateTowerStep` now imported from
+`Langlands.lean` so it is reached by the default target, avoiding `§45`'s coverage trap) — clean,
+`8784` jobs (up from `8783`). `grep -n sorry Langlands/LubinTateTowerStep.lean` — no hits. `#print
+axioms` (scratch `lake env lean`) on all seven new declarations — `[propext, Classical.choice,
+Quot.sound]` only.
+
+### What remains open — the moving-base construction (the real remaining blocker)
+
+This pass takes `O'`, `ψ : O →+* O'`, and `α' : O'` (with `Irreducible α'`) as **hypotheses**,
+matching this whole arc's established convention (`hOK`, `hπnorm`, `hPdeg2`, …) of taking
+not-yet-derivable facts as explicit parameters rather than forcing them through. It does **not**
+construct `O_{n-1}` from `O_{n-2}` and a chosen torsion generator. That construction — and proving it
+is again a complete DVR with the *same* residue field as `O` ("total ramification", load-bearing at
+*every* step of the induction, per the task brief's own framing) — is a separate, unclosed problem,
+checked directly against both Mathlib and this repo:
+
+* **Mathlib has no lemma constructing `IsDiscreteValuationRing`/`IsAdicComplete` instances for the
+  integral closure of a DVR in a `spectralNorm`-normed finite extension** (`grep` across
+  `Mathlib.Analysis.Normed.Unbundled.*` and `Mathlib.NumberTheory.LocalField.*` for
+  `IsDiscreteValuationRing` combined with `spectralNorm`/`closedBall`/`integralClosure` — no hits).
+* **This repo's own prior finding stands**: `Langlands/LubinTateSplittingFieldDegreeConcrete.lean`'s
+  module docstring already records that the `IsDiscreteValuationRing` instances present in this
+  Mathlib are for Artinian local rings, `ℤ_[p]`, `AdicCompletion I R`, and `𝒪[K]` under the
+  `ValuativeRel`-based `IsNonarchimedeanLocalField` bundle — **none of which applies** to `K_1 :=
+  Q.SplittingField` (`Langlands.LubinTateSplittingField`), the `spectralNorm`/`NormedField`-based
+  field this arc's `K_1`, and hence any `K_n` built the same way, actually is.
+* **`Langlands/TowerValuationSubring.lean`/`Langlands/MonogenicMaximalOrder.lean`** build comparable
+  integral-closure-as-valuation-ring machinery, but only inside the `ValuativeRel`/`ValuationSubring`
+  formalism (Serre's tower argument, a *different* arc from this one) — not the `spectralNorm`/
+  `NormedField` formalism `K_1`/`K_n` are built in here.
+
+**Concrete next steps, in order, for whoever continues this:**
+
+1. Define `O_{n} := {x : K_n | ‖x‖ ≤ 1}` (or the integral closure of `O` in `K_n`) and attempt to show
+   it is a discrete valuation ring — the genuinely new commutative-algebra content this whole
+   generalization is blocked on. Likely needs either (a) a from-scratch argument using `K_n / K`
+   finite and `K` complete (the classical fact that a finite extension of a complete DVR's fraction
+   field has integrally-closed-DVR ring of integers), or (b) threading through the `ValuativeRel`
+   bridge after all, at the cost of re-opening gap 3 in this arc specifically. Neither is started.
+2. Once `O_{n-1}` and a chosen generator `α_{n-1}` of primitive `π^{n-1}`-torsion (needs the `π^n`-
+   torsion root-count/transitivity generalization `§44` already flagged as separately unbuilt) are in
+   hand, `LubinTateTowerStep.lean`'s `isEisensteinAt_shifted`/`irreducible_map_shifted` apply
+   directly — no further translation work, per this pass's finding.
+3. The degree computation `[K_n : K_{n-1}] = q` and the tower assembly `[K_n : K] = q^{n-1}(q-1)`
+   need a fresh root-count/generator/transitivity argument at each level, analogous to
+   `LubinTateSplittingFieldDegree.lean`'s `exists_generator_K_1`/`finrank_K_1_eq_residueCard_sub_one`
+   but for the *shifted* polynomial (no `divX` peel, no trivial `0`-root) — not attempted this pass.
