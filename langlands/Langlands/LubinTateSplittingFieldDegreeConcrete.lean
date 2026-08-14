@@ -125,6 +125,27 @@ theorem exists_finrank_K_1_eq_residueCard_sub_one (hOK : ∀ c : O, ‖algebraMa
   exact ⟨f, P, u, hf, hu, heq, hPdist, hPdeg,
     finrank_K_1_eq_residueCard_sub_one hOK hπ hπnorm hf hu heq hPdist hPdeg⟩
 
+/-- **The hypothesis package of `isGalois_K_1` is satisfiable too**, by the *same* data package: the
+Lubin-Tate series `f` and its Weierstrass factorization `f = P * u` exist, the resulting splitting
+field has degree `residueCard O - 1`, **and** `K_1 P / K` is a genuine Galois extension.
+
+`isGalois_K_1` takes exactly the argument list of `finrank_K_1_eq_residueCard_sub_one`, so its
+non-vacuity *could* be inferred from that theorem's certificate; this states it as its own
+conclusion instead, so the `IsGalois K (K_1 P)` term is actually built and type-checked at the
+witness rather than argued for on paper. -/
+theorem exists_isGalois_K_1 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1)
+    {π : O} (hπ : Irreducible π) (hπnorm : ‖algebraMap O K π‖ < 1) :
+    ∃ (f : O⟦X⟧) (P : O[X]) (u : O⟦X⟧), IsLubinTatePoly π (residueCard O) f ∧ IsUnit u ∧
+      f = (P : O⟦X⟧) * u ∧ P.IsDistinguishedAt (maximalIdeal O) ∧
+      P.natDegree = residueCard O ∧
+      Module.finrank K (K_1 (K := K) P) = residueCard O - 1 ∧
+      IsGalois K (K_1 (K := K) P) := by
+  obtain ⟨f, hf⟩ := exists_isLubinTatePoly hπ
+  obtain ⟨P, u, hPdist, hu, heq, hPdeg⟩ := exists_isWeierstrassFactorization_of_isLubinTatePoly hf
+  exact ⟨f, P, u, hf, hu, heq, hPdist, hPdeg,
+    finrank_K_1_eq_residueCard_sub_one hOK hπ hπnorm hf hu heq hPdist hPdeg,
+    isGalois_K_1 hOK hπ hπnorm hf hu heq hPdist hPdeg⟩
+
 end Abstract
 
 /-! ## The fully concrete instance: `O := ℤ_[p]`, `K := ℚ_[p]` -/
@@ -167,7 +188,41 @@ theorem exists_finrank_K_1_eq_padic_sub_one :
       PadicInt.irreducible_p (norm_algebraMap_padicInt_p_lt_one p)
   exact ⟨f, P, u, hf, hu, heq, hPdist, hPdeg, by rwa [residueCard_padicInt] at hfinrank⟩
 
+/-- **The Galois certificate at `O := ℤ_[p]`, `K := ℚ_[p]`, `π := p`, every hypothesis discharged**:
+the data `(f, P, u)` exists with `finrank ℚ_[p] (K_1 P) = p - 1` and `IsGalois ℚ_[p] (K_1 P)`. -/
+theorem exists_isGalois_K_1_padic :
+    ∃ (f : ℤ_[p]⟦X⟧) (P : ℤ_[p][X]) (u : ℤ_[p]⟦X⟧),
+      IsLubinTatePoly (p : ℤ_[p]) (residueCard ℤ_[p]) f ∧ IsUnit u ∧
+      f = (P : ℤ_[p]⟦X⟧) * u ∧ P.IsDistinguishedAt (maximalIdeal ℤ_[p]) ∧
+      P.natDegree = residueCard ℤ_[p] ∧
+      Module.finrank ℚ_[p] (K_1 (K := ℚ_[p]) P) = p - 1 ∧
+      IsGalois ℚ_[p] (K_1 (K := ℚ_[p]) P) := by
+  obtain ⟨f, P, u, hf, hu, heq, hPdist, hPdeg, hfinrank, hgal⟩ :=
+    exists_isGalois_K_1 (K := ℚ_[p]) (norm_algebraMap_padicInt_le_one p)
+      PadicInt.irreducible_p (norm_algebraMap_padicInt_p_lt_one p)
+  exact ⟨f, P, u, hf, hu, heq, hPdist, hPdeg, by rwa [residueCard_padicInt] at hfinrank, hgal⟩
+
 end Padic
+
+/-- **`IsGalois ℚ_[3] (K_1 P)` at a genuine degree-`2` witness, with no hypotheses at all.** The
+companion to `exists_finrank_K_1_eq_two_padic_three` for `isGalois_K_1`: at `p = 3` the extension
+`K_1 P / ℚ_[3]` is Galois *and* has degree `2` — so the `IsGalois` conclusion is certified at a
+witness where `K_1 P ≠ K`, not at a degenerate one. Built by instantiating `isGalois_K_1` directly
+at this data (via `exists_isGalois_K_1`), not inferred from `finrank_K_1_eq_residueCard_sub_one`'s
+certificate sharing its hypothesis list. -/
+theorem exists_isGalois_K_1_padic_three :
+    letI : Fact (Nat.Prime 3) := ⟨Nat.prime_three⟩
+    residueCard ℤ_[3] = 3 ∧
+    ∃ (f : ℤ_[3]⟦X⟧) (P : ℤ_[3][X]) (u : ℤ_[3]⟦X⟧),
+      IsLubinTatePoly (3 : ℤ_[3]) (residueCard ℤ_[3]) f ∧ IsUnit u ∧
+      f = (P : ℤ_[3]⟦X⟧) * u ∧ P.IsDistinguishedAt (maximalIdeal ℤ_[3]) ∧
+      P.natDegree = residueCard ℤ_[3] ∧
+      Module.finrank ℚ_[3] (K_1 (K := ℚ_[3]) P) = 2 ∧
+      IsGalois ℚ_[3] (K_1 (K := ℚ_[3]) P) := by
+  letI : Fact (Nat.Prime 3) := ⟨Nat.prime_three⟩
+  refine ⟨residueCard_padicInt 3, ?_⟩
+  obtain ⟨f, P, u, hf, hu, heq, hPdist, hPdeg, hfinrank, hgal⟩ := exists_isGalois_K_1_padic 3
+  exact ⟨f, P, u, by exact_mod_cast hf, hu, heq, hPdist, hPdeg, hfinrank, hgal⟩
 
 /-- **Non-vacuity at `residueCard O = 3`, with no hypotheses whatsoever.** At `p = 3` the package of
 `finrank_K_1_eq_residueCard_sub_one` is satisfied with `residueCard ℤ_[3] = 3` and
