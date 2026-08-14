@@ -15246,3 +15246,116 @@ LubinTateTowerStepConcrete.lean` used `K_1`'s. No new mathematical content is an
 `§52`'s `K_2`-generic instance package and this pass's `K_2`-specific `algebraMap`/norm-transport
 lemmas already supply — the remaining work is re-running the existing `K_1`-level argument one level
 up, not discovering new facts.
+
+## 56. Phase 2c, forty-ninth pass: **the "no new mathematical content" expectation for `O_{K_2}`
+residue-field preservation does NOT hold** — two independent real gaps found, one closed
+
+This pass gave `§55`'s "next step" a real, sustained attempt: actually instantiating the `K_1`-level
+residue-field-preservation machinery one level up at `O_{K_2}`. **The expectation of a mechanical
+repeat is wrong, in two independent ways**, both checked directly against Mathlib/repo lemma
+signatures (not assumed):
+
+### Gap 1 (closed this pass): `K_2 / K_1` is wildly ramified, so the `K_1`-level separability proof
+does not transfer
+
+`LocalField.residueField_map_bijective_of_isUniformizer` (`Langlands/TotallyRamifiedResidueField.lean`)
+needs `[Algebra.IsSeparable K L]` as a standing hypothesis. At `K_1`, this comes from
+`LubinTate.separable_map_divX_of_isLubinTatePoly` (`Langlands/LubinTateEisensteinQ.lean`), a
+**tame-ramification** argument requiring `IsUnit (Q.natDegree : O)` — true for `K_1/K`'s defining
+polynomial `Q := P.divX`, degree `q - 1` (residue image `-1 ≠ 0`, automatic). For `K_2/K_1`, the
+defining polynomial `P₂` (`Langlands/LubinTateTowerStep.lean`'s `isEisensteinAt_shifted`) has degree
+exactly `q` — **not** coprime to the residue characteristic (`q ≡ 0` there): `K_2/K_1` is wildly
+ramified, and the tame technique is genuinely inapplicable, not just inconveniently stated.
+Classically Lubin-Tate torsion extensions are separable at every level regardless of tameness, via a
+formal-group argument (the derivative of `[π]_F` is a unit everywhere, propagated along the group
+law) — building that is a substantially larger undertaking (the repo's formal-group-law files,
+`Langlands/LubinTateFormalGroupEval.lean` etc., do not yet supply a derivative-nonvanishing lemma of
+this shape) and was not attempted.
+
+**Closed instead, honestly, as a new explicit hypothesis**: `Langlands/LubinTateTowerStepSeparable.lean`
+adds `Algebra.IsSeparable (K_1 P) (K_2 P₂)` given `[CharZero K]`, via the free
+`Algebra.IsSeparable.of_integral` (every integral extension of a `CharZero` field is separable). This
+is genuine new content — not available for an equal-characteristic `O` (e.g. `𝔽_q[[T]]`) — but is a
+harmless restriction for the arc's own concrete instantiation (`v.adicCompletion F` for a number
+field `F`, always mixed characteristic). `nix develop -c lake build` clean, no `sorry`. Commit `4dd8b1e`.
+
+### Gap 2 (open, real, and larger): the "moving `ValuativeRel` base" machinery
+(`Langlands/TowerBundle.lean`/`Langlands/TowerBundleResidueField.lean`) cannot be reused for the
+`K_1 → K_2` hop without reproducing the norm diamond it was built to avoid
+
+`Langlands/TowerBundleResidueField.lean`'s `residueField_map_bijective_of_isUniformizer_of_valuationSubring`
+looked, at first read, like exactly the reusable "one hop at a moving base `M`" engine this task
+needs (`M := K_1 P`, `A := O_{K_1}`, `N := K_2 P₂`) — its docstring is written generically for
+exactly this reuse. **Checked directly, this does not work as a drop-in**: the theorem's `letI`
+chain rebuilds `M`'s entire `NontriviallyNormedField`/`ValuativeRel` bundle from scratch via
+`Valued.mk' A.valuation` + `Valued.toNontriviallyNormedField` + `ValuativeRel.ofValuation`. Applied
+at `M := K_1 P`, this produces a **second, non-defeq** `NontriviallyNormedField (K_1 P)` instance,
+distinct from the one already registered (`K_1.instNontriviallyNormedField`, the `spectralNorm`
+route that `K_2`'s own construction — `K_2.instNontriviallyNormedField`,
+`Langlands/LubinTateTowerStepSplittingField.lean` — is built against). This is exactly the instance
+diamond `TowerBundle.lean`'s own docstring already flags as a hazard ("mixing the two reproduces the
+instance diamond diagnosed in `ROADMAP.md`'s nineteenth-pass entry"); it was designed for a *fresh*
+intermediate field with no prior norm (e.g. a maximal unramified subextension), not for chaining
+through an *already-normed* tower step like `K_1 P`. Using it here would make every `hram`/`hgen`
+hypothesis about `spectralNorm (K_1 P) (K_2 P₂)` refer to the wrong (reconstructed) norm structure,
+silently incompatible with every other `K_2`-level fact already proved
+(`Langlands/LubinTateTowerStepRootConnect.lean`, `Langlands/LubinTateTowerStepDegree.lean`, all
+built against the real `K_2.instNontriviallyNormedField`).
+
+**The correct route, identified but not completed**: sidestep `ValuativeRel`/`spectralNorm` for the
+`O_{K_1} → O_{K_2}` monogenicity step entirely, using Mathlib's purely algebraic Eisenstein/
+discriminant machinery directly — the same engine `Langlands/TotallyRamifiedEisenstein.lean`'s
+`adjoin_eq_integralClosure_of_isUniformizer` uses internally
+(`Algebra.discr_mul_isIntegral_mem_adjoin` +
+`mem_adjoin_of_smul_prime_pow_smul_of_minpoly_isEisensteinAt`,
+`Mathlib.RingTheory.Polynomial.Eisenstein.IsIntegral`), but applied *directly* at `R := O_{K_1}`,
+`K := K_1 P`, `L := K_2 P₂`, with **no `ValuativeRel`/`NormedField` bundle on `K_1 P` required at
+all** — both Mathlib lemmas are stated for a bare integrally-closed domain `R` with fraction field
+`K` and a finite (separable, `Algebra.IsSeparable.of_integral` now supplies this given `[CharZero K]`,
+Gap 1) extension `L`, no valuation structure in sight. Concretely, `P₂` (already known Eisenstein at
+`maximalIdeal O_{K_1}`, `Langlands/LubinTateTowerStep.lean`'s `isEisensteinAt_shifted`) together with
+`β` (a root of `P₂`'s image generating `K_2` over `K_1 P`, already available from `§55`'s
+`adjoin_root_eq_top_K_2`/`finrank_K_2_eq_residueCard`) gives a `PowerBasis (K_1 P) (K_2 P₂)` with
+Eisenstein minimal polynomial, and the two Mathlib lemmas above should give `Algebra.adjoin O_{K_1}
+{β} = integralClosure O_{K_1} (K_2 P₂)` directly — monogenicity of `O_{K_2}` over `O_{K_1}`, without
+ever constructing a `ValuativeRel (K_1 P)` instance. `IsLocalRing.residueField_map_surjective_of_
+adjoin_singleton`/`residueFieldEquivOfAdjoinSingleton` (`Langlands/TotallyRamifiedResidueField.lean`'s
+**elementary engine**, which likewise needs no valuation theory — only `Algebra.adjoin A {π} = ⊤` for
+`π ∈ maximalIdeal B`) then closes residue-field preservation directly from that monogenicity fact.
+
+**Not completed this pass**: the `PowerBasis (K_1 P) (K_2 P₂)` construction (`β` needs to be
+transported from `IntermediateField.adjoin.powerBasis` on the sub-object `(K_1 P)⟮β⟯` up to a
+`PowerBasis` of the whole field `K_2 P₂`, via the `htop` equality and `PowerBasis.map`/an `AlgEquiv`),
+identifying `minpoly O_{K_1} β` with `P₂` itself (via `minpoly.isIntegrallyClosed_eq_field_fractions'`
+plus a monic-divides-monic-of-equal-degree argument), and threading `IsIntegral O_{K_1} β` and
+`IsScalarTower O_{K_1} (K_1 P) (K_2 P₂)` through whichever `Algebra O_{K_1} (K_2 P₂)` instance
+ordinary instance search resolves (checked to exist, via `K_2`'s `SplittingField` construction, but
+not yet confirmed compatible with the composite used elsewhere — the same kind of "instance found but
+not the right one" hazard `Langlands/LubinTateTowerStepSplittingField.lean`'s own docstring already
+flags for the `O → K_2` case, not yet re-checked for the `O_{K_1} → K_2` case). Each of these is a
+genuinely separate, boundable piece of Lean engineering — none is a further mathematical gap, unlike
+Gap 1 above — but assembling them is comparable in size to a fresh `TotallyRamifiedEisenstein.lean`/
+`MonogenicIntegralClosure.lean`-style pass (roughly the density of `§48`'s own multi-hundred-line
+build for `K_1`), not a mechanical substitution, and was not attempted further this pass to avoid
+either a rushed, error-prone multi-hundred-line commit or a `sorry`.
+
+### What did not happen this pass
+
+`K_3` was not attempted: it is strictly blocked behind `O_{K_2}`'s residue-field preservation (the
+`K_1`-level generator/uniformizer machinery `Langlands/LubinTateTowerStepConcrete.lean` needs one
+level up requires `O_{K_2}` to have the same residue field as `O` first). No `sorry` was introduced
+anywhere; both new files (`Langlands/LubinTateTowerStepSeparable.lean`) build clean.
+
+### Next step
+
+Whoever continues this: build the `PowerBasis (K_1 P) (K_2 P₂)` from `β` + `adjoin_root_eq_top_K_2`'s
+`htop`, confirm/construct the right `Algebra O_{K_1} (K_2 P₂)`/`IsScalarTower` instances (checking
+`#synth`, not assuming), identify `minpoly O_{K_1} β = P₂`, then apply
+`Algebra.discr_mul_isIntegral_mem_adjoin` + `mem_adjoin_of_smul_prime_pow_smul_of_minpoly_
+isEisensteinAt` to get `Algebra.adjoin O_{K_1} {β} = integralClosure O_{K_1} (K_2 P₂)`, then
+`IsLocalRing.residueField_map_surjective_of_adjoin_singleton`/`residueFieldEquivOfAdjoinSingleton` to
+close `ResidueField O_{K_1} ≃+* ResidueField O_{K_2}` (composing with `LubinTate.residueFieldEquiv_K_1`
+for the full `ResidueField O ≃+* ResidueField O_{K_2}` statement). Only then does `K_3` become
+attemptable, mirroring `Langlands/LubinTateTowerStepConcrete.lean`'s own `K_1 → K_2` construction —
+this time genuinely a repeat of established machinery, since Gap 2's engine (unlike the
+`ValuativeRel`-bundle route) has no reason to need yet another new argument at the next level.
