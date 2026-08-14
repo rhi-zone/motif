@@ -154,6 +154,84 @@ theorem eval_phiU_mem_adjoin (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (h�
     (hasSum_eval hbd hα) hmem
   rwa [Subalgebra.mem_toSubmodule, IntermediateField.mem_toSubalgebra] at hsum
 
+/-! ## The generator -/
+
+/-- **`K_1 P` is generated over `K` by a single nonzero `π`-torsion point.** There is an `α : K_1 P`
+which is (i) a root of `Qk := P.divX.map (algebraMap O K)`, (ii) a `π`-torsion point of the
+Lubin-Tate formal group, (iii) nonzero, and (iv) a primitive element: `K⟮α⟯ = ⊤`.
+
+This is steps 1, 3 and 4 of `finrank_K_1_eq_residueCard_sub_one`'s route (see this file's module
+docstring), factored out because everything downstream that needs to *name* the generator — in
+particular the `Gal(K_1/K) ≃* (ResidueField O)ˣ` construction, which sends a Galois automorphism
+`σ` to the unit `u` with `σ α = [u]_F(α)` — needs `α` itself, not just the degree it forces.
+
+`α` is a root of `Qk` because `Qk` splits in `K_1 P` by construction (`splits_divX_map_K_1`);
+nonzero because `Qk`'s constant term is an associate of `π ≠ 0`
+(`ne_zero_of_aeval_divX_map_eq_zero`); `π`-torsion by `mem_piTorsion_one_of_root_divX_map`; and
+generating because `K_1 P` is generated over `K` by `Qk`'s roots
+(`Polynomial.IsSplittingField.adjoin_rootSet`), each of which — by transitivity of the
+`(ResidueField O)ˣ`-action on nonzero `π`-torsion (`orbit_image_eq_piTorsion_sdiff_zero_K_1`) — is
+`[w]_F(α)` for some `w : Oˣ`, hence lies in `K⟮α⟯` by `eval_phiU_mem_adjoin`. -/
+theorem exists_generator_K_1
+    (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O} (hπ : Irreducible π)
+    (hπnorm : ‖algebraMap O K π‖ < 1) {f : O⟦X⟧} (hf : IsLubinTatePoly π (residueCard O) f)
+    {P : O[X]} {u : O⟦X⟧} (hu : IsUnit u) (heq : f = (P : O⟦X⟧) * u)
+    (hPdist : P.IsDistinguishedAt (maximalIdeal O)) (hPdeg : P.natDegree = residueCard O) :
+    ∃ α : K_1 (K := K) P,
+      Polynomial.aeval α (P.divX.map (algebraMap O K)) = 0 ∧
+      α ∈ piTorsion (K := K_1 (K := K) P) hπ hf 1 ∧ α ≠ 0 ∧
+      (K⟮α⟯ : IntermediateField K (K_1 (K := K) P)) = ⊤ := by
+  classical
+  have hPdeg2 : 2 ≤ P.natDegree := hPdeg ▸ two_le_residueCard
+  obtain ⟨hQmonic, hQweak, hQdeg, hQ0assoc⟩ :=
+    divX_isWeaklyEisensteinAt_and_associated hu heq hf.1 hf.2.1 hPdist hPdeg2
+  set Qk : K[X] := P.divX.map (algebraMap O K) with hQkdef
+  have hmapne : (P.divX.map (algebraMap O (K_1 (K := K) P))) ≠ 0 := (hQmonic.map _).ne_zero
+  have hmapdeg : (P.divX.map (algebraMap O (K_1 (K := K) P))).natDegree = P.divX.natDegree :=
+    hQmonic.natDegree_map _
+  have hdegne : (P.divX.map (algebraMap O (K_1 (K := K) P))).degree ≠ 0 :=
+    (Polynomial.natDegree_pos_iff_degree_pos.mp (by rw [hmapdeg]; exact hQdeg)).ne'
+  obtain ⟨α, hαeval⟩ := (splits_divX_map_K_1 (K := K) P).exists_eval_eq_zero hdegne
+  have hαroot : Polynomial.aeval α Qk = 0 := by rw [hQkdef, aeval_K_divX_eq_eval_K_1]; exact hαeval
+  have hα0 : α ≠ 0 := ne_zero_of_aeval_divX_map_eq_zero hπ hf hu heq hPdist hPdeg hαroot
+  have hmemroots : ∀ {β : K_1 (K := K) P},
+      Polynomial.aeval β Qk = 0 → β ∈ piTorsion (K := K_1 (K := K) P) hπ hf 1 := by
+    intro β hβ
+    refine mem_piTorsion_one_of_root_divX_map (K_1.hOK_transport P hOK) hπ
+      (K_1.hπnorm_transport P hπnorm) hf hu heq hPdist hPdeg2 ?_
+    rw [Multiset.mem_toFinset, Polynomial.mem_roots hmapne, Polynomial.IsRoot.def,
+      ← aeval_K_divX_eq_eval_K_1]
+    exact hβ
+  have hαmem : α ∈ piTorsion (K := K_1 (K := K) P) hπ hf 1 := hmemroots hαroot
+  refine ⟨α, hαroot, hαmem, hα0, ?_⟩
+  have horbit := orbit_image_eq_piTorsion_sdiff_zero_K_1 (K := K) hOK hπ hπnorm hf hu heq hPdist
+    hPdeg hαmem hα0
+  have hroots : (Qk.rootSet (K_1 (K := K) P)) ⊆
+      ((K⟮α⟯ : IntermediateField K (K_1 (K := K) P)).toSubalgebra : Set (K_1 (K := K) P)) := by
+    intro β hβ
+    obtain ⟨-, hβroot⟩ := Polynomial.mem_rootSet'.mp hβ
+    have hβmem : β ∈ piTorsion (K := K_1 (K := K) P) hπ hf 1 := hmemroots hβroot
+    have hβ0 : β ≠ 0 := ne_zero_of_aeval_divX_map_eq_zero hπ hf hu heq hPdist hPdeg hβroot
+    have hβsdiff : β ∈ piTorsion (K := K_1 (K := K) P) hπ hf 1 \ {0} := ⟨hβmem, hβ0⟩
+    obtain ⟨y, hyorb, hy⟩ := horbit.symm ▸ hβsdiff
+    obtain ⟨u', hu'⟩ := hyorb
+    have hyval : (y.1 : K_1 (K := K) P) =
+        eval (phiU hπ hf (Function.surjInv residueUnitsMap_surjective u'))
+          ((⟨α, hαmem⟩ : ↥(piTorsion (K := K_1 (K := K) P) hπ hf 1)) : K_1 (K := K) P) := by
+      rw [← hu']
+      exact coe_residuePiTorsion_smul (K_1.hOK_transport P hOK) hπ
+        (K_1.hπnorm_transport P hπnorm) hf hu heq hPdist hPdeg2 u' ⟨α, hαmem⟩
+    have : β = eval (phiU hπ hf (Function.surjInv residueUnitsMap_surjective u')) α := by
+      rw [← hy, hyval]
+    rw [SetLike.mem_coe, IntermediateField.mem_toSubalgebra, this]
+    exact eval_phiU_mem_adjoin hOK hπ hf P _ hαmem.1
+  have hle : (⊤ : Subalgebra K (K_1 (K := K) P)) ≤
+      (K⟮α⟯ : IntermediateField K (K_1 (K := K) P)).toSubalgebra := by
+    rw [← Polynomial.IsSplittingField.adjoin_rootSet (K_1 (K := K) P) Qk]
+    exact Algebra.adjoin_le hroots
+  refine eq_top_iff.mpr fun x _ ↦ ?_
+  exact (IntermediateField.mem_toSubalgebra _ x).mp (hle Algebra.mem_top)
+
 /-! ## The degree -/
 
 /-- **`Module.finrank K (K_1 P) = residueCard O - 1`** — the headline degree of the Lubin-Tate
@@ -190,61 +268,14 @@ theorem finrank_K_1_eq_residueCard_sub_one
     Polynomial.irreducible_map_of_isWeaklyEisensteinAt_associated hπ hQmonic hQweak hQdeg hQ0assoc
   have hQkdeg : Qk.natDegree = residueCard O - 1 := by
     rw [hQkdef, hQmonic.natDegree_map, Polynomial.natDegree_divX_eq_natDegree_tsub_one, hPdeg]
-  -- The polynomial `Q`'s image in `K_1`, and the fact that it is nonzero.
-  have hmapdeg : (P.divX.map (algebraMap O (K_1 (K := K) P))).natDegree = P.divX.natDegree :=
-    hQmonic.natDegree_map _
-  have hmapne : (P.divX.map (algebraMap O (K_1 (K := K) P))) ≠ 0 := (hQmonic.map _).ne_zero
-  -- Step 1: a nonzero root `α` of `Qk` in `K_1 P`.
-  have hdegne : (P.divX.map (algebraMap O (K_1 (K := K) P))).degree ≠ 0 :=
-    (Polynomial.natDegree_pos_iff_degree_pos.mp (by rw [hmapdeg]; exact hQdeg)).ne'
-  obtain ⟨α, hαeval⟩ := (splits_divX_map_K_1 (K := K) P).exists_eval_eq_zero hdegne
-  have hαroot : Polynomial.aeval α Qk = 0 := by rw [hQkdef, aeval_K_divX_eq_eval_K_1]; exact hαeval
-  have hα0 : α ≠ 0 := ne_zero_of_aeval_divX_map_eq_zero hπ hf hu heq hPdist hPdeg hαroot
-  -- `α` is a nonzero `π`-torsion point of `K_1 P`.
-  have hmemroots : ∀ {β : K_1 (K := K) P},
-      Polynomial.aeval β Qk = 0 → β ∈ piTorsion (K := K_1 (K := K) P) hπ hf 1 := by
-    intro β hβ
-    refine mem_piTorsion_one_of_root_divX_map (K_1.hOK_transport P hOK) hπ
-      (K_1.hπnorm_transport P hπnorm) hf hu heq hPdist hPdeg2 ?_
-    rw [Multiset.mem_toFinset, Polynomial.mem_roots hmapne, Polynomial.IsRoot.def,
-      ← aeval_K_divX_eq_eval_K_1]
-    exact hβ
-  have hαmem : α ∈ piTorsion (K := K_1 (K := K) P) hπ hf 1 := hmemroots hαroot
+  -- Steps 1, 3, 4: a nonzero `π`-torsion root `α` of `Qk` generating `K_1 P` over `K`.
+  obtain ⟨α, hαroot, -, -, htop⟩ :=
+    exists_generator_K_1 hOK hπ hπnorm hf hu heq hPdist hPdeg
   -- Step 2: `Qk` is `α`'s minimal polynomial, so `K⟮α⟯` has degree `q - 1`.
   have hαint : IsIntegral K α := ⟨Qk, hQkmonic, hαroot⟩
   have hmin : Qk = minpoly K α := minpoly.eq_of_irreducible_of_monic hQkirr hαroot hQkmonic
   have hfin : Module.finrank K K⟮α⟯ = residueCard O - 1 := by
     rw [IntermediateField.adjoin.finrank hαint, ← hmin, hQkdeg]
-  -- Step 3: every root of `Qk` in `K_1 P` lies in `K⟮α⟯`.
-  have horbit := orbit_image_eq_piTorsion_sdiff_zero_K_1 (K := K) hOK hπ hπnorm hf hu heq hPdist
-    hPdeg hαmem hα0
-  have hroots : (Qk.rootSet (K_1 (K := K) P)) ⊆
-      ((K⟮α⟯ : IntermediateField K (K_1 (K := K) P)).toSubalgebra : Set (K_1 (K := K) P)) := by
-    intro β hβ
-    obtain ⟨-, hβroot⟩ := Polynomial.mem_rootSet'.mp hβ
-    have hβmem : β ∈ piTorsion (K := K_1 (K := K) P) hπ hf 1 := hmemroots hβroot
-    have hβ0 : β ≠ 0 := ne_zero_of_aeval_divX_map_eq_zero hπ hf hu heq hPdist hPdeg hβroot
-    have hβsdiff : β ∈ piTorsion (K := K_1 (K := K) P) hπ hf 1 \ {0} := ⟨hβmem, hβ0⟩
-    obtain ⟨y, hyorb, hy⟩ := horbit.symm ▸ hβsdiff
-    obtain ⟨u', hu'⟩ := hyorb
-    have hyval : (y.1 : K_1 (K := K) P) =
-        eval (phiU hπ hf (Function.surjInv residueUnitsMap_surjective u'))
-          ((⟨α, hαmem⟩ : ↥(piTorsion (K := K_1 (K := K) P) hπ hf 1)) : K_1 (K := K) P) := by
-      rw [← hu']
-      exact coe_residuePiTorsion_smul (K_1.hOK_transport P hOK) hπ
-        (K_1.hπnorm_transport P hπnorm) hf hu heq hPdist hPdeg2 u' ⟨α, hαmem⟩
-    have : β = eval (phiU hπ hf (Function.surjInv residueUnitsMap_surjective u')) α := by
-      rw [← hy, hyval]
-    rw [SetLike.mem_coe, IntermediateField.mem_toSubalgebra, this]
-    exact eval_phiU_mem_adjoin hOK hπ hf P _ hαmem.1
-  -- Step 4: hence `K⟮α⟯ = ⊤`.
-  have hle : (⊤ : Subalgebra K (K_1 (K := K) P)) ≤
-      (K⟮α⟯ : IntermediateField K (K_1 (K := K) P)).toSubalgebra := by
-    rw [← Polynomial.IsSplittingField.adjoin_rootSet (K_1 (K := K) P) Qk]
-    exact Algebra.adjoin_le hroots
-  have htop : (K⟮α⟯ : IntermediateField K (K_1 (K := K) P)) = ⊤ := by
-    refine eq_top_iff.mpr fun x _ ↦ ?_
-    exact (IntermediateField.mem_toSubalgebra _ x).mp (hle Algebra.mem_top)
   -- Step 5: conclude.
   rw [← IntermediateField.finrank_top' (F := K) (E := K_1 (K := K) P), ← htop]
   exact hfin
