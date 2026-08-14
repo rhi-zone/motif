@@ -23,13 +23,23 @@ point, i.e. `β' = F_π(β, t)` for some `t ∈ piTorsion hπ hf 1` (the kernel 
   `eq_of_FPiEval_eq_zero_left` by the standard group-theoretic argument (a homomorphism sends
   inverses to inverses, via uniqueness of the additive inverse), not from any new formal-power-series
   identity.
+* `eq_of_FPiEval_eq_left` : **`F_π`-cancellation, general form**: `F_π(a, b) = F_π(a, c) → b = c`,
+  for `a, b, c` in the maximal ideal. Generalizes `eq_of_FPiEval_eq_zero_left` (which only handles
+  the case the common value is `0`) by the same left-translation-by-`i_{F_π}(a)` computation.
+* `exists_piTorsion_translate_of_eval_f_eq` : **transitivity of the translation action on roots of
+  `f(X) = α`.** If `eval f β = eval f β'` (both `β, β'` in the maximal ideal), there is `t' ∈
+  piTorsion hπ hf 1` with `β' = F_π(β, t')` — i.e. every pair of roots of `f(X) = α` differs by
+  *some* `π`-torsion translate, directly, via `sub_mem_piTorsion_one_of_eval_f_eq` applied to the
+  pair `(β', β)` followed by the same associativity/zero-law computation
+  `eq_of_FPiEval_eq_zero_left`'s proof uses. This closes item (5) of `ROADMAP.md` §50's Target-1
+  chain (the transitivity half; freeness is `eq_of_FPiEval_eq_left` above) — with **no
+  cardinality-matching argument needed**, unlike the level-`1` `(O/π)ˣ`-orbit-counting route.
 
 ## What this does not do
 
-This is item (4) of `ROADMAP.md` §50's six-item Target-1 chain ("an `AddGroup`/torsion-translation
-action on roots of `f(X) - α`"). It does **not** supply item (5) (transitivity/orbit-counting for
-that action — the `π`-torsion analogue of `§44`'s counting argument) or item (6) (reassembly into
-`K_1⟮β⟯ = ⊤`). Both remain open.
+This is items (4) and (5) of `ROADMAP.md` §50's six-item Target-1 chain ("an
+`AddGroup`/torsion-translation action on roots of `f(X) - α`", and its transitivity/freeness). It
+does **not** supply item (6) (reassembly into `K_1⟮β⟯ = ⊤`), which remains open.
 -/
 
 @[expose] public section
@@ -123,6 +133,47 @@ theorem sub_mem_piTorsion_one_of_eval_f_eq (hOK : ∀ c : O, ‖algebraMap O K c
   rw [iter_one, eval_f_FPiEval hOK hπ hf hβ hInvβ', eval_f_PhiInv_eq_PhiInv_eval_f hOK hπ hf hβ',
     heq]
   exact FPiEval_PhiInv_eq_zero hOK hπ hf hfβ'
+
+/-- **`F_π`-cancellation, general form**: `F_π(a, b) = F_π(a, c) → b = c`, for `a, b, c` in the
+maximal ideal. Generalizes `eq_of_FPiEval_eq_zero_left` (the case the common value is `0`) by
+translating both sides by `i_{F_π}(a)` on the left and simplifying with `FPiEval_assoc`,
+`FPiEval_PhiInv_eq_zero'`, `FPiEval_zero`. -/
+theorem eq_of_FPiEval_eq_left (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (hπ : Irreducible π)
+    (hf : IsLubinTatePoly π (residueCard O) f) {a b c : K} (ha : ‖a‖ < 1) (hb : ‖b‖ < 1)
+    (hc : ‖c‖ < 1) (habc : FPiEval hπ hf a b = FPiEval hπ hf a c) : b = c := by
+  have hPhiInvBound : ∀ n, ‖algebraMap O K (PowerSeries.coeff n (PhiInv hπ hf))‖ ≤ 1 :=
+    fun n ↦ hOK _
+  have hInvA : ‖eval (PhiInv hπ hf) a‖ < 1 :=
+    lt_of_le_of_lt (norm_eval_le hPhiInvBound (by simp [constantCoeff_PhiInv hπ hf]) ha) ha
+  have key : ∀ x : K, ‖x‖ < 1 → FPiEval hπ hf (eval (PhiInv hπ hf) a) (FPiEval hπ hf a x) = x := by
+    intro x hx
+    rw [← FPiEval_assoc hOK hπ hf hInvA ha hx, FPiEval_PhiInv_eq_zero' hOK hπ hf ha,
+      FPiEval_zero hOK hπ hf hx]
+  rw [← key b hb, ← key c hc, habc]
+
+/-- **Transitivity of the translation action on roots of `f(X) = α`.** If `eval f β = eval f β'`
+(both `β, β'` in the maximal ideal), there is `t' ∈ piTorsion hπ hf 1` with `β' = F_π(β, t')`.
+Applies `sub_mem_piTorsion_one_of_eval_f_eq` to the pair `(β', β)` to get `t' := F_π(β',
+i_{F_π}(β)) ∈ piTorsion hπ hf 1`, then the same associativity/zero-law computation
+`eq_of_FPiEval_eq_zero_left`'s proof uses gives `F_π(t', β) = β'`, and `FPiEval_comm` rewrites this
+to `β' = F_π(β, t')`. No cardinality-matching argument is needed. -/
+theorem exists_piTorsion_translate_of_eval_f_eq (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1)
+    (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f) {β β' : K} (hβ : ‖β‖ < 1)
+    (hβ' : ‖β'‖ < 1) (heq : eval f β = eval f β') :
+    ∃ t' ∈ piTorsion (K := K) hπ hf 1, β' = FPiEval hπ hf β t' := by
+  set t' := FPiEval hπ hf β' (eval (PhiInv hπ hf) β) with ht'def
+  have ht'mem : t' ∈ piTorsion (K := K) hπ hf 1 :=
+    sub_mem_piTorsion_one_of_eval_f_eq hOK hπ hf hβ' hβ heq.symm
+  refine ⟨t', ht'mem, ?_⟩
+  have hPhiInvBound : ∀ n, ‖algebraMap O K (PowerSeries.coeff n (PhiInv hπ hf))‖ ≤ 1 :=
+    fun n ↦ hOK _
+  have hInvβ : ‖eval (PhiInv hπ hf) β‖ < 1 :=
+    lt_of_le_of_lt (norm_eval_le hPhiInvBound (by simp [constantCoeff_PhiInv hπ hf]) hβ) hβ
+  have ht'norm : ‖t'‖ < 1 := ht'mem.1
+  have hstep : FPiEval hπ hf t' β = β' := by
+    rw [ht'def, FPiEval_assoc hOK hπ hf hβ' hInvβ hβ, FPiEval_PhiInv_eq_zero' hOK hπ hf hβ,
+      FPiEval_zero' hOK hπ hf hβ']
+  rw [← hstep, FPiEval_comm hOK hπ hf ht'norm hβ]
 
 end LubinTate
 

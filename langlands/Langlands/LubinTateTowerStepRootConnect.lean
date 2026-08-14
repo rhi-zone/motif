@@ -6,6 +6,7 @@ import Langlands.LubinTateTowerStepSplittingField
 import Langlands.NonarchimedeanPowerSeriesEvalAevalMap
 import Langlands.EisensteinRootNorm
 import Langlands.LubinTateEisensteinQ
+import Langlands.LubinTateRootTranslation
 
 /-!
 # Connecting `eval_map_towerHom` to the roots of `P₂`
@@ -105,6 +106,44 @@ variable {P₂ : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSub
   {α' : ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))}
   {u₂ : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)))⟦X⟧}
 
+/-- **`‖α'‖ < 1` in `K_2`, discharged from the standing hypothesis set.** `exists_irreducible_
+uniformizer_K_1`'s `hram : ‖(ϖ:K)‖ = spectralNorm K (K_1 P) α ^ (minpoly K α).natDegree` together
+with the standing `hπnorm : ‖algebraMap O K π‖ < 1` (via `hϖnorm`) force `‖(ϖ:K)‖ < 1`; since the
+exponent `(minpoly K α).natDegree` is positive (`minpoly.natDegree_pos`, `α` integral over `K` as
+`K_1 P` is finite-dimensional over `K`), `pow_lt_one_iff_of_nonneg` forces `spectralNorm K (K_1 P) α
+< 1`. Transported to `K_2` by `K_2.norm_eq_spectralNorm` + `spectralNorm_extends` (the `K_1 P → K_2`
+hop) composed with `K_1.norm_eq_spectralNorm` + `spectralNorm_extends` (the `K → K_1 P` hop, run in
+reverse) — the same two-hop pattern `K_2.hOK_transport`/`K_2.norm_le_one_of_mem_O_K1` already use —
+and `IsScalarTower.algebraMap_apply` to identify `algebraMap _ K_2 α'` with `algebraMap (K_1 P) K_2
+α` via `hα'coe`. -/
+theorem hα'norm_lt_one_of_hram (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O}
+    (hπ : Irreducible π) (hπnorm : ‖algebraMap O K π‖ < 1) {f : O⟦X⟧}
+    (hf : IsLubinTatePoly π (residueCard O) f) {P : O[X]} {u : O⟦X⟧} (hu : IsUnit u)
+    (heq : f = (P : O⟦X⟧) * u) (hPdist : P.IsDistinguishedAt (maximalIdeal O))
+    (hPdeg : P.natDegree = residueCard O)
+    {ϖ : ↥(ValuativeRel.valuation K).valuationSubring}
+    (hϖnorm : ‖(ϖ : K)‖ = ‖algebraMap O K π‖) {α : K_1 (K := K) P}
+    (hα : Polynomial.aeval α (P.divX.map (algebraMap O K)) = 0)
+    [FiniteDimensional K (K_1 (K := K) P)]
+    {α' : ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))}
+    (hα'coe : (α' : K_1 (K := K) P) = α)
+    {P₂ : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
+      (K_1 (K := K) P)))[X]} :
+    ‖algebraMap _ (K_2 (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1 := by
+  have hram := norm_eq_spectralNorm_pow_natDegree_K_1 hOK hπ hf hu heq hPdist hPdeg hϖnorm hα
+  have hϖlt : ‖(ϖ : K)‖ < 1 := by rw [hϖnorm]; exact hπnorm
+  rw [hram] at hϖlt
+  have hdegpos : 0 < (minpoly K α).natDegree :=
+    minpoly.natDegree_pos (IsIntegral.of_finite K α)
+  have hspeclt : spectralNorm K (K_1 (K := K) P) α < 1 :=
+    (pow_lt_one_iff_of_nonneg (spectralNorm_nonneg α) hdegpos.ne').mp hϖlt
+  have hcoe : algebraMap _ (K_2 (K' := K_1 (K := K) P) P₂) (α' : _) =
+      algebraMap (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂) α := by
+    rw [← hα'coe]
+    exact IsScalarTower.algebraMap_apply _ (K_1 (K := K) P) _ α'
+  rw [hcoe, K_2.norm_eq_spectralNorm, spectralNorm_extends, K_1.norm_eq_spectralNorm]
+  exact hspeclt
+
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] [IsFractionRing O K] in
 /-- **A root of `P₂`'s image (via the `K_1 P` polynomial route) lies in `K_2`'s open unit ball.**
 Via `Langlands.EisensteinRootNorm`'s ultrametric-only Eisenstein-polygon computation — no
@@ -189,6 +228,41 @@ theorem eval_f_eq_of_aeval_P₂_eq_zero (hOK : ∀ c : O, ‖algebraMap O K c‖
     rw [← hα'coe]
     exact IsScalarTower.algebraMap_apply _ (K_1 (K := K) P) _ α'
   rw [hmapeq, hfinal]
+
+/-! ## Transitivity of the translation action on roots of `P₂`'s image -/
+
+/-- **Transitivity of the `piTorsion hπ hf 1` translation action on roots of `P₂`'s image, at `K :=
+K_2`.** For `β, β'` both roots (via the `K_1 P` polynomial route), there is `t' ∈ piTorsion hπ hf 1`
+(evaluated inside `K_2`) with `β' = F_π(β, t')`. Both `eval f β` and `eval f β'` equal `algebraMap
+(K_1 P) K_2 α` by `eval_f_eq_of_aeval_P₂_eq_zero` (applied to each root separately), hence to each
+other; `Langlands.LubinTateRootTranslation.exists_piTorsion_translate_of_eval_f_eq` (the *generic*
+transitivity fact, needing no cardinality-matching) then supplies `t'` directly. This is item (5) of
+`ROADMAP.md`'s tower-step chain, instantiated at `K := K_2` — no separate "well-definedness converse"
+of `eval_f_eq_of_aeval_P₂_eq_zero` is needed: the argument only ever uses its already-proved forward
+direction, applied once to each of `β` and `β'`. -/
+theorem exists_piTorsion_translate_of_aeval_P₂_eq_zero (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1)
+    {π : O} (hπ : Irreducible π) {f : O⟦X⟧} (hf : IsLubinTatePoly π (residueCard O) f)
+    (_hu₂ : IsUnit u₂) (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
+    (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
+    (hassoc : Associated (P₂.coeff 0) α') (hdeg : 0 < P₂.natDegree)
+    (hα'norm : ‖algebraMap _ (K_2 (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    {α : K_1 (K := K) P} (hα'coe : (α' : K_1 (K := K) P) = α)
+    {β β' : K_2 (K' := K_1 (K := K) P) P₂}
+    (hβroot : Polynomial.aeval β (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0)
+    (hβ'root : Polynomial.aeval β' (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0) :
+    letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+    ∃ t' ∈ piTorsion (K := K_2 (K' := K_1 (K := K) P) P₂) hπ hf 1,
+      β' = FPiEval hπ hf β t' := by
+  letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+  have h1 := eval_f_eq_of_aeval_P₂_eq_zero hOK _hu₂ heq₂ hα'irr hP₂dist hassoc hdeg hα'norm hα'coe
+    hβroot
+  have h2 := eval_f_eq_of_aeval_P₂_eq_zero hOK _hu₂ heq₂ hα'irr hP₂dist hassoc hdeg hα'norm hα'coe
+    hβ'root
+  have hβnorm : ‖β‖ < 1 := norm_lt_one_of_aeval_P₂_eq_zero hα'irr hP₂dist hassoc hdeg hα'norm hβroot
+  have hβ'norm : ‖β'‖ < 1 :=
+    norm_lt_one_of_aeval_P₂_eq_zero hα'irr hP₂dist hassoc hdeg hα'norm hβ'root
+  exact exists_piTorsion_translate_of_eval_f_eq (K_2.hOK_transport (K := K) (P := P) P₂ hOK) hπ hf
+    hβnorm hβ'norm (h1.trans h2.symm)
 
 end LubinTate
 
