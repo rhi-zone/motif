@@ -18,6 +18,7 @@ import Langlands.FiniteIndexSubgroupsZ
 import Langlands.HeightOneSpectrumRationalPrimeTower
 import Langlands.HenselianResidueLift
 import Langlands.IdeleGroup
+import Langlands.IntegralExtensionLocalRing
 import Langlands.LubinTate
 import Langlands.LubinTateEisensteinQ
 import Langlands.LubinTateFieldTower
