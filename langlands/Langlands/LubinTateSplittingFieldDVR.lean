@@ -5,6 +5,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import Langlands.ValueGroupCyclic
 import Langlands.LubinTateSplittingField
 import Langlands.NormMap
+import Langlands.MonogenicIntegralClosure
+import Langlands.TowerValuationSubring
+import Langlands.TowerBundle
 
 /-!
 # `O_{K_1}` is a discrete valuation ring
@@ -55,6 +58,7 @@ needs next, but plain discreteness does not.
 noncomputable section
 
 open ValuativeRel
+open scoped WithZero
 
 /-- **The closed-unit-ball valuation subring of a finite extension of a complete
 discretely-valued field is a discrete valuation ring**, given the extension's norm restricts to the
@@ -91,6 +95,60 @@ theorem NormedField.isDiscreteValuationRing_valuationSubring_of_finiteDimensiona
   rw [hA]
   exact ValuationSubring.isDiscreteValuationRing_of_comap_eq A hcomap
 
+/-- **`↥(NormedField.valuation (K := L)).valuationSubring` is Henselian**, for `L / K` finite
+separable, `K` complete-discretely-valued in the `ValuativeRel` sense with finite residue field, and
+`L`'s norm extending `K`'s.
+
+Identifies `A := (NormedField.valuation (K := L)).valuationSubring` with `𝒪_L :=
+LocalField.integralClosureValuationSubring 𝒪[K] L` via uniqueness of the valuation subring
+extension (`LocalField.valuationSubring_eq_of_comap_eq`, `Langlands/HenselianValuation.lean`) — both
+comap to `𝒪[K]`, `A` by the same computation as
+`NormedField.isDiscreteValuationRing_valuationSubring_of_finiteDimensional`, `𝒪_L` by
+`LocalField.comap_integralClosureValuationSubring` (`Langlands/TowerValuationSubring.lean`). This
+transports `𝒪_L`'s module-finiteness over `𝒪[K]` (`LocalField.finite`, needing separability) across
+to `A`, giving `Finite (ResidueField A)` via `IsLocalRing.ResidueField.finite_of_finite`; a `RankOne
+A.valuation` instance comes from `LocalField.exists_rankOne_compatible`
+(`Langlands/HenselianValuation.lean`); `Langlands/TowerBundle.lean`'s
+`henselianLocalRing_of_comap_eq` assembles these into `HenselianLocalRing ↥A`. -/
+theorem NormedField.henselianLocalRing_valuationSubring_of_finiteDimensional
+    {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K]
+    [(NormedField.valuation (K := K)).Compatible] [CompleteSpace K]
+    [IsDiscreteValuationRing ↥(ValuativeRel.valuation K).valuationSubring]
+    [Finite (IsLocalRing.ResidueField ↥(ValuativeRel.valuation K).valuationSubring)]
+    {L : Type*} [NontriviallyNormedField L] [IsUltrametricDist L] [Algebra K L]
+    [FiniteDimensional K L] [Algebra.IsSeparable K L]
+    (hnorm : ∀ x : K, ‖algebraMap K L x‖ = ‖x‖) :
+    HenselianLocalRing ↥(NormedField.valuation (K := L)).valuationSubring := by
+  set 𝒪 : ValuationSubring K := (ValuativeRel.valuation K).valuationSubring with h𝒪
+  set A : ValuationSubring L := (NormedField.valuation (K := L)).valuationSubring with hAdef
+  have hcomapA : A.comap (algebraMap K L) = 𝒪 := by
+    have hsub : 𝒪 = (NormedField.valuation (K := K)).valuationSubring := by
+      have hequiv : (ValuativeRel.valuation K).IsEquiv (NormedField.valuation (K := K)) :=
+        ValuativeRel.isEquiv _ _
+      exact (Valuation.isEquiv_iff_valuationSubring _ _).mp hequiv
+    rw [hAdef, hsub]
+    ext x
+    have hnn : ‖algebraMap K L x‖₊ = ‖x‖₊ :=
+      NNReal.coe_injective (by rw [coe_nnnorm, coe_nnnorm, hnorm])
+    rw [ValuationSubring.mem_comap, Valuation.mem_valuationSubring_iff,
+      Valuation.mem_valuationSubring_iff, NormedField.valuation_apply,
+      NormedField.valuation_apply, hnn]
+  haveI : Algebra.IsAlgebraic K L := Algebra.IsAlgebraic.of_finite K L
+  have hcomapI : (LocalField.integralClosureValuationSubring ↥𝒪 L).comap (algebraMap K L) = 𝒪 :=
+    LocalField.comap_integralClosureValuationSubring K L
+  have hAeq : A = LocalField.integralClosureValuationSubring ↥𝒪 L :=
+    LocalField.valuationSubring_eq_of_comap_eq K hcomapA hcomapI
+  haveI hmodfin : Module.Finite ↥𝒪 ↥(LocalField.integralClosureValuationSubring ↥𝒪 L) :=
+    LocalField.finite (R := ↥𝒪) (M := L) K
+  haveI hlocalhom :
+      IsLocalHom (algebraMap ↥𝒪 ↥(LocalField.integralClosureValuationSubring ↥𝒪 L)) :=
+    inferInstanceAs (IsLocalHom (algebraMap ↥𝒪 ↥(integralClosure ↥𝒪 L)))
+  haveI hfinA : Finite (IsLocalRing.ResidueField ↥A) := by
+    rw [hAeq]
+    exact IsLocalRing.ResidueField.finite_of_finite (R := ↥𝒪) ‹_›
+  obtain ⟨hR, -⟩ := LocalField.exists_rankOne_compatible K A hcomapA
+  exact LocalField.henselianLocalRing_of_comap_eq K A hcomapA hR hfinA
+
 namespace LubinTate
 
 open IsLocalRing Polynomial
@@ -112,6 +170,20 @@ transport `K`'s own norm hypotheses down to `K_1`. -/
 theorem isDiscreteValuationRing_valuationSubring_K_1 (P : O[X]) :
     IsDiscreteValuationRing ↥(NormedField.valuation (K := K_1 (K := K) P)).valuationSubring :=
   NormedField.isDiscreteValuationRing_valuationSubring_of_finiteDimensional
+    (K := K) (L := K_1 (K := K) P) fun x => by
+      rw [K_1.norm_eq_spectralNorm, spectralNorm_extends]
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] [IsFractionRing O K] in
+/-- **`O_{K_1}` is Henselian**, given `K_1 P / K` is separable (e.g. from `isGalois_K_1`,
+`Langlands/LubinTateSplittingFieldDegree.lean`, at the arc's usual hypothesis package) and `𝒪[K]`
+has finite residue field. Applies
+`NormedField.henselianLocalRing_valuationSubring_of_finiteDimensional` the same way
+`isDiscreteValuationRing_valuationSubring_K_1` applies its discreteness counterpart. -/
+theorem henselianLocalRing_valuationSubring_K_1
+    [Finite (IsLocalRing.ResidueField ↥(ValuativeRel.valuation K).valuationSubring)]
+    (P : O[X]) [Algebra.IsSeparable K (K_1 (K := K) P)] :
+    HenselianLocalRing ↥(NormedField.valuation (K := K_1 (K := K) P)).valuationSubring :=
+  NormedField.henselianLocalRing_valuationSubring_of_finiteDimensional
     (K := K) (L := K_1 (K := K) P) fun x => by
       rw [K_1.norm_eq_spectralNorm, spectralNorm_extends]
 
@@ -138,5 +210,46 @@ theorem isDiscreteValuationRing_valuationSubring_K_1_of_adicCompletion
     IsDiscreteValuationRing
       ↥(NormedField.valuation (K := K_1 (K := v.adicCompletion F) P)).valuationSubring :=
   isDiscreteValuationRing_valuationSubring_K_1 P
+
+/-- **`(ValuativeRel.valuation (v.adicCompletion F)).valuationSubring = v.adicCompletionIntegers
+F`**, as `ValuationSubring`s. Both are `Valued.v.valuationSubring` for the same ambient `Valued`
+structure: `v.adicCompletionIntegers F` by Mathlib's own definition
+(`IsDedekindDomain.HeightOneSpectrum.adicCompletionIntegers`), and
+`(ValuativeRel.valuation (v.adicCompletion F)).valuationSubring` by the same `Compatible`-chasing
+computation `Langlands.NormMap`'s `instIsDiscreteValuationRingValuationSubringAdicCompletion` uses
+internally, exposed here as its own lemma so `Finite (ResidueField (v.adicCompletionIntegers F))`
+transports to `𝒪[v.adicCompletion F]` without re-deriving that computation. -/
+theorem valuationSubring_valuation_eq_adicCompletionIntegers :
+    (ValuativeRel.valuation (v.adicCompletion F)).valuationSubring
+      = v.adicCompletionIntegers F := by
+  refine ValuationSubring.ext _ _ fun x => ?_
+  rw [Valuation.mem_valuationSubring_iff, mem_adicCompletionIntegers]
+  have h1 : (ValuativeRel.valuation (v.adicCompletion F)) x ≤ 1 ↔
+      x ≤ᵥ (1 : v.adicCompletion F) := by
+    rw [Valuation.Compatible.vle_iff_le (v := ValuativeRel.valuation (v.adicCompletion F)),
+      map_one]
+  have h2 : x ≤ᵥ (1 : v.adicCompletion F) ↔ Valued.v x ≤ 1 := by
+    rw [Valuation.Compatible.vle_iff_le (v := (Valued.v : Valuation (v.adicCompletion F) ℤᵐ⁰)),
+      map_one]
+  rw [h1, h2]
+
+/-- **`O_{K_1}` is Henselian, at this arc's concrete instantiation**, given `K_1 P / v.adicCompletion
+F` is separable and `𝒪[v.adicCompletion F]` (equivalently, `v.adicCompletionIntegers F`, by
+`valuationSubring_valuation_eq_adicCompletionIntegers`) has finite residue field — a genuine
+hypothesis here (residue-field finiteness of `v` is not automatic for a general Dedekind domain,
+e.g. it fails for function fields with infinite constant field), independent of `O`'s own residue
+field. -/
+theorem henselianLocalRing_valuationSubring_K_1_of_adicCompletion
+    [Finite (IsLocalRing.ResidueField (v.adicCompletionIntegers F))]
+    {O : Type*} [CommRing O] [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)]
+    [Algebra O (v.adicCompletion F)] [IsFractionRing O (v.adicCompletion F)] (P : O[X])
+    [Algebra.IsSeparable (v.adicCompletion F) (K_1 (K := v.adicCompletion F) P)] :
+    HenselianLocalRing
+      ↥(NormedField.valuation (K := K_1 (K := v.adicCompletion F) P)).valuationSubring := by
+  haveI : Finite (IsLocalRing.ResidueField
+      ↥(ValuativeRel.valuation (v.adicCompletion F)).valuationSubring) := by
+    rw [valuationSubring_valuation_eq_adicCompletionIntegers]
+    infer_instance
+  exact henselianLocalRing_valuationSubring_K_1 P
 
 end IsDedekindDomain.HeightOneSpectrum
