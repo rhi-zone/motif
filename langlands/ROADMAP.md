@@ -14843,3 +14843,144 @@ changed is that the type-level scaffolding item 5 needs (`K_2` actually carrying
 `FPiEval`, `eval` as first-class objects, plus the specific naturality fact connecting `eval f` across
 the `towerHom` base change) now exists and is verified, non-vacuous, and reusable at the next tower
 step — narrowing, not yet closing, the gap `§51` identified.
+
+## 53. Phase 2c, forty-sixth pass (2026-08-14): the `aeval`/`eval` bookkeeping lemma closes, and so
+does the root-connecting identity `eval f β = algebraMap (K_1 P) K_2 α`; well-definedness/
+injectivity/transitivity and item 6 remain open, precisely scoped
+
+### What this pass closes
+
+`§52`'s "immediate blocker" — the `aeval`-vs-`eval` compatibility lemma under a second base change —
+**closes, and confirms the assessment that it is bookkeeping**:
+
+* **`Langlands/NonarchimedeanPowerSeriesEvalAevalMap.lean`** (new): `aeval_map_eq_eval_coe` — for
+  `R → K' → L` with `[IsScalarTower R K' L]`, `aeval x (P.map (algebraMap R K')) = eval (↑P : R⟦X⟧)
+  x`. Proved by reducing the two-hop `aeval` to a one-hop `aeval` via `Polynomial.map_map`/
+  `IsScalarTower.algebraMap_eq`, then `NonarchimedeanPowerSeriesEval.eval_coe_eq_aeval`.
+  **Confirmed directly** (not assumed) that the needed `IsScalarTower O_{K_1} (K_1 P) (K_2 P₂)`
+  instance resolves automatically at the concrete instantiation: Mathlib's `FieldTheory/
+  SplittingField/Construction.lean` carries `deriving instance Algebra R, IsScalarTower R K for
+  SplittingField f`, which supplies it directly from `[Algebra O_{K_1} (K_1 P)]` — no detour through
+  the diamond-prone route `K_2.instAlgebraO`'s three-hop composite needed at the *base* `O` level
+  (that diamond was specific to starting from `O`, which has no direct `Algebra O (K_1 P)` in scope
+  without going through `towerHom`'s valuation-subring detour; starting from `O_{K_1}` itself, which
+  *is* `K_2`'s own `[Algebra O' K']` parameter, hits no such detour).
+
+This unblocks the rest of item 5's "connect `eval_map_towerHom` to the roots of `P₂`" step, which
+this pass also closes in full:
+
+* **`Langlands/NonarchimedeanPowerSeriesEval.lean`**: `eval_sub` (mirrors `eval_add`) and `eval_C`
+  (mirrors `eval_X`/`eval_one`) — the two termwise `eval` facts needed to split `eval (shifted f ψ
+  α') β = eval (f.map ψ) β - eval (C α') β`.
+* **`Langlands/LubinTateTowerStepConcrete.lean`**: `exists_eisenstein_tower_step_K_1` now also
+  returns `P₂.IsDistinguishedAt (maximalIdeal _)` and `Associated (P₂.coeff 0) α'` (previously
+  computed inside the proof via `exists_isWeierstrassFactorization_shifted`, then discarded after
+  being used only to derive the weaker `Monic`/`Irreducible` facts already in the tuple). Needed so a
+  downstream root-norm argument can rebuild `P₂`'s Eisenstein data against the *same* existential
+  witness this theorem fixes, rather than re-invoking `exists_isWeierstrassFactorization_shifted` at
+  a possibly-different witness (Weierstrass factorizations are obtained via `∃`, not registered as
+  unique up to the identity in this repo, so re-deriving would not obviously produce the same `P₂`).
+  The one caller (`exists_finrank_adjoin_eq_residueCard_K_2`) updated to destructure the two extra
+  conjuncts with `-`.
+* **`Langlands/LubinTateTowerStepRootConnect.lean`** (new):
+  * `K_2.norm_le_one_of_mem_O_K1` : every element of `O_{K_1}`, algebra-mapped into `K_2` (via
+    whichever `Algebra O_{K_1} K_2` instance ordinary instance search finds — the same one
+    `eval_map_towerHom` uses), has norm at most `1`. Strengthens `K_2.hOK_transport` (which only
+    bounded `towerHom`-images) to *all* of `O_{K_1}`, by applying `norm_le_one_of_mem_integralClosure`
+    directly to an arbitrary element rather than only to `towerHom hOK P c`.
+  * `K_2.instFaithfulSMul_O_K1` : `algebraMap O_{K_1} K_2` is injective (composite of the injective
+    field embedding `K_1 P → K_2` and the injective subring inclusion `O_{K_1} → K_1 P`).
+  * `norm_lt_one_of_aeval_P₂_eq_zero` : a root of `P₂`'s image lies in `K_2`'s open unit ball. Via
+    `Langlands.EisensteinRootNorm`'s ultrametric-only Eisenstein-polygon computation — no
+    irreducibility over a base field needed, so it applies inside `K_2` itself, where `P₂`'s image
+    is *not* irreducible (this is the same route `Langlands/LubinTateSplittingFieldTorsion.lean`
+    already used at level `1` to replace the old `spectralNorm`/`minpoly` argument, which fails
+    exactly when the polynomial splits). Fed `P₂`'s Eisenstein data via
+    `Langlands.LubinTateEisensteinQ.norm_coeff_map_of_isWeaklyEisensteinAt_associated`. Takes `‖α'‖ <
+    1` in `K_2` as an **explicit hypothesis**, matching the `hπnorm`-style standing-hypothesis
+    convention this whole arc uses at level `1` (never derived from irreducibility alone for an
+    abstract base) — deriving it from `exists_irreducible_uniformizer_K_1`'s `hram`/`hgen` data plus
+    `spectralNorm_extends`-style norm transport is a **left-open, but concretely-scoped, follow-up**
+    (see below), not attempted this pass.
+  * `eval_f_eq_of_aeval_P₂_eq_zero` : **the connecting identity itself**. For `β` a root of `P₂`'s
+    image, `eval f β = algebraMap (K_1 P) K_2 α` (`letI := K_2.instAlgebraO`), matching exactly what
+    `Langlands.LubinTateRootTranslation`'s generic translation machinery (item 4, already closed)
+    needs to be instantiated at `K := K_2`. Proved by chaining the Weierstrass factorization `shifted
+    f ψ α' = (P₂ : _⟦X⟧) * u₂` through `eval` (`eval_mul`/`eval_sub`/`eval_C`, using
+    `norm_lt_one_of_aeval_P₂_eq_zero` for their `‖β‖ < 1` hypothesis and
+    `K_2.norm_le_one_of_mem_O_K1` for their coefficient-bound hypotheses — `IsUnit u₂` is *not*
+    needed for this direction, only the coefficient bound), then `eval_map_towerHom` to land on
+    `eval f β`, then `IsScalarTower.algebraMap_apply` plus `(α' : K_1 P) = α` to land on `α`.
+
+`nix develop -c lake build` (full project) — clean, `8791` jobs. `grep -n sorry` on all
+new/changed files — no hits. Commits `d994691`, `bb7ac31`, `8cd3a78`.
+
+### What item 5 still needs, precisely
+
+With the connecting identity in hand, well-definedness and injectivity are now genuinely direct
+applications of the already-closed generic machinery (`Langlands.LubinTateRootTranslation`), and
+transitivity is a short group-theoretic computation at the raw `FPiEval` level — **worked out
+precisely below, but not written up as Lean this pass** (time did not allow implementing and
+build-verifying it in addition to the connecting identity above; recorded here so it is not
+re-derived from scratch):
+
+* **Well-definedness**: for `β` a root of `P₂`'s image and `t ∈ piTorsion hπ hf 1`, `F_π(β, t)` is
+  again a root. Via `eval_f_eq_of_aeval_P₂_eq_zero` (`eval f β = algebraMap (K_1 P) K_2 α`) and
+  `eval_f_FPiEval` (`eval f (F_π(β,t)) = F_π(eval f β, eval f t) = F_π(algebraMap … α, 0) =
+  algebraMap … α`, since `t ∈ piTorsion 1` means `eval f t = 0` by definition and `FPiEval_zero'`
+  handles the right identity) — this direction needs a *converse* of
+  `eval_f_eq_of_aeval_P₂_eq_zero` (from `eval f β' = algebraMap … α` back to "`β'` is a root of
+  `P₂`'s image") which this pass's lemma does not supply (it is stated one-directional, root ⟹
+  eval-equation) — **this converse is the one piece of new content well-definedness needs beyond
+  what's closed**, and is not yet attempted.
+* **Injectivity/transitivity**: for `β, β'` both roots (so `eval f β = eval f β'` by
+  `eval_f_eq_of_aeval_P₂_eq_zero` applied to each, landing on the same `α`), applying
+  `sub_mem_piTorsion_one_of_eval_f_eq` to the pair `(β', β)` (note the order) gives `t' := F_π(β',
+  i_{F_π}(β)) ∈ piTorsion hπ hf 1`; the same associativity/zero-law computation
+  `eq_of_FPiEval_eq_zero_left`'s proof already uses (`FPiEval_assoc`, `FPiEval_zero'`,
+  `FPiEval_PhiInv_eq_zero'`) gives `F_π(t', β) = β'`, and `FPiEval_comm` (`LubinTateFormalGroupEval`,
+  already closed) rewrites this to `β' = F_π(β, t')` — i.e. **transitivity is immediate once
+  well-definedness's converse is available, with no cardinality-matching argument needed at all**
+  (unlike level `1`'s `(O/π)ˣ`-orbit-counting route): every pair of roots differs by *some*
+  `piTorsion hπ hf 1`-translate, directly. Freeness/injectivity of the translation action follows
+  the same way `eq_of_FPiEval_eq_zero_left` already gives cancellation. None of this is written up
+  as Lean yet.
+* **The `‖α'‖ < 1` hypothesis** `norm_lt_one_of_aeval_P₂_eq_zero`/`eval_f_eq_of_aeval_P₂_eq_zero`
+  carry explicitly needs discharging at the actual call site (inside
+  `exists_finrank_adjoin_eq_residueCard_K_2`'s hypothesis set): `exists_irreducible_uniformizer_K_1`
+  already produces `hram : ‖(ϖ : K)‖ = spectralNorm K (K_1 P) α ^ (minpoly K α).natDegree` and the
+  standing `hπnorm : ‖(ϖ : K)‖ < 1` (`hϖnorm` composed with `hπnorm`), which together force
+  `spectralNorm K (K_1 P) α < 1` (since the exponent is `≥ 1`); transporting this to `‖α'‖ < 1` in
+  `K_2` needs one more `spectralNorm_extends`-style step (`K_2.norm_eq_spectralNorm` +
+  `spectralNorm_extends`, the same pattern `K_2.hOK_transport`/`K_2.norm_le_one_of_mem_O_K1` already
+  use) — concretely scoped, not attempted this pass.
+* **Cardinality bookkeeping**: `ROADMAP.md §52`'s "root count is `q`" bullet — `piTorsion hπ hf 1`
+  as a subset of `K_2` has the same cardinality as `piTorsion hπ hf 1` as a subset of `K_1 P`
+  (`card_piTorsion_one_K_1_eq_residueCard`), since the embedding `K_1 P → K_2` is injective and
+  `piTorsion hπ hf 1`, once known to lie entirely inside `K_1 P` (it does, per `§52`'s own
+  `card_piTorsion_one_K_1_eq_residueCard`, computed non-vacuously there), transports its cardinality
+  along that injection unchanged. Not yet written up; purely a `Nat.card`/`Set.ncard` bookkeeping
+  fact once the underlying set-equality is stated correctly. With the transitivity argument above
+  needing *no* cardinality match at all, this bullet is now needed only to name `q` as the *root
+  count* (`Module.finrank (K_1 P) (K_1 P)⟮β⟯ = q`, already closed in
+  `exists_finrank_adjoin_eq_residueCard_K_2`) — i.e. it may turn out to be redundant with the degree
+  computation already in hand, worth checking before implementing it separately.
+
+### Item 6, and `[K_2 : K_1] = q` / `K_1⟮β⟯ = K_2`
+
+**Not attempted this pass**, and not reachable until item 5's remaining bullets above close. Once
+they do, item 6 needs the analogue of `eval_phiU_mem_adjoin`
+(`Langlands/LubinTateSplittingFieldDegree.lean`) one level up: `eval (phiU hπ hf w) β ∈ (K_1
+P)⟮β⟯` for `w : Oˣ` — the *same* `Submodule.mem_of_hasSum_of_finiteDimensional` argument, since
+`(K_1 P)⟮β⟯` is finite-dimensional over `K_1 P` (hence closed) inside `K_2` exactly as `K⟮α⟯` is
+over `K` inside `K_1 P`; no new general fact is anticipated here, only the same substitution
+`LubinTateSplittingFieldDegree.lean`'s docstring already flagged as the model. **No milestone claim
+is made this pass**: `[K_2 : K_1] = q` and `K_1⟮β⟯ = K_2` remain open.
+
+### Next step after item 5/6 close
+
+Unchanged from `§52`: once `[K_2 : K_1] = q` and `K_1⟮β⟯ = K_2` land, the named next step toward
+`K_3` is total-ramification-preservation for `O_{K_2}` — the same "same residue field as `O`" gap
+`Langlands/LubinTateTowerStep.lean`'s module docstring already names as the standing blocker for
+turning *any* further tower step's Eisenstein-existence half (already fully general there) into a
+concrete instantiation, this time one level up (`O_{K_2}` in place of `O_{K_1}`).
