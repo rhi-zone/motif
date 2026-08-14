@@ -14222,3 +14222,160 @@ Langlands/LubinTateSplittingFieldDVR.lean` — no hits. Commits `959a6cd` (DVR),
 4. Only after 1-3: wire `O_{K_1}` into `LubinTateTowerStep.lean` and attempt `K_2`, per `§46`'s
    already-recorded steps 2-3 (the `π^n`-torsion root-count/transitivity generalization and the
    fresh degree computation for the shifted polynomial remain unstarted, independent of this pass).
+
+## 48. Phase 2c, forty-first pass (2026-08-14): **`IsAdicComplete` closed, both at the base `O` and at
+`O_{K_1}` — `§47`'s "missing even for the base O" framing corrected; residue-field preservation
+remains the sole blocker to `K_2`.**
+
+`§47` named `IsAdicComplete (maximalIdeal O') O'` — needed by `PowerSeries.
+exists_isWeierstrassFactorization`, hence by `LubinTateTowerStep.lean`'s Weierstrass-preparation
+step — as missing even at the *base* `O := v.adicCompletionIntegers F`, recording that "no such
+instance or lemma exists in this Mathlib" reaching that formalism. This pass corrects that: the gap
+was that nobody had pointed an *already-existing* bridge at `IsAdicComplete`, not that Mathlib or
+this repo's formalism lacked the underlying fact.
+
+### The correction: `henselianLocalRing_of_valuationSubring`'s bridge already reaches `IsAdicComplete`
+
+`Mathlib.NumberTheory.LocalField.Basic`'s `section UniformSpace` (inside `namespace
+IsNonarchimedeanLocalField`) supplies `instance : IsAdicComplete 𝓂[K] 𝒪[K]` as a *plain* instance,
+for any `K` with `[Field K] [ValuativeRel K] [UniformSpace K] [IsUniformAddGroup K]
+[IsNonarchimedeanLocalField K]` — exactly the same premises
+`Langlands.UnramifiedExtension.henselianLocalRing` (pre-existing in this repo) already consumes to
+get `HenselianLocalRing 𝒪[K]` via `IsAdicComplete.henselianRing`. And
+`henselianLocalRing_of_valuationSubring` (also pre-existing) already derives the `IsNonarchimedeanLocalField
+K` hypothesis from the *lighter* bundle `[NontriviallyNormedField K] [IsUltrametricDist K]
+[ValuativeRel K] [(NormedField.valuation).Compatible] [CompleteSpace K] [IsDiscreteValuationRing
+𝒪[K]] [Finite 𝓀[K]]` this repo's concrete instances actually carry — via `LocallyCompactSpace K`
+from `Valued.integer.properSpace_iff_completeSpace_and_isDiscreteValuationRing_integer_and_finite_residueField`.
+Nothing about that derivation is specific to `HenselianLocalRing`; it produces
+`IsNonarchimedeanLocalField K` as an intermediate fact, and `IsAdicComplete` is a plain instance
+once that holds. The two `𝒪[K]`/`𝓂[K]` notations in this Mathlib checkout were checked explicitly
+before writing the transport (`Mathlib.Topology.Algebra.Valued.ValuativeRel`'s `ValuativeRel`-scoped
+one, used by `LocalField/Basic.lean`, vs. `Mathlib.Topology.Algebra.Valued.ValuedField`'s
+`Valued`-scoped one): `𝒪[K] := Valuation.integer (valuation K)` is definitionally the `Subring`
+underlying `(valuation K).valuationSubring` (`Valuation.valuationSubring := { v.integer with
+mem_or_inv_mem' := .. }`), so `↥𝒪[K]` and `↥(valuation K).valuationSubring` are defeq — the same
+identification `henselianLocalRing_of_valuationSubring`'s final line already exploits via a
+type-ascription cast.
+
+`Langlands/UnramifiedExtension.lean`, sorry-free:
+
+* `isAdicComplete : IsAdicComplete 𝓂[K] ↥(𝒪[K])`, for `K` a nonarchimedean local field — the plain
+  instance, named explicitly (rather than left to bare `inferInstance`) so later lemmas can
+  transport it by a type-ascription cast, the same way `henselianLocalRing` is used by
+  `henselianLocalRing_of_valuationSubring`.
+* `isNonarchimedeanLocalField_of_valuationSubring` (`private`) : the `IsNonarchimedeanLocalField K`
+  derivation extracted out of `henselianLocalRing_of_valuationSubring`'s body, so both it and the
+  new `isAdicComplete_of_valuationSubring` can share it without duplicating ~30 lines.
+  `henselianLocalRing_of_valuationSubring` itself is now a two-line application of this shared
+  instance plus `henselianLocalRing`'s cast.
+* `isAdicComplete_of_valuationSubring : IsAdicComplete (maximalIdeal ↥(valuation K).valuationSubring)
+  ↥(valuation K).valuationSubring`, for `K` in the lighter bundle — the headline instance, built the
+  same way `henselianLocalRing_of_valuationSubring` is.
+
+### Transporting across a finite extension: `LocalField.isAdicComplete_of_comap_eq`
+
+`Langlands/TowerBundle.lean` already had `LocalField.henselianLocalRing_of_comap_eq`: given `A :
+ValuationSubring M` lying over `𝒪[K]` (`hA : A.comap (algebraMap K M) = (ValuativeRel.valuation
+K).valuationSubring`), a `RankOne A.valuation` instance `hR`, and finite residue field `hfin`, it
+builds the `Valued M A.ValueGroup`/`NontriviallyNormedField M`/`ValuativeRel M` bundle via
+`Valued.mk' A.valuation` and `ValuativeRel.ofValuation`, applies `henselianLocalRing_of_valuationSubring
+M`, and transports the result to `↥A` along `valuationSubring_valuation_ofValuation_eq`. This pass
+adds `LocalField.isAdicComplete_of_comap_eq`, identical in structure but landing `IsAdicComplete
+(maximalIdeal ↥A) ↥A` instead of `HenselianLocalRing ↥A` — the transport works unchanged because the
+conclusion, like `HenselianLocalRing`, is purely algebraic (`CommRing`/`Ideal` data, no topology), so
+it does not depend on which of the two (mutually non-defeq) `NontriviallyNormedField` instances on
+`M` the local `letI` bundle happens to use internally.
+
+### The concrete instantiations: base `O` and `O_{K_1}`
+
+`Langlands/LubinTateSplittingFieldDVR.lean`, sorry-free:
+
+* `NormedField.isAdicComplete_valuationSubring_of_finiteDimensional` : the general,
+  formalism-neutral corollary at a finite separable extension `L / K` with a norm extending `K`'s —
+  mirrors `NormedField.henselianLocalRing_valuationSubring_of_finiteDimensional`'s proof
+  (identify `A := (NormedField.valuation (K := L)).valuationSubring` with `𝒪_L`, transport finite
+  residue field, obtain `RankOne A.valuation`) verbatim, swapping `LocalField.henselianLocalRing_of_comap_eq`
+  for `LocalField.isAdicComplete_of_comap_eq` at the last step.
+* `LubinTate.isAdicComplete_valuationSubring_K_1` : the corollary at `K_1`, `hnorm` discharged by
+  `spectralNorm_extends` exactly as `henselianLocalRing_valuationSubring_K_1` already does.
+* `IsDedekindDomain.HeightOneSpectrum.isAdicComplete_adicCompletionIntegers` : **a genuine instance**
+  at the arc's concrete `O := v.adicCompletionIntegers F`, `K := v.adicCompletion F`. Applies
+  `isAdicComplete_of_valuationSubring` at `K := v.adicCompletion F` — whose lighter-bundle
+  hypotheses are already standing instances there (`Langlands.NormMap`) — and transports along
+  `valuationSubring_valuation_eq_adicCompletionIntegers` (pre-existing, `§40`). Needs only `[Finite
+  (A ⧸ v.asIdeal)]`, discharging `Finite (ResidueField (v.adicCompletionIntegers F))` via the
+  pre-existing `instFiniteResidueFieldAdicCompletionIntegers`
+  (`Langlands/LubinTateRootCountConcrete.lean`).
+* `IsDedekindDomain.HeightOneSpectrum.isAdicComplete_valuationSubring_K_1_of_adicCompletion` : the
+  same at `O_{K_1}`, given `K_1 P / v.adicCompletion F` separable and `𝓀[v.adicCompletion F]`
+  finite — the same hypothesis shape as
+  `henselianLocalRing_valuationSubring_K_1_of_adicCompletion`.
+
+`Langlands/LubinTateSplittingFieldDegreeConcrete.lean`: `exists_finrank_K_1_eq_residueCard_sub_one_of_adicCompletion`
+no longer carries `[IsAdicComplete (maximalIdeal (v.adicCompletionIntegers F))
+(v.adicCompletionIntegers F)]` as an explicit hypothesis — it is discharged as an instance from
+`[Finite (A ⧸ v.asIdeal)]`, already present in the hypothesis list. The module docstring's
+"`IsAdicComplete` caveat" section is corrected accordingly.
+
+Build: `nix develop -c lake build` clean, `8785` jobs (unchanged — no new files this pass, only
+declarations added to existing ones). `grep -n sorry` on every file touched — `UnramifiedExtension.lean`,
+`TowerBundle.lean`, `LubinTateSplittingFieldDVR.lean`, `LubinTateSplittingFieldDegreeConcrete.lean`,
+`LubinTateTowerStep.lean` — no hits. Commits `daa2a14` (`IsAdicComplete` on the lighter-bundle
+instance), `4d93996` (transport across `comap_eq`), `0c893cb` (concrete `K_1`/base corollaries),
+`721c9cc` (discharge in `LubinTateSplittingFieldDegreeConcrete.lean`), `690691c` (docstring update
+in `LubinTateTowerStep.lean`).
+
+### What is still open
+
+* **`LubinTateTowerStep.lean`'s abstract `O'` is still not wired to the concrete `O_{K_1}`.** Its
+  Weierstrass-preparation section takes `O'` as an arbitrary `[IsDomain] [IsDiscreteValuationRing]
+  [IsAdicComplete (maximalIdeal O') O']` ring, by design (it must work for every tower step `n`, not
+  just `n = 1`); `isAdicComplete_valuationSubring_K_1_of_adicCompletion` above supplies the
+  `IsAdicComplete` instance *if* `O_{K_1}` is substituted for `O'`, but the substitution itself —
+  proving `O_{K_1}` satisfies the *rest* of `O'`'s hypothesis package as literally the same term the
+  induction needs, and, load-bearing, that it has the *same residue field as `O`* — is not attempted
+  in this pass.
+* **Residue-field preservation** (`ResidueField O_{K_1} ≃ ResidueField O`) — checked against this
+  repo's Phase 2b `TotallyRamified*.lean` thread this pass, not attempted, and **should not be
+  attempted as a quick derivation**: `Langlands/TotallyRamifiedValuationExtension.lean`'s
+  `IsTotallyRamified` structure states this precise fact
+  (`exists_sub_algebraMap_mem_maximalIdeal`, "the residue extension `𝓀[K] → 𝓀[L]` is trivial") as an
+  **unavoidable hypothesis field**, not a derived theorem, and its own module docstring explains
+  why: the classical derivation needs the identity `e · f = n` (ramification index times residue
+  degree equals extension degree) for the *completed* extension `K₀ → L₀`, and that identity "is not
+  available in this repository for `K₀ → L₀`... deriving it is a self-contained piece of work of its
+  own" (recorded at Phase 2b's thirty-eighth pass, re-confirmed by grep this pass: no
+  `ramificationIdx' * inertiaDeg' = finrank`-shaped lemma exists anywhere in this repo or is applied
+  generically — `Mathlib.RingTheory.RamificationInertia.Basic`'s `Ideal.sum_ramification_inertia`
+  gives only the *sum* `∑ eᵢfᵢ = [L:K]` over all primes over `v`, collapsed to a single-term
+  *inequality* `e·f ≤ [L:K]` in `TotallyRamifiedArtinSchreierConcreteExample.lean`'s fully concrete,
+  fixed-prime setting, not a general equality). Even granting that identity, `IsTotallyRamified`
+  itself and `Langlands.AdicCompletionResidueDegree`'s `inertiaDeg'_eq_finrank_residueField` bridge
+  are both stated in the `HeightOneSpectrum`/`adicCompletionIntegers` (`ValuativeRel`-canonical)
+  formalism, requiring `O_{K_1}` to be realized as `w.adicCompletionIntegers L` for a genuine
+  `HeightOneSpectrum` place `w` of a Dedekind domain `S` — `K_1`'s actual construction (`Q.SplittingField`
+  in the `spectralNorm`/`NormedField` formalism) has never been given such a realization anywhere in
+  this arc. Closing residue-field preservation for `K_1` therefore needs **both** a fresh `e·f=n`
+  argument and re-deriving it in a formalism this repo has not yet built for `K_1`, matching this
+  pass's instructions to not force a substantial new development of that shape; it is left
+  precisely here for whoever continues this.
+* **`K_2` was not instantiated** — the sole remaining blocker, now that `IsAdicComplete` is closed at
+  both `O` and `O_{K_1}`, is residue-field preservation (immediately above) plus the separate
+  moving-base wiring noted above.
+
+**Concrete next steps, in order, for whoever continues this:**
+
+1. Build the `e·f = n` argument — as a genuinely new, self-contained development, not a quick
+   corollary of existing lemmas — for the completed extension `K₀ → L₀` in whichever formalism is
+   cheapest to reach from `K_1`'s actual construction (most likely the `NormedField`/`ValuationSubring`
+   one `K_1` already lives in, per this arc's established pattern of re-deriving results in a target's
+   own formalism rather than importing conclusions across formalisms, echoing `§47`'s guidance).
+2. Use it to prove `ResidueField O_{K_1} ≃ ResidueField O`, keyed to `[K_1 : K] = q - 1`
+   (`finrank_K_1_eq_residueCard_sub_one`) and total ramification (presumed by the Eisenstein
+   construction, still not itself stated as an `IsTotallyRamified`-shaped fact for `K_1`
+   specifically — also not attempted anywhere in this arc, checked by grep this pass).
+3. Only after 1-2: wire `O_{K_1}` into `LubinTateTowerStep.lean`'s abstract `O'` and attempt `K_2`,
+   per `§46`'s already-recorded steps 2-3 (the `π^n`-torsion root-count/transitivity generalization
+   and the fresh degree computation for the shifted polynomial remain unstarted, independent of this
+   pass).
