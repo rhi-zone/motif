@@ -14751,3 +14751,95 @@ identified as not yet built, independent of that one wrong premise).
   combination of `β, t`, hence in `K_1⟮β⟯`) stays inside `K_1⟮β⟯`. Not attempted this pass.
 * Everything else recorded in the previous section ("What remains, precisely, to iterate to `K_3`")
   is unchanged by this pass.
+
+## 52. Phase 2c, forty-fifth pass (2026-08-14): `K_2`'s `NormedField`/`Algebra O` prerequisite closed;
+items 5 and 6 themselves remain open.
+
+### What this pass closes
+
+`§51` named two prerequisites blocking item 5 (transitivity of the `piTorsion hπ hf 1`-translation
+action on roots of `P₂`): `K_2` (`Langlands/LubinTateTowerStepConcrete.lean`) had no
+`NormedField`/`IsUltrametricDist`/`CompleteSpace`/`Algebra O` package, so `piTorsion`/`FPiEval`/`eval`
+did not even typecheck at `K := K_2`; and no lemma existed identifying `eval (f.map ψ) β` (evaluated
+through the moving base `O_{K_1}`) with `eval f β` (evaluated directly against `O`). Both are now
+closed, non-vacuously (built on the already-non-vacuous `K_1`/`K_2` construction):
+
+* **`Langlands/NonarchimedeanPowerSeriesEvalMap.lean`** (new): `eval_map` — `eval` is natural under
+  base change along any `ψ : R →+* R'` for which the two algebra structures on the target agree along
+  `ψ`. This is a purely termwise fact (`PowerSeries.coeff_map`), needing **no** summability,
+  coefficient-bound, or `‖x‖ < 1` hypothesis — stronger and simpler than the eval-naturality-under-
+  base-change fact `§51` flagged as needed and not yet built.
+* **`Langlands/LubinTateTowerStepSplittingField.lean`** (new):
+  * The `spectralNorm`-based `NontriviallyNormedField`/`IsUltrametricDist`/`CompleteSpace`/
+    `NormedSpace` package for `LubinTate.K_2`, stated **generically over `K_2`'s own two free
+    parameters** `O'`/`K'` (not hardcoded to level 2) — so it is directly reusable, unchanged, at the
+    next tower step (`K_3`, a further application of the same `K_2` splitting-field constructor over
+    `O_{K_2}`). Mirrors `Langlands/LubinTateSplittingField.lean`'s `K_1`-relative-to-`K` package
+    exactly.
+  * `norm_le_one_of_mem_integralClosure` : a reusable extraction of the `hAeq` step buried inside
+    `NormedField.isAdicComplete_integralClosure_of_finiteDimensional`'s proof
+    (`Langlands/LubinTateTowerStepConcrete.lean`) — an element of `integralClosure 𝒪[K'] L`, viewed in
+    `L`, has norm at most `1`.
+  * `K_2.instAlgebraO` : `Algebra O (K_2 P₂)`, built as the **explicit three-hop composite**
+    `O →(towerHom hOK P)→ O_{K_1} → K_1 P → K_2 P₂`. This is not a formality: ordinary instance search
+    *does* find an `Algebra O_{K_1} (K_2 P₂)` instance automatically (confirmed directly, by isolated
+    `#synth`-style test), through whatever generic tower machinery Mathlib's `Polynomial.SplittingField`
+    carries — but that auto-found instance is **not** definitionally the honest composite through
+    `K_1 P`, so it cannot be used to prove norm transport by `rw [spectralNorm_extends]`. Building the
+    three-hop composite explicitly and proving `K_2.algebraMap_O_eq` `rfl` from it was the one
+    genuinely fiddly step of this pass (two dead-end attempts, each diagnosed by reading the exact
+    `rw` failure against the printed goal, before landing on the three-hop form — consistent with the
+    "two identical errors → stop and diagnose" rule, applied to a *type-mismatch* rather than a
+    missing-lemma error).
+  * `K_2.hOK_transport` : `K`'s norm hypothesis transports to `K_2` unchanged (chaining
+    `spectralNorm_extends` at the `K_1 P → K_2` hop with `norm_le_one_of_mem_integralClosure` at the
+    `O_{K_1} → K_1 P` hop).
+  * `eval_map_towerHom` : **the naturality corollary itself** — `eval (f.map (towerHom hOK P)) β =
+    eval f β` for `β : K_2 P₂` — now a one-line corollary of `eval_map` plus `K_2.algebraMap_O_eq`
+    being `rfl`. Notably: type-checking this theorem's statement is itself a non-trivial check that
+    Mathlib's auto-found `Algebra O_{K_1} (K_2 P₂)` instance (the one `eval (f.map ψ) β`'s implicit
+    `[Algebra O_{K_1} K_2]` argument resolves to) is *definitionally* the three-hop composite — the
+    compiler verified this by accepting the `exact` call with no coercion mismatch, which is stronger
+    evidence than a hand proof of the same fact would be.
+
+`nix develop -c lake build` (full project) — clean, `8791` jobs. `grep -n sorry` on both new files —
+no hits. Commit `0f97c20`.
+
+### What items 5 and 6 still need, precisely
+
+This pass closes the stated *prerequisite* only. The mathematical content of item 5 — well-
+definedness, injectivity, and surjectivity of `t ↦ F_π(β, t)` from `piTorsion hπ hf 1` (now
+well-typed inside `K_2`) onto the roots of `P₂`'s image — is **not attempted** in this pass, and
+neither is item 6. Concretely, what is left:
+
+* **Connect `eval_map_towerHom` to the roots of `P₂`.** `exists_eisenstein_tower_step_K_1` supplies
+  `shifted f (towerHom hOK P) α' = (P₂ : _⟦X⟧) * u₂` as an equation of `O_{K_1}`-power series, and
+  `(α' : K_1 P) = α`. Turning "`β` is a root of `P₂`'s image in `K_2`" (stated, as in
+  `exists_finrank_adjoin_eq_residueCard_K_2`, via `Polynomial.aeval β (P₂.map (algebraMap O_{K_1}
+  (K_1 P))) = 0`, i.e. through the *polynomial* route via `K_1 P`) into "`eval f β = algebraMap (K_1
+  P) K_2 α`" (an equation about the *power-series* `eval`, directly against `O`) needs one more
+  identification: that `Polynomial.aeval β (P₂.map (algebraMap O_{K_1} (K_1 P)))`, computed by mapping
+  coefficients through `K_1 P` first, agrees with `eval (↑P₂ : O_{K_1}⟦X⟧) β`, computed directly
+  against `O_{K_1}` (via whichever `Algebra O_{K_1} K_2` instance `eval_map_towerHom` uses) —
+  i.e. a `Polynomial.aeval`-vs-`PowerSeries.eval` compatibility under a *second* base change
+  (`O_{K_1} → K_1 P → K_2` vs `O_{K_1} → K_2` directly), on top of the already-available
+  `NonarchimedeanPowerSeriesEval.eval_coe_eq_aeval` (which only handles a *single* fixed base). Not
+  yet built; likely another small, purely-termwise `eval_map`-style lemma once stated correctly, but
+  not attempted here for lack of remaining time in this pass.
+* **Well-definedness, injectivity, surjectivity** (the three bullets `§51`'s worked-out argument
+  names): once the above identification is in hand, well-definedness and injectivity are direct
+  applications of `eval_f_FPiEval`/`eq_of_FPiEval_eq_zero_left` (`Langlands/LubinTateRootTranslation.lean`,
+  item 4, already closed and generic in `K`) instantiated at `K := K_2` — no new mathematical content,
+  just typeclass bookkeeping now that `K_2` carries the needed instances. Surjectivity needs the
+  "roots of `P₂` give equal `eval f` value" fact above, then `sub_mem_piTorsion_one_of_eval_f_eq`
+  (also item 4, already closed and generic). None of this was attempted this pass.
+* **Item 6** (reassembly `K_1⟮β⟯ = K_2`) is entirely unattempted, and needs, additionally, the
+  `tsum`-stays-inside-a-finite-dimensional-subspace argument `§51` already named (the exact analogue
+  of `eval_phiU_mem_adjoin` in `Langlands/LubinTateSplittingFieldDegree.lean`, one level up) — nothing
+  new identified this pass beyond what `§51` already recorded.
+
+**No milestone claim is made this pass**: `[K_2 : K_1] = q` / `K_1⟮β⟯ = K_2` remains open. What
+changed is that the type-level scaffolding item 5 needs (`K_2` actually carrying `piTorsion`,
+`FPiEval`, `eval` as first-class objects, plus the specific naturality fact connecting `eval f` across
+the `towerHom` base change) now exists and is verified, non-vacuous, and reusable at the next tower
+step — narrowing, not yet closing, the gap `§51` identified.
