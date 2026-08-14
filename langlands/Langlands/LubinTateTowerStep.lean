@@ -128,16 +128,31 @@ This file takes `O'`, `ψ`, and `α'` as **hypotheses** — it does not construc
 and a chosen torsion generator. Constructing it (as, e.g., the integral closure of `O` in `K_{n-1} :=
 (P_{n-1}.map …).SplittingField`, or as `{x : K_{n-1} | ‖x‖ ≤ 1}`) and proving it is again a complete
 discrete valuation ring with the *same* residue field as `O` ("total ramification", load-bearing at
-every step of the induction) is a **separate, unclosed problem**. Checked directly against Mathlib
+every step of the induction) is a **separate, unclosed problem**.
+
+The `[IsAdicComplete (maximalIdeal O') O']` hypothesis this section carries is now dischargeable at
+the concrete `O' := O_{K_1} := ↥(NormedField.valuation (K := K_1 P)).valuationSubring`
+instantiation, given `K_1 P` separable over `K` and `K`'s residue field finite
+(`IsDedekindDomain.HeightOneSpectrum.isAdicComplete_valuationSubring_K_1_of_adicCompletion`,
+`Langlands/LubinTateSplittingFieldDVR.lean`, closed in `ROADMAP.md`'s Phase 2c forty-first pass).
+That was **not** the case when this file was first written — `LubinTateSplittingFieldDegreeConcrete.
+lean`'s docstring recorded `IsAdicComplete` as unavailable in this Mathlib even at the *base* `O`.
+What remains open, and is a **separate, unclosed problem** from the `IsAdicComplete` gap, is
+constructing `O_{n-1}` itself as an instance of an *abstract* `IsDomain`/`IsDiscreteValuationRing`
+`O'` satisfying this section's hypothesis package — i.e. proving `O_{K_1}` (or, at later steps,
+`O_{K_{n-1}}`) *is* an `IsDomain`/`IsDiscreteValuationRing` ring in the sense this file's variables
+require (straightforward at `n = 1`, via `LubinTate.isDiscreteValuationRing_valuationSubring_K_1`)
+and, crucially, has the **same residue field as `O`** ("total ramification", load-bearing at every
+step of the induction — not attempted anywhere in this arc yet, see `ROADMAP.md`'s Phase 2c
+forty-first pass for what is and isn't available for that). Checked directly against Mathlib
 (`grep`, no hits for any lemma constructing `IsDiscreteValuationRing`/`IsAdicComplete` instances for
 the integral closure of a DVR in a `spectralNorm`-normed finite extension) and against this repo
-(`Langlands/LubinTateSplittingFieldDegreeConcrete.lean`'s own module docstring records the same gap
-for `IsAdicComplete` at `v.adicCompletionIntegers F`, and `Langlands.TowerValuationSubring`/
-`Langlands.MonogenicMaximalOrder` build comparable integral-closure machinery only inside the
-`ValuativeRel`/`ValuationSubring` formalism, not the `spectralNorm`/`NormedField` one `K_1 :=
-Q.SplittingField` (`Langlands.LubinTateSplittingField`) actually uses). This is the genuine remaining
-blocker for turning this file's per-step Eisenstein fact into an actual tower construction, not a
-translation-only task — see `ROADMAP.md` for the precise scope handed to whoever continues this.
+(`Langlands.TowerValuationSubring`/`Langlands.MonogenicMaximalOrder` build comparable
+integral-closure machinery only inside the `ValuativeRel`/`ValuationSubring` formalism, not the
+`spectralNorm`/`NormedField` one `K_1 := Q.SplittingField` (`Langlands.LubinTateSplittingField`)
+actually uses). This residue-field-preservation gap, not `IsAdicComplete`, is now the genuine
+remaining blocker for turning this file's per-step Eisenstein fact into an actual `K_2`
+instantiation — see `ROADMAP.md` for the precise scope handed to whoever continues this.
 -/
 
 @[expose] public section
