@@ -1,5 +1,5 @@
 import Mathlib.NumberTheory.Padics.RingHoms
-import Langlands.LubinTateSplittingFieldDegree
+import Langlands.LubinTateGaloisResidueUnits
 import Langlands.LubinTateWeierstrassPreparation
 import Langlands.LubinTateRootCountConcrete
 
@@ -30,6 +30,13 @@ hypothesis-free instantiation.
   `residueCard ℤ_[3] = 3` and `finrank ℚ_[3] (K_1 P) = 2`, with **no hypotheses at all**. This is a
   genuine, non-degenerate instance of the theorem at `residueCard O = 3`, i.e. exactly in the range
   `LubinTateHsplitVacuity.lean` rules out for the old `hsplit`-carrying statement.
+* `LubinTate.exists_isGalois_K_1` / `_padic` / `_padic_three` — the same for `isGalois_K_1`, with the
+  `IsGalois K (K_1 P)` term built at the witness rather than inferred from the shared hypothesis
+  list.
+* `LubinTate.exists_mulEquiv_gal_K_1_residueUnits` / `_padic` / `_padic_three` — the same for the
+  capstone `Gal(K_1/K) ≃* (O/π)ˣ` (`Langlands/LubinTateGaloisResidueUnits.lean`). The `p = 3` form
+  additionally certifies `Nat.card (K_1 P ≃ₐ[ℚ_[3]] K_1 P) = 2`, so the isomorphism is exhibited
+  between groups of order `2`, not between trivial ones.
 * `IsDedekindDomain.HeightOneSpectrum.exists_finrank_K_1_eq_residueCard_sub_one_of_adicCompletion` —
   the same certificate at the repo's usual concrete package `O := v.adicCompletionIntegers F`,
   `K := v.adicCompletion F` (the pattern of `Langlands/LubinTateRootCountConcrete.lean`), which
@@ -146,6 +153,23 @@ theorem exists_isGalois_K_1 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1)
     finrank_K_1_eq_residueCard_sub_one hOK hπ hπnorm hf hu heq hPdist hPdeg,
     isGalois_K_1 hOK hπ hπnorm hf hu heq hPdist hPdeg⟩
 
+/-- **The hypothesis package of `nonempty_mulEquiv_gal_K_1_residueUnits` is satisfiable**: the same
+data package `(f, P, u)` additionally yields `Gal(K_1 P/K) ≃* (ResidueField O)ˣ`. Certified as its
+own conclusion rather than inferred from the shared hypothesis list — the `MulEquiv` is actually
+built at the witness. -/
+theorem exists_mulEquiv_gal_K_1_residueUnits (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1)
+    {π : O} (hπ : Irreducible π) (hπnorm : ‖algebraMap O K π‖ < 1) :
+    ∃ (f : O⟦X⟧) (P : O[X]) (u : O⟦X⟧), IsLubinTatePoly π (residueCard O) f ∧ IsUnit u ∧
+      f = (P : O⟦X⟧) * u ∧ P.IsDistinguishedAt (maximalIdeal O) ∧
+      P.natDegree = residueCard O ∧
+      Module.finrank K (K_1 (K := K) P) = residueCard O - 1 ∧
+      Nonempty ((K_1 (K := K) P ≃ₐ[K] K_1 (K := K) P) ≃* (ResidueField O)ˣ) := by
+  obtain ⟨f, hf⟩ := exists_isLubinTatePoly hπ
+  obtain ⟨P, u, hPdist, hu, heq, hPdeg⟩ := exists_isWeierstrassFactorization_of_isLubinTatePoly hf
+  exact ⟨f, P, u, hf, hu, heq, hPdist, hPdeg,
+    finrank_K_1_eq_residueCard_sub_one hOK hπ hπnorm hf hu heq hPdist hPdeg,
+    nonempty_mulEquiv_gal_K_1_residueUnits hOK hπ hπnorm hf hu heq hPdist hPdeg⟩
+
 end Abstract
 
 /-! ## The fully concrete instance: `O := ℤ_[p]`, `K := ℚ_[p]` -/
@@ -202,7 +226,51 @@ theorem exists_isGalois_K_1_padic :
       PadicInt.irreducible_p (norm_algebraMap_padicInt_p_lt_one p)
   exact ⟨f, P, u, hf, hu, heq, hPdist, hPdeg, by rwa [residueCard_padicInt] at hfinrank, hgal⟩
 
+/-- **The `Gal(K_1/K) ≃* (O/π)ˣ` certificate at `O := ℤ_[p]`, `K := ℚ_[p]`, `π := p`**, every
+typeclass and hypothesis discharged from Mathlib. -/
+theorem exists_mulEquiv_gal_K_1_residueUnits_padic :
+    ∃ (f : ℤ_[p]⟦X⟧) (P : ℤ_[p][X]) (u : ℤ_[p]⟦X⟧),
+      IsLubinTatePoly (p : ℤ_[p]) (residueCard ℤ_[p]) f ∧ IsUnit u ∧
+      f = (P : ℤ_[p]⟦X⟧) * u ∧ P.IsDistinguishedAt (maximalIdeal ℤ_[p]) ∧
+      P.natDegree = residueCard ℤ_[p] ∧
+      Module.finrank ℚ_[p] (K_1 (K := ℚ_[p]) P) = p - 1 ∧
+      Nonempty ((K_1 (K := ℚ_[p]) P ≃ₐ[ℚ_[p]] K_1 (K := ℚ_[p]) P) ≃* (ResidueField ℤ_[p])ˣ) := by
+  obtain ⟨f, P, u, hf, hu, heq, hPdist, hPdeg, hfinrank, hiso⟩ :=
+    exists_mulEquiv_gal_K_1_residueUnits (K := ℚ_[p]) (norm_algebraMap_padicInt_le_one p)
+      PadicInt.irreducible_p (norm_algebraMap_padicInt_p_lt_one p)
+  exact ⟨f, P, u, hf, hu, heq, hPdist, hPdeg, by rwa [residueCard_padicInt] at hfinrank, hiso⟩
+
 end Padic
+
+/-- **Non-vacuity of the capstone `Gal(K_1/K) ≃* (O/π)ˣ` itself, with no hypotheses whatsoever.**
+
+At `p = 3` the whole package is satisfied with `residueCard ℤ_[3] = 3`, `finrank ℚ_[3] (K_1 P) = 2`,
+a `MulEquiv` `Gal(K_1 P/ℚ_[3]) ≃* (ResidueField ℤ_[3])ˣ`, **and**
+`Nat.card (K_1 P ≃ₐ[ℚ_[3]] K_1 P) = 2`.
+
+The last conjunct is what makes this a genuine certificate rather than a formality: an isomorphism
+between two *trivial* groups would carry no information, so the witness is exhibited with a Galois
+group of order `2` — `K_1 P` is a genuinely ramified quadratic extension of `ℚ_[3]` and the
+isomorphism identifies its Galois group with `𝔽_3ˣ`. Certified at the packaged `MulEquiv` level, not
+inferred from the non-vacuity of the sub-steps. -/
+theorem exists_mulEquiv_gal_K_1_residueUnits_padic_three :
+    letI : Fact (Nat.Prime 3) := ⟨Nat.prime_three⟩
+    residueCard ℤ_[3] = 3 ∧
+    ∃ (f : ℤ_[3]⟦X⟧) (P : ℤ_[3][X]) (u : ℤ_[3]⟦X⟧),
+      IsLubinTatePoly (3 : ℤ_[3]) (residueCard ℤ_[3]) f ∧ IsUnit u ∧
+      f = (P : ℤ_[3]⟦X⟧) * u ∧ P.IsDistinguishedAt (maximalIdeal ℤ_[3]) ∧
+      P.natDegree = residueCard ℤ_[3] ∧
+      Module.finrank ℚ_[3] (K_1 (K := ℚ_[3]) P) = 2 ∧
+      Nonempty ((K_1 (K := ℚ_[3]) P ≃ₐ[ℚ_[3]] K_1 (K := ℚ_[3]) P) ≃* (ResidueField ℤ_[3])ˣ) ∧
+      Nat.card (K_1 (K := ℚ_[3]) P ≃ₐ[ℚ_[3]] K_1 (K := ℚ_[3]) P) = 2 := by
+  letI : Fact (Nat.Prime 3) := ⟨Nat.prime_three⟩
+  refine ⟨residueCard_padicInt 3, ?_⟩
+  obtain ⟨f, P, u, hf, hu, heq, hPdist, hPdeg, hfinrank, hiso⟩ :=
+    exists_mulEquiv_gal_K_1_residueUnits_padic 3
+  obtain ⟨e⟩ := hiso
+  refine ⟨f, P, u, by exact_mod_cast hf, hu, heq, hPdist, hPdeg, hfinrank, ⟨e⟩, ?_⟩
+  have h3 : Nat.card (ResidueField ℤ_[3]) = 3 := residueCard_padicInt 3
+  rw [Nat.card_congr e.toEquiv, Nat.card_units (ResidueField ℤ_[3]), h3]
 
 /-- **`IsGalois ℚ_[3] (K_1 P)` at a genuine degree-`2` witness, with no hypotheses at all.** The
 companion to `exists_finrank_K_1_eq_two_padic_three` for `isGalois_K_1`: at `p = 3` the extension
