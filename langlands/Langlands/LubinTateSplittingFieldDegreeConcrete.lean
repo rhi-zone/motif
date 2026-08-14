@@ -2,6 +2,7 @@ import Mathlib.NumberTheory.Padics.RingHoms
 import Langlands.LubinTateGaloisResidueUnits
 import Langlands.LubinTateWeierstrassPreparation
 import Langlands.LubinTateRootCountConcrete
+import Langlands.LubinTateSplittingFieldDVR
 
 /-!
 # Non-vacuity certificate for `finrank_K_1_eq_residueCard_sub_one`
@@ -68,7 +69,7 @@ Weierstrass preparation from `hf`. The `p = 3` instance below is the certificate
 is right rather than merely plausible: it exhibits the entire package satisfied with `residueCard =
 3`.
 
-## The `IsAdicComplete` caveat
+## The `IsAdicComplete` caveat (closed)
 
 Weierstrass preparation (`exists_isWeierstrassFactorization_of_isLubinTatePoly`, hence Mathlib's
 `PowerSeries.exists_isWeierstrassFactorization`) requires `[IsAdicComplete (maximalIdeal O) O]`.
@@ -76,24 +77,23 @@ Weierstrass preparation (`exists_isWeierstrassFactorization_of_isLubinTatePoly`,
 * At `O := ℤ_[p]` this is a Mathlib instance
   (`Mathlib/NumberTheory/Padics/PadicIntegers.lean`), so the p-adic certificates below carry **no**
   hypothesis of any kind.
-* At `O := v.adicCompletionIntegers F` it is *not* available. It is mathematically true — the
-  valuation ring of a complete discretely-valued field is `m`-adically complete — but no such
-  instance or lemma exists in this Mathlib: the `IsAdicComplete` instances present are for Artinian
-  local rings, for `ℤ_[p]`, for `AdicCompletion I R` itself, and for `𝒪[K]` with `K` carrying the
-  `ValuativeRel`-based `IsNonarchimedeanLocalField` bundle (`Mathlib/NumberTheory/LocalField/Basic.lean`)
-  — none of which applies to `v.adicCompletionIntegers F` as this repo instantiates it. The generic
-  bridge that would close it, `IsAdic.isPrecomplete_iff` (`Mathlib/RingTheory/AdicCompletion/Topology.lean`),
-  needs `IsAdic (maximalIdeal O)` for the subspace topology — i.e. that the valuation topology on
-  the integers is the `m`-adic one — and Mathlib has no `IsAdic` lemma for valuation topologies at
-  all (its only `IsAdic` lemmas are `is_ideal_adic_pow` and the discreteness criterion). Proving it
-  is a self-contained development that is *not* attempted here; the hypothesis is therefore left
-  explicit in the `adicCompletion` statement.
-
-Leaving it explicit is honest with respect to this file's purpose: `IsAdicComplete (maximalIdeal
-(v.adicCompletionIntegers F)) (v.adicCompletionIntegers F)` is a property of the completion alone,
-mentioning neither `residueCard` nor any Lubin-Tate datum, so it cannot be what makes the package
-vacuous — and the `ℤ_[p]` certificates, where it *is* discharged, settle the satisfiability question
-outright.
+* At `O := v.adicCompletionIntegers F` this was previously left as an explicit hypothesis, this
+  file's module docstring recording that no Mathlib instance/lemma bridges `IsAdicComplete` to
+  `CompleteSpace` + `IsDiscreteValuationRing` for a `ValuativeRel`-formalism field. That framing was
+  corrected in `ROADMAP.md`'s Phase 2c forty-first pass: the gap was not that the bridge is missing
+  from Mathlib, but that nobody had pointed `Mathlib.NumberTheory.LocalField.Basic`'s plain
+  `IsAdicComplete 𝓂[K] 𝒪[K]` instance (available once `IsNonarchimedeanLocalField K` holds) at the
+  *lighter* `[NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K] [_.Compatible]
+  [CompleteSpace K] [IsDiscreteValuationRing 𝒪[K]] [Finite 𝓀[K]]` bundle this repo's concrete
+  instances actually carry — exactly the bridge
+  `Langlands.UnramifiedExtension.henselianLocalRing_of_valuationSubring` already builds for
+  Henselian-ness, reused unchanged for `IsAdicComplete`
+  (`Langlands.isAdicComplete_of_valuationSubring`). Instantiated at `K := v.adicCompletion F`
+  (`IsDedekindDomain.HeightOneSpectrum.isAdicComplete_adicCompletionIntegers`,
+  `Langlands/LubinTateSplittingFieldDVR.lean`), this is now a genuine instance requiring only
+  `[Finite (A ⧸ v.asIdeal)]` — already a hypothesis of `exists_finrank_K_1_eq_residueCard_sub_one_of_adicCompletion`
+  below — so `[IsAdicComplete (maximalIdeal (v.adicCompletionIntegers F)) (v.adicCompletionIntegers
+  F)]` is no longer carried as an explicit hypothesis there.
 -/
 
 @[expose] public section
@@ -329,14 +329,12 @@ residue field and `π` a uniformizer of `v.adicCompletionIntegers F`, the whole 
 (`norm_algebraMap_adicCompletionIntegers_le_one`,
 `norm_algebraMap_adicCompletion_uniformizer_lt_one`).
 
-`[IsAdicComplete (maximalIdeal (v.adicCompletionIntegers F)) (v.adicCompletionIntegers F)]` remains
-an explicit hypothesis: it is true but unavailable in this Mathlib (see this file's module docstring
-for exactly what is missing). It constrains only the completion, never `residueCard`, so it is not
-what would make the package vacuous — and `LubinTate.exists_finrank_K_1_eq_two_padic_three` closes
-the satisfiability question with no hypotheses at all. -/
+`IsAdicComplete (maximalIdeal (v.adicCompletionIntegers F)) (v.adicCompletionIntegers F)` is now
+discharged as an instance
+(`IsDedekindDomain.HeightOneSpectrum.isAdicComplete_adicCompletionIntegers`,
+`Langlands/LubinTateSplittingFieldDVR.lean`) from `[Finite (A ⧸ v.asIdeal)]` alone, so it is no
+longer carried as an explicit hypothesis here. -/
 theorem exists_finrank_K_1_eq_residueCard_sub_one_of_adicCompletion [Finite (A ⧸ v.asIdeal)]
-    [IsAdicComplete (maximalIdeal (v.adicCompletionIntegers F))
-      (v.adicCompletionIntegers F)]
     {π : v.adicCompletionIntegers F} (hπ : Irreducible π) :
     ∃ (f : (v.adicCompletionIntegers F)⟦X⟧) (P : (v.adicCompletionIntegers F)[X])
       (u : (v.adicCompletionIntegers F)⟦X⟧),
