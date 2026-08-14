@@ -132,22 +132,36 @@ instance henselianLocalRing : HenselianLocalRing ↥(𝒪[K]) := by
   refine HenselianLocalRing.mk fun f hf a₀ ha₀ hderiv => ?_
   exact HenselianRing.is_henselian f hf a₀ ha₀ (hderiv.map (Ideal.Quotient.mk 𝓂[K]))
 
+/-- The ring of integers of a nonarchimedean local field is `𝓂[K]`-adically complete. This is a
+plain Mathlib instance (`Mathlib.NumberTheory.LocalField.Basic`, `IsNonarchimedeanLocalField`'s
+`UniformSpace` section) once the uniform structure on `K` compatible with its topology is
+supplied; the same local `letI`/`haveI` pair as `henselianLocalRing` produces it. Named
+explicitly (rather than left to bare `inferInstance` at call sites) so that
+`isAdicComplete_of_valuationSubring` below can transport it by a type-ascription cast, mirroring
+how `henselianLocalRing_of_valuationSubring` transports `henselianLocalRing`. -/
+instance isAdicComplete : IsAdicComplete 𝓂[K] ↥(𝒪[K]) := by
+  letI := IsTopologicalAddGroup.rightUniformSpace K
+  haveI := isUniformAddGroup_of_addCommGroup (G := K)
+  infer_instance
+
 open scoped NormedField Valued in
-/-- The ring of integers of a *lighter-bundle* complete discretely-valued field is Henselian,
-provided its residue field is finite. `IsNonarchimedeanLocalField K` packages
+/-- The `IsNonarchimedeanLocalField K` instance underlying a *lighter-bundle* complete
+discretely-valued field with finite residue field. `IsNonarchimedeanLocalField K` packages
 `LocallyCompactSpace K`, which is not part of the lighter bundle
 `[NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K] [_.Compatible]
-[CompleteSpace K] [IsDiscreteValuationRing 𝒪[K]]`; but a complete discretely-valued field with
-finite residue field *is* locally compact
+[CompleteSpace K] [IsDiscreteValuationRing 𝒪[K]] [Finite 𝓀[K]]`; but a complete discretely-valued
+field with finite residue field *is* locally compact
 (`Valued.integer.properSpace_iff_completeSpace_and_isDiscreteValuationRing_integer_and_finite_residueField`
-gives properness, and proper metric spaces are locally compact), so `IsNonarchimedeanLocalField K`
-can be derived and the existing `henselianLocalRing` instance reused. -/
-instance henselianLocalRing_of_valuationSubring
+gives properness, and proper metric spaces are locally compact). Factored out of
+`henselianLocalRing_of_valuationSubring` so that `isAdicComplete_of_valuationSubring` can reuse
+the same derivation without duplicating it; kept `private` since it is an intermediate step, not
+a fact either downstream consumer states directly. -/
+private instance isNonarchimedeanLocalField_of_valuationSubring
     (K : Type*) [NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K]
     [(NormedField.valuation (K := K)).Compatible] [CompleteSpace K]
     [IsDiscreteValuationRing ↥(valuation K).valuationSubring]
     [Finite (IsLocalRing.ResidueField ↥(valuation K).valuationSubring)] :
-    HenselianLocalRing ↥(valuation K).valuationSubring := by
+    IsNonarchimedeanLocalField K := by
   haveI hvt : IsValuativeTopology K :=
     IsValuativeTopology.of_mem_nhds_zero_iff_vle (NormedField.valuation (K := K))
       (fun {s} => (NormedField.toValued (K := K)).is_topological_valuation s)
@@ -178,8 +192,41 @@ instance henselianLocalRing_of_valuationSubring
     have : LocallyCompactSpace K :=
       @locallyCompact_of_proper K (Valued.toNormedField K NNReal).toPseudoMetricSpace hproper
     exact this
-  haveI : IsNonarchimedeanLocalField K := ⟨⟩
-  exact (henselianLocalRing K : HenselianLocalRing ↥(valuation K).valuationSubring)
+  exact ⟨⟩
+
+/-- The ring of integers of a *lighter-bundle* complete discretely-valued field is Henselian,
+provided its residue field is finite. See `isNonarchimedeanLocalField_of_valuationSubring` for how
+`IsNonarchimedeanLocalField K` is derived from the lighter bundle; this then reuses the existing
+`henselianLocalRing` instance. -/
+instance henselianLocalRing_of_valuationSubring
+    (K : Type*) [NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K]
+    [(NormedField.valuation (K := K)).Compatible] [CompleteSpace K]
+    [IsDiscreteValuationRing ↥(valuation K).valuationSubring]
+    [Finite (IsLocalRing.ResidueField ↥(valuation K).valuationSubring)] :
+    HenselianLocalRing ↥(valuation K).valuationSubring :=
+  (henselianLocalRing K : HenselianLocalRing ↥(valuation K).valuationSubring)
+
+/-- The ring of integers of a *lighter-bundle* complete discretely-valued field is
+`(maximalIdeal)`-adically complete, provided its residue field is finite. Same derivation as
+`henselianLocalRing_of_valuationSubring`, transporting the plain `isAdicComplete` instance instead
+of `henselianLocalRing` across the same `↥(𝒪[K]) ≡ ↥(valuation K).valuationSubring` identification
+(both unfold to `{x // (valuation K) x ≤ 1}`: `Valuation.valuationSubring` is literally
+`{v.integer with mem_or_inv_mem' := ..}`, i.e. `𝒪[K] = Valuation.integer (valuation K)` is the
+`Subring` underlying `(valuation K).valuationSubring`, so the type ascription below is a defeq
+cast, not a genuine transport lemma). This is the instance
+`PowerSeries.exists_isWeierstrassFactorization` needs by name — `HenselianLocalRing` alone is not
+a substitute, since Mathlib's Weierstrass preparation is stated for `IsAdicComplete`, not for
+merely-Henselian rings. -/
+instance isAdicComplete_of_valuationSubring
+    (K : Type*) [NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K]
+    [(NormedField.valuation (K := K)).Compatible] [CompleteSpace K]
+    [IsDiscreteValuationRing ↥(valuation K).valuationSubring]
+    [Finite (IsLocalRing.ResidueField ↥(valuation K).valuationSubring)] :
+    IsAdicComplete (IsLocalRing.maximalIdeal ↥(valuation K).valuationSubring)
+      ↥(valuation K).valuationSubring :=
+  (isAdicComplete K :
+    IsAdicComplete (IsLocalRing.maximalIdeal ↥(valuation K).valuationSubring)
+      ↥(valuation K).valuationSubring)
 
 /-! ### A monic lift of a minimal polynomial over a Henselian local ring -/
 
