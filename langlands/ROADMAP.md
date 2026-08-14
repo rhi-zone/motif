@@ -14671,3 +14671,83 @@ standing constraints. No file was written for Target 1 this pass.
   stand between "the lemmas exist" and "the lemmas apply at level 2."
 * **`Gal(K_2/K_1)`** (the level-2 analogue of `§44`'s `Gal(K_1/K) ≃* (O/π)ˣ`) remains untouched, and
   depends on Target 1 closing first.
+
+## 51. Phase 2c, forty-fourth pass (2026-08-14): **`§50`'s "group structure not built" claim is
+stale** — corrected, and item (4) of the Target-1 chain closed.
+
+### The correction
+
+`§50`'s Target-1 section quoted `Langlands/LubinTateTorsionPoints.lean`'s module docstring
+verbatim: **"No group structure. Closure of `piTorsion` under `F_π`-addition … and under additive
+inverses … both need evaluation to commute with formal substitution/composition, in the
+bivariate-outer shape … not yet built anywhere in this repo."** That docstring is stale. Checked
+directly against the repo's own commit graph, not inferred: `Langlands/LubinTateTorsionGroup.lean`
+(commit `3d88c64`) already builds `piTorsionAddCommGroup : AddCommGroup ↥(piTorsion hπ hf n)` — for
+**general** `n`, not `n = 1` only — resting on exactly the bivariate-outer eval-subst compatibility
+the docstring says doesn't exist: `Langlands.NonarchimedeanMvPowerSeriesEval.eval_subst_G` (in
+`Langlands/NonarchimedeanMvPowerSeriesEvalSubstGeneral.lean`, commit `288133d`) plus
+`FPiEval_assoc` (`Langlands/LubinTateFormalGroupEvalAssoc.lean`, built from `eval_subst_G` — two
+applications, one per nesting level). Both commits are ancestors of `3e4c756`, the commit that wrote
+`§50` — so the infrastructure existed when `§50` was written; the docstring it quoted was simply
+never updated after `LubinTateTorsionGroup.lean` was added downstream of it. `grep -n sorry` on
+`LubinTateTorsionGroup.lean`, `LubinTateFormalGroupEvalAssoc.lean`,
+`NonarchimedeanMvPowerSeriesEvalSubstGeneral.lean` — no hits; `nix develop -c lake build
+Langlands.LubinTateTorsionGroup` — clean.
+
+`LubinTateTorsionPoints.lean`'s docstring itself is left as-is (out of scope for this pass; a
+follow-up should update it to point at `LubinTateTorsionGroup.lean` rather than continue asserting
+group structure doesn't exist).
+
+**What this does *not* correct**: `§50`'s items (4)–(6) — the translation *action* on roots of
+`f(X) - α`, its transitivity, and reassembly into `K_1⟮β⟯ = ⊤` — genuinely were unstarted, and
+`§50`'s citation of them as open was accurate on its own terms (the group structure gap it named as
+the reason was stale, but the downstream items it listed as consequently blocked were correctly
+identified as not yet built, independent of that one wrong premise).
+
+### Item (4) closed: roots of `f(X) = α` differ by `π`-torsion translation
+
+`Langlands/LubinTateRootTranslation.lean` (new, sorry-free), building on the now-confirmed
+`piTorsion`/`FPiEval` machinery:
+
+* `eval_f_FPiEval` : **`f` is `F_π`-additive**, `eval f (F_π(a, b)) = F_π(eval f a, eval f b)` — the
+  `n := 1` case of `eval_iter_FPiEval` (`§23`'s "Fact E"), via `iter_one`.
+* `eq_of_FPiEval_eq_zero_left` : **`F_π`-cancellation**, `F_π(a, b) = 0 → F_π(a, c) = 0 → b = c`,
+  for arbitrary maximal-ideal `a, b, c` — the standard group-cancellation computation, done at the
+  raw `FPiEval` level (not via the packaged `piTorsion n` `AddCommGroup` instance, since `a, b, c`
+  here are not assumed to be any fixed `piTorsion n`).
+* `eval_f_PhiInv_eq_PhiInv_eval_f` : **`f` commutes with `F_π`-inversion**, `eval f (i_{F_π}(x)) =
+  i_{F_π}(eval f x)` — obtained group-theoretically (both sides are `F_π`-inverses of `eval f x`,
+  hence equal by cancellation), not from any new formal-power-series identity.
+* `sub_mem_piTorsion_one_of_eval_f_eq` : **the headline fact.** `eval f β = eval f β'` (both `β, β'`
+  in the maximal ideal) implies `F_π(β, i_{F_π}(β')) ∈ piTorsion hπ hf 1` — `f(β -_F β') = f(β) -_F
+  f(β') = α -_F α = 0`.
+
+`nix develop -c lake build` (full project) — clean, `8791` jobs. `grep -n sorry` on
+`LubinTateRootTranslation.lean` — no hits. Commit `4355a3f`.
+
+### What is still open for Target 1
+
+* **Item (5)**: transitivity/orbit-counting for the translation action on the roots of `P₂` (level
+  2's Eisenstein polynomial) specifically — not a copy of `§44`'s `(ResidueField O)ˣ`-orbit counting
+  argument (different acting group: additive `piTorsion hπ hf 1`, not multiplicative `(ResidueField
+  O)ˣ`) nor of `LubinTateResidueUnitsTransitivity.lean`'s counting machine (which is for the
+  multiplicative action, and whose *own* main result — `orbit_image_eq_piTorsion_sdiff_zero` — is
+  flagged vacuous for `residueCard O ≥ 3` under the old `hsplit` route; but note the base cardinality
+  fact this item needs is *not* that vacuous one — see next). Needs: (a) `Nat.card (piTorsion hπ hf
+  1 : Set (K_1 P)) = residueCard O`, which is **already available non-vacuously**:
+  `card_piTorsion_one_K_1_eq_residueCard` (`Langlands/LubinTateSplittingFieldTorsion.lean`) proves
+  exactly this at `K := K_1 P`, via the newer `K_1 = Q.SplittingField` construction, with no
+  `hsplit`/`[IsFractionRing O K_1]` in sight (checked directly — distinct from the older, vacuous
+  `card_piTorsion_one_eq_residueCard` in `LubinTateRootCount.lean`, which this is not). (b)
+  `Nat.card {roots of P₂} = residueCard O` (should follow from `P₂` monic of degree `q` and
+  separable), (c) that translation by `piTorsion hπ hf 1` actually maps roots-of-`P₂` to
+  roots-of-`P₂` (closure, not just well-definedness of the difference — not yet checked), (d)
+  freeness of the action to conclude bijectivity/transitivity from the two matching cardinalities.
+* **Item (6)**: reassembly into `K_1⟮β⟯ = ⊤` needs, additionally, that `β +_F t ∈ K_1⟮β⟯` for every
+  `t ∈ piTorsion hπ hf 1` (with `piTorsion hπ hf 1 ⊆ K_1` from `K_1 = K(F_π[π])`'s definition) —
+  `FPiEval` is defined by a convergent `tsum`, so this needs `K_1⟮β⟯` to be *closed* in `K_2`
+  (true for a finite-dimensional subspace of a complete normed space, but not yet stated or proved
+  in this repo for this arc's concrete fields) so the limit of partial sums (each a polynomial
+  combination of `β, t`, hence in `K_1⟮β⟯`) stays inside `K_1⟮β⟯`. Not attempted this pass.
+* Everything else recorded in the previous section ("What remains, precisely, to iterate to `K_3`")
+  is unchanged by this pass.
