@@ -14121,3 +14121,104 @@ checked directly against both Mathlib and this repo:
    need a fresh root-count/generator/transitivity argument at each level, analogous to
    `LubinTateSplittingFieldDegree.lean`'s `exists_generator_K_1`/`finrank_K_1_eq_residueCard_sub_one`
    but for the *shifted* polynomial (no `divX` peel, no trivial `0`-root) — not attempted this pass.
+
+## 47. Phase 2c, fortieth pass (2026-08-14): **`O_{K_1}` is a discrete valuation ring (and, given
+separability, Henselian) — `§46`'s "not derivable" premise corrected; `IsAdicComplete` and
+residue-field preservation remain open.**
+
+`§46` closed the Eisenstein-existence half of the general tower step and named "whether `O_{K_1}` is
+itself a complete DVR with the same residue field as `O`" as the single largest remaining gap,
+recording that Mathlib has no lemma constructing `IsDiscreteValuationRing`/`IsAdicComplete` for the
+integral closure of a DVR in a `spectralNorm`-normed finite extension, and that this repo's existing
+`IsDiscreteValuationRing` instances all live in the `ValuativeRel`/`ValuationSubring` formalism, "none
+of which applies" to `K_1`. This pass corrects that last claim: the `ValuativeRel`-formalism machinery
+*does* apply to `K_1`, once pointed at it directly — the gap was that nobody had done so, not that the
+formalism was incompatible.
+
+### Correction: `ValuativeRel`-formalism DVR machinery reaches `K_1` directly, no bridge needed
+
+`Langlands/LubinTateSplittingFieldDVR.lean` (new file), sorry-free, `lake build` clean (`8785` jobs,
+up from `8784`):
+
+* `NormedField.isDiscreteValuationRing_valuationSubring_of_finiteDimensional` : general,
+  formalism-neutral — `K` complete-discretely-valued in the `ValuativeRel` sense (`[ValuativeRel K]
+  [(NormedField.valuation).Compatible] [IsDiscreteValuationRing 𝒪[K]]`), `L / K` finite with a norm
+  extending `K`'s (`hnorm : ∀ x : K, ‖algebraMap K L x‖ = ‖x‖`) ⟹ `↥(NormedField.valuation
+  (K := L)).valuationSubring` is a DVR. No `spectralNorm`, `RankOne`, or `IsUltrametricDist L`
+  anywhere in the statement — it needs only `ValuationSubring.isDiscreteValuationRing_of_comap_eq`
+  (`Langlands/ValueGroupCyclic.lean`), applied once `L`'s closed-unit-ball comap along `algebraMap K
+  L` is identified with `𝒪[K]` (`Valuation.isEquiv_iff_valuationSubring` chasing the two `Compatible`
+  valuations on `K`, the same pattern `UnramifiedExtension.henselianLocalRing_of_valuationSubring`
+  uses). This sidesteps `TowerBundle.lean`'s heavier `RankOne`/`letI`-bundle route entirely — plain
+  discreteness does not need it.
+* `NormedField.henselianLocalRing_valuationSubring_of_finiteDimensional` : same setup plus
+  `[Algebra.IsSeparable K L] [CompleteSpace K]` and finite residue field of `𝒪[K]` ⟹ Henselian.
+  Identifies `A := (NormedField.valuation (K := L)).valuationSubring` with `𝒪_L :=
+  LocalField.integralClosureValuationSubring 𝒪[K] L` via uniqueness of the valuation-subring
+  extension (`LocalField.valuationSubring_eq_of_comap_eq`), transporting `𝒪_L`'s module-finiteness
+  over `𝒪[K]` (`LocalField.finite`, needing separability) to get `Finite (ResidueField A)`, and a
+  `RankOne A.valuation` instance from `LocalField.exists_rankOne_compatible`; `TowerBundle.lean`'s
+  `henselianLocalRing_of_comap_eq` assembles these.
+* `LubinTate.isDiscreteValuationRing_valuationSubring_K_1` /
+  `LubinTate.henselianLocalRing_valuationSubring_K_1` : corollaries at `K_1`, discharging `hnorm` via
+  `spectralNorm_extends` — the same route `K_1.hOK_transport`/`K_1.hπnorm_transport`
+  (`LubinTateSplittingField.lean`) already use.
+* `IsDedekindDomain.HeightOneSpectrum.isDiscreteValuationRing_valuationSubring_K_1_of_adicCompletion`
+  / `..._henselianLocalRing_..._of_adicCompletion` : the same at this arc's concrete instantiation
+  `K := v.adicCompletion F`, where the `ValuativeRel`/`Compatible`/DVR bundle is already available as
+  instances (`Langlands.NormMap`), so these corollaries carry no extra hypothesis of that kind beyond
+  `K_1`'s own standing package. A supporting lemma,
+  `valuationSubring_valuation_eq_adicCompletionIntegers`, identifies
+  `(ValuativeRel.valuation (v.adicCompletion F)).valuationSubring` with `v.adicCompletionIntegers F`
+  as `ValuationSubring`s (both unfold to `Valued.v.valuationSubring` for the same ambient `Valued`
+  structure), so `Finite (ResidueField (v.adicCompletionIntegers F))` transports without re-deriving
+  the underlying `Compatible`-chasing computation.
+
+Build: `nix develop -c lake build` clean, `8785` jobs. `grep -n sorry
+Langlands/LubinTateSplittingFieldDVR.lean` — no hits. Commits `959a6cd` (DVR),
+`5d49e51` (Henselian).
+
+### What is still open
+
+* **`IsAdicComplete (maximalIdeal O_{K_1}) O_{K_1}`** — not proved, and not a `K_1`-specific gap: the
+  *base* `O := v.adicCompletionIntegers F` already lacks this instance in current Mathlib, per
+  `LubinTateSplittingFieldDegreeConcrete.lean`'s own module docstring (re-verified this pass, not
+  newly discovered). Closing it needs a genuinely new lemma — that the valuation topology on a
+  complete field's ring of integers coincides with its `𝔪`-adic topology — not a missing instance
+  application. This blocks `LubinTateTowerStep.lean`'s Weierstrass-preparation step specifically:
+  `HenselianLocalRing` (which *is* now available for `O_{K_1}`, given separability) is **not** a
+  substitute — `PowerSeries.exists_isWeierstrassFactorization` needs `IsAdicComplete` by name, and
+  Mathlib's `IsAdicComplete.henselianRing` is one-directional (adic-complete ⟹ Henselian, not
+  conversely); no Weierstrass-preparation variant exists for merely-Henselian rings.
+* **Residue-field preservation** (`ResidueField O_{K_1} ≃ ResidueField O`) — not attempted this pass.
+  Needs an `e·f = n` (ramification-index × residue-degree = extension-degree) argument in the
+  `ValuationSubring`/`spectralNorm` formalism; this repo's existing `ef = n`-style lemmas (the
+  Phase 2b `TotallyRamified*.lean` thread) assume total ramification as a hypothesis rather than
+  deriving it from a bare degree count, so `[K_1 : K] = q - 1`
+  (`LubinTateSplittingFieldDegree.lean`'s `finrank_K_1_eq_residueCard_sub_one`) does not by itself
+  hand over "residue field unchanged" — that connection is unbuilt.
+* **`K_2` was not instantiated** — blocked on both points above:
+  `LubinTateTowerStep.lean`'s Weierstrass-preparation step needs `IsAdicComplete` on the moving base,
+  which `O_{K_1}` does not yet have.
+* **`LubinTateTowerStep.lean` itself was not wired up** to `O_{K_1}` — not usable there yet without
+  `IsAdicComplete`.
+
+**Concrete next steps, in order, for whoever continues this:**
+
+1. Prove the valuation topology on a complete discretely-valued field's ring of integers is its
+   `𝔪`-adic topology (or find/derive the Mathlib fact that gives `IsAdicComplete` for `𝒪[K]` when `K`
+   is complete) — needed even at the *base* `O`, not just at `O_{K_1}`. This is the sharpest concrete
+   blocker identified so far in this arc's DVR-completeness thread.
+2. Once `IsAdicComplete 𝒪[K]` is in hand generically, `NormedField.isDiscreteValuationRing_
+   valuationSubring_of_finiteDimensional`'s hypothesis package (this pass's new file) already covers
+   the DVR half at `L`; check whether `IsAdicComplete` itself transports from `K` to a finite
+   extension `L` by a similar comap/finite-module argument, or needs separate work.
+3. Build the `e·f = n` argument for `ResidueField O_{K_1} ≃ ResidueField O`, keyed to `[K_1 : K] =
+   q - 1` and totally-ramified-by-construction (Eisenstein minimal polynomial), in the
+   `ValuationSubring`/`spectralNorm` formalism `K_1` actually lives in — reusing the Phase 2b
+   `TotallyRamified*.lean` thread's *technique*, not its `ValuativeRel`-canonical-`O`-specific
+   statements, per this arc's established pattern of re-deriving results in its own formalism rather
+   than importing conclusions across formalisms.
+4. Only after 1-3: wire `O_{K_1}` into `LubinTateTowerStep.lean` and attempt `K_2`, per `§46`'s
+   already-recorded steps 2-3 (the `π^n`-torsion root-count/transitivity generalization and the
+   fresh degree computation for the shifted polynomial remain unstarted, independent of this pass).
