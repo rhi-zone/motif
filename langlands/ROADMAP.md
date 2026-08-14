@@ -13779,3 +13779,139 @@ Classical.choice, Quot.sound]` only.
 one-lemma-per-pass verification in the style of this whole arc. After that, generalize `n = 1` to the
 tower `K_n` (`[K_n:K] = q^(n-1)(q-1)`), which needs `π^n`-torsion analogues of both the root count and
 the transitivity argument — neither exists in this repo yet — and finally the reciprocity map itself.
+
+## 44. Phase 2c, thirty-eighth pass (2026-08-14): **`Gal(K_1/K) ≃* (O/π)ˣ` — CLOSED, non-vacuously.
+The capstone theorem of the entire arc, `§7` through here.**
+
+`§43` closed `IsGalois K (K_1 P)` and *scoped* the isomorphism to `(O/π)ˣ` as items (a)-(e), none
+written. This pass wrote all five. **`Gal(K_1/K) ≃* (O/π)ˣ` is now proved**, with a hypothesis-free
+Lean certificate exhibiting it at a Galois group of order `2`.
+
+### `isGalois_K_1`'s non-vacuity, verified directly rather than inferred
+
+`§43` argued `isGalois_K_1` is non-vacuous *by inference*: it takes the same argument list as
+`finrank_K_1_eq_residueCard_sub_one`, whose certificate is concrete. Correct reasoning, but never
+re-run. It is now run: `LubinTate.exists_isGalois_K_1` / `_padic` / `_padic_three`
+(`Langlands/LubinTateSplittingFieldDegreeConcrete.lean`) build the `IsGalois ℚ_[3] (K_1 P)` term
+itself at the `p = 3` witness, alongside `finrank ℚ_[3] (K_1 P) = 2` — so the Galois conclusion is
+certified at a witness where `K_1 P ≠ K`. Commit `9e6a014`.
+
+### The five steps
+
+**Generator exposed first** (`refactor`, commit `6d6ac1a`). `finrank_K_1_eq_residueCard_sub_one`'s
+proof built the primitive `π`-torsion point `α` with `K⟮α⟯ = ⊤` as a local `have` — invisible
+downstream, and the isomorphism has to *name* it. Steps 1, 3, 4 of that proof are now
+`LubinTate.exists_generator_K_1` (`Langlands/LubinTateSplittingFieldDegree.lean`); the degree
+theorem consumes it. No change to the degree statement.
+
+**All five items in `Langlands/LubinTateGaloisResidueUnits.lean`** (new, commit `ac7d90d`):
+
+1. **Well-definedness** — `exists_unique_galUnit`. `σ` fixes `K`, so `σ α` is again a root of `Qk`
+   (`Polynomial.aeval_algEquiv`), hence nonzero `π`-torsion
+   (`mem_piTorsion_of_aeval_divX_map_eq_zero`, extracted here from the generator proof). *Existence*
+   of the unit is transitivity (`orbit_image_eq_piTorsion_sdiff_zero_K_1`); *uniqueness* is freeness
+   in the sharp `dvd_sub_of_eval_phiU_eq` form, which is strictly cheaper than going through
+   `eq_one_of_residuePiTorsion_smul_eq_self`. So `∃!` — exactly what `§43` predicted the shape would
+   be.
+2. **Homomorphism property** — the one analytic step, and `§43`'s open question about the
+   `HasSum`-transport lemma is answered: **`HasSum.map` exists** (`Mathlib/Topology/Algebra/
+   InfiniteSum/Basic.lean`, the `to_additive` of `HasProd.map`), for any continuous
+   `AddMonoidHomClass` map, which an `AlgEquiv` is. Packaged as
+   `NonarchimedeanPowerSeriesEval.map_eval_of_continuous`: *any* continuous ring hom fixing the
+   coefficient ring's image commutes with `eval`. Stated with no `‖σ x‖ < 1` hypothesis — the
+   transported `HasSum` already exhibits `σ (eval g x)` as the sum, and `eval g (σ x)` is by
+   definition that `tsum`, so convergence at `σ x` never has to be argued separately. `§43`'s
+   continuity finding held up: `LinearMap.continuous_of_finiteDimensional` on `σ.toLinearMap`
+   (`continuous_of_algEquiv_K_1`), no `spectralNorm` argument.
+   **Composition order turned out not to matter.** `AlgEquiv`'s `Mul` is `(σ * τ) x = σ (τ x)`
+   (`AlgEquiv.mul_apply`) and `phiU` composes the other way, so the construction lands on
+   `u(σ τ) = u(τ) u(σ)` — equal to `u(σ) u(τ)` because `(ResidueField O)ˣ` is commutative. The
+   convention question `§43` flagged as needing verification is real but inert.
+3. **Injectivity** — `K⟮α⟯ = ⊤` plus `IntermediateField.adjoin_toSubalgebra` (available since
+   `K_1 P/K` is algebraic) makes `α` an *algebra* generator, and `AlgHom.ext_of_adjoin_eq_top` is
+   the lemma `§43` guessed at without a name. No `IntermediateField.algEquiv_ext`-style fact was
+   needed.
+4. **Surjectivity by counting, not by construction.** `Nat.card Gal(K_1/K) = finrank K (K_1 P)`
+   (`IsGalois.card_aut_eq_finrank` — the name `§43` listed as unverified; it exists, in `Nat.card`
+   form, not `Fintype.card`) `= residueCard O - 1 = Nat.card (ResidueField O)ˣ` (`Nat.card_units`).
+   An injective map between finite types of equal cardinality is bijective
+   (`Nat.bijective_iff_injective_and_card`). **No Galois automorphism is ever built from a residue
+   unit** — the degree theorem already paid for that, so `§43`'s option (d)-by-construction was not
+   needed.
+5. **Packaging** — `MulEquiv.ofBijective` on `MonoidHom.mk'` (which derives `map_one'` from
+   `map_mul'` since the target is a group).
+
+**Final form**: `LubinTate.nonempty_mulEquiv_gal_K_1_residueUnits` :
+`Nonempty ((K_1 P ≃ₐ[K] K_1 P) ≃* (ResidueField O)ˣ)`. `K_1 P ≃ₐ[K] K_1 P` *is* what Mathlib's
+`Gal(K_1 P/K)` notation abbreviates (`Mathlib/FieldTheory/Galois/Notation.lean` — the codebase has
+no `Gal` abbreviation of its own; `IsGalois` introduces none). `Nonempty` rather than a bare
+`MulEquiv` because the map depends on the choice of `α`; nothing downstream needs a canonical map
+before the reciprocity map itself, so a choice-dependent `def` with a twelve-argument signature was
+not worth introducing.
+
+### Non-vacuity of the capstone itself
+
+Verified at the packaged `MulEquiv`, not inferred from the sub-pieces
+(`Langlands/LubinTateSplittingFieldDegreeConcrete.lean`, commit `230db84`):
+`LubinTate.exists_mulEquiv_gal_K_1_residueUnits` (abstract) / `_padic` / `_padic_three`. The `p = 3`
+form is hypothesis-free and certifies, together: `residueCard ℤ_[3] = 3`,
+`finrank ℚ_[3] (K_1 P) = 2`, the `MulEquiv` itself, **and**
+`Nat.card (K_1 P ≃ₐ[ℚ_[3]] K_1 P) = 2`. The last conjunct is the load-bearing one — an isomorphism
+between two *trivial* groups would carry no information, so the witness is exhibited with a Galois
+group of order `2`: a genuinely ramified quadratic extension of `ℚ_[3]` whose Galois group is
+identified with `𝔽_3ˣ`.
+
+### Build status
+
+`nix develop --command lake build` — clean, `Build completed successfully (8771 jobs)`.
+`lake build Langlands.LubinTateSplittingFieldDegreeConcrete` — clean, `3524 jobs` (see the coverage
+caveat below). `grep -n sorry` over all four touched files — no hits. `#print axioms` on
+`exists_generator_K_1`, `finrank_K_1_eq_residueCard_sub_one`, `map_eval_of_continuous`,
+`continuous_of_algEquiv_K_1`, `algEquiv_eval_K_1`, `mem_piTorsion_of_aeval_divX_map_eq_zero`,
+`exists_unique_galUnit`, `nonempty_mulEquiv_gal_K_1_residueUnits`, and all six certificate
+theorems — `[propext, Classical.choice, Quot.sound]` only.
+
+**Coverage caveat, found this pass.** `lake build` alone does *not* check the `K_1`-as-splitting-field
+chain: `Langlands.lean` (the library root, the only build target) imports neither
+`LubinTateSplittingField*` nor `LubinTateResidueUnits*` nor `LubinTateGaloisResidueUnits`. Attempting
+to add them fails with a **genuine name collision**: `LubinTate.K_1` is defined *twice*, in
+`Langlands/LubinTateFieldTower.lean` (the pre-`§41` `K(F_π[π])` formulation) and in
+`Langlands/LubinTateSplittingField.lean` (the `§41` rearchitecture), so the two cannot coexist in one
+environment. This is a `§41` migration that was never finished — the old `K_1` was not retired — and
+it is why every `lake build` report in `§41`-`§43` was, unnoticed, not covering the files those
+passes actually wrote. Those files *do* build (verified per-module here); the claim that needs
+correcting is only about what the default target reaches. **Retiring or renaming
+`LubinTateFieldTower`'s `K_1` and adding the splitting-field chain to `Langlands.lean` is a concrete,
+self-contained next task** — not attempted here, since it is a rename touching an unrelated file.
+
+### Milestone: the arc from the functional equation to reciprocity at level 1, `§7` → `§44`
+
+**This is the capstone theorem of the entire Lubin-Tate arc.** The chain, end to end:
+
+* `§7`: the functional-equation lemma — existence and uniqueness of the power series solving
+  `subst F f = subst f F` with prescribed linear coefficient. Everything below is a corollary of
+  applying it to the right data.
+* `§27`: the Lubin-Tate torsion-point group structure.
+* `§29`–`§34`: the `Oˣ`-action on `π^n`-torsion, root identification, `|piTorsion hπ hf 1| = q`.
+* `§37`–`§39`: the mod-`π` factoring, freeness, and the `(O/π)ˣ` reduction homomorphism.
+* `§40`: the `hsplit`-vacuity finding — the old `[K_1:K]=q-1` was provably empty for `q ≥ 3`.
+* `§41`: `K_1` rearchitected as a genuine `Polynomial.SplittingField`.
+* `§42`: `Module.finrank K (K_1 P) = residueCard O - 1`, non-vacuously.
+* `§43`: `IsGalois K (K_1 P)`.
+* `§44` (this pass): **`Gal(K_1/K) ≃* (O/π)ˣ`** — the classical Lubin-Tate statement that the
+  level-`1` Lubin-Tate extension is abelian with Galois group the residue units, non-vacuously.
+
+**Natural next steps**, in order:
+
+(a) **Generalize `n = 1` to the tower `K_n`** (`[K_n : K] = q^(n-1)(q-1)`,
+    `Gal(K_n/K) ≃* (O/π^n)ˣ`). This needs `π^n`-torsion analogues of **both** the root count
+    (`card_piTorsion_one_K_1_eq_residueCard`) and transitivity
+    (`orbit_image_eq_piTorsion_sdiff_zero_K_1`); **neither exists in this repo yet**, and neither is
+    a mechanical lift of the `n = 1` case — the `n = 1` root count leans on `Q := P.divX` being a
+    single Eisenstein polynomial of degree `q - 1`, which has no direct `π^n` analogue.
+
+(b) **The reciprocity map**, linking back to Phase 2b. Phase 2b built the norm-group index machinery
+    (`TotallyRamifiedNormIndex`, `AdicCompletionNormGroupIndex`); the reciprocity map is what pairs
+    that with `§44`'s isomorphism to give local class field theory for the totally ramified part.
+    This is the first point in the arc where the two phases meet, and it needs (a) first — the map
+    is defined on the whole tower, not at a single level.
