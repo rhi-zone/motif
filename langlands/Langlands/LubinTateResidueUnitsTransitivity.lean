@@ -3,6 +3,18 @@ import Langlands.LubinTateRootCount
 import Mathlib.GroupTheory.Index
 
 /-!
+# ⚠️ `orbit_image_eq_piTorsion_sdiff_zero` is VACUOUS whenever `residueCard O ≥ 3`
+
+This file's main result takes `hsplit` (via `card_piTorsion_one_eq_residueCard` and
+`ncard_piTorsion_one_sdiff_zero`) as a hypothesis, which `Langlands/LubinTateHsplitVacuity.lean`
+proves can never be discharged for `residueCard O ≥ 3` under this file's own standing
+`[IsFractionRing O K]`. See `Langlands.LubinTateRootCount`'s and `Langlands.LubinTateFieldTower`'s
+module docstrings for the full explanation, `Langlands.LubinTateSplittingField` for the replacement
+construction, and `ROADMAP.md` for the rearchitecture status. The freeness and `(O/π)ˣ`-action
+machinery this file builds on (`Langlands.LubinTateResidueUnitsFreeness`,
+`Langlands.LubinTateResidueUnitsAction`) does **not** depend on `hsplit` and remains genuine,
+non-vacuous, and reusable as-is.
+
 # Transitivity of the `(O/π)ˣ`-action on nonzero `π`-torsion
 
 `ROADMAP.md` §39/this pass's step 2 (`LubinTateResidueUnitsFreeness.lean`) closed freeness of the

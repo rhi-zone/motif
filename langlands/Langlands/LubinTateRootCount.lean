@@ -5,6 +5,22 @@ import Langlands.LubinTateEisensteinQ
 import Langlands.LubinTateTorsionPoints
 
 /-!
+# ⚠️ `card_piTorsion_one_eq_residueCard` is VACUOUS whenever `residueCard O ≥ 3`
+
+**`hsplit`, the hypothesis this file's capstone theorem `card_piTorsion_one_eq_residueCard` takes,
+can never be discharged for a genuine ramified extension.** `Langlands/LubinTateHsplitVacuity.lean`
+proves `hsplit : (P.divX.map (algebraMap O K)).Splits` is jointly unsatisfiable with this file's own
+standing `[IsFractionRing O K]` whenever `P.divX.natDegree ≥ 2` (`residueCard O ≥ 3`): that typeclass
+forces `K` to already be `Frac(O)`, in which `Q := P.divX`'s image is irreducible (Gauss's lemma),
+hence cannot also split completely. `card_piTorsion_one_eq_residueCard` remains a logically valid
+`hsplit → …` implication but asserts nothing about any actual instantiation with a nontrivial residue
+field. **Do not build further theorems on `hsplit`**; see `Langlands.LubinTateSplittingField` for the
+replacement (`K_1` built as `Polynomial.SplittingField`, in which `Q` splits by construction) and
+`ROADMAP.md` for the full status. This warning does **not** apply to the rest of this file —
+`norm_lt_one_of_aeval_divX_eq_zero`, `mem_piTorsion_one_of_root_divX_map`,
+`aeval_divX_map_eq_zero_of_mem_piTorsion_one_ne_zero`, and `norm_eq_rpow_of_mem_piTorsion_one_ne_zero`
+take no `hsplit` hypothesis and remain genuine, non-vacuous facts, reusable for `K_1` as-is.
+
 # `|piTorsion hπ hf 1| = q`, given `Q := P.divX` splits completely inside `K`
 
 `ROADMAP.md` §33 closed separability of `Q := P.divX` (`P` the Weierstrass-preparation factor of a

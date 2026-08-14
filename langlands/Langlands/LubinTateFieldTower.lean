@@ -4,6 +4,21 @@ import Langlands.LubinTateTorsionPoints
 import Langlands.LubinTateRootCount
 
 /-!
+# ⚠️ VACUOUS whenever `residueCard O ≥ 3` — see `Langlands.LubinTateHsplitVacuity`
+
+**Every theorem in this file that takes `hsplit` as a hypothesis is vacuously true outside the
+degenerate case `residueCard O = 2`.** `Langlands/LubinTateHsplitVacuity.lean` proves `hsplit :
+(P.divX.map (algebraMap O K)).Splits` is jointly unsatisfiable with this file's own standing
+`[IsFractionRing O K]` whenever `P.divX.natDegree ≥ 2` (i.e. `residueCard O ≥ 3`): `[IsFractionRing
+O K]` forces `K` to already *be* `Frac(O)`, while `Q := P.divX`'s image is irreducible over that
+same `K` (Gauss's lemma), so it cannot also split completely there. `K_1`, `splits_map_K_1_of_splits`,
+and `finrank_adjoin_of_aeval_divX_map_eq_zero` are all logically valid `hsplit → …` implications, but
+`hsplit` can never actually be discharged for a genuine ramified extension — the case this whole
+arc exists to formalize. **Do not build further theorems on `hsplit` in this file**; see
+`Langlands.LubinTateSplittingField` for the replacement construction (`K_1` built as
+`Polynomial.SplittingField`, a genuine extension of `K` in which `Q` splits by construction, no
+`hsplit` hypothesis) and `ROADMAP.md`'s entry for this pass for the full rearchitecture status.
+
 # The base-field embedding, `K_1 = K(F_π[π])`, and the `hsplit`-transport to `K_1`
 
 `ROADMAP.md` §27's pointer-forward: the natural next step after the torsion-point group

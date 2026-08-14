@@ -4,6 +4,14 @@ import Langlands.PrincipalUnitsSuccessiveApproximation
 import Langlands.AdicCompletionIntegersResidue
 
 /-!
+# ⚠️ `card_piTorsion_one_eq_residueCard_of_adicCompletion` is VACUOUS whenever `residueCard O ≥ 3`
+
+This file's capstone inherits `card_piTorsion_one_eq_residueCard`'s `hsplit` hypothesis unchanged,
+which `Langlands/LubinTateHsplitVacuity.lean` proves is jointly unsatisfiable with `[IsFractionRing
+O K]` for `residueCard O ≥ 3`. See that file, `Langlands.LubinTateRootCount`'s module docstring, and
+`ROADMAP.md` for the full explanation and the replacement construction
+(`Langlands.LubinTateSplittingField`).
+
 # The concrete instantiation: `O := v.adicCompletionIntegers F`, `K := v.adicCompletion F`
 
 `Langlands.LubinTate.card_piTorsion_one_eq_residueCard` (`Langlands/LubinTateRootCount.lean`) is
