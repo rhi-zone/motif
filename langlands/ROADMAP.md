@@ -14379,3 +14379,161 @@ in `LubinTateTowerStep.lean`).
    per `§46`'s already-recorded steps 2-3 (the `π^n`-torsion root-count/transitivity generalization
    and the fresh degree computation for the shifted polynomial remain unstarted, independent of this
    pass).
+
+## 49. Phase 2c, forty-second pass (2026-08-14): **MILESTONE — `K_2` concretely produced.**
+**Residue-field preservation closed *without* any `e·f = n` development; `§48`'s "needs both a fresh
+`e·f=n` argument and a formalism this repo has not built for `K_1`" assessment is corrected.**
+
+`§48` recorded residue-field preservation (`ResidueField O_{K_1} ≃ ResidueField O`) as the sole
+remaining blocker to `K_2`, and recorded — citing
+`Langlands/TotallyRamifiedValuationExtension.lean`'s own module docstring — that closing it would
+need (a) a fresh `e · f = n` development for the completed extension and (b) realizing `K_1` in the
+`HeightOneSpectrum`/`adicCompletionIntegers` formalism. **Neither is needed.** This pass closes it
+via an elementary quotient argument on top of monogenicity, and then carries the tower step all the
+way through to `K_2`.
+
+### The shortcut that worked: monogenicity, not `e·f = n`
+
+`Langlands/TotallyRamifiedEisenstein.lean`'s `LocalField.adjoin_eq_integralClosure_of_isUniformizer`
+already proves, in the `spectralNorm`/`NormedField` formalism `K_1` actually lives in, that for a
+totally ramified `L / K` (`hram : ‖(ϖ : K)‖ = spectralNorm K L π ^ (minpoly K π).natDegree`) with `π`
+generating (`hgen : (minpoly K π).natDegree = Module.finrank K L`), `Algebra.adjoin ↥𝒪[K] {π} =
+integralClosure ↥𝒪[K] L`. Given that, residue-field preservation is two lines: every `x : 𝒪_L` is
+`Polynomial.aeval π p` for some `p : 𝒪[K][X]`, and `Polynomial.X_mul_divX_add` splits it as
+`π * aeval π p.divX + algebraMap (p.coeff 0)`; since `π ∈ 𝔪_{𝒪_L}` the first summand dies modulo
+`𝔪_{𝒪_L}`, so the residue map `𝓀[K] → 𝓀[𝒪_L]` is **surjective** — and it is injective for free,
+being a ring homomorphism out of a field. **No ramification index, no inertia degree, no
+`Ideal.sum_ramification_inertia`.** Checked before building (subagent sweep of Mathlib and of
+`Langlands/`): the fact exists nowhere — Mathlib has no `IsEisensteinAt → ResidueField` or
+`IsEisensteinAt → inertiaDeg = 1` lemma, no `IsTotallyRamified` predicate at all, and the only
+`inertiaDeg' = 1` results in this repo are the concrete-example ones in
+`TotallyRamifiedArtinSchreierConcreteExample.lean` / `TotallyRamifiedCyclotomicConcreteExample.lean`,
+proved by counting.
+
+`Langlands/TotallyRamifiedResidueField.lean` (new, sorry-free):
+
+* `IsLocalRing.residueField_map_surjective_of_adjoin_singleton` : the engine, with no valuation
+  theory. `A → B` local rings, `Algebra.adjoin A {π} = ⊤`, `π ∈ 𝔪_B` ⟹
+  `IsLocalRing.ResidueField.map (algebraMap A B)` surjective.
+* `IsLocalRing.residueFieldEquivOfAdjoinSingleton` : the `RingEquiv` packaging.
+* `LocalField.spectralNorm_le_one_of_isIntegral` : the converse of
+  `LocalField.isIntegral_of_spectralNorm_le_one` (`Langlands/MonogenicIntegralClosure.lean`) — not
+  previously available in this direction. Via `minpoly.isIntegrallyClosed_eq_field_fractions'` and
+  Mathlib's `spectralValue_le_one_iff`.
+* `LocalField.mem_maximalIdeal_integralClosure_of_spectralNorm_lt_one` : `spectralNorm K L x < 1`
+  puts `x : 𝒪_L` in `𝔪_{𝒪_L}`, via `spectralAlgNorm_mul`.
+* `LocalField.adjoin_singleton_eq_top_of_isUniformizer` : the `Subalgebra ↥𝒪[K] ↥𝒪_L` form of
+  `adjoin_eq_integralClosure_of_isUniformizer` (which states it as a `Subalgebra ↥𝒪[K] L`),
+  transported by `Polynomial.aeval_algHom_apply` along `Subalgebra.val`.
+* `LocalField.residueField_map_bijective_of_isUniformizer` /
+  `LocalField.residueFieldEquivOfIsUniformizer` : **the headline general result**,
+  `ResidueField ↥𝒪[K] ≃+* ResidueField ↥(integralClosure ↥𝒪[K] L)`, under exactly
+  `adjoin_eq_integralClosure_of_isUniformizer`'s hypotheses. Commit `8922c38`.
+
+`Langlands/LubinTateResidueFieldPreservation.lean` (new, sorry-free) discharges those hypotheses at
+`K_1`:
+
+* `LubinTate.norm_algebraMap_eq_of_associated` : associates of `O` have equal norms in `K` given
+  `hOK` (units of `O` land at norm exactly `1`).
+* `LubinTate.minpoly_eq_divX_map_K_1` : `minpoly K α = P.divX.map (algebraMap O K)` for `α` any root
+  — the identification `finrank_K_1_eq_residueCard_sub_one`'s proof already makes internally,
+  extracted.
+* `LubinTate.spectralNorm_pow_natDegree_minpoly_K_1` : `spectralNorm K (K_1 P) α ^
+  (minpoly K α).natDegree = ‖algebraMap O K π‖` — the `hram` shape. Built from
+  `LubinTate.spectralNorm_eq_of_isLubinTatePoly_root` (`Langlands/LubinTateEisensteinQ.lean`, which
+  pins the root's spectral norm *exactly*, the "run `spectralNorm_eq_norm_coeff_zero_rpow` in
+  reverse" shortcut `§31`'s Newton-polygon plan was replaced by) plus
+  `Real.rpow_inv_natCast_pow` and `divX_isWeaklyEisensteinAt_and_associated`.
+* `LubinTate.residueField_map_bijective_K_1` / `LubinTate.residueFieldEquiv_K_1` :
+  **`ResidueField ↥𝒪[K] ≃+* ResidueField ↥(integralClosure ↥𝒪[K] (K_1 P))`.** `hgen` from
+  `finrank_K_1_eq_residueCard_sub_one`; separability from `isGalois_K_1`. Commit `0fde68e`.
+
+**One hypothesis is left explicit and is *not* derived**: `hϖnorm : ‖(ϖ : K)‖ = ‖algebraMap O K π‖`,
+i.e. that `π`'s image is a *uniformizer* of `𝒪[K]`. The arc's standing package (`hOK`, `hπnorm`) does
+not force it — this is `ROADMAP.md`'s long-tracked "gap 3", restated in
+`Langlands/LubinTateTowerStep.lean`'s module docstring. At the arc's concrete instantiation it is
+discharged by `IsDedekindDomain.HeightOneSpectrum.valuationSubring_valuation_eq_adicCompletionIntegers`
+(`Langlands/LubinTateSplittingFieldDVR.lean`), which identifies `𝒪[K]` with `O` on the nose; no such
+concrete instantiation of the new theorems is carried out in this pass.
+
+### The second input the tower step needed: `α` is a genuine uniformizer of `O_{K_1}`
+
+`LubinTateTowerStep.lean`'s Weierstrass step takes `hα' : Irreducible α'`, which residue-field
+preservation alone does not give. The *same* monogenicity supplies it.
+`Langlands/TotallyRamifiedUniformizer.lean` (new, sorry-free):
+
+* `IsLocalRing.maximalIdeal_eq_span_of_adjoin_singleton` : the `𝔪`-level companion of the residue
+  engine — `B = A[π]`, `π ∈ 𝔪_B`, `𝔪_A · B ⊆ (π)` ⟹ `𝔪_B = (π)`. `IsLocalHom` is *not* needed (the
+  direction used, "`algebraMap a` a nonunit ⟹ `a` a nonunit", is free via `IsUnit.map`).
+* `LocalField.coeff_zero_minpoly_associated_of_isUniformizer` : upgrades
+  `isEisensteinAt_minpoly_of_isUniformizer`'s `coeff 0 ∈ 𝔪 ∧ ∉ 𝔪 ^ 2` to `Associated … ϖ`, via
+  `IsDiscreteValuationRing.associated_pow_irreducible`.
+* `LocalField.maximalIdeal_integralClosure_eq_span_of_isUniformizer` : `𝔪_{𝒪_L} = (π)`; the
+  `𝔪_{𝒪[K]} · 𝒪_L ⊆ (π)` side is the Eisenstein relation
+  `algebraMap (coeff 0) = -π * aeval π (divX (minpoly ↥𝒪[K] π))`.
+* `LocalField.irreducible_of_isUniformizer` : hence `Irreducible (π : 𝒪_L)`, via
+  `IsDiscreteValuationRing.irreducible_iff_uniformizer`. Commit `306a797`.
+
+### `K_2`, concretely
+
+`Langlands/LubinTateTowerStepConcrete.lean` (new, sorry-free) substitutes `O' := ↥(integralClosure
+↥𝒪[K] (K_1 P))` into `LubinTateTowerStep.lean`'s abstract `TowerStep` section. Of that section's
+hypothesis package, `IsDomain`, `IsDiscreteValuationRing`, `IsFractionRing … (K_1 P)` and
+`IsLocalHom (algebraMap ↥𝒪[K] O')` all resolve by `inferInstance` in this spelling
+(`Langlands/MonogenicIntegralClosure.lean`) — verified by a scratch `#synth`-style probe before any
+lemma was written. Only `IsAdicComplete` needed transport:
+
+* `NormedField.isAdicComplete_integralClosure_of_finiteDimensional` /
+  `LubinTate.isAdicComplete_integralClosure_K_1` : `IsAdicComplete` at `O_{K_1}` in the
+  `integralClosure` spelling, transported from `§48`'s `valuationSubring` spelling along
+  `LocalField.valuationSubring_eq_of_comap_eq` (`↥(integralClosureValuationSubring …)` and
+  `↥(integralClosure …)` being definitionally the same carrier).
+* `LubinTate.toValuationSubring` / `isLocalHom_toValuationSubring` / `towerHom` /
+  `isLocalHom_towerHom` : `ψ : O →+* O_{K_1}` as the composite `O → 𝒪[K] → O_{K_1}`, local — the
+  `O → 𝒪[K]` half being local because a nonunit of the DVR `O` is divisible by `π`, whose image has
+  norm `< 1` (`hπnorm`).
+* `LubinTate.natDegree_minpoly_eq_finrank_K_1`, `LubinTate.norm_eq_spectralNorm_pow_natDegree_K_1`,
+  `LubinTate.exists_irreducible_uniformizer_K_1` : `hgen`/`hram` at `K_1`, and hence
+  `∃ α' : O_{K_1}, Irreducible α' ∧ (α' : K_1 P) = α`.
+* `LubinTate.exists_eisenstein_tower_step_K_1` : **the tower step, instantiated.** There are `P₂ :
+  O_{K_1}[X]` monic of degree `q := residueCard O` and `u₂` a unit with `shifted f (towerHom hOK P)
+  α' = P₂ * u₂`, `P₂` Eisenstein at `𝔪_{O_{K_1}}`, and `P₂.map (algebraMap O_{K_1} (K_1 P))`
+  irreducible.
+* `LubinTate.K_2 (P₂ : O'[X]) := (P₂.map (algebraMap O' K')).SplittingField`, with `Field`,
+  `Algebra K'`, and `Polynomial.IsSplittingField` instances — mirroring `LubinTate.K_1`'s own
+  definition one level up, with no `divX` peel (`0` is not a root of `f(X) - α'`).
+* `LubinTate.exists_finrank_adjoin_eq_residueCard_K_2` : a root `β` of `P₂`'s image in `K_2`
+  satisfies **`Module.finrank (K_1 P) (K_1 P)⟮β⟯ = residueCard O`** — a genuine degree-`q` extension
+  of `K_1`, the first tower step past the base level. Commit `796fbdf`.
+
+Full `nix develop -c lake build` clean, `8789` jobs. `grep -n sorry` on every file touched
+(`TotallyRamifiedResidueField.lean`, `LubinTateResidueFieldPreservation.lean`,
+`TotallyRamifiedUniformizer.lean`, `LubinTateTowerStepConcrete.lean`, `Langlands.lean`) — no hits.
+
+### What is still open — iterating to `K_3, K_4, …` is **not** mechanical
+
+Two distinct things must still be built, and neither is a re-application of what this pass wrote:
+
+1. **The `ValuativeRel`/`spectralNorm` bundle at the *moving* base.** Every general lemma this pass
+   added (`residueField_map_bijective_of_isUniformizer`, `irreducible_of_isUniformizer`, and the
+   `adjoin_eq_integralClosure_of_isUniformizer` they rest on) is stated for a base `K` in the
+   `[NontriviallyNormedField] [IsUltrametricDist] [ValuativeRel] [(NormedField.valuation).Compatible]
+   [CompleteSpace] [IsDiscreteValuationRing ↥(ValuativeRel.valuation K).valuationSubring]` bundle,
+   with `𝒪[K]` being literally `(ValuativeRel.valuation K).valuationSubring`. At level `2` the base
+   is `K_1 P`, which carries no such `ValuativeRel` identifying its valuation subring with
+   `integralClosure ↥𝒪[K] (K_1 P)` — the standing "gap 3". `Langlands/TowerBundle.lean`'s
+   `LocalField.adjoin_eq_integralClosure_of_isUniformizer_of_valuationSubring` shows the shape of the
+   fix (build the bundle by `letI` from `A : ValuationSubring M` lying over `𝒪[K]` plus a `RankOne
+   A.valuation` instance, then apply the `K`-level theorem at `M`); `_of_valuationSubring` variants
+   of this pass's two new theorems would need the same treatment. That is mechanical *in shape* but
+   is not written.
+2. **`Module.finrank (K_1 P) (K_2 P₂) = residueCard O`.** This pass proves only
+   `Module.finrank (K_1 P) (K_1 P)⟮β⟯ = residueCard O` — that *a root* generates a degree-`q`
+   extension. Upgrading `(K_1 P)⟮β⟯` to all of `K_2` is the exact analogue of `§44`'s level-1
+   argument (`exists_generator_K_1`, which needed transitivity of the `(ResidueField O)ˣ`-action on
+   nonzero `π`-torsion, `orbit_image_eq_piTorsion_sdiff_zero_K_1`), and its level-`n` generalization
+   is `§46`'s step 2 (`π^n`-torsion root-count/transitivity), still **unstarted**.
+
+Also still open, unchanged by this pass: no concrete `O := v.adicCompletionIntegers F` instantiation
+of the new residue-field/uniformizer theorems is carried out, so `hϖnorm` above is discharged nowhere
+yet; and `Gal(K_2/K_1)` (the level-2 analogue of `§44`'s `Gal(K_1/K) ≃* (O/π)ˣ`) is untouched.
