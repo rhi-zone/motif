@@ -4,6 +4,7 @@ import Mathlib.RingTheory.Polynomial.RationalRoot
 import Mathlib.Analysis.Normed.Unbundled.SpectralNorm
 import Mathlib.FieldTheory.Separable
 import Langlands.LubinTateWeierstrassPreparation
+import Langlands.EisensteinRootNorm
 
 /-!
 # Eisenstein-ness and root valuation of the sharp Weierstrass-preparation factor `Q`
@@ -214,6 +215,56 @@ theorem divX_isWeaklyEisensteinAt_and_associated {P : O[X]} {u : O⟦X⟧} (hu :
     rw [hdegQ]; omega
   · -- `P.divX.coeff 0` is an associate of `π`.
     rw [hcoeffQ]; exact hP1assoc
+
+/-- **`Q`'s `O`-level Eisenstein data, transported to a normed field `K` receiving `O`.** Packages
+the four norm facts that `Polynomial.norm_pow_natDegree_eq_of_isEisensteinShape_of_root`
+(`Langlands.EisensteinRootNorm`) needs about `Q`'s image, from `Q`'s Eisenstein data over `O`:
+
+* monic-ness is preserved by `Polynomial.Monic.map`, and so is the degree
+  (`Polynomial.Monic.natDegree_map`, no injectivity needed for a monic polynomial);
+* `0 < ‖algebraMap O K π‖`, from `π ≠ 0` and `algebraMap O K` injective (`[FaithfulSMul O K]`);
+* `‖(Q.map _).coeff 0‖ = ‖algebraMap O K π‖` *exactly*, since `Q.coeff 0` is an associate of `π`
+  and the witnessing unit maps to norm exactly `1` (`norm_algebraMap_eq_one_of_isUnit`);
+* `‖(Q.map _).coeff i‖ ≤ ‖algebraMap O K π‖` for `i < natDegree`, since `Q.coeff i ∈ 𝔪 = span {π}`
+  (`hQweak.mem`, `hπ.maximalIdeal_eq`) and `hOK` bounds the cofactor.
+
+Deliberately requires only `[FaithfulSMul O K]`, **not** `[IsFractionRing O K]`: unlike the
+irreducibility/`spectralNorm` route, nothing here compares `Q` over `O` with `Q` over `K`'s own
+fraction field, so this applies verbatim in a *proper* extension of `Frac(O)` — in particular in
+`Q`'s splitting field, where `Q` is not irreducible. -/
+theorem norm_coeff_map_of_isWeaklyEisensteinAt_associated {O : Type*} [CommRing O] [IsDomain O]
+    [IsDiscreteValuationRing O] {K : Type*} [NormedField K] [IsUltrametricDist K] [CompleteSpace K]
+    [Algebra O K] [FaithfulSMul O K] (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {Q : O[X]} {π : O}
+    (hπ : Irreducible π) (hQmonic : Q.Monic)
+    (hQweak : Q.IsWeaklyEisensteinAt (maximalIdeal O)) (hQ0 : Associated (Q.coeff 0) π) :
+    (Q.map (algebraMap O K)).Monic ∧
+      (Q.map (algebraMap O K)).natDegree = Q.natDegree ∧
+      0 < ‖algebraMap O K π‖ ∧
+      ‖(Q.map (algebraMap O K)).coeff 0‖ = ‖algebraMap O K π‖ ∧
+      ∀ i < (Q.map (algebraMap O K)).natDegree,
+        ‖(Q.map (algebraMap O K)).coeff i‖ ≤ ‖algebraMap O K π‖ := by
+  have hinj : Function.Injective (algebraMap O K) := FaithfulSMul.algebraMap_injective O K
+  have hdegeq : (Q.map (algebraMap O K)).natDegree = Q.natDegree := hQmonic.natDegree_map _
+  refine ⟨hQmonic.map _, hdegeq, ?_, ?_, ?_⟩
+  · rw [norm_pos_iff]
+    exact (map_ne_zero_iff (algebraMap O K) hinj).mpr hπ.ne_zero
+  · rw [Polynomial.coeff_map]
+    obtain ⟨v, hv⟩ := hQ0
+    have hmul : algebraMap O K (Q.coeff 0) * algebraMap O K (v : O) = algebraMap O K π := by
+      rw [← map_mul, hv]
+    have hvnorm : ‖algebraMap O K (v : O)‖ = 1 := norm_algebraMap_eq_one_of_isUnit hOK v.isUnit
+    have := congrArg norm hmul
+    rwa [norm_mul, hvnorm, mul_one] at this
+  · intro i hi
+    rw [hdegeq] at hi
+    rw [Polynomial.coeff_map]
+    have hmem : Q.coeff i ∈ maximalIdeal O := hQweak.mem hi
+    rw [hπ.maximalIdeal_eq, Ideal.mem_span_singleton] at hmem
+    obtain ⟨y, hy⟩ := hmem
+    rw [hy, map_mul, norm_mul]
+    calc ‖algebraMap O K π‖ * ‖algebraMap O K y‖ ≤ ‖algebraMap O K π‖ * 1 :=
+          mul_le_mul_of_nonneg_left (hOK y) (norm_nonneg _)
+      _ = ‖algebraMap O K π‖ := mul_one _
 
 /-- **The exact valuation of a root of `Q := P.divX`, `P` the Weierstrass factor of a Lubin-Tate
 power series `f`.** Combines `divX_isWeaklyEisensteinAt_and_associated` (`Q`'s sharp Eisenstein data),

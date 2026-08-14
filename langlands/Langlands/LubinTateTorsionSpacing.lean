@@ -61,10 +61,10 @@ open NonarchimedeanPowerSeriesEval NonarchimedeanMvPowerSeriesEvalFin2 PowerSeri
 variable {O : Type*} [CommRing O] [IsDomain O] [IsDiscreteValuationRing O]
   [Finite (ResidueField O)]
 variable {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [CompleteSpace K]
-  [Algebra O K] [IsFractionRing O K]
+  [Algebra O K] [FaithfulSMul O K]
 variable {π : O} {f : O⟦X⟧}
 
-omit [IsFractionRing O K] in
+omit [FaithfulSMul O K] in
 /-- **`i_{F_π}(x)` agrees with `-x` to quadratic order.** Specializes
 `NonarchimedeanPowerSeriesEval.norm_eval_sub_coeff_one_mul_le` to `PhiInv hπ hf` (constant term `0`,
 linear coefficient `-1`, `coeff_one_PhiInv`). -/
@@ -78,7 +78,7 @@ theorem norm_eval_PhiInv_add_le (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) 
   rw [coeff_one_PhiInv] at hkey
   rwa [map_neg, map_one, neg_one_mul, sub_neg_eq_add] at hkey
 
-omit [IsFractionRing O K] in
+omit [FaithfulSMul O K] in
 /-- **`F_π(a, b)` agrees with the ordinary sum `a + b` to quadratic order.** Specializes
 `NonarchimedeanMvPowerSeriesEvalFin2.norm_evalMv_sub_linear_le` to `Φ := Phi hπ hf` (constant term
 `0`, both linear coefficients `1`, `coeff_Phi_of_degree_eq_one`). -/
@@ -130,11 +130,11 @@ theorem norm_sub_eq_rpow_of_mem_piTorsion_one_ne_zero_of_ne
   -- The three exact norms.
   set c : ℝ := ‖algebraMap O K π‖ with hcdef
   have hnormα : ‖α‖ = c ^ (1 / (P.divX.natDegree : ℝ)) :=
-    norm_eq_rpow_of_mem_piTorsion_one_ne_zero hOK hπ hf hu heq hPdist hPdeg2 hα hα0
+    norm_eq_rpow_of_mem_piTorsion_one_ne_zero hOK hπ hπnorm hf hu heq hPdist hPdeg2 hα hα0
   have hnormβ : ‖β‖ = c ^ (1 / (P.divX.natDegree : ℝ)) :=
-    norm_eq_rpow_of_mem_piTorsion_one_ne_zero hOK hπ hf hu heq hPdist hPdeg2 hβ hβ0
+    norm_eq_rpow_of_mem_piTorsion_one_ne_zero hOK hπ hπnorm hf hu heq hPdist hPdeg2 hβ hβ0
   have hnormγ : ‖γ‖ = c ^ (1 / (P.divX.natDegree : ℝ)) :=
-    norm_eq_rpow_of_mem_piTorsion_one_ne_zero hOK hπ hf hu heq hPdist hPdeg2 hγmem hγ0
+    norm_eq_rpow_of_mem_piTorsion_one_ne_zero hOK hπ hπnorm hf hu heq hPdist hPdeg2 hγmem hγ0
   -- The quadratic closeness bound `‖γ - (α - β)‖ ≤ c ^ (2/(q-1))`.
   have hPhiInvBound : ∀ k, ‖algebraMap O K (PowerSeries.coeff k (PhiInv hπ hf))‖ ≤ 1 :=
     fun k ↦ hOK _
@@ -158,7 +158,7 @@ theorem norm_sub_eq_rpow_of_mem_piTorsion_one_ne_zero_of_ne
   have hbound : ‖γ - (α - β)‖ ≤ (c ^ (1 / (P.divX.natDegree : ℝ))) ^ 2 :=
     htri.trans (max_le hstep2' hstep1')
   -- Strictness: `c ^ (2/(q-1)) < c ^ (1/(q-1))`, using `q - 1 = P.divX.natDegree ≥ 1`.
-  have hinj : Function.Injective (algebraMap O K) := IsFractionRing.injective O K
+  have hinj : Function.Injective (algebraMap O K) := FaithfulSMul.algebraMap_injective O K
   have hc0 : 0 < c := by
     rw [hcdef, norm_pos_iff]
     exact (map_ne_zero_iff (algebraMap O K) hinj).mpr hπ.ne_zero

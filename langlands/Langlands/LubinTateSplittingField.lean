@@ -113,57 +113,67 @@ section NormExtension
 
 variable (P : O[X])
 
-/-- **The extended norm on `K_1`**, Mathlib's `spectralNorm` made into an actual `NormedField`
-structure. Local instance: activating it globally would conflict with any other norm `K_1` might
-independently carry (e.g. if `K_1` happened to coincide with some other normed field), matching the
-convention `Mathlib.Analysis.Normed.Unbundled.SpectralNorm` itself uses (`spectralNorm.normedField`
-is a `def`, not an `instance`). -/
-@[implicit_reducible] def K_1.normedField : NormedField (K_1 (K := K) P) :=
-  spectralNorm.normedField K (K_1 (K := K) P)
+/-- **The extended norm on `K_1`**, Mathlib's `spectralNorm` made into an actual
+`NontriviallyNormedField` structure (`spectralNorm.nontriviallyNormedField`: `K_1`'s norm restricts
+to `K`'s on `K`'s image, so `K`'s own norm-`> 1` witness transports up).
+
+Unlike Mathlib's `spectralNorm.normedField`/`spectralNorm.nontriviallyNormedField` — `def`s, since
+an arbitrary `L` may already carry an unrelated norm this would silently conflict with — this *is*
+an `instance`, because `K_1 P` is a dedicated type synonym introduced in this file: no other norm
+on it exists anywhere to conflict, and downstream files need `piTorsion (K := K_1 P)` and the whole
+spacing/action/freeness machinery to resolve `‖·‖` by ordinary instance search rather than by
+threading `letI` through every statement. The induced `Field (K_1 P)` agrees definitionally with
+`K_1.instField` (Mathlib builds the structure as `{ (inferInstance : Field L) with … }`), so the
+`Field` diamond is closed by structure eta. -/
+instance K_1.instNontriviallyNormedField : NontriviallyNormedField (K_1 (K := K) P) :=
+  spectralNorm.nontriviallyNormedField K (K_1 (K := K) P)
 
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] [IsFractionRing O K] in
+/-- **`K_1`'s norm is literally `spectralNorm K K_1`** — true by `rfl`, recorded so downstream
+proofs can rewrite rather than `show`. -/
+theorem K_1.norm_eq_spectralNorm (x : K_1 (K := K) P) :
+    ‖x‖ = spectralNorm K (K_1 (K := K) P) x := rfl
+
 /-- **`K_1`, with the extended norm, is nonarchimedean.** `isNonarchimedean_spectralNorm` gives
 `IsNonarchimedean (spectralNorm K K_1)`; `IsUltrametricDist.isUltrametricDist_of_isNonarchimedean_norm`
-turns that into `IsUltrametricDist K_1`, using that `K_1.normedField`'s own `norm` function *is*
-`spectralNorm K K_1` definitionally (`spectralNorm.normedField`'s field `norm x := spectralNorm K L x`). -/
-theorem K_1.isUltrametricDist :
-    letI := K_1.normedField (K := K) P
-    IsUltrametricDist (K_1 (K := K) P) := by
-  letI := K_1.normedField (K := K) P
-  exact IsUltrametricDist.isUltrametricDist_of_isNonarchimedean_norm
+turns that into `IsUltrametricDist K_1`, using `K_1.norm_eq_spectralNorm`. -/
+instance K_1.instIsUltrametricDist : IsUltrametricDist (K_1 (K := K) P) :=
+  IsUltrametricDist.isUltrametricDist_of_isNonarchimedean_norm
     (show IsNonarchimedean (fun x : K_1 (K := K) P => ‖x‖) from isNonarchimedean_spectralNorm)
 
-omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] [IsFractionRing O K] in
 /-- **`K_1`, with the extended norm, is complete.** `spectralNorm.completeSpace` is an instance
 whenever `[FiniteDimensional K K_1]` (always true for a splitting field), stated relative to
-`spectralNorm.uniformSpace K K_1` — definitionally the same uniform space `K_1.normedField`
-induces, since both trace back to the same underlying `dist`/`norm` function. -/
-theorem K_1.completeSpace :
-    letI := K_1.normedField (K := K) P
-    CompleteSpace (K_1 (K := K) P) :=
+`spectralNorm.uniformSpace K K_1` — definitionally the same uniform space
+`K_1.instNontriviallyNormedField` induces, since both trace back to the same underlying
+`dist`/`norm` function. -/
+instance K_1.instCompleteSpace : CompleteSpace (K_1 (K := K) P) :=
   spectralNorm.completeSpace K (K_1 (K := K) P)
 
 /-- **`Algebra O K_1`**, built by composing the existing `algebraMap O K` with `K_1`'s own
-`algebraMap K K_1` — the only `O → K_1` map available, not a second independently-built one. -/
-@[implicit_reducible] def K_1.algebraO : Algebra O (K_1 (K := K) P) :=
+`algebraMap K K_1` — the only `O → K_1` map available, not a second independently-built one
+(there is exactly one `O → K` map and exactly one `K → K_1` map, so no competing composite
+exists for this to diverge from). -/
+instance K_1.instAlgebraO : Algebra O (K_1 (K := K) P) :=
   ((algebraMap K (K_1 (K := K) P)).comp (algebraMap O K)).toAlgebra
 
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] [IsUltrametricDist K]
   [CompleteSpace K] [IsFractionRing O K] in
 theorem K_1.algebraMap_O_eq :
-    letI := K_1.algebraO (K := K) P
-    ⇑(algebraMap O (K_1 (K := K) P)) = ⇑(algebraMap K (K_1 (K := K) P)) ∘ ⇑(algebraMap O K) := by
-  letI := K_1.algebraO (K := K) P
-  rfl
+    ⇑(algebraMap O (K_1 (K := K) P)) = ⇑(algebraMap K (K_1 (K := K) P)) ∘ ⇑(algebraMap O K) := rfl
 
-omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] [IsUltrametricDist K]
-  [CompleteSpace K] [IsFractionRing O K] in
-theorem K_1.isScalarTower :
-    letI := K_1.algebraO (K := K) P
-    IsScalarTower O K (K_1 (K := K) P) := by
-  letI := K_1.algebraO (K := K) P
-  exact IsScalarTower.of_algebraMap_eq (fun x ↦ by
-    rw [K_1.algebraMap_O_eq]; rfl)
+instance K_1.instIsScalarTower : IsScalarTower O K (K_1 (K := K) P) :=
+  IsScalarTower.of_algebraMap_eq (fun x ↦ by rw [K_1.algebraMap_O_eq]; rfl)
+
+/-- **`algebraMap O K_1` is injective.** The composite of `algebraMap O K` (injective, `O` a domain
+with `K` its fraction field) and `algebraMap K K_1` (injective, any ring hom out of a field). This
+is the replacement for the `[IsFractionRing O K]` that `LubinTateRootCount.lean`'s counting argument
+used on its own ambient field — `K_1` is a *proper* extension of `Frac(O)` whenever `Q` has degree
+`≥ 2`, so `IsFractionRing O K_1` is false there, but injectivity (all the counting argument
+actually needs) survives the tower. -/
+instance K_1.instFaithfulSMul : FaithfulSMul O (K_1 (K := K) P) :=
+  (faithfulSMul_iff_algebraMap_injective O (K_1 (K := K) P)).mpr <| by
+    rw [K_1.algebraMap_O_eq]
+    exact (algebraMap K (K_1 (K := K) P)).injective.comp (IsFractionRing.injective O K)
 
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] [IsFractionRing O K] in
 /-- **`K`'s uniform norm bound (`hOK`) transports down to `K_1` unchanged.** For every `c : O`,
@@ -171,31 +181,21 @@ omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] [IsFract
 own norm on `K`'s image (`spectralNorm_extends`), and `algebraMap O K_1` factors through it
 (`K_1.algebraMap_O_eq`). -/
 theorem K_1.hOK_transport (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
-    letI := K_1.normedField (K := K) P
-    letI := K_1.algebraO (K := K) P
     ∀ c : O, ‖algebraMap O (K_1 (K := K) P) c‖ ≤ 1 := by
-  letI := K_1.normedField (K := K) P
-  letI := K_1.algebraO (K := K) P
   intro c
   have hcoe : algebraMap O (K_1 (K := K) P) c = algebraMap K (K_1 (K := K) P) (algebraMap O K c) :=
     congrFun (K_1.algebraMap_O_eq (K := K) P) c
-  show spectralNorm K (K_1 (K := K) P) (algebraMap O (K_1 (K := K) P) c) ≤ 1
-  rw [hcoe, spectralNorm_extends]
+  rw [K_1.norm_eq_spectralNorm, hcoe, spectralNorm_extends]
   exact hOK c
 
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] [IsFractionRing O K] in
 /-- **`K`'s strict uniformizer bound (`hπnorm`) transports down to `K_1` unchanged.** Same route as
 `K_1.hOK_transport`. -/
 theorem K_1.hπnorm_transport {π : O} (hπnorm : ‖algebraMap O K π‖ < 1) :
-    letI := K_1.normedField (K := K) P
-    letI := K_1.algebraO (K := K) P
     ‖algebraMap O (K_1 (K := K) P) π‖ < 1 := by
-  letI := K_1.normedField (K := K) P
-  letI := K_1.algebraO (K := K) P
   have hcoe : algebraMap O (K_1 (K := K) P) π = algebraMap K (K_1 (K := K) P) (algebraMap O K π) :=
     congrFun (K_1.algebraMap_O_eq (K := K) P) π
-  show spectralNorm K (K_1 (K := K) P) (algebraMap O (K_1 (K := K) P) π) < 1
-  rw [hcoe, spectralNorm_extends]
+  rw [K_1.norm_eq_spectralNorm, hcoe, spectralNorm_extends]
   exact hπnorm
 
 end NormExtension

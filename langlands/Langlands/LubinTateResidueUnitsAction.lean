@@ -49,7 +49,7 @@ open NonarchimedeanPowerSeriesEval PowerSeries IsLocalRing Polynomial
 variable {O : Type*} [CommRing O] [IsDomain O] [IsDiscreteValuationRing O]
   [Finite (ResidueField O)]
 variable {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [CompleteSpace K]
-  [Algebra O K] [IsFractionRing O K]
+  [Algebra O K] [FaithfulSMul O K]
 variable {π : O} {f : O⟦X⟧}
 
 /-! ### The reduction homomorphism `Oˣ →* (ResidueField O)ˣ` -/
@@ -125,7 +125,7 @@ theorem piTorsionSMul_eq_of_residueUnitsMap_eq (hOK : ∀ c : O, ‖algebraMap O
   letI := piTorsionMulAction hOK hπ hf 1
   ⟨fun u' x ↦ Function.surjInv residueUnitsMap_surjective u' • x⟩
 
-omit [IsFractionRing O K] in
+omit [FaithfulSMul O K] in
 /-- **`residuePiTorsionSMul` really is `piTorsionMulAction`'s `•`, through the chosen preimage**
 (true by definition). -/
 theorem residuePiTorsionSMul_def (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (hπ : Irreducible π)

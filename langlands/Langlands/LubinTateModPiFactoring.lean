@@ -49,7 +49,7 @@ open NonarchimedeanPowerSeriesEval PowerSeries IsLocalRing Polynomial
 variable {O : Type*} [CommRing O] [IsDomain O] [IsDiscreteValuationRing O]
   [Finite (ResidueField O)]
 variable {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [CompleteSpace K]
-  [Algebra O K] [IsFractionRing O K]
+  [Algebra O K] [FaithfulSMul O K]
 variable {π : O} {f : O⟦X⟧}
 
 /-- **The `Oˣ`-action on nonzero `π`-torsion factors through `(O/π)ˣ`.** `u ≡ v (mod π)` in `Oˣ`
@@ -70,7 +70,7 @@ theorem eval_phiU_eq_of_dvd_sub (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) 
   have hAmem : A ∈ piTorsion (K := K) hπ hf 1 := mem_piTorsion_eval_phiU hOK hπ hf 1 u hα
   have hBmem : B ∈ piTorsion (K := K) hπ hf 1 := mem_piTorsion_eval_phiU hOK hπ hf 1 v hα
   have hnormα : ‖α‖ = c ^ (1 / (P.divX.natDegree : ℝ)) :=
-    norm_eq_rpow_of_mem_piTorsion_one_ne_zero hOK hπ hf hw heq hPdist hPdeg2 hα hα0
+    norm_eq_rpow_of_mem_piTorsion_one_ne_zero hOK hπ hπnorm hf hw heq hPdist hPdeg2 hα hα0
   -- Step 1: `A`/`B` are within `‖α‖ ^ 2` of `algebraMap (u:O) * α` / `algebraMap (v:O) * α`.
   have huBound : ∀ k, ‖algebraMap O K (PowerSeries.coeff k (phiU hπ hf u))‖ ≤ 1 := fun k ↦ hOK _
   have hvBound : ∀ k, ‖algebraMap O K (PowerSeries.coeff k (phiU hπ hf v))‖ ≤ 1 := fun k ↦ hOK _
@@ -108,7 +108,7 @@ theorem eval_phiU_eq_of_dvd_sub (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) 
     refine (IsUltrametricDist.norm_add_le_max _ _).trans (max_le_max htri1 ?_)
     rwa [show algebraMap O K (v : O) * α - B = -(B - algebraMap O K (v : O) * α) by ring,
       norm_neg]
-  have hinj : Function.Injective (algebraMap O K) := IsFractionRing.injective O K
+  have hinj : Function.Injective (algebraMap O K) := FaithfulSMul.algebraMap_injective O K
   have hc0 : 0 < c := by
     rw [hcdef, norm_pos_iff]
     exact (map_ne_zero_iff (algebraMap O K) hinj).mpr hπ.ne_zero
@@ -142,10 +142,10 @@ theorem eval_phiU_eq_of_dvd_sub (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) 
     · rcases eq_or_ne B 0 with hB0 | hB0
       · exact absurd (hA0.trans hB0.symm) hne
       · rw [hA0, zero_sub, norm_neg]
-        exact norm_eq_rpow_of_mem_piTorsion_one_ne_zero hOK hπ hf hw heq hPdist hPdeg2 hBmem hB0
+        exact norm_eq_rpow_of_mem_piTorsion_one_ne_zero hOK hπ hπnorm hf hw heq hPdist hPdeg2 hBmem hB0
     · rcases eq_or_ne B 0 with hB0 | hB0
       · rw [hB0, sub_zero]
-        exact norm_eq_rpow_of_mem_piTorsion_one_ne_zero hOK hπ hf hw heq hPdist hPdeg2 hAmem hA0
+        exact norm_eq_rpow_of_mem_piTorsion_one_ne_zero hOK hπ hπnorm hf hw heq hPdist hPdeg2 hAmem hA0
       · exact norm_sub_eq_rpow_of_mem_piTorsion_one_ne_zero_of_ne hOK hπ hπnorm hf hw heq hPdist
           hPdeg2 hAmem hA0 hBmem hB0 hne
   rw [hnormAB] at hboundstrict

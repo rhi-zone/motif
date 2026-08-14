@@ -44,10 +44,10 @@ open NonarchimedeanPowerSeriesEval PowerSeries IsLocalRing Polynomial
 variable {O : Type*} [CommRing O] [IsDomain O] [IsDiscreteValuationRing O]
   [Finite (ResidueField O)]
 variable {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [CompleteSpace K]
-  [Algebra O K] [IsFractionRing O K]
+  [Algebra O K] [FaithfulSMul O K]
 variable {π : O} {f : O⟦X⟧}
 
-omit [IsFractionRing O K] in
+omit [FaithfulSMul O K] in
 /-- **The converse of `eval_phiU_eq_of_dvd_sub`.** If `eval (phiU hπ hf u) α = eval (phiU hπ hf v)
 α` for `α` a nonzero element of `piTorsion hπ hf 1`, then `π ∣ ((u:O) - (v:O))`. See the module
 docstring for the route: no minimum-spacing fact is needed, only that a non-multiple of `π` is a

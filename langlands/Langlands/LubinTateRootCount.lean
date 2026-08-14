@@ -21,6 +21,16 @@ replacement (`K_1` built as `Polynomial.SplittingField`, in which `Q` splits by 
 `aeval_divX_map_eq_zero_of_mem_piTorsion_one_ne_zero`, and `norm_eq_rpow_of_mem_piTorsion_one_ne_zero`
 take no `hsplit` hypothesis and remain genuine, non-vacuous facts, reusable for `K_1` as-is.
 
+**Only `card_piTorsion_one_eq_residueCard` still carries `[IsFractionRing O K]`.** The rest of the
+file (and the whole spacing/mod-`π`/action/freeness chain built on it) now requires only
+`[FaithfulSMul O K]` — `algebraMap O K` injective. The root-valuation lemmas used to obtain the
+exact norm of a torsion point from `spectralNorm` via `Q`'s *irreducibility over `K`* (Gauss's
+lemma, hence `K = Frac(O)`); they now obtain it from `Langlands.EisensteinRootNorm`'s purely
+ultrametric Eisenstein-polygon computation, which needs no irreducibility and therefore survives in
+a *proper* extension of `Frac(O)` — in particular inside `Q`'s splitting field, where `Q` splits and
+irreducibility is false. That is exactly what makes the machinery reusable at
+`Langlands.LubinTateSplittingField.K_1`.
+
 # `|piTorsion hπ hf 1| = q`, given `Q := P.divX` splits completely inside `K`
 
 `ROADMAP.md` §33 closed separability of `Q := P.divX` (`P` the Weierstrass-preparation factor of a
@@ -97,42 +107,57 @@ open PowerSeries IsLocalRing
 variable {O : Type*} [CommRing O] [IsDomain O] [IsDiscreteValuationRing O]
   [Finite (ResidueField O)]
 variable {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [CompleteSpace K]
-  [Algebra O K] [IsFractionRing O K]
+  [Algebra O K] [FaithfulSMul O K]
 variable {π : O} {f : O⟦X⟧}
 
 /-! ## Assembling `|piTorsion hπ hf 1| = q` -/
 
 omit [Finite (ResidueField O)] in
+/-- **A root of `Q := P.divX`'s image in `K` is a root of an Eisenstein-shaped monic polynomial**,
+in the sense `Langlands.EisensteinRootNorm` needs: `Q`'s image is monic of the same degree, its
+constant coefficient has norm exactly `c := ‖algebraMap O K π‖` (`0 < c < 1`), and every lower
+coefficient has norm `≤ c`. Bridges `aeval`-at-`K` to `Polynomial.eval` (they agree for a
+polynomial already over `K`, `Algebra.algebraMap_self`) so the general lemmas apply directly. -/
+theorem isEisensteinShape_divX_map {P : O[X]} {u : O⟦X⟧} (hu : IsUnit u) {f : O⟦X⟧}
+    (heq : f = (P : O⟦X⟧) * u) (hf0 : PowerSeries.coeff 0 f = 0) {π : O}
+    (hπ : Irreducible π) (hf1 : PowerSeries.coeff 1 f = π)
+    (hPdist : P.IsDistinguishedAt (maximalIdeal O)) (hPdeg2 : 2 ≤ P.natDegree)
+    (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
+    (P.divX.map (algebraMap O K)).Monic ∧
+      0 < (P.divX.map (algebraMap O K)).natDegree ∧
+      (P.divX.map (algebraMap O K)).natDegree = P.divX.natDegree ∧
+      0 < ‖algebraMap O K π‖ ∧
+      ‖(P.divX.map (algebraMap O K)).coeff 0‖ = ‖algebraMap O K π‖ ∧
+      ∀ i < (P.divX.map (algebraMap O K)).natDegree,
+        ‖(P.divX.map (algebraMap O K)).coeff i‖ ≤ ‖algebraMap O K π‖ := by
+  obtain ⟨hQmonic, hQweak, hQdeg, hQ0assoc⟩ :=
+    divX_isWeaklyEisensteinAt_and_associated hu heq hf0 hf1 hPdist hPdeg2
+  obtain ⟨hmonic, hdegeq, hc0, hc0eq, hweak⟩ :=
+    norm_coeff_map_of_isWeaklyEisensteinAt_associated (K := K) hOK hπ hQmonic hQweak hQ0assoc
+  exact ⟨hmonic, by rw [hdegeq]; exact hQdeg, hdegeq, hc0, hc0eq, hweak⟩
+
+omit [Finite (ResidueField O)] in
 /-- **A root of `Q.map (algebraMap O K)` inside `K` automatically lies in the maximal ideal
-`‖x‖ < 1`.** Specializes `spectralNorm_eq_of_isLubinTatePoly_root` at `L := K`, using
-`Algebra.algebraMap_self`/`spectralNorm_extends` to identify `spectralNorm K K x` with `‖x‖`
-directly (`K` is trivially algebraic over itself). Since `Q`'s constant coefficient has norm
-`c := ‖algebraMap O K π‖ < 1` (`hπnorm`), the exact identity `spectralNorm K K x = c ^ (1/n : ℝ)`
-forces `‖x‖ < 1`. -/
+`‖x‖ < 1`.** Via `Polynomial.norm_lt_one_of_isEisensteinShape_of_root`
+(`Langlands.EisensteinRootNorm`): `Q`'s image is Eisenstein-shaped with sharp constant-term norm
+`c := ‖algebraMap O K π‖ < 1` (`isEisensteinShape_divX_map`), and a root of such a polynomial has
+norm `< 1` by the ultrametric inequality alone.
+
+**This route replaces the earlier `spectralNorm`-based one and is why this theorem no longer needs
+`[IsFractionRing O K]`.** The old proof specialized `spectralNorm_eq_of_isLubinTatePoly_root` at
+`L := K`, which required `Q`'s image to be *irreducible over `K`* (Gauss's lemma, hence
+`K = Frac(O)`); the ultrametric argument needs no irreducibility at all, so it survives in a proper
+extension of `Frac(O)` — in particular inside `Q`'s splitting field, where `Q` splits. -/
 theorem norm_lt_one_of_aeval_divX_eq_zero {P : O[X]} {u : O⟦X⟧} (hu : IsUnit u) {f : O⟦X⟧}
     (heq : f = (P : O⟦X⟧) * u) (hf0 : PowerSeries.coeff 0 f = 0) {π : O}
     (hπ : Irreducible π) (hf1 : PowerSeries.coeff 1 f = π)
     (hPdist : P.IsDistinguishedAt (maximalIdeal O)) (hPdeg2 : 2 ≤ P.natDegree)
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (hπnorm : ‖algebraMap O K π‖ < 1)
     {x : K} (hx : Polynomial.aeval x (P.divX.map (algebraMap O K)) = 0) : ‖x‖ < 1 := by
-  obtain ⟨hQmonic, hQweak, hQdeg, hQ0assoc⟩ :=
-    divX_isWeaklyEisensteinAt_and_associated hu heq hf0 hf1 hPdist hPdeg2
-  have hkey := spectralNorm_eq_of_isLubinTatePoly_root (L := K) hu heq hf0 hπ hf1 hPdist hPdeg2 hx
-  have hxeq : algebraMap K K x = x := by rw [Algebra.algebraMap_self]; rfl
-  have hspec : spectralNorm K K x = ‖x‖ := by rw [← hxeq]; exact spectralNorm_extends x
-  rw [hspec] at hkey
-  have hc0eq : ‖algebraMap O K (P.divX.coeff 0)‖ = ‖algebraMap O K π‖ := by
-    obtain ⟨v, hv⟩ := hQ0assoc
-    have hmul : algebraMap O K (P.divX.coeff 0) * algebraMap O K (v : O) = algebraMap O K π := by
-      rw [← map_mul, hv]
-    have hvnorm : ‖algebraMap O K (v : O)‖ = 1 := norm_algebraMap_eq_one_of_isUnit hOK v.isUnit
-    have := congrArg norm hmul
-    rwa [norm_mul, hvnorm, mul_one] at this
-  rw [hkey, hc0eq]
-  have hn0 : (0:ℝ) < (1 / (P.divX.natDegree:ℝ)) := by
-    apply div_pos one_pos
-    exact_mod_cast hQdeg
-  exact Real.rpow_lt_one (norm_nonneg _) hπnorm hn0
+  obtain ⟨hmonic, hdegpos, -, hc0, hc0eq, hweak⟩ :=
+    isEisensteinShape_divX_map (K := K) hu heq hf0 hπ hf1 hPdist hPdeg2 hOK
+  exact Polynomial.norm_lt_one_of_isEisensteinShape_of_root hmonic hdegpos hπnorm hc0 hweak
+    (by rw [Polynomial.aeval_def, Algebra.algebraMap_self, Polynomial.eval₂_id] at hx; exact hx)
 
 omit [Finite (ResidueField O)] in
 /-- **A root of `Q := P.divX`'s image in `K` lies in `piTorsion hπ hf 1`.** The root-membership
@@ -176,7 +201,7 @@ theorem mem_piTorsion_one_of_root_divX_map [DecidableEq K]
   rw [iter_one]
   exact (eval_eq_zero_iff_aeval_eq_zero hOK hu heq hxnorm).mpr haevalP
 
-omit [Finite (ResidueField O)] [IsFractionRing O K] in
+omit [Finite (ResidueField O)] [FaithfulSMul O K] in
 /-- **A nonzero element of `piTorsion hπ hf 1` is a root of `Q := P.divX`'s image in `K`.** The
 reverse of `mem_piTorsion_one_of_root_divX_map`'s root-membership direction, extracted from the
 `hSmem` block of `card_piTorsion_one_eq_residueCard`'s proof: unlike that theorem, this needs no
@@ -208,12 +233,18 @@ theorem aeval_divX_map_eq_zero_of_mem_piTorsion_one_ne_zero
 omit [Finite (ResidueField O)] in
 /-- **The exact norm of a nonzero element of `piTorsion hπ hf 1`.** Combines
 `aeval_divX_map_eq_zero_of_mem_piTorsion_one_ne_zero` (nonzero torsion is a root of `Q`'s image)
-with `spectralNorm_eq_of_isLubinTatePoly_root` (the exact root-valuation fact) specialized at `L :=
-K` exactly as `norm_lt_one_of_aeval_divX_eq_zero` does — every nonzero element of `piTorsion hπ hf
-1` has the *same* norm, `‖algebraMap O K π‖ ^ (1 / Q.natDegree : ℝ)`, no splitting hypothesis
-needed. The load-bearing "same exact valuation" fact behind the minimum-spacing argument. -/
+with `Polynomial.norm_eq_rpow_of_isEisensteinShape_of_root` (`Langlands.EisensteinRootNorm`, the
+exact root-valuation fact for an Eisenstein-shaped polynomial) — every nonzero element of
+`piTorsion hπ hf 1` has the *same* norm, `‖algebraMap O K π‖ ^ (1 / Q.natDegree : ℝ)`, no splitting
+hypothesis needed. The load-bearing "same exact valuation" fact behind the minimum-spacing argument.
+
+As with `norm_lt_one_of_aeval_divX_eq_zero`, the ultrametric route replaces the earlier
+`spectralNorm`/irreducibility one and is what drops `[IsFractionRing O K]` here; the cost is that
+`hπnorm` (`0 < c < 1`, needed for the Eisenstein polygon to have the right slope) becomes an
+explicit hypothesis, where the `spectralNorm` route got it for free from `minpoly`. -/
 theorem norm_eq_rpow_of_mem_piTorsion_one_ne_zero
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O} (hπ : Irreducible π)
+    (hπnorm : ‖algebraMap O K π‖ < 1)
     {f : O⟦X⟧} (hf : IsLubinTatePoly π (residueCard O) f)
     {P : O[X]} {u : O⟦X⟧} (hu : IsUnit u) (heq : f = (P : O⟦X⟧) * u)
     (hPdist : P.IsDistinguishedAt (maximalIdeal O)) (hPdeg2 : 2 ≤ P.natDegree)
@@ -223,20 +254,11 @@ theorem norm_eq_rpow_of_mem_piTorsion_one_ne_zero
   have hf1 : PowerSeries.coeff 1 f = π := hf.2.1
   have hα : Polynomial.aeval x (P.divX.map (algebraMap O K)) = 0 :=
     aeval_divX_map_eq_zero_of_mem_piTorsion_one_ne_zero hOK hπ hf hu heq hx hx0
-  have hkey := spectralNorm_eq_of_isLubinTatePoly_root (L := K) hu heq hf0 hπ hf1 hPdist hPdeg2 hα
-  have hxeq : algebraMap K K x = x := by rw [Algebra.algebraMap_self]; rfl
-  have hspec : spectralNorm K K x = ‖x‖ := by rw [← hxeq]; exact spectralNorm_extends x
-  rw [hspec] at hkey
-  obtain ⟨hQmonic, hQweak, hQdeg, hQ0assoc⟩ :=
-    divX_isWeaklyEisensteinAt_and_associated hu heq hf0 hf1 hPdist hPdeg2
-  have hc0eq : ‖algebraMap O K (P.divX.coeff 0)‖ = ‖algebraMap O K π‖ := by
-    obtain ⟨v, hv⟩ := hQ0assoc
-    have hmul : algebraMap O K (P.divX.coeff 0) * algebraMap O K (v : O) = algebraMap O K π := by
-      rw [← map_mul, hv]
-    have hvnorm : ‖algebraMap O K (v : O)‖ = 1 := norm_algebraMap_eq_one_of_isUnit hOK v.isUnit
-    have := congrArg norm hmul
-    rwa [norm_mul, hvnorm, mul_one] at this
-  rw [hkey, hc0eq]
+  obtain ⟨hmonic, hdegpos, hdegeq, hc0, hc0eq, hweak⟩ :=
+    isEisensteinShape_divX_map (K := K) hu heq hf0 hπ hf1 hPdist hPdeg2 hOK
+  have hkey := Polynomial.norm_eq_rpow_of_isEisensteinShape_of_root hmonic hdegpos hπnorm hc0
+    hc0eq hweak (by rw [Polynomial.aeval_def, Algebra.algebraMap_self, Polynomial.eval₂_id] at hα; exact hα)
+  rwa [hdegeq] at hkey
 
 /-- **The capstone: `Nat.card (piTorsion hπ hf 1) = residueCard O`.** `piTorsion hπ hf 1` is
 exactly `insert 0 (Q.map (algebraMap O K)).roots.toFinset` as a subset of `K` (`P = X * Q`,
@@ -247,7 +269,7 @@ among `Q`'s roots, so the insert adds exactly one element to a set of size
 `(Q.map (algebraMap O K)).natDegree = residueCard O - 1`
 (`Polynomial.roots_toFinset_card_eq_natDegree_of_separable_of_splits`, fed by `hsplit` and the
 separability closed in `LubinTateEisensteinQ.lean`), giving `residueCard O` total. -/
-theorem card_piTorsion_one_eq_residueCard
+theorem card_piTorsion_one_eq_residueCard [IsFractionRing O K]
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O} (hπ : Irreducible π)
     (hπnorm : ‖algebraMap O K π‖ < 1) {f : O⟦X⟧} (hf : IsLubinTatePoly π (residueCard O) f)
     {P : O[X]} {u : O⟦X⟧} (hu : IsUnit u) (heq : f = (P : O⟦X⟧) * u)
