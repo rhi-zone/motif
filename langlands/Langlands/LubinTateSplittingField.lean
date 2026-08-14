@@ -102,6 +102,15 @@ instance K_1.instFiniteDimensional (P : O[X]) : FiniteDimensional K (K_1 (K := K
 instance K_1.instIsAlgebraic (P : O[X]) : Algebra.IsAlgebraic K (K_1 (K := K) P) :=
   Algebra.IsAlgebraic.of_finite K (K_1 (K := K) P)
 
+/-- **`K_1 P` is a splitting field of `Q`'s image in `K`**, by construction — recorded as an
+instance so `Polynomial.IsSplittingField.adjoin_rootSet` (`K_1` is generated over `K` by `Q`'s
+roots) applies to `K_1 P` without unfolding the type synonym at every call site. -/
+instance K_1.instIsSplittingField (P : O[X]) :
+    Polynomial.IsSplittingField K (K_1 (K := K) P) (P.divX.map (algebraMap O K)) :=
+  inferInstanceAs
+    (Polynomial.IsSplittingField K (P.divX.map (algebraMap O K)).SplittingField
+      (P.divX.map (algebraMap O K)))
+
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] [IsUltrametricDist K]
   [CompleteSpace K] [IsFractionRing O K] in
 /-- **`Q` splits completely over `K_1`, by construction — no `hsplit` hypothesis.** -/
@@ -148,6 +157,17 @@ whenever `[FiniteDimensional K K_1]` (always true for a splitting field), stated
 `dist`/`norm` function. -/
 instance K_1.instCompleteSpace : CompleteSpace (K_1 (K := K) P) :=
   spectralNorm.completeSpace K (K_1 (K := K) P)
+
+/-- **`K_1` is a normed `K`-vector space.** Mathlib's `spectralNorm.normedSpace` is a `def` (stated
+relative to `spectralNorm.seminormedAddCommGroup K L`, definitionally the additive structure
+`K_1.instNontriviallyNormedField` induces — both trace back to the same `norm` function); it is made
+an `instance` here for the same reason as `K_1.instNontriviallyNormedField`, namely that `K_1 P` is a
+dedicated type synonym with no competing norm. What this buys downstream is `ContinuousSMul K
+(K_1 P)`, hence `Submodule.closed_of_finiteDimensional`: every finite-dimensional `K`-subspace of
+`K_1 P` is closed, which is what lets a `tsum` (`NonarchimedeanPowerSeriesEval.eval`) whose summands
+lie in an intermediate field stay inside it — see `Langlands.LubinTateSplittingFieldDegree`. -/
+instance K_1.instNormedSpace : NormedSpace K (K_1 (K := K) P) :=
+  spectralNorm.normedSpace K (K_1 (K := K) P)
 
 /-- **`Algebra O K_1`**, built by composing the existing `algebraMap O K` with `K_1`'s own
 `algebraMap K K_1` — the only `O → K_1` map available, not a second independently-built one
