@@ -14984,3 +14984,142 @@ Unchanged from `§52`: once `[K_2 : K_1] = q` and `K_1⟮β⟯ = K_2` land, the 
 `Langlands/LubinTateTowerStep.lean`'s module docstring already names as the standing blocker for
 turning *any* further tower step's Eisenstein-existence half (already fully general there) into a
 concrete instantiation, this time one level up (`O_{K_2}` in place of `O_{K_1}`).
+
+## 54. Phase 2c, forty-seventh pass (2026-08-14): item 5 (transitivity/freeness) closes in full,
+needing no "well-definedness converse"; the `‖α'‖ < 1` hypothesis discharges; item 6 identifies a
+precise, previously-mis-scoped gap and does not close
+
+### What this pass closes
+
+`§53`'s "what item 5 still needs" list is **closed, except that its own framing of one piece
+(well-definedness) turned out not to be the tightest path** — re-derived from the actual proof
+obligation, per this pass's task brief, rather than built as `§53` phrased it:
+
+* **`Langlands/LubinTateRootTranslation.lean`** (generic, not `K_2`-specific):
+  * `eq_of_FPiEval_eq_left` : **`F_π`-cancellation, general form**, `F_π(a, b) = F_π(a, c) → b = c`
+    for `a, b, c` in the maximal ideal. Generalizes the already-closed `eq_of_FPiEval_eq_zero_left`
+    (only the case the common value is `0`) by the same left-translation-by-`i_{F_π}(a)`
+    computation. This is item (3)'s "freeness/injectivity" piece, closed as a genuinely general,
+    reusable fact rather than a `K_2`-specific instantiation (no caller needed one).
+  * `exists_piTorsion_translate_of_eval_f_eq` : **transitivity, generic form.** If `eval f β = eval
+    f β'` (both in the maximal ideal), there is `t' ∈ piTorsion hπ hf 1` with `β' = F_π(β, t')`.
+    Proved exactly as `§53` worked out: `sub_mem_piTorsion_one_of_eval_f_eq` applied to `(β', β)`
+    gives `t' := F_π(β', i_{F_π}(β))`, then `FPiEval_assoc`/`FPiEval_PhiInv_eq_zero'`/`FPiEval_zero'`
+    give `F_π(t', β) = β'`, and `FPiEval_comm` rewrites to `β' = F_π(β, t')`. **Confirmed, not just
+    asserted**: this needs no cardinality-matching argument, unlike level `1`'s `(O/π)ˣ`-orbit
+    counting route.
+* **`Langlands/LubinTateTowerStepRootConnect.lean`**:
+  * `hα'norm_lt_one_of_hram` : **discharges the `‖α'‖ < 1` hypothesis** `norm_lt_one_of_aeval_P₂_eq_
+    zero`/`eval_f_eq_of_aeval_P₂_eq_zero` carry, from the standing hypothesis set available at
+    `exists_finrank_adjoin_eq_residueCard_K_2`'s call site. `norm_eq_spectralNorm_pow_natDegree_K_1`
+    (already in the repo) gives `‖(ϖ:K)‖ = spectralNorm K (K_1 P) α ^ (minpoly K α).natDegree`;
+    combined with the standing `hπnorm` via `hϖnorm`, `‖(ϖ:K)‖ < 1`; since `(minpoly K α).natDegree
+    > 0` (`minpoly.natDegree_pos`, `α` integral over `K` because `K_1 P` is finite-dimensional over
+    `K`), `pow_lt_one_iff_of_nonneg` forces `spectralNorm K (K_1 P) α < 1`; transported to `K_2` by
+    `K_2.norm_eq_spectralNorm` + `spectralNorm_extends` (the `K_1 P → K_2` hop) composed with
+    `K_1.norm_eq_spectralNorm` + `spectralNorm_extends` (the `K → K_1 P` hop, read in reverse) — the
+    exact two-hop pattern `K_2.hOK_transport`/`K_2.norm_le_one_of_mem_O_K1` already use — plus
+    `IsScalarTower.algebraMap_apply` to identify `algebraMap _ K_2 α'` with `algebraMap (K_1 P) K_2
+    α` via `hα'coe`.
+  * `exists_piTorsion_translate_of_aeval_P₂_eq_zero` : **transitivity, instantiated at `K := K_2`
+    for roots of `P₂`'s image.** For `β, β'` both roots (`hβroot`/`hβ'root`), `eval_f_eq_of_aeval_
+    P₂_eq_zero` applied to *each root separately* gives `eval f β = eval f β' = algebraMap (K_1 P)
+    K_2 α`; `exists_piTorsion_translate_of_eval_f_eq` (fed via `K_2.hOK_transport`, **not** the raw
+    `hOK` — that mismatch is a real Lean pitfall this pass hit and diagnosed, see below) then
+    supplies `t' ∈ piTorsion (K := K_2 P₂) hπ hf 1` with `β' = F_π(β, t')` directly.
+
+**`§53`'s item (1), the "well-definedness converse", turned out not to be needed at all**, per this
+pass's task brief's own instruction to re-derive from the actual proof obligation rather than trust
+`§53`'s phrasing: the transitivity argument above only ever applies `eval_f_eq_of_aeval_P₂_eq_zero`'s
+already-proved *forward* direction, once to `β` and once to `β'` — no lemma stating "`eval f x =
+algebraMap … α` implies `x` is a root of `P₂`'s image" is invoked anywhere in the chain. Building
+that converse would have been wasted work; not attempting it is a **finding**, not an omission.
+
+**A genuine Lean pitfall, diagnosed rather than patched around**: instantiating the generic
+`exists_piTorsion_translate_of_eval_f_eq` at `K := K_2` by naively passing the outer `hOK : ∀ c : O,
+‖algebraMap O K c‖ ≤ 1` (the *original* base-field hypothesis) type-mismatches silently into stuck
+metavariables (`Application type mismatch` against `eval f ?m ‖= eval f ?m`) — because `hOK`'s own
+type pins the callee's `K` metavariable to the *outer* `K`, not `K_2`, before the `β`/`β'`-typed
+arguments can resolve it to `K_2`. The fix is to pass `K_2.hOK_transport (K := K) (P := P) P₂ hOK`
+(the already-existing `K_2`-level norm-bound hypothesis) instead — pins `K := K_2` correctly from
+the first argument. Recorded here because it is exactly the kind of silent-metavariable failure
+`lean-proof-writing`'s stop-and-diagnose rule exists for.
+
+`nix develop -c lake build` (full project) — clean, `8791` jobs. `grep -n sorry` on all
+new/changed files — no hits. Commit `314c329`.
+
+### Item 6: `[K_2 : K_1] = q` and `K_1⟮β⟯ = K_2` do **not** close this pass — the precise gap, more
+sharply scoped than `§53`'s "cardinality bookkeeping, possibly redundant" framing
+
+**No milestone claim is made.** Investigating item 6 (per this pass's explicit brief: check Mathlib
+for the finite-dimensional-subspace-is-closed argument before assuming new content is needed, and
+verify whether `§53`'s "cardinality bookkeeping" bullet is redundant with the degree computation
+already in hand) surfaced that it is **not** redundant, and **not** mere bookkeeping — it names a
+genuine, previously-unbuilt mathematical fact, now scoped precisely:
+
+**The reassembly argument needs "`piTorsion hπ hf 1`, evaluated inside `K_2`, is exactly the
+`algebraMap (K_1 P) K_2`-image of `piTorsion hπ hf 1` evaluated inside `K_1 P`" — i.e. the
+level-`1` torsion does not grow when passing from `K_1 P` to `K_2`.** Without this, the transitivity
+fact above gives `β' = F_π(β, t')` for `t' ∈ piTorsion (K := K_2) hπ hf 1`, but there is nothing yet
+forcing `t'` to lie in `(K_1 P)⟮β⟯` (it is a priori just some element of `K_2`), so the
+`eval_phiU_mem_adjoin`-style "`F_π` applied to two elements of a finite-dimensional `K_1 P`-subspace
+stays in it" argument cannot even be *stated*, let alone closed — `Submodule.mem_of_hasSum_of_
+finiteDimensional` (`Langlands/LubinTateSplittingFieldDegree.lean`, confirmed still the right general
+lemma, reusable verbatim, per the task brief's instruction to check Mathlib/this-repo before
+re-deriving) needs both of `F_π`'s arguments already in the target submodule, not just one.
+
+**This fact is provable, not blocked, but is real, unbuilt content — worked out precisely enough
+here that it should not need re-deriving from scratch:**
+
+1. `mem_piTorsion_one_of_root_divX_map` and its already-existing converse `aeval_divX_map_eq_zero_
+   of_mem_piTorsion_one_ne_zero` (`Langlands/LubinTateRootCount.lean`, both fully generic in the
+   ambient normed field) together give, at *any* `K` satisfying the standing `hOK`/`hπnorm`
+   hypotheses: `piTorsion hπ hf 1 \ {0} = (P.divX.map (algebraMap O K)).roots.toFinset` (as sets).
+   This applies verbatim at both `K := K_1 P` and `K := K_2` (via `K_1.hOK_transport`/`K_2.hOK_
+   transport` for the hypotheses).
+2. `P.divX.map (algebraMap O (K_1 P))` splits completely over `K_1 P` **by construction**
+   (`splits_divX_map_K_1`, already closed) and is monic, so `Polynomial.splits_iff_card_roots` gives
+   `roots.card = natDegree`; `Polynomial.Monic.roots_map_of_card_eq_natDegree` (confirmed to exist in
+   Mathlib, not assumed) then gives `Multiset.map (algebraMap (K_1 P) K_2) (roots over K_1 P) =
+   roots of (the further-mapped polynomial) over K_2` — **provided** the further-mapped polynomial is
+   literally `P.divX.map (algebraMap O K_2)` under `K_2`'s own `Algebra O K_2` instance
+   (`K_2.instAlgebraO`), which is what step 1's `K := K_2` instance of the bidirectional fact needs.
+3. **The genuinely missing piece**: confirming `P.divX.map (algebraMap O K_2) = (P.divX.map
+   (algebraMap O (K_1 P))).map (algebraMap (K_1 P) K_2)` under `K_2.instAlgebraO`'s *specific*
+   three-hop composite (`O →towerHom→ O_{K_1} → K_1 P → K_2`, **not** the standard `O → K → K_1 P →
+   K_2` tower) — i.e. that `algebraMap O (K_1 P)` (the ordinary one, `O → K → K_1 P`) agrees with
+   `algebraMap O_{K_1} (K_1 P) ∘ towerHom hOK P` (the first two hops of `K_2.instAlgebraO`'s
+   composite). This is **not** `rfl` the way `K_2.algebraMap_O_eq` is (that theorem's three-hop
+   statement *is* definitional; this two-hop sub-statement is a genuinely different composite through
+   `K` that has to be proved equal, not merely unfolded) — worked out by hand above (chasing
+   `towerHom`'s definition through `coe_toValuationSubring` and the `IsScalarTower 𝒪[K] K (K_1 P)` /
+   `IsScalarTower 𝒪[K] O_{K_1} (K_1 P)` instances Mathlib's integral-closure API should supply
+   automatically) to be true and provable, but **not yet written as a Lean lemma or build-verified**;
+   doing so is the concrete next step, not a re-scoping exercise.
+4. Once steps 1–3 give the set equality, `piTorsion (K := K_2) hπ hf 1 = algebraMap (K_1 P) K_2 ''
+   piTorsion (K := K_1 P) hπ hf 1` (including `0`, trivially), and the reassembly argument can
+   proceed: `t' ∈ (K_1 P)⟮β⟯` (base-field elements of an adjoin), and the `Submodule.mem_of_hasSum_
+   of_finiteDimensional` argument (mirroring `eval_phiU_mem_adjoin`, replacing `phiU`/`α`/`K`/`K_1 P`
+   with `FPiEval hπ hf β`/`t'`/`K_1 P`/`K_2` throughout) gives `F_π(β, t') ∈ (K_1 P)⟮β⟯`. The final
+   step — every root of `P₂`'s image lying in `(K_1 P)⟮β⟯` forces `K_2 ⊆ (K_1 P)⟮β⟯` since `K_2` is
+   *by definition* the splitting field (generated by all roots) — was not reached; it needs whatever
+   Mathlib `IsSplittingField`/`adjoin_rootSet`-style lemma packages "generated by all roots ⊆ a
+   subfield containing all roots", not yet looked up.
+
+None of steps 1–4 is a dead end or an architectural blocker on the order of `gap 3` (`grep -n "gap
+3" ROADMAP.md`) or the residue-field-preservation gap named below — every piece cited either already
+exists in this repo/Mathlib (confirmed by name, not assumed) or is a concrete, scoped computation
+with a worked-out proof sketch. It was not completed this pass because it is a materially larger unit
+of new Lean engineering (a fresh scalar-tower compatibility lemma, a roots-multiset transport, and
+the submodule-membership generalization, each needing its own build-verification cycle) than the
+budget for this pass allowed alongside items 1–5, and forcing it through without verifying each step
+would risk exactly the kind of unverified claim this arc's discipline exists to prevent.
+
+### Next step
+
+Unchanged in destination, sharper in immediate task: close the four numbered steps above (piTorsion
+invariance under `K_1 P → K_2`, then the `eval_phiU_mem_adjoin`-analogue for `FPiEval`, then the
+splitting-field-generation wrap-up) to land `K_1⟮β⟯ = K_2` and `[K_2 : K_1] = q` as real theorems.
+Once they do, `Langlands/LubinTateTowerStep.lean`'s module docstring's named next step remains
+correct: total-ramification-preservation for `O_{K_2}` (same residue field as `O`), the same shape
+as the gap already closed for `K_1`, one level up.
