@@ -264,6 +264,175 @@ theorem exists_piTorsion_translate_of_aeval_P₂_eq_zero (hOK : ∀ c : O, ‖al
   exact exists_piTorsion_translate_of_eval_f_eq (K_2.hOK_transport (K := K) (P := P) P₂ hOK) hπ hf
     hβnorm hβ'norm (h1.trans h2.symm)
 
+/-! ## `algebraMap O (K_1 P)` agrees with the first two hops of `K_2.instAlgebraO`'s composite -/
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] [IsFractionRing O K] in
+/-- **The ordinary `algebraMap O (K_1 P)` (`K_1.instAlgebraO`'s two-hop `O → K → K_1 P`) equals the
+first two hops of `K_2.instAlgebraO`'s three-hop composite**, `algebraMap O_{K_1} (K_1 P) ∘ towerHom
+hOK P`. Unlike `K_2.algebraMap_O_eq` (true by `rfl`, since it unfolds `K_2.instAlgebraO`'s own
+definition), this is a genuinely different composite through `K` that has to be proved equal, not
+merely unfolded: `towerHom hOK P` factors as `algebraMap 𝒪[K] O_{K_1} ∘ toValuationSubring hOK`, so
+the right side becomes `algebraMap 𝒪[K] (K_1 P) (toValuationSubring hOK c)`
+(`IsScalarTower.algebraMap_apply` at the `𝒪[K] → O_{K_1} → K_1 P` tower, an automatic instance for
+`O_{K_1} := integralClosure 𝒪[K] (K_1 P)` as a subalgebra of `K_1 P`); rewriting again along
+`IsScalarTower.algebraMap_apply` at the `𝒪[K] → K → K_1 P` tower (also automatic,
+`ValuationSubring.instIsScalarTowerSubtypeMemValuationSubringWithZeroMultiplicativeInt` specialized
+at the identity algebra `K → K`) reduces this to `algebraMap K (K_1 P) (algebraMap 𝒪[K] K
+(toValuationSubring hOK c))`, and `coe_toValuationSubring` identifies the inner term with `algebraMap
+O K c`, landing on `algebraMap K (K_1 P) (algebraMap O K c) = algebraMap O (K_1 P) c`
+(`K_1.algebraMap_O_eq`, `rfl`). -/
+theorem algebraMap_O_K_1_eq_comp_towerHom (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
+    ⇑(algebraMap O (K_1 (K := K) P)) =
+      ⇑(algebraMap ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
+        (K_1 (K := K) P)) (K_1 (K := K) P)) ∘ ⇑(towerHom (K := K) hOK P) := by
+  funext c
+  show algebraMap O (K_1 (K := K) P) c =
+    algebraMap _ (K_1 (K := K) P) (towerHom (K := K) hOK P c)
+  have htower : towerHom (K := K) hOK P c =
+      algebraMap ↥(ValuativeRel.valuation K).valuationSubring
+        ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
+        (toValuationSubring (K := K) hOK c) := rfl
+  rw [htower, ← IsScalarTower.algebraMap_apply
+      ↥(ValuativeRel.valuation K).valuationSubring
+      ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
+      (K_1 (K := K) P),
+    IsScalarTower.algebraMap_apply ↥(ValuativeRel.valuation K).valuationSubring K
+      (K_1 (K := K) P)]
+  rw [show algebraMap ↥(ValuativeRel.valuation K).valuationSubring K
+      (toValuationSubring (K := K) hOK c) = algebraMap O K c from
+    coe_toValuationSubring (K := K) hOK c]
+  exact (congrFun (K_1.algebraMap_O_eq (K := K) P) c).symm
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] [IsFractionRing O K] in
+/-- **`K_2.instAlgebraO`'s composite collapses to the ordinary two-hop `algebraMap (K_1 P) K_2 ∘
+algebraMap O (K_1 P)`.** Immediate from `K_2.algebraMap_O_eq` (the three-hop composite, `rfl`) and
+`algebraMap_O_K_1_eq_comp_towerHom` (the first two hops equal the ordinary `algebraMap O (K_1 P)`).
+This is the single fact everything else in this section reduces to: once `algebraMap O K_2` is
+identified with a genuine `K → K_1 P → K_2` tower map, norm transport (`K_2.hπnorm_transport`),
+injectivity (`K_2.instFaithfulSMul_O`), and the roots-multiset transport
+(`divX_map_algebraMap_O_K_2_eq_map`) all become one-line consequences of the corresponding `K_1 P`
+facts. -/
+theorem K_2.algebraMap_O_eq_comp_K_1 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
+    letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+    ⇑(algebraMap O (K_2 (K' := K_1 (K := K) P) P₂)) =
+      ⇑(algebraMap (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂)) ∘
+        ⇑(algebraMap O (K_1 (K := K) P)) := by
+  letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+  rw [K_2.algebraMap_O_eq (K := K) (P := P) P₂ hOK, algebraMap_O_K_1_eq_comp_towerHom (K := K) hOK]
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] [IsFractionRing O K] in
+/-- **`K`'s strict uniformizer bound (`hπnorm`) transports down to `K_2` unchanged.** The `K_2`
+analogue of `K_1.hπnorm_transport`, via `K_2.algebraMap_O_eq_comp_K_1` and `spectralNorm_extends` at
+the `K_1 P → K_2` hop, reducing to the already-transported `K_1.hπnorm_transport` at the `K → K_1 P`
+hop. -/
+theorem K_2.hπnorm_transport (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O}
+    (hπnorm : ‖algebraMap O K π‖ < 1) :
+    letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+    ‖algebraMap O (K_2 (K' := K_1 (K := K) P) P₂) π‖ < 1 := by
+  letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+  have hcoe : algebraMap O (K_2 (K' := K_1 (K := K) P) P₂) π =
+      algebraMap (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂)
+        (algebraMap O (K_1 (K := K) P) π) :=
+    congrFun (K_2.algebraMap_O_eq_comp_K_1 (K := K) (P := P) hOK) π
+  rw [K_2.norm_eq_spectralNorm, hcoe, spectralNorm_extends]
+  exact K_1.hπnorm_transport (K := K) P hπnorm
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] in
+/-- **`algebraMap O K_2` is injective.** The composite of `algebraMap O (K_1 P)` (injective,
+`K_1.instFaithfulSMul`) and `algebraMap (K_1 P) K_2` (injective, any ring hom out of a field),
+identified via `K_2.algebraMap_O_eq_comp_K_1`. -/
+theorem K_2.instFaithfulSMul_O (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
+    letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+    FaithfulSMul O (K_2 (K' := K_1 (K := K) P) P₂) := by
+  letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+  rw [faithfulSMul_iff_algebraMap_injective]
+  rw [K_2.algebraMap_O_eq_comp_K_1 (K := K) (P := P) hOK]
+  exact (algebraMap (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂)).injective.comp
+    (FaithfulSMul.algebraMap_injective O (K_1 (K := K) P))
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] [IsFractionRing O K] in
+/-- **`Q := P.divX`'s image over `K_2` (via `K_2.instAlgebraO`) is `Q`'s image over `K_1 P`, further
+mapped along `algebraMap (K_1 P) K_2`.** `Polynomial.map_map` plus
+`K_2.algebraMap_O_eq_comp_K_1` (as a `RingHom` equality, `RingHom.ext`). This is item (3) of
+`ROADMAP.md`'s item-6 sketch: the genuinely new piece needed to transport the roots-multiset identity
+`Polynomial.Monic.roots_map_of_card_eq_natDegree` supplies at `K_1 P` up to `K_2`. -/
+theorem divX_map_algebraMap_O_K_2_eq_map (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
+    letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+    P.divX.map (algebraMap O (K_2 (K' := K_1 (K := K) P) P₂)) =
+      (P.divX.map (algebraMap O (K_1 (K := K) P))).map
+        (algebraMap (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂)) := by
+  letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+  have hcomp : (algebraMap (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂)).comp
+      (algebraMap O (K_1 (K := K) P)) = algebraMap O (K_2 (K' := K_1 (K := K) P) P₂) :=
+    RingHom.ext fun c =>
+      (congrFun (K_2.algebraMap_O_eq_comp_K_1 (K := K) (P := P) hOK) c).symm
+  rw [Polynomial.map_map, hcomp]
+
+/-! ## The `piTorsion hπ hf 1`-invariance of the `K_1 P → K_2` transition -/
+
+/-- **`piTorsion hπ hf 1`, evaluated inside `K_2`, is exactly the `algebraMap (K_1 P) K_2`-image of
+`piTorsion hπ hf 1` evaluated inside `K_1 P`.** The level-`1` `π`-torsion does not grow when passing
+from `K_1 P` to `K_2` — `ROADMAP.md` item 6's core missing fact.
+
+Proof: at each of `K := K_1 P` and `K := K_2`, `piTorsion hπ hf 1 \ {0}` is exactly the root set of
+`Q := P.divX`'s image (`piTorsion_one_sdiff_zero_eq_roots_toFinset`). `Q`'s image splits completely
+over `K_1 P` by construction (`splits_divX_map_K_1`) and is monic, so `Polynomial.splits_iff_card_
+roots` gives `roots.card = natDegree`, and `Polynomial.Monic.roots_map_of_card_eq_natDegree` transports
+the roots multiset along `algebraMap (K_1 P) K_2` onto the roots of the further-mapped polynomial —
+which `divX_map_algebraMap_O_K_2_eq_map` identifies with `Q`'s image over `K_2` itself. Converting the
+multiset identity to a `Finset.image` identity (`Multiset.toFinset_map`) and reassembling `{0}`
+(`algebraMap` sends `0` to `0`, and `0 ∈ piTorsion hπ hf 1` at both ends) gives the full set
+equality. -/
+theorem piTorsion_one_K_2_eq_algebraMap_image (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1)
+    {π : O} (hπ : Irreducible π) (hπnorm : ‖algebraMap O K π‖ < 1) {f : O⟦X⟧}
+    (hf : IsLubinTatePoly π (residueCard O) f) {u : O⟦X⟧} (hu : IsUnit u)
+    (heq : f = (P : O⟦X⟧) * u) (hPdist : P.IsDistinguishedAt (maximalIdeal O))
+    (hPdeg : P.natDegree = residueCard O) :
+    letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+    (piTorsion (K := K_2 (K' := K_1 (K := K) P) P₂) hπ hf 1 : Set (K_2 (K' := K_1 (K := K) P) P₂)) =
+      algebraMap (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂) ''
+        (piTorsion (K := K_1 (K := K) P) hπ hf 1) := by
+  classical
+  letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+  letI := K_2.instFaithfulSMul_O (K := K) (P := P) (P₂ := P₂) hOK
+  have hPdeg2 : 2 ≤ P.natDegree := hPdeg ▸ two_le_residueCard
+  have hQmonic : (P.divX.map (algebraMap O (K_1 (K := K) P))).Monic :=
+    (divX_isWeaklyEisensteinAt_and_associated hu heq hf.1 hf.2.1 hPdist hPdeg2).1.map _
+  have hcard : (P.divX.map (algebraMap O (K_1 (K := K) P))).roots.card =
+      (P.divX.map (algebraMap O (K_1 (K := K) P))).natDegree :=
+    Polynomial.splits_iff_card_roots.mp (splits_divX_map_K_1 (K := K) P)
+  have hrootsmap : (P.divX.map (algebraMap O (K_1 (K := K) P))).roots.map
+      (algebraMap (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂)) =
+      ((P.divX.map (algebraMap O (K_1 (K := K) P))).map
+        (algebraMap (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂))).roots :=
+    hQmonic.roots_map_of_card_eq_natDegree _ hcard
+  rw [← divX_map_algebraMap_O_K_2_eq_map (K := K) (P := P) (P₂ := P₂) hOK] at hrootsmap
+  have hfinseteq : Finset.image (algebraMap (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂))
+      (P.divX.map (algebraMap O (K_1 (K := K) P))).roots.toFinset =
+      (P.divX.map (algebraMap O (K_2 (K' := K_1 (K := K) P) P₂))).roots.toFinset := by
+    rw [← Multiset.toFinset_map, hrootsmap]
+  have hstep1 := piTorsion_one_sdiff_zero_eq_roots_toFinset (K := K_1 (K := K) P)
+    (K_1.hOK_transport P hOK) hπ (K_1.hπnorm_transport P hπnorm) hf hu heq hPdist hPdeg
+  have hstep2 := piTorsion_one_sdiff_zero_eq_roots_toFinset
+    (K := K_2 (K' := K_1 (K := K) P) P₂) (K_2.hOK_transport (K := K) (P := P) P₂ hOK) hπ
+    (K_2.hπnorm_transport (K := K) (P := P) (P₂ := P₂) hOK hπnorm) hf hu heq hPdist hPdeg
+  have himageeq :
+      algebraMap (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂) ''
+        (piTorsion (K := K_1 (K := K) P) hπ hf 1 \ {0}) =
+      piTorsion (K := K_2 (K' := K_1 (K := K) P) P₂) hπ hf 1 \ {0} := by
+    rw [hstep1, hstep2, ← Finset.coe_image, hfinseteq]
+  have h0 : algebraMap (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂) ''
+      (piTorsion (K := K_1 (K := K) P) hπ hf 1) =
+      insert (algebraMap (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂) 0)
+        (algebraMap (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂) ''
+          (piTorsion (K := K_1 (K := K) P) hπ hf 1 \ {0})) := by
+    rw [← Set.image_insert_eq]
+    congr 1
+    rw [Set.insert_sdiff_singleton]
+    exact (Set.insert_eq_self.mpr (zero_mem_piTorsion hπ hf 1)).symm
+  rw [h0, himageeq, map_zero, Set.insert_sdiff_singleton]
+  exact (Set.insert_eq_self.mpr (zero_mem_piTorsion hπ hf 1)).symm
+
 end LubinTate
 
 end

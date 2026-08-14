@@ -230,6 +230,64 @@ theorem aeval_divX_map_eq_zero_of_mem_piTorsion_one_ne_zero
   · exact absurd hx0' hx0
   · rw [Polynomial.aeval_map_algebraMap K x P.divX]; exact hQ0
 
+omit [IsUltrametricDist K] [CompleteSpace K] in
+/-- **A root of `Q := P.divX`'s image in `K` is nonzero**, at any field `K` satisfying
+`[FaithfulSMul O K]` — not tied to a specific field such as `K_1 P`. `Q.coeff 0` is an associate of
+the uniformizer `π ≠ 0` (`divX_isWeaklyEisensteinAt_and_associated`), and `algebraMap O K` is
+injective, so `Q`'s image has nonzero constant term, hence `0` is not among its roots. Generalizes
+`LubinTateSplittingFieldDegree.ne_zero_of_aeval_divX_map_eq_zero` (which fixes `K := K_1 P`) to an
+arbitrary field, needed to run the same root-nonvanishing argument at `K := K_2` as well. -/
+theorem ne_zero_of_root_of_aeval_divX_map_eq_zero {π : O} (hπ : Irreducible π) {f : O⟦X⟧}
+    (hf : IsLubinTatePoly π (residueCard O) f) {P : O[X]} {u : O⟦X⟧} (hu : IsUnit u)
+    (heq : f = (P : O⟦X⟧) * u) (hPdist : P.IsDistinguishedAt (maximalIdeal O))
+    (hPdeg : P.natDegree = residueCard O) {x : K}
+    (hx : Polynomial.aeval x (P.divX.map (algebraMap O K)) = 0) : x ≠ 0 := by
+  obtain ⟨-, -, -, hQ0assoc⟩ :=
+    divX_isWeaklyEisensteinAt_and_associated hu heq hf.1 hf.2.1 hPdist (hPdeg ▸ two_le_residueCard)
+  rintro rfl
+  rw [Polynomial.aeval_def, Algebra.algebraMap_self, Polynomial.eval₂_id,
+    ← Polynomial.coeff_zero_eq_eval_zero, Polynomial.coeff_map] at hx
+  have hQ0 : P.divX.coeff 0 = 0 := FaithfulSMul.algebraMap_injective O K (by rw [hx, map_zero])
+  exact hπ.ne_zero ((associated_zero_iff_eq_zero π).mp (hQ0 ▸ hQ0assoc).symm)
+
+/-- **`piTorsion hπ hf 1`, minus `0`, is exactly the set of roots of `Q := P.divX`'s image**, at any
+field `K` satisfying the standing `hOK`/`hπnorm` hypotheses. Combines the two halves already proved
+generically: `mem_piTorsion_one_of_root_divX_map` (a root of `Q`'s image is `π`-torsion) and
+`aeval_divX_map_eq_zero_of_mem_piTorsion_one_ne_zero` (nonzero `π`-torsion is a root of `Q`'s image),
+with `ne_zero_of_aeval_divX_map_eq_zero` supplying the "roots are automatically nonzero" half needed
+to match up `piTorsion hπ hf 1 \ {0}` (not all of `piTorsion hπ hf 1`) with the root set. Reusable
+verbatim at any two fields related by an algebra map that preserves `piTorsion` membership, which is
+exactly what the `K_1 P → K_2` invariance argument (`ROADMAP.md` item 6) needs, instantiated once at
+each end. -/
+theorem piTorsion_one_sdiff_zero_eq_roots_toFinset [DecidableEq K]
+    (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O} (hπ : Irreducible π)
+    (hπnorm : ‖algebraMap O K π‖ < 1) {f : O⟦X⟧} (hf : IsLubinTatePoly π (residueCard O) f)
+    {P : O[X]} {u : O⟦X⟧} (hu : IsUnit u) (heq : f = (P : O⟦X⟧) * u)
+    (hPdist : P.IsDistinguishedAt (maximalIdeal O)) (hPdeg : P.natDegree = residueCard O) :
+    (piTorsion (K := K) hπ hf 1 \ {0} : Set K) =
+      ↑((P.divX.map (algebraMap O K)).roots.toFinset) := by
+  have hPdeg2 : 2 ≤ P.natDegree := hPdeg ▸ two_le_residueCard
+  ext x
+  simp only [Set.mem_sdiff, Set.mem_singleton_iff, Finset.mem_coe, Multiset.mem_toFinset,
+    Polynomial.mem_roots']
+  constructor
+  · rintro ⟨hx, hx0⟩
+    refine ⟨(divX_isWeaklyEisensteinAt_and_associated hu heq hf.1 hf.2.1 hPdist hPdeg2).1.map _
+      |>.ne_zero, ?_⟩
+    have haeval := aeval_divX_map_eq_zero_of_mem_piTorsion_one_ne_zero hOK hπ hf hu heq hx hx0
+    rwa [Polynomial.aeval_def, Algebra.algebraMap_self, Polynomial.eval₂_id,
+      ← Polynomial.IsRoot.def] at haeval
+  · rintro ⟨-, hroot⟩
+    have hx : x ∈ (P.divX.map (algebraMap O K)).roots.toFinset := by
+      rw [Multiset.mem_toFinset, Polynomial.mem_roots']
+      exact ⟨(divX_isWeaklyEisensteinAt_and_associated hu heq hf.1 hf.2.1 hPdist hPdeg2).1.map _
+        |>.ne_zero, hroot⟩
+    have haeval : Polynomial.aeval x (P.divX.map (algebraMap O K)) = 0 := by
+      rw [Polynomial.aeval_def, Algebra.algebraMap_self, Polynomial.eval₂_id]
+      exact hroot
+    exact ⟨mem_piTorsion_one_of_root_divX_map hOK hπ hπnorm hf hu heq hPdist hPdeg2 hx,
+      ne_zero_of_root_of_aeval_divX_map_eq_zero hπ hf hu heq hPdist hPdeg haeval⟩
+
 omit [Finite (ResidueField O)] in
 /-- **The exact norm of a nonzero element of `piTorsion hπ hf 1`.** Combines
 `aeval_divX_map_eq_zero_of_mem_piTorsion_one_ne_zero` (nonzero torsion is a root of `Q`'s image)
