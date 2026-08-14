@@ -42,6 +42,7 @@ import Langlands.LubinTateRootTranslation
 import Langlands.LubinTateTowerStep
 import Langlands.LubinTateTowerStepConcrete
 import Langlands.LubinTateTowerStepLocalRing
+import Langlands.LubinTateTowerStepResidueField
 import Langlands.LubinTateTowerStepMonogenic
 import Langlands.LubinTateUnitsAction
 import Langlands.LubinTateUnitsEndomorphism

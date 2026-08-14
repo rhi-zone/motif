@@ -41,6 +41,11 @@ local-ness directly from `β`'s Eisenstein minimal polynomial `P₂`.
 * `isLocalHom_algebraMap_integralClosure_K_2` : the free corollary
   `IsLocalHom (algebraMap O_{K_1} O_{K_2})`, via `Langlands/IntegralExtensionLocalRing.lean`'s
   `IsLocalHom.algebraMap_of_isIntegral`.
+* `mem_maximalIdeal_of_isDistinguishedAt_root` / `mem_maximalIdeal_integralClosure_K_2` : the root
+  `β` itself (viewed inside the integral closure) lies in the integral closure's maximal ideal —
+  the abstract engine and its `K_1`/`K_2` instantiation, needed for
+  `IsLocalRing.residueFieldEquivOfAdjoinSingleton`'s `hπ` hypothesis in
+  `Langlands/LubinTateTowerStepResidueField.lean`.
 
 No `ValuativeRel (K_1 P)` instance is built or needed anywhere in this file, continuing
 `LubinTateTowerStepMonogenic.lean`'s bare-Eisenstein route.
@@ -174,6 +179,53 @@ theorem isLocalRing_integralClosure_of_isDistinguishedAt_root
   exact IsLocalRing.of_isIntegral_of_isLocalRing_quotient_map_maximalIdeal
     (R := R) (S := ↥(integralClosure R L))
 
+/-- **The root itself lies in the maximal ideal of the integral closure**, under the same
+`IsDistinguishedAt` hypotheses as `isLocalRing_integralClosure_of_isDistinguishedAt_root` (stated
+separately, taking `[IsLocalRing ↥(integralClosure R L)]` and
+`[IsLocalHom (algebraMap R ↥(integralClosure R L))]` as hypotheses rather than re-deriving them, so
+callers who already have those instances — e.g. from the theorem above — do not pay for them twice).
+
+Needed for `IsLocalRing.residueFieldEquivOfAdjoinSingleton`'s `hπ : π ∈ maximalIdeal B` hypothesis.
+Proof: reducing `β'`'s defining equation `aeval β' P₂ = 0` gives `β'^{P₂.natDegree} = -∑_{i <
+P₂.natDegree} (P₂.coeff i) • β'^i`, and each summand lies in `maximalIdeal ↥(integralClosure R L)`
+since `P₂.coeff i ∈ maximalIdeal R` for `i < P₂.natDegree` (`IsDistinguishedAt`) and `𝔪_R ·
+(integralClosure R L) ⊆ maximalIdeal (integralClosure R L)` (`IsLocalRing.map_maximalIdeal_le`, from
+the local homomorphism hypothesis). So `β'^{P₂.natDegree} ∈ maximalIdeal (integralClosure R L)`, and
+maximal ideals are prime, so `β'` itself is (`Ideal.IsPrime.mem_of_pow_mem`). -/
+theorem mem_maximalIdeal_of_isDistinguishedAt_root
+    {R L : Type*} [CommRing R] [IsLocalRing R] [Field L] [Algebra R L]
+    [IsLocalRing ↥(integralClosure R L)]
+    [IsLocalHom (algebraMap R ↥(integralClosure R L))]
+    {P₂ : R[X]} (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal R))
+    {β : L} (hβint : IsIntegral R β) (hβroot : Polynomial.aeval β P₂ = 0) :
+    (⟨β, hβint⟩ : ↥(integralClosure R L)) ∈ maximalIdeal ↥(integralClosure R L) := by
+  have hβ'root : Polynomial.aeval (⟨β, hβint⟩ : ↥(integralClosure R L)) P₂ = 0 := by
+    have haeval := Polynomial.aeval_algHom_apply (Subalgebra.val (integralClosure R L))
+      (⟨β, hβint⟩ : ↥(integralClosure R L)) P₂
+    apply Subtype.ext
+    rw [ZeroMemClass.coe_zero, ← hβroot]
+    exact haeval.symm
+  have hle : Ideal.map (algebraMap R ↥(integralClosure R L)) (maximalIdeal R) ≤
+      maximalIdeal ↥(integralClosure R L) := IsLocalRing.map_maximalIdeal_le _
+  have heval : Polynomial.eval₂ (algebraMap R ↥(integralClosure R L))
+      (⟨β, hβint⟩ : ↥(integralClosure R L)) P₂ = 0 := hβ'root
+  rw [Polynomial.eval₂_eq_sum_range, Finset.sum_range_succ, hP₂dist.monic.coeff_natDegree,
+    map_one, one_mul] at heval
+  have hexp : (⟨β, hβint⟩ : ↥(integralClosure R L)) ^ P₂.natDegree =
+      -∑ i ∈ Finset.range P₂.natDegree,
+        algebraMap R ↥(integralClosure R L) (P₂.coeff i) *
+          (⟨β, hβint⟩ : ↥(integralClosure R L)) ^ i :=
+    eq_neg_of_add_eq_zero_right heval
+  have hmem : (⟨β, hβint⟩ : ↥(integralClosure R L)) ^ P₂.natDegree ∈
+      maximalIdeal ↥(integralClosure R L) := by
+    rw [hexp]
+    refine (maximalIdeal ↥(integralClosure R L)).neg_mem (Ideal.sum_mem _ fun i hi => ?_)
+    have hci : algebraMap R ↥(integralClosure R L) (P₂.coeff i) ∈
+        maximalIdeal ↥(integralClosure R L) :=
+      hle (Ideal.mem_map_of_mem _ (hP₂dist.toIsWeaklyEisensteinAt.mem (Finset.mem_range.mp hi)))
+    exact Ideal.mul_mem_right _ _ hci
+  exact (maximalIdeal.isMaximal ↥(integralClosure R L)).isPrime.mem_of_pow_mem _ hmem
+
 namespace LubinTate
 
 variable {O : Type*} [CommRing O] [IsDomain O] [IsDiscreteValuationRing O]
@@ -253,6 +305,53 @@ theorem isLocalHom_algebraMap_integralClosure_K_2 (hOK : ∀ c : O, ‖algebraMa
     (S := ↥(integralClosure
       ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
       (K_2 (K' := K_1 (K := K) P) P₂)))
+
+/-- **`β` (viewed inside `O_{K_2}`) lies in `maximalIdeal O_{K_2}`.** The instantiation of
+`mem_maximalIdeal_of_isDistinguishedAt_root` needed for
+`Langlands/LubinTateTowerStepResidueField.lean`'s residue-field-preservation closure. Takes
+`[IsLocalRing O_{K_2}]`/`[IsLocalHom (algebraMap O_{K_1} O_{K_2})]` as explicit hypotheses — callers
+supply them via `isLocalRing_integralClosure_K_2` / `isLocalHom_algebraMap_integralClosure_K_2`
+(`haveI`), since they are not registered as global instances at this concrete instantiation. -/
+theorem mem_maximalIdeal_integralClosure_K_2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O}
+    (hπ : Irreducible π) (hπnorm : ‖algebraMap O K π‖ < 1) {f : O⟦X⟧}
+    (hf : IsLubinTatePoly π (residueCard O) f) {u : O⟦X⟧} (hu : IsUnit u)
+    (heq : f = (P : O⟦X⟧) * u) (hPdist : P.IsDistinguishedAt (maximalIdeal O))
+    (hPdeg : P.natDegree = residueCard O)
+    {α' : ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))}
+    {u₂ : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
+      (K_1 (K := K) P)))⟦X⟧} (hu₂ : IsUnit u₂)
+    (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
+    (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
+    (hassoc : Associated (P₂.coeff 0) α') (hdeg : 0 < P₂.natDegree)
+    (hα'norm : ‖algebraMap _ (K_2 (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    {α : K_1 (K := K) P} (hα'coe : (α' : K_1 (K := K) P) = α)
+    (hirr : Irreducible (P₂.map (algebraMap _ (K_1 (K := K) P))))
+    {β : K_2 (K' := K_1 (K := K) P) P₂}
+    (hβroot : Polynomial.aeval β (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0)
+    (hβfin : Module.finrank (K_1 (K := K) P) (K_1 (K := K) P)⟮β⟯ = residueCard O)
+    [Algebra.IsSeparable (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂)]
+    (hβint : IsIntegral ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
+      (K_1 (K := K) P)) β)
+    [IsLocalRing ↥(integralClosure
+      ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
+      (K_2 (K' := K_1 (K := K) P) P₂))]
+    [IsLocalHom (algebraMap ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
+      (K_1 (K := K) P)) ↥(integralClosure
+        ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
+        (K_2 (K' := K_1 (K := K) P) P₂)))] :
+    (⟨β, hβint⟩ : ↥(integralClosure
+      ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
+      (K_2 (K' := K_1 (K := K) P) P₂))) ∈ maximalIdeal ↥(integralClosure
+        ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
+        (K_2 (K' := K_1 (K := K) P) P₂)) := by
+  have hβroot' : Polynomial.aeval β P₂ = 0 := by
+    have h1 : Polynomial.aeval β (Polynomial.map
+        (algebraMap ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
+          (K_1 (K := K) P)) (K_1 (K := K) P)) P₂) = 0 := hβroot
+    rwa [Polynomial.aeval_map_algebraMap] at h1
+  exact mem_maximalIdeal_of_isDistinguishedAt_root
+    (R := ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)))
+    (L := K_2 (K' := K_1 (K := K) P) P₂) hP₂dist hβint hβroot'
 
 end LubinTate
 
