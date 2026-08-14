@@ -217,6 +217,39 @@ theorem eval_add {f g : PowerSeries R}
   simp only [eval, hterm]
   exact Summable.tsum_add (summable_evalSummand hf hx) (summable_evalSummand hg hx)
 
+/-- **Evaluation is subtractive**, on the domain where both series have algebra-mapped-norm-bounded
+coefficients. Same pattern as `eval_add`, via `sub_eq_add_neg`/`norm_neg` for the coefficient bound
+on `f - g` and `Summable.tsum_sub` for the `tsum` identity. -/
+theorem eval_sub {f g : PowerSeries R}
+    (hf : ∀ n, ‖algebraMap R K (PowerSeries.coeff n f)‖ ≤ 1)
+    (hg : ∀ n, ‖algebraMap R K (PowerSeries.coeff n g)‖ ≤ 1) {x : K} (hx : ‖x‖ < 1) :
+    eval (f - g) x = eval f x - eval g x := by
+  have hfg : ∀ n, ‖algebraMap R K (PowerSeries.coeff n (f - g))‖ ≤ 1 := fun n ↦ by
+    rw [map_sub, map_sub, sub_eq_add_neg]
+    refine (IsUltrametricDist.norm_add_le_max _ _).trans (max_le (hf n) ?_)
+    rw [norm_neg]; exact hg n
+  have hterm : ∀ n, evalSummand (f - g) x n = evalSummand f x n - evalSummand g x n := fun n ↦ by
+    unfold evalSummand
+    rw [map_sub, map_sub, sub_mul]
+  simp only [eval, hterm]
+  exact Summable.tsum_sub (summable_evalSummand hf hx) (summable_evalSummand hg hx)
+
+omit [IsUltrametricDist K] [CompleteSpace K] in
+/-- **Evaluation at a constant series is the constant, algebra-mapped in.** Only the index-`0`
+summand contributes; no coefficient-bound or `‖x‖ < 1` hypothesis is needed, exactly as for
+`eval_X`/`eval_one`. -/
+theorem eval_C (a : R) (x : K) : eval (PowerSeries.C a) x = algebraMap R K a := by
+  have hterm : ∀ n, evalSummand (PowerSeries.C a) x n = if n = 0 then algebraMap R K a else 0 := by
+    intro n
+    unfold evalSummand
+    rw [PowerSeries.coeff_C]
+    split_ifs with h
+    · simp [h]
+    · simp
+  unfold eval
+  rw [tsum_eq_single 0 (by intro n hn; rw [hterm]; simp [hn])]
+  rw [hterm]; simp
+
 /-- **`K` is a nonarchimedean ring** in Mathlib's `NonarchimedeanRing` sense, whenever it is a
 `NormedField` with an ultrametric norm. No instance connecting these already exists in Mathlib
 (confirmed by grep across `Mathlib/Analysis/` and `Mathlib/Topology/Algebra/Nonarchimedean/`); the

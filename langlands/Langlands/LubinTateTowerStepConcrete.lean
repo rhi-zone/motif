@@ -246,7 +246,12 @@ moving base `O_{K_1}`.** Every hypothesis of that file's `TowerStep` section is 
 `α'` is irreducible by `exists_irreducible_uniformizer_K_1`.
 
 The conclusion is the level-2 Eisenstein polynomial: a monic degree-`q` `P₂` over `O_{K_1}`,
-Weierstrass factor of `f(X) - α'`, whose image over `K_1 P` is irreducible. -/
+Weierstrass factor of `f(X) - α'`, whose image over `K_1 P` is irreducible. The raw
+`IsDistinguishedAt`/`Associated (P₂.coeff 0) α'` data is also returned (not just the derived
+`Monic`/`Irreducible` facts) so downstream root-membership arguments (`ROADMAP.md` item 5's
+"connect `eval_map_towerHom` to the roots of `P₂`" step) can rebuild `P₂`'s Eisenstein-shape norm
+bound without re-invoking `exists_isWeierstrassFactorization_shifted` at a possibly-different
+existential witness. -/
 theorem exists_eisenstein_tower_step_K_1
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (hπ : Irreducible π)
     (hπnorm : ‖algebraMap O K π‖ < 1)
@@ -265,7 +270,8 @@ theorem exists_eisenstein_tower_step_K_1
       (α' : K_1 (K := K) P) = α ∧ IsUnit u₂ ∧
         shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂ ∧
         P₂.Monic ∧ P₂.natDegree = residueCard O ∧
-        Irreducible (P₂.map (algebraMap _ (K_1 (K := K) P))) := by
+        Irreducible (P₂.map (algebraMap _ (K_1 (K := K) P))) ∧
+        P₂.IsDistinguishedAt (maximalIdeal _) ∧ Associated (P₂.coeff 0) α' := by
   haveI := isAdicComplete_integralClosure_K_1 (K := K) P
   haveI := isLocalHom_towerHom (K := K) hOK hπ hπnorm P
   obtain ⟨α', hα'irr, hα'coe⟩ :=
@@ -276,7 +282,7 @@ theorem exists_eisenstein_tower_step_K_1
     rw [hdeg₂]; exact lt_of_lt_of_le (by norm_num) two_le_residueCard
   exact ⟨α', P₂, u₂, hα'coe, hu₂, heq₂, hP₂dist.monic, hdeg₂,
     Polynomial.irreducible_map_of_isWeaklyEisensteinAt_associated hα'irr hP₂dist.monic
-      hP₂dist.toIsWeaklyEisensteinAt hpos hassoc₂⟩
+      hP₂dist.toIsWeaklyEisensteinAt hpos hassoc₂, hP₂dist, hassoc₂⟩
 
 /-- **`K_2`, the level-2 Lubin-Tate extension**: the splitting field over `K_1 P` of the image of
 the level-2 Eisenstein polynomial `P₂` produced by `exists_eisenstein_tower_step_K_1`. Mirrors
@@ -319,7 +325,7 @@ theorem exists_finrank_adjoin_eq_residueCard_K_2
       P₂.natDegree = residueCard O ∧
       ∃ β : K_2 (K' := K_1 (K := K) P) P₂,
         Module.finrank (K_1 (K := K) P) (K_1 (K := K) P)⟮β⟯ = residueCard O := by
-  obtain ⟨α', P₂, u₂, -, -, -, hmonic, hdeg, hirr⟩ :=
+  obtain ⟨α', P₂, u₂, -, -, -, hmonic, hdeg, hirr, -, -⟩ :=
     exists_eisenstein_tower_step_K_1 hOK hπ hπnorm hf hu heq hPdist hPdeg hϖ hϖnorm hα
   refine ⟨P₂, hdeg, ?_⟩
   set P₂k := P₂.map (algebraMap _ (K_1 (K := K) P)) with hP₂k
