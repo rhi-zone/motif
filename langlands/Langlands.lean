@@ -24,6 +24,7 @@ import Langlands.LubinTateFormalGroupEvalAssoc
 import Langlands.LubinTateGaloisResidueUnits
 import Langlands.LubinTateHsplitVacuity
 import Langlands.LubinTateModPiFactoring
+import Langlands.LubinTateResidueFieldPreservation
 import Langlands.LubinTateResidueUnitsAction
 import Langlands.LubinTateResidueUnitsFreeness
 import Langlands.LubinTateResidueUnitsTransitivity
