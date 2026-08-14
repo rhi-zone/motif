@@ -13678,3 +13678,104 @@ one side, `Nat.card_units` on the other), and the `(O/π)ˣ`-action is already k
 transitive, so the map should be constructible from the action rather than from scratch. Beyond that
 the tower `K_n` (needing the `π^n`-torsion analogues of both the root count and transitivity —
 neither exists in this repo) and the reciprocity map.
+
+## 43. Phase 2c, thirty-seventh pass (2026-08-14): **`IsGalois K (K_1 P)` — CLOSED. The full
+`Gal(K_1/K) ≅ (O/π)ˣ` isomorphism — SCOPED, NOT ATTEMPTED to completion this pass; infrastructure
+audited rather than built.**
+
+### What closed
+
+`§42` flagged two concrete next moves. Both are addressed:
+
+1. **`Qk.Separable` exposed as a standalone theorem.** The local `have hsepK : ... .Separable` inside
+   `separable_divX_map_K_1`'s proof (`Langlands/LubinTateSplittingFieldTorsion.lean`) is now its own
+   top-level theorem, `separable_divX_map_K` — Gauss's-lemma separability of `Qk := P.divX.map
+   (algebraMap O K)` over the *base* `K`, repackaging `separable_map_divX_of_isLubinTatePoly`
+   (`Langlands/LubinTateEisensteinQ.lean`) with this arc's concrete Lubin-Tate hypothesis set (`hf :
+   IsLubinTatePoly`, `hPdeg : P.natDegree = residueCard O`, deriving `hQn` and a root from `K_1`
+   itself internally). `separable_divX_map_K_1` now calls it and lifts via `Polynomial.Separable.map`
+   instead of duplicating the derivation.
+2. **`isGalois_K_1 : IsGalois K (K_1 P)` closed**
+   (`Langlands/LubinTateSplittingFieldDegree.lean`), via `IsGalois.of_separable_splitting_field` fed
+   `separable_divX_map_K` and the already-existing instance `K_1.instIsSplittingField`. Exactly the
+   "looks close to immediate" prediction from `§42`'s report, verified rather than assumed: it built
+   with no further lemmas needed.
+
+Both theorems: `grep -rn sorry` over the two touched files — no hits. `#print axioms` on
+`separable_divX_map_K`, `separable_divX_map_K_1`, `isGalois_K_1` — `[propext, Classical.choice,
+Quot.sound]` only. Full `nix develop --command lake build` — clean, `Build completed successfully
+(8771 jobs)`.
+
+**`IsGalois K (K_1 P)` is the classical statement that the Lubin-Tate splitting field at level 1 is a
+genuine (finite, separable, normal) Galois extension of the base.** Combined with `§42`'s `Module.finrank
+K (K_1 P) = residueCard O - 1`, this gives `Nat.card (K_1 P ≃ₐ[K] K_1 P) = residueCard O - 1` for free
+(`IsGalois` + finite-dimensional ⟹ `Nat.card (Aut) = finrank`, standard Mathlib fact, not yet invoked
+here) — the same cardinality the `(O/π)ˣ`-action machinery already established for the nonzero torsion
+orbit.
+
+### What did not close: the isomorphism to `(O/π)ˣ`
+
+The brief asked for `Gal(K_1/K) ≃* (O/π)ˣ`, built from the generator `α` (`K_1 P = K⟮α⟯`, from
+`finrank_K_1_eq_residueCard_sub_one`'s proof) via `σ ↦ u(σ)` where `σ(α) = eval (phiU hπ hf u(σ)) α`.
+This was **scoped, not attempted to completion.** What the scoping found:
+
+* **The composition law for `[u]_F` already exists**: `phiU_subst_phiU_eq_phiU_mul`
+  (`Langlands/LubinTateUnitsAction.lean`) gives `[u]_F ∘ [v]_F = [uv]_F` at the power-series level,
+  already used to build `piTorsionMulAction`'s `mul_smul` field. This is the piece the brief flagged
+  as needing verification before assuming a form — it exists, in the form needed.
+* **The continuity obstacle the homomorphism property depends on is smaller than it looked.** Showing
+  `σ` commutes with `eval (phiU w) α = tsum (...)` needs `σ` continuous. Rather than the harder route
+  through `spectralNorm_eq_of_equiv` (norm-preservation of Galois elements, `Mathlib.Analysis.Normed.
+  Unbundled.SpectralNorm`), the direct fact suffices and is simpler to invoke:
+  `LinearMap.continuous_of_finiteDimensional` (`Mathlib.Topology.Algebra.Module.FiniteDimension`) —
+  *any* linear map out of a finite-dimensional space over a complete field is automatically continuous,
+  no norm-preservation argument needed. `K_1 P` is finite-dimensional over `K`
+  (`K_1.instFiniteDimensional`), so `σ.toLinearMap` is continuous for free. This closes what looked
+  like it might be the hardest sub-step at essentially no cost — genuinely checked (`loogle` +
+  Mathlib grep confirmed the lemma and its exact hypotheses), not assumed.
+* **What remains unassembled**: (a) well-definedness of `σ ↦ u(σ)` (root permutation + nonzero +
+  transitivity + freeness's uniqueness, mechanical given what's in `finrank_K_1_eq_residueCard_sub_one`
+  and `orbit_image_eq_piTorsion_sdiff_zero_K_1`); (b) the homomorphism property itself, which needs
+  `σ (eval (phiU w) α) = eval (phiU w) (σ α)` — commuting a continuous `K`-linear map with a `tsum`
+  (via a `HasSum`-transport lemma, e.g. `HasSum.map` for a continuous additive/linear map, not yet
+  located or written for this exact shape) — this was **not verified to exist for the case needed**
+  before scoping ran out of budget, so it is not claimed as either present or missing, only unchecked;
+  (c) injectivity (needs an "algebra automorphism of `K⟮α⟯` determined by its value at `α`" lemma —
+  candidate names not yet verified via loogle); (d) surjectivity, either by explicit construction or
+  by the cardinality argument (`Nat.card (Gal(K_1/K)) = Nat.card (O/π)ˣ` via `finrank` on both sides
+  — the Mathlib name for "`IsGalois` finite-dimensional ⟹ `Nat.card Aut = finrank`" was not verified);
+  (e) packaging as a `MulEquiv`.
+
+None of (a)-(e) were written. No `sorry` was placed anywhere to stand in for them — nothing was
+force-closed or hand-waved. This is a genuine scope-exceeds-session stop: the remaining assembly is
+several more lemmas each requiring its own loogle verification and build cycle, consistent with the
+pace of every other pass in this arc (one non-trivial fact per pass, verified before moving on), not
+a one-sitting extension of this pass.
+
+### Build status
+
+`nix develop --command lake build` (from `langlands/`) — clean, `Build completed successfully (8771
+jobs)`. `grep -rn sorry` over `Langlands/LubinTateSplittingFieldTorsion.lean` and
+`Langlands/LubinTateSplittingFieldDegree.lean` (the two files touched this pass) — no hits. `#print
+axioms` on `separable_divX_map_K`, `separable_divX_map_K_1`, `isGalois_K_1` — `[propext,
+Classical.choice, Quot.sound]` only.
+
+### Milestone: the arc from torsion points to Galois, `§27` → `§43`
+
+* `§27` (twenty-first pass): the Lubin-Tate torsion-point group structure completed.
+* `§29`–`§34`: the `Oˣ`-action on `π^n`-torsion, root identification, and `|piTorsion hπ hf 1| = q`.
+* `§37`–`§39`: the `(O/π)ˣ`-action's mod-`π` factoring, freeness, and reduction homomorphism.
+* `§40`: the `hsplit`-vacuity finding — the old formulation of `[K_1:K]=q-1` was provably empty for
+  `residueCard O ≥ 3`.
+* `§41`: `K_1` rearchitected as a genuine `Polynomial.SplittingField`, replacing the unsatisfiable
+  `hsplit` hypothesis.
+* `§42`: `Module.finrank K (K_1 P) = residueCard O - 1` closed non-vacuously, with a Lean certificate
+  (`residueCard = 3`, `finrank = 2`) proving the old vacuous form's replacement is a real theorem.
+* `§43` (this pass): `IsGalois K (K_1 P)` closed — `K_1/K` is a genuine Galois extension, not merely
+  a finite separable one. The reduction to the classical `Gal(K_1/K) ≅ (O/π)ˣ` isomorphism is scoped
+  with its hardest-looking sub-step (continuity) resolved cheaper than expected, but not assembled.
+
+**Natural next step**: finish the `Gal(K_1/K) ≅ (O/π)ˣ` construction — items (a)-(e) above, each a
+one-lemma-per-pass verification in the style of this whole arc. After that, generalize `n = 1` to the
+tower `K_n` (`[K_n:K] = q^(n-1)(q-1)`), which needs `π^n`-torsion analogues of both the root count and
+the transitivity argument — neither exists in this repo yet — and finally the reciprocity map itself.
