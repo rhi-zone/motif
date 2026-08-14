@@ -15123,3 +15123,126 @@ splitting-field-generation wrap-up) to land `K_1⟮β⟯ = K_2` and `[K_2 : K_1]
 Once they do, `Langlands/LubinTateTowerStep.lean`'s module docstring's named next step remains
 correct: total-ramification-preservation for `O_{K_2}` (same residue field as `O`), the same shape
 as the gap already closed for `K_1`, one level up.
+
+## 55. Phase 2c, forty-eighth pass (2026-08-14): item 6 closes in full — `K_1⟮β⟯ = K_2` and
+`[K_2 : K_1] = q` are real theorems, no `sorry`
+
+**Milestone claim, made carefully**: `§54`'s precisely-scoped item-6 gap (the four numbered steps
+recorded there) is closed in full this pass, exactly as sketched, with no step turning out to need
+re-scoping. `Langlands/LubinTateTowerStep.lean`'s module docstring's next-step framing (`§52`/`§53`)
+is unchanged by this pass; see "Next step" below for what it names precisely.
+
+### Task 1: `piTorsion hπ hf 1` invariance under `K_1 P → K_2` (`§54`'s steps 1–4)
+
+Closed exactly as `§54` sketched, with the four steps assembled into one theorem:
+
+* **`Langlands/LubinTateRootCount.lean`** (generic, not `K_1`/`K_2`-specific):
+  * `ne_zero_of_root_of_aeval_divX_map_eq_zero` : a root of `Q := P.divX`'s image in *any* field `K`
+    satisfying `[FaithfulSMul O K]` is nonzero. Generalizes the existing `K_1`-specific
+    `LubinTateSplittingFieldDegree.ne_zero_of_aeval_divX_map_eq_zero` (which routes through the
+    `K_1`-specific bridge lemma `aeval_K_divX_eq_eval_K_1`) to an arbitrary field, using the direct
+    `Polynomial.aeval_def`/`Algebra.algebraMap_self`/`Polynomial.eval₂_id` route instead — needed
+    because item 6's invariance argument must run this same nonvanishing check at *two* different
+    fields (`K_1 P` and `K_2`), not just `K_1 P`.
+  * `piTorsion_one_sdiff_zero_eq_roots_toFinset` : **`piTorsion hπ hf 1 \ {0}` is exactly the root
+    set of `Q`'s image**, at any field satisfying the standing `hOK`/`hπnorm` hypotheses. Combines
+    `mem_piTorsion_one_of_root_divX_map` and `aeval_divX_map_eq_zero_of_mem_piTorsion_one_ne_zero`
+    (both already generic, `§54`'s step 1) with the nonvanishing fact above into a clean `Set`
+    equality, instantiated verbatim at `K := K_1 P` and `K := K_2` inside Task 1's main theorem.
+* **`Langlands/LubinTateTowerStepRootConnect.lean`**:
+  * `algebraMap_O_K_1_eq_comp_towerHom` : **the genuinely new piece (`§54`'s step 3)**. The ordinary
+    two-hop `algebraMap O (K_1 P)` (`K_1.instAlgebraO`'s `O → K → K_1 P`) equals the first two hops of
+    `K_2.instAlgebraO`'s three-hop composite, `algebraMap O_{K_1} (K_1 P) ∘ towerHom hOK P`. Proved by
+    unfolding `towerHom` (`rfl`, since it is literally a `RingHom.comp`) and chaining two
+    `IsScalarTower.algebraMap_apply` rewrites — at `𝒪[K] → O_{K_1} → K_1 P` and `𝒪[K] → K → K_1 P` —
+    both resolved by **automatic Mathlib instances**, confirmed by direct build rather than assumed:
+    `IsScalarTower.subalgebra'` (`Mathlib.Algebra.Algebra.Subalgebra.Tower`, since `O_{K_1} :=
+    integralClosure 𝒪[K] (K_1 P)` is literally a `Subalgebra 𝒪[K] (K_1 P)`) for the first, and
+    `ValuationSubring.instIsScalarTowerSubtypeMemValuationSubringWithZeroMultiplicativeInt`
+    (`Mathlib.RingTheory.Valuation.AlgebraInstances`, specialized at the trivial `K → K` algebra) for
+    the second. Neither needed to be built by hand, confirming `§54`'s worked-out sketch was right
+    that this reduces to instance search once the right lemma names are found — the "not yet looked
+    up" caveat `§54` flagged.
+  * `K_2.algebraMap_O_eq_comp_K_1`, `K_2.hπnorm_transport`, `K_2.instFaithfulSMul_O`,
+    `divX_map_algebraMap_O_K_2_eq_map` : the promised one-line consequences. Once `algebraMap O K_2`
+    collapses to the ordinary two-hop `algebraMap (K_1 P) K_2 ∘ algebraMap O (K_1 P)`
+    (`K_2.algebraMap_O_eq_comp_K_1`, `K_2.algebraMap_O_eq` composed with the lemma above), norm
+    transport, injectivity, and the roots-multiset-transport polynomial identity
+    (`Q.map (algebraMap O K_2) = (Q.map (algebraMap O (K_1 P))).map (algebraMap (K_1 P) K_2)`,
+    `§54`'s step 3's payoff) all follow from the corresponding `K_1 P` facts plus
+    `spectralNorm_extends`/`Polynomial.map_map`.
+  * `piTorsion_one_K_2_eq_algebraMap_image` : **the capstone**, `piTorsion (K := K_2) hπ hf 1 =
+    algebraMap (K_1 P) K_2 '' piTorsion (K := K_1 P) hπ hf 1`. Assembles `§54`'s step 2
+    (`splits_divX_map_K_1` + `Polynomial.splits_iff_card_roots` +
+    `Polynomial.Monic.roots_map_of_card_eq_natDegree`, confirmed to exist exactly as `§54` cited) with
+    the roots-toFinset identity above (`Multiset.toFinset_map`) to get the nonzero-torsion sets
+    matching as `Finset`s, then reassembles `{0}` (`Set.insert_sdiff_singleton`,
+    `Set.insert_eq_self`, `zero_mem_piTorsion`, `map_zero`).
+
+`nix develop -c lake build` — clean. `grep -n sorry` on both changed files — no hits. Commit
+`366a90e`.
+
+### Task 2: `K_1⟮β⟯ = K_2` and `[K_2 : K_1] = q`
+
+Closed in **`Langlands/LubinTateTowerStepDegree.lean`** (new file), following `§54`'s step-4 sketch
+with one clarification the task brief itself anticipated: `FPiEval` is a *bivariate* `tsum`
+(`evalMv`/`evalSummandMv` over `Fin 2 →₀ ℕ`), not the univariate one `eval_phiU_mem_adjoin` closes
+over, but the same finite-dimensional-closed-subspace technique applies termwise with no
+`Submodule.mem_of_hasSum_of_finiteDimensional`-level changes needed — the general lemma is literally
+reusable verbatim, exactly as `§54`'s step 4 predicted, since it takes an arbitrary index type.
+
+* `FPiEval_algebraMap_mem_adjoin` : **`F_π(β, algebraMap (K_1 P) K_2 t) ∈ (K_1 P)⟮β⟯`**, for `β : K_2`
+  and `t : K_1 P` both in the open unit ball. Each summand `evalSummandMv (Phi hπ hf) ![β, t'] n =
+  algebraMap O K_2 (coeff n Φ) * β ^ n 0 * t' ^ n 1` (`t' := algebraMap (K_1 P) K_2 t`) factors, via
+  `K_2.algebraMap_O_eq_comp_K_1` and `map_pow`, as `algebraMap (K_1 P) K_2 (algebraMap O (K_1 P)
+  (coeff n Φ) * t ^ n 1) * β ^ n 0` — a `K_1 P`-scalar (`IntermediateField.algebraMap_mem`) times a
+  power of `β` (`IntermediateField.mem_adjoin_simple_self`), hence in the finite-dimensional `K_1
+  P`-subspace `(K_1 P)⟮β⟯` (finite-dimensional inside `K_2`, via `K_2.instFiniteDimensional`);
+  `Submodule.mem_of_hasSum_of_finiteDimensional` places the `hasSum_FPiEval` limit back inside it.
+* `adjoin_root_eq_top_K_2` : **`(K_1 P)⟮β⟯ = ⊤`**, for `β` any root of `P₂`'s image in `K_2`. For any
+  other root `β'`, item 5's `exists_piTorsion_translate_of_aeval_P₂_eq_zero` gives `t' ∈ piTorsion
+  (K := K_2) hπ hf 1` with `β' = F_π(β, t')`; Task 1's `piTorsion_one_K_2_eq_algebraMap_image`
+  rewrites `t'` as `algebraMap (K_1 P) K_2 t` for some `t ∈ piTorsion (K := K_1 P) hπ hf 1` — exactly
+  the missing forcing fact `§54` identified as absent ("nothing yet forcing `t'` to lie in `(K_1
+  P)⟮β⟯`"); `FPiEval_algebraMap_mem_adjoin` then places `β' ∈ (K_1 P)⟮β⟯` directly. Since `K_2` is *by
+  construction* the splitting field of `P₂`'s image over `K_1 P`, generated by its roots
+  (`Polynomial.IsSplittingField.adjoin_rootSet`), this forces `(K_1 P)⟮β⟯ = ⊤` — the same
+  `hle`/`Algebra.adjoin_le`/`eq_top_iff` pattern `exists_generator_K_1`
+  (`Langlands/LubinTateSplittingFieldDegree.lean`) already used one level down, not the alternative
+  `IntermediateField.splits_of_splits`/`splits_iff_mem` route (both routes were named as options in
+  the task brief; the `adjoin_rootSet` route was the smoother one once in the weeds, matching what the
+  `K_1` precedent already established).
+* `finrank_K_2_eq_residueCard` : **`Module.finrank (K_1 P) (K_2 P₂) = residueCard O`**, i.e.
+  `[K_2 : K_1] = q`. `exists_finrank_adjoin_eq_residueCard_K_2` (already closed, `§51`) supplies a root
+  `β` with `Module.finrank (K_1 P) (K_1 P)⟮β⟯ = residueCard O`; `adjoin_root_eq_top_K_2` upgrades the
+  same `β` to `(K_1 P)⟮β⟯ = ⊤`, and `IntermediateField.finrank_top'` identifies `Module.finrank (K_1 P)
+  (K_2 P₂)` with `Module.finrank (K_1 P) (K_1 P)⟮β⟯`.
+
+`nix develop -c lake build` (full project) — clean, `8791` jobs. `grep -n sorry` on the new file — no
+hits. Commit `c0cd82e`.
+
+### Milestone
+
+**`K_1⟮β⟯ = K_2` and `[K_2 : K_1] = q` are now closed, `sorry`-free theorems.** This is the first
+genuine second tower-step degree computation of the Lubin-Tate arc — the same headline result
+`Langlands/LubinTateSplittingFieldDegree.lean` established for `[K_1 : K] = q - 1`, now proved one
+level up for `[K_2 : K_1] = q`, using the *same* structural argument (torsion-point generator +
+finite-dimensional-subspace-closure + splitting-field-generation), reusable in principle at the next
+tower step once its own prerequisites (the `π²`-torsion analogue of the root count and transitivity)
+exist.
+
+### Next step
+
+Unchanged from `§52`/`§53`'s framing, now genuinely the next open piece rather than blocked behind
+item 6: `Langlands/LubinTateTowerStep.lean`'s module docstring names total-ramification-preservation
+for `O_{K_2}` (same residue field as `O`) as what a `K_3` tower step needs — the same shape as the gap
+`Langlands.TotallyRamifiedResidueField`/`Langlands.TotallyRamifiedUniformizer` already closed for
+`K_1`, one level up. Concretely: `O_{K_2} := integralClosure 𝒪[K_1 P] (K_2 P₂)` needs the residue-field-
+preservation and uniformizer facts `Langlands/LubinTateTowerStepConcrete.lean` already built for
+`O_{K_1}` (`isAdicComplete_integralClosure_K_1`, `exists_irreducible_uniformizer_K_1`,
+`exists_eisenstein_tower_step_K_1`), reproved at the next level using this pass's `K_2` norm/algebra
+package (`Langlands/LubinTateTowerStepSplittingField.lean`) the same way `Langlands/
+LubinTateTowerStepConcrete.lean` used `K_1`'s. No new mathematical content is anticipated beyond what
+`§52`'s `K_2`-generic instance package and this pass's `K_2`-specific `algebraMap`/norm-transport
+lemmas already supply — the remaining work is re-running the existing `K_1`-level argument one level
+up, not discovering new facts.
