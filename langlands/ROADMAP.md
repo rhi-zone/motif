@@ -13518,3 +13518,163 @@ transported down unchanged. What remains open, honestly: `piTorsion` has not yet
 `K_1` with these fresh instances, so no root-count, degree, or `(O/π)ˣ`-action fact has actually been
 re-proved for `K_1` itself — steps 4 and 5, and reconnecting the (already-independent) spacing/
 mod-`π`-factoring/action/freeness machinery to `K_1`, are next-pass work, not done here.
+
+## 42. Phase 2c, thirty-sixth pass (2026-08-14): **`[K_1 : K] = q - 1` — CLOSED, non-vacuously.
+The headline result of the whole multi-week Lubin-Tate arc.**
+
+`§41` rebuilt `K_1` as `Polynomial.SplittingField` but explicitly did not instantiate `piTorsion`
+there, re-derive any root count, or reconnect the spacing/action/freeness machinery. This pass did
+all of that and went through to the degree computation. **`Module.finrank K (K_1 P) = residueCard O
+- 1` is now proved**, with no `hsplit` hypothesis anywhere, and with a Lean certificate exhibiting a
+concrete non-degenerate instance (`p = 3`, degree `2`) in exactly the range the old form excluded.
+
+### The unlock: the root valuation does not need irreducibility
+
+The blocker was not `K_1`'s construction — it was that the *entire* torsion machinery
+(`LubinTateTorsionSpacing`, `LubinTateModPiFactoring`, `LubinTateResidueUnitsAction`,
+`LubinTateResidueUnitsFreeness`, `LubinTateResidueUnitsTransitivity`) carried `[IsFractionRing O K]`
+on its **ambient** field. `§41`'s step-0 audit correctly found none of those files uses `hsplit`, but
+did not check the typeclass package: each one bottoms out in
+`norm_eq_rpow_of_mem_piTorsion_one_ne_zero`, whose old proof went through `spectralNorm` and
+`minpoly`, and therefore needed `Q := P.divX`'s image to be **irreducible over the ambient field** —
+i.e. Gauss's lemma, i.e. `[IsFractionRing O K]`. That is precisely false inside a splitting field of
+`Q`. So `§41`'s "reusable as-is" claim was right about `hsplit` and wrong about specializability;
+re-verifying it directly (as the brief required) is what surfaced this.
+
+**`Langlands/EisensteinRootNorm.lean`** (new) removes the dependency. For monic `p : L[X]` of degree
+`n ≥ 1` over *any* ultrametric normed field, with `‖p.coeff 0‖ = c` exactly, `‖p.coeff i‖ ≤ c` for
+`i < n`, and `0 < c < 1`, every root satisfies **`‖α‖ ^ n = c`** — the Newton-polygon computation for
+a single-segment Eisenstein polygon, proved by three applications of the ultrametric inequality to
+the two rearrangements of `p.eval α = 0` (`α ^ n = -∑_{i<n} p_i α^i` for `‖α‖ < 1` and `‖α‖^n ≤ c`;
+`p_0 = -(α^n + ∑_{1≤i<n} p_i α^i)` for `c ≤ ‖α‖^n`). **No base field, no completeness, no
+algebraicity, no irreducibility.** `§31`/`§32` had flagged Newton-polygon machinery as absent from
+Mathlib and unavailable; that is true in general, but this one case needs ~60 lines and no theory.
+
+Consequence: the whole chain moves from `[IsFractionRing O K]` to `[FaithfulSMul O K]` (a strict
+generalization — Mathlib has `IsFractionRing R K → FaithfulSMul R K` as an instance, so no existing
+caller changed). `K_1` satisfies `[FaithfulSMul O K_1]` via the tower `O → K → K_1`.
+`norm_eq_rpow_of_mem_piTorsion_one_ne_zero` gained one explicit hypothesis (`hπnorm`, the polygon's
+slope condition, previously free from `minpoly`); six call sites updated.
+
+### The six steps
+
+1. **`piTorsion` instantiated at `K_1`.** `§41` left `K_1`'s norm/algebra structures as `def`s
+   needing `letI`. They are now genuine `instance`s on the dedicated type synonym `K_1 P`
+   (`NontriviallyNormedField` via `spectralNorm.nontriviallyNormedField`, `IsUltrametricDist`,
+   `CompleteSpace`, `Algebra O`, `IsScalarTower O K`, `FaithfulSMul O`, `NormedSpace K`,
+   `IsSplittingField K _ Qk`), so `piTorsion (K := K_1 P)` and everything downstream resolve by
+   ordinary instance search. Safe here where Mathlib's own `spectralNorm.normedField` must stay a
+   `def`: `K_1 P` is introduced in this repo and carries no competing norm. The `Field` diamond
+   closes by structure eta (Mathlib builds the structure as `{ (inferInstance : Field L) with … }`).
+2. **`Nat.card (piTorsion hπ hf 1 : Set (K_1 P)) = residueCard O`**
+   (`card_piTorsion_one_K_1_eq_residueCard`, `Langlands/LubinTateSplittingFieldTorsion.lean`), with
+   `hsplit` supplied by `splits_divX_map_K_1` (a *theorem*, `Polynomial.SplittingField.splits`) and
+   no `[IsFractionRing O (K_1 P)]`. The counting core was split out as
+   `card_piTorsion_one_eq_residueCard_of_separable_of_splits`, taking separability as a hypothesis:
+   separability is the **one** ingredient that genuinely still needs Gauss's lemma, so it is proved
+   over the base `K` (fed a root taken from `K_1` itself) and transported up along `K ↪ K_1` via
+   `Polynomial.Separable.map`. Injectivity of `algebraMap O K_1` — the brief's flagged replacement
+   for `IsFractionRing.injective` — comes from the tower, as expected; the degree facts needed even
+   less, `Polynomial.Monic.natDegree_map` holding with no injectivity at all.
+3. **Machinery reconnected.** Once (1) and the `[FaithfulSMul]` generalization are in place, the
+   spacing / mod-`π` factoring / `(O/π)ˣ`-action / freeness files specialize at `K := K_1 P` with
+   **no further work** — verified by actually using them in (4), not by inspection.
+4. **Transitivity** (`orbit_image_eq_piTorsion_sdiff_zero_K_1`): the `(ResidueField O)ˣ`-orbit of any
+   nonzero torsion point, imaged into `K_1`, is exactly `piTorsion hπ hf 1 \ {0}`. Freeness gives
+   `stabilizer = ⊥`, hence `|orbit| = |(O/π)ˣ| = q - 1`; the nonzero torsion also has `q - 1`
+   elements by (2); an orbit sits inside it; equal finite cardinality forces equality.
+   `LubinTateResidueUnitsTransitivity`'s two capstones were restated against the torsion count as a
+   hypothesis (`…_of_card`), with the vacuous `hsplit` forms kept as corollaries.
+5. **`K_1 = K⟮α⟯`.** For `α` a nonzero root of `Qk` in `K_1`: `K_1` is generated over `K` by
+   `Qk.rootSet (K_1 P)` (`Polynomial.IsSplittingField.adjoin_rootSet`), every such root is a nonzero
+   torsion point, and by (4) every one of those is `eval (phiU hπ hf w) α`. **The one genuinely new
+   analytic step**: `[w]_F` is an honest power series, so `[w]_F(α)` is a convergent infinite sum,
+   not a polynomial in `α` — membership in `K⟮α⟯` is a limit statement. Each summand lies in `K⟮α⟯`
+   (the `O`-image factors through `K` by the scalar tower), and `K⟮α⟯` is a finite-dimensional
+   `K`-subspace of `K_1 P`, hence closed (`Submodule.closed_of_finiteDimensional`, reachable because
+   of the fresh `NormedSpace K (K_1 P)` instance), so the limit stays in it. Extracted as the general
+   `Submodule.mem_of_hasSum` / `Submodule.mem_of_hasSum_of_finiteDimensional`.
+6. **`Module.finrank K (K_1 P) = residueCard O - 1`**
+   (`finrank_K_1_eq_residueCard_sub_one`, `Langlands/LubinTateSplittingFieldDegree.lean`). `Qk` is
+   monic and irreducible over `K` (Gauss's lemma — the one place the standing `[IsFractionRing O K]`
+   on the **base** is used), so `Qk = minpoly K α` and `IntermediateField.adjoin.finrank` gives
+   `finrank K K⟮α⟯ = q - 1`; (5) gives `K⟮α⟯ = ⊤`.
+
+### The non-vacuity check, done rather than asserted
+
+`§40`'s finding was that `hsplit ∧ [IsFractionRing O K] ∧ P.divX.natDegree ≥ 2 → False`
+(`LubinTateHsplitVacuity.false_of_hsplit_of_two_le_divX_natDegree`). That proof needs **two**
+ingredients: (i) irreducibility of `Qk` over `K`, and (ii) `hsplit`, i.e. `Qk` splitting **inside `K`
+itself**. In the new package (i) survives — it is exactly what pins the degree down — but (ii) is
+absent: `K_1 P` *is* `Qk.SplittingField`, a different type, so `Qk` splits over `K_1`, not over `K`.
+Irreducible-over-`K` together with splits-over-its-own-splitting-field is no contradiction. Checked
+mechanically too: no hypothesis of the form `(P.divX.map (algebraMap O K)).Splits` occurs anywhere in
+the new files.
+
+That is the *negative* half. The *positive* half — actual satisfiability with `residueCard O ≥ 3` —
+is certified in Lean rather than argued (`Langlands/LubinTateSplittingFieldDegreeConcrete.lean`):
+
+* `exists_finrank_K_1_eq_residueCard_sub_one` — over an `m`-adically complete `O`, for *any*
+  uniformizer, the whole data package exists: `f` from `exists_isLubinTatePoly` (the explicit
+  `π•X + X^q`, constraining `q` not at all) and `(P, u)` from
+  `exists_isWeierstrassFactorization_of_isLubinTatePoly`.
+* `exists_finrank_K_1_eq_padic_sub_one p` — the same at `O := ℤ_[p]`, `K := ℚ_[p]`, `π := p`, every
+  typeclass and hypothesis discharged from Mathlib (including `[IsAdicComplete (maximalIdeal ℤ_[p])
+  ℤ_[p]]`, a Mathlib instance), giving `finrank ℚ_[p] (K_1 P) = p - 1`.
+* **`exists_finrank_K_1_eq_two_padic_three` — no hypotheses at all**: `residueCard ℤ_[3] = 3` and
+  `Module.finrank ℚ_[3] (K_1 P) = 2`. A genuinely ramified degree-`2` extension at the *smallest*
+  residue cardinality the old `hsplit`-carrying form excludes. This is the certificate; everything
+  above it is the explanation.
+* `exists_finrank_K_1_eq_residueCard_sub_one_of_adicCompletion` — the `HeightOneSpectrum` route,
+  with `hOK`/`hπnorm` discharged automatically as in `LubinTateRootCountConcrete.lean`.
+
+One honest gap, flagged not papered over: `[IsAdicComplete (maximalIdeal (v.adicCompletionIntegers
+F)) _]` remains an **explicit hypothesis** in the `adicCompletion` statement. It is true (the
+valuation ring of a complete discretely-valued field is `m`-adically complete) but has no instance in
+this Mathlib, whose `IsAdicComplete` instances cover Artinian local rings, `ℤ_[p]`,
+`AdicCompletion I R`, and `ValuativeRel`-bundled local fields; the generic bridge
+`IsAdic.isPrecomplete_iff` would need `IsAdic (maximalIdeal O)` for the valuation topology, for which
+Mathlib has no lemma. It was not invented, `sorry`d, or axiomatized. Crucially it constrains only the
+completion, never `residueCard`, and the `ℤ_[p]` route discharges it outright — so it is not what
+could make the package vacuous.
+
+Also worth stating precisely: the theorem is `Module.finrank K (K_1 P)`, over the standing `K` with
+`[IsFractionRing O K]` — so `K` *is* a fraction field of `O` and this *is* `[K_1 : Frac(O)]`, but a
+statement literally over `FractionRing O` (transported across the canonical isomorphism) was not
+separately written down.
+
+### Build status
+
+`nix develop --command lake build` (from `langlands/`) — whole project clean, `Build completed
+successfully (8771 jobs)`, after `touch`ing the base of the dependency chain to force a genuine
+rebuild (an incremental run reported success once at a point where a downstream file did not in fact
+compile; do not trust an un-forced `lake build` after editing a widely-imported file). `grep -rn
+sorry` over all twelve created/modified files — no hits. `#print axioms` on
+`finrank_K_1_eq_residueCard_sub_one`, `card_piTorsion_one_K_1_eq_residueCard`,
+`orbit_image_eq_piTorsion_sdiff_zero_K_1`, `exists_finrank_K_1_eq_padic_sub_one` and
+`exists_finrank_K_1_eq_two_padic_three` — `[propext, Classical.choice, Quot.sound]` only, no
+`sorryAx`.
+
+### Report to the user: yes, it closed, and it is not vacuous
+
+**`[K_1 : K] = q - 1` is proved, and unlike every version of it from `§34` onward it has actual
+instances.** The distinguishing evidence is `exists_finrank_K_1_eq_two_padic_three`: a hypothesis-free
+Lean theorem exhibiting `residueCard = 3`, `finrank = 2` — a case in which the old `hsplit`-carrying
+statement is provably empty. The correction that made this possible was not the `SplittingField`
+rearchitecture alone (`§41` had that) but noticing that the *root-valuation* fact had been proved by
+a route that silently required irreducibility over the ambient field, and replacing it with the
+elementary ultrametric one.
+
+What is **not** done. `IsGalois` was not attempted. Its direction is `IsGalois F E` with `F` the base
+(checked against `Mathlib.FieldTheory.Galois.Basic`), so the statement wanted is `IsGalois K (K_1 P)`
+— and it looks close to immediate: `IsGalois.of_separable_splitting_field` needs exactly
+`[Polynomial.IsSplittingField K (K_1 P) Qk]` (already an instance, `K_1.instIsSplittingField`) and
+`Qk.Separable`, which is proved inside `separable_divX_map_K_1` but currently only as a local `have`
+— exposing that base-level separability as its own lemma is the concrete first move. That is a
+*prediction from reading the signatures*, not a verified proof; it has not been run.
+
+After that: `Gal(K_1/K) ≅ (O/π)ˣ` — the two sides now have equal cardinality `q - 1` (`finrank` on
+one side, `Nat.card_units` on the other), and the `(O/π)ˣ`-action is already known free and
+transitive, so the map should be constructible from the action rather than from scratch. Beyond that
+the tower `K_n` (needing the `π^n`-torsion analogues of both the root count and transitivity —
+neither exists in this repo) and the reciprocity map.
