@@ -87,16 +87,19 @@ theorem aeval_K_divX_eq_eval_K_1 (y : K_1 (K := K) P) :
 
 end
 
-/-- **`Q := P.divX`'s image is separable in `K_1`.** Separability is a Gauss's-lemma fact about the
-*base* field (`separable_map_divX_of_isLubinTatePoly`, using `[IsFractionRing O K]` and tameness of
-`Q.natDegree`), fed a root taken from `K_1` itself (`splits_divX_map_K_1` plus
-`Polynomial.Splits.exists_eval_eq_zero`); `Polynomial.Separable.map` then transports it up the
-embedding `K ↪ K_1`. -/
-theorem separable_divX_map_K_1 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O} (hπ : Irreducible π)
+/-- **`Q := P.divX`'s image is separable over the base `K`.** A Gauss's-lemma fact about `K`
+(`separable_map_divX_of_isLubinTatePoly`, using `[IsFractionRing O K]` and tameness of
+`Q.natDegree`, the latter derived here from `hPdeg` via `isUnit_natCast_of_add_one_eq_residueCard`
+rather than assumed), fed a root taken from `K_1` itself (`splits_divX_map_K_1` plus
+`Polynomial.Splits.exists_eval_eq_zero`) since `Q` need not split over `K` itself. Repackages
+`separable_map_divX_of_isLubinTatePoly` with the concrete Lubin-Tate hypothesis set
+(`hf : IsLubinTatePoly`, `hPdeg : P.natDegree = residueCard O`) used throughout this file, in place
+of the lower-level `hf0`/`hf1`/`hPdeg2`/`hQn` it otherwise expects. -/
+theorem separable_divX_map_K (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O} (hπ : Irreducible π)
     (hπnorm : ‖algebraMap O K π‖ < 1) {f : O⟦X⟧} (hf : IsLubinTatePoly π (residueCard O) f)
     {P : O[X]} {u : O⟦X⟧} (hu : IsUnit u) (heq : f = (P : O⟦X⟧) * u)
     (hPdist : P.IsDistinguishedAt (maximalIdeal O)) (hPdeg : P.natDegree = residueCard O) :
-    (P.divX.map (algebraMap O (K_1 (K := K) P))).Separable := by
+    (P.divX.map (algebraMap O K)).Separable := by
   have hf0 : PowerSeries.coeff 0 f = 0 := hf.1
   have hf1 : PowerSeries.coeff 1 f = π := hf.2.1
   have hPdeg2 : 2 ≤ P.natDegree := hPdeg ▸ two_le_residueCard
@@ -115,10 +118,18 @@ theorem separable_divX_map_K_1 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {
   obtain ⟨a0, ha0⟩ := (splits_divX_map_K_1 (K := K) P).exists_eval_eq_zero hQmapdegne
   have ha0' : Polynomial.aeval a0 (P.divX.map (algebraMap O K)) = 0 := by
     rw [aeval_K_divX_eq_eval_K_1]; exact ha0
-  have hsepK : (P.divX.map (algebraMap O K)).Separable :=
-    separable_map_divX_of_isLubinTatePoly hu heq hf0 hπ hf1 hPdist hPdeg2 hOK hπnorm hQn
-      (L := K_1 (K := K) P) ha0'
-  exact map_divX_algebraMap_K_1 (K := K) P ▸ hsepK.map
+  exact separable_map_divX_of_isLubinTatePoly hu heq hf0 hπ hf1 hPdist hPdeg2 hOK hπnorm hQn
+    (L := K_1 (K := K) P) ha0'
+
+/-- **`Q := P.divX`'s image is separable in `K_1`.** `separable_divX_map_K`, transported up the
+embedding `K ↪ K_1` via `Polynomial.Separable.map`. -/
+theorem separable_divX_map_K_1 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O} (hπ : Irreducible π)
+    (hπnorm : ‖algebraMap O K π‖ < 1) {f : O⟦X⟧} (hf : IsLubinTatePoly π (residueCard O) f)
+    {P : O[X]} {u : O⟦X⟧} (hu : IsUnit u) (heq : f = (P : O⟦X⟧) * u)
+    (hPdist : P.IsDistinguishedAt (maximalIdeal O)) (hPdeg : P.natDegree = residueCard O) :
+    (P.divX.map (algebraMap O (K_1 (K := K) P))).Separable :=
+  map_divX_algebraMap_K_1 (K := K) P ▸
+    (separable_divX_map_K hOK hπ hπnorm hf hu heq hPdist hPdeg).map
 
 /-- **The root count at `K_1`, non-vacuously: `Nat.card (piTorsion hπ hf 1 : Set (K_1 P)) =
 residueCard O`.** No `hsplit` hypothesis — `Q` splits over `K_1` by construction — and no

@@ -1,4 +1,5 @@
 import Mathlib.Topology.Algebra.Module.FiniteDimension
+import Mathlib.FieldTheory.Galois.Basic
 import Langlands.LubinTateSplittingFieldTorsion
 
 /-!
@@ -247,6 +248,21 @@ theorem finrank_K_1_eq_residueCard_sub_one
   -- Step 5: conclude.
   rw [← IntermediateField.finrank_top' (F := K) (E := K_1 (K := K) P), ← htop]
   exact hfin
+
+/-! ## `K_1 P` is Galois over `K` -/
+
+/-- **`K_1 P / K` is a Galois extension.** `K_1 P` is a splitting field of `Qk := P.divX.map
+(algebraMap O K)` over `K` by construction (`K_1.instIsSplittingField`), and `Qk` is separable
+(`separable_divX_map_K`, a Gauss's-lemma fact over the base `K`) — the two ingredients
+`IsGalois.of_separable_splitting_field` needs. -/
+theorem isGalois_K_1
+    (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O} (hπ : Irreducible π)
+    (hπnorm : ‖algebraMap O K π‖ < 1) {f : O⟦X⟧} (hf : IsLubinTatePoly π (residueCard O) f)
+    {P : O[X]} {u : O⟦X⟧} (hu : IsUnit u) (heq : f = (P : O⟦X⟧) * u)
+    (hPdist : P.IsDistinguishedAt (maximalIdeal O)) (hPdeg : P.natDegree = residueCard O) :
+    IsGalois K (K_1 (K := K) P) :=
+  IsGalois.of_separable_splitting_field (p := P.divX.map (algebraMap O K))
+    (separable_divX_map_K hOK hπ hπnorm hf hu heq hPdist hPdeg)
 
 end LubinTate
 
