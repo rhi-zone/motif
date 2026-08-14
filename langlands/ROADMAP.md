@@ -15359,3 +15359,117 @@ for the full `ResidueField O ≃+* ResidueField O_{K_2}` statement). Only then d
 attemptable, mirroring `Langlands/LubinTateTowerStepConcrete.lean`'s own `K_1 → K_2` construction —
 this time genuinely a repeat of established machinery, since Gap 2's engine (unlike the
 `ValuativeRel`-bundle route) has no reason to need yet another new argument at the next level.
+
+## 57. Phase 2c, fiftieth pass: `O_{K_2}` monogenicity over `O_{K_1}` closes, sidestepping the
+`ValuativeRel` diamond; residue-field preservation blocked on a newly-identified `IsLocalRing O_{K_2}`
+sub-gap
+
+This pass re-verified `§56`'s Gap 2 diagnosis directly, then executed its prescribed route
+(bare Eisenstein/discriminant machinery at a moving base with no `ValuativeRel` bundle), closing
+`O_{K_2}`'s monogenicity over `O_{K_1}` in full. Residue-field preservation itself does not close: a
+genuine, previously-unidentified additional sub-obstruction was found along the way.
+
+### Gap 2 diagnosis re-confirmed
+
+`Langlands/LubinTateTowerStepSplittingField.lean:137`'s `K_1.instNontriviallyNormedField := spectralNorm.
+nontriviallyNormedField K (K_1 P)` is the registered norm on `K_1 P`. Directly testing
+`Langlands/TowerBundleResidueField.lean`'s `residueField_map_bijective_of_isUniformizer_of_
+valuationSubring` substitution at `M := K_1 P` (a scratch build, not committed) confirmed its `letI`
+chain builds a *different* `NontriviallyNormedField (K_1 P)` via `Valued.mk'`/`Valued.
+toNontriviallyNormedField`, and that this second instance is not `rfl`-equal to the registered one —
+the diamond is real, exactly as `§56` diagnosed.
+
+### `O_{K_2} / O_{K_1}` monogenicity: closed
+
+* `Langlands/EisensteinMonogenicAbstract.lean` (new) : `adjoin_eq_integralClosure_of_isEisensteinAt` —
+  extracts `TotallyRamifiedEisenstein.lean`'s `adjoin_eq_integralClosure_of_isUniformizer` proof
+  *tail* (from Eisenstein-ness of the minimal polynomial onward) as a standalone theorem for an
+  arbitrary integrally closed `IsDiscreteValuationRing R` with fraction field `K`, taking Eisenstein-
+  ness of `minpoly R β` as a direct hypothesis rather than deriving it from a `hram : ‖ϖ‖ =
+  spectralNorm K L π ^ n` total-ramification condition. No `ValuativeRel`/`NormedField` structure
+  appears anywhere in the statement or proof. Built and typechecks clean on the first attempt (the
+  proof is a mechanical re-parametrization of the closed file it mirrors).
+* `Langlands/LubinTateTowerStepMonogenic.lean` (new) : `adjoin_eq_integralClosure_K_2` —
+  instantiates the above at `R := O_{K_1}`, `K := K_1 P`, `L := K_2 P₂`, `ϖ := α'` (the level-1
+  generator, already known irreducible in `O_{K_1}`), `β` (any root of `P₂`'s image generating `K_2`,
+  `Langlands/LubinTateTowerStepDegree.lean`'s `adjoin_root_eq_top_K_2`/`finrank_K_2_eq_residueCard`).
+  `minpoly O_{K_1} β = P₂` is identified *exactly* (not up to associates): `minpoly.eq_of_irreducible_
+  of_monic` gives `minpoly (K_1 P) β = P₂.map (algebraMap O_{K_1} (K_1 P))`;
+  `minpoly.isIntegrallyClosed_eq_field_fractions'` gives `minpoly (K_1 P) β = (minpoly O_{K_1} β).map
+  (algebraMap O_{K_1} (K_1 P))`; injectivity of `Polynomial.map` along the injective `algebraMap
+  O_{K_1} (K_1 P)` (`IsFractionRing`) then forces `minpoly O_{K_1} β = P₂` on the nose, and `P₂`'s
+  Eisenstein-ness (already available from `hP₂dist`/`hassoc`/`hα'irr`, the same assembly
+  `Langlands/LubinTateTowerStep.lean`'s `isEisensteinAt_shifted` uses) transports along this equality.
+  Conclusion: `Algebra.adjoin O_{K_1} {β} = integralClosure O_{K_1} (K_2 P₂)`. `nix develop -c lake
+  build` clean, no `sorry`, both files registered in `Langlands.lean`. Commit `2a9b3eb`.
+
+### A second instance diamond, checked and found *not* to recur here — worth recording precisely
+
+Before instantiating, this pass checked directly (not assumed) whether `O_{K_1} := ↥(integralClosure
+↥𝒪[K] (K_1 P))` — itself a `Subalgebra`-coerced type, unlike the base `O` — would reproduce `§51`'s
+`K_2.instAlgebraO` diamond (`Langlands/LubinTateTowerStepSplittingField.lean`'s docstring: "such an
+[`Algebra O (K_2 P₂)`] instance does get found automatically, but is not defeq to the honest tower
+composite"). **It does not, and the reason is structural, not coincidental**: `O_{K_1}` genuinely *is*
+a `Subalgebra ↥𝒪[K] (K_1 P)`-coerced type (an honest subalgebra of `K_1 P`), so Mathlib's generic
+`Subalgebra.instSMulSubtypeMem` ("the action by a subalgebra is the action by the underlying algebra")
+already supplies `Algebra O_{K_1} (K_2 P₂)` and `IsScalarTower O_{K_1} (K_1 P) (K_2 P₂)` via ordinary
+instance search, agreeing with the honest composite `algebraMap (K_1 P) (K_2 P₂) ∘ algebraMap O_{K_1}
+(K_1 P)` by `rfl` (checked directly: `example (r : O_{K_1}) : algebraMap _ (K_2 P₂) r = algebraMap
+(K_1 P) (K_2 P₂) (algebraMap _ (K_1 P) r) := by rfl` typechecks). The base `O` needed a hand-built
+`K_2.instAlgebraO` precisely because `O` is *not itself* a subalgebra of `K_1 P` — it reaches `K_1 P`
+via an unrelated, longer path through `K` — so no such generic instance applies there. **No custom
+`Algebra`/`IsScalarTower` instance was built in `LubinTateTowerStepMonogenic.lean` as a result**; an
+earlier attempt at a hand-built `K_2.instAlgebraOK1` (mirroring `K_2.instAlgebraO`) hit a *third*,
+unrelated diamond between `Subalgebra.instSMulSubtypeMem` and `Algebra.toSMul` when stated as a
+standalone `IsScalarTower` lemma with an explicit conclusion type (`show`-tactic `rfl` check against
+the two packagings failed, confirming they are not even definitionally equal as bundled structures,
+only as underlying functions) — abandoned in favor of relying on ordinary instance search throughout,
+which sidesteps the issue entirely.
+
+### What does not close: `IsLocalRing O_{K_2}`, hence residue-field preservation itself
+
+`IsLocalRing.residueField_map_surjective_of_adjoin_singleton`/`residueFieldEquivOfAdjoinSingleton`
+(`Langlands/TotallyRamifiedResidueField.lean`'s elementary engine) require `[IsLocalRing B]` for
+`B := integralClosure O_{K_1} (K_2 P₂)` as a *hypothesis baked into the signature*
+(`IsLocalRing.ResidueField B` is not even well-typed without it) — monogenicity alone does not supply
+it. At the `K → K_1` level this instance came for free from `Langlands/MonogenicIntegralClosure.lean`'s
+`isDiscreteValuationRing_integralClosure`, itself built from `ValuationSubring.
+isDiscreteValuationRing_of_comap_eq` — which needs a `ValuativeRel (K_1 P)` instance on the *base*
+field of the integral closure, i.e. exactly the diamond this pass's whole approach avoids. **This is a
+genuine, previously-unidentified sub-gap**: `§56`'s scoping assumed the elementary engine "needs no
+valuation theory at all" (true of its *hypotheses*, once met) without flagging that meeting
+`[IsLocalRing B]` independently of `ValuativeRel` is itself unbuilt machinery.
+
+A candidate route was sketched but not attempted (would be a substantial, general, reusable
+commutative-algebra lemma in its own right, not specific to this arc): for `R` local, `S` a domain
+integral over `R`, `Ideal.isMaximal_comap_of_isIntegral_of_isMaximal` (Mathlib, already checked to
+exist and apply) gives that every maximal ideal of `S` contracts to `R`'s unique maximal ideal, hence
+contains `𝔪_R S` — so `S` is local as soon as `S ⧸ 𝔪_R S` is known local. For `S := O_{K_1}[β] ≅
+AdjoinRoot P₂` with `P₂` Eisenstein, `S ⧸ 𝔪_R S ≅ κ[X]/(X^q)` (`κ := ResidueField O_{K_1}`), which is
+local via the nilpotence of `X`'s image (`IsNilpotent.isUnit_quotient_mk_iff`, `IsLocalRing.
+of_is_unit_or_is_unit_of_add_one`); lifting units from `S ⧸ 𝔪_R S` back to `S` needs `𝔪_R S ⊆
+Jacobson(⊥ : Ideal S)` (from the lying-over fact above) plus `Ideal.isUnit_of_sub_one_mem_jacobson_bot`.
+Every individual piece was located and confirmed to exist in Mathlib during this pass's investigation,
+but assembling them was not attempted (would be a comparable-sized undertaking to this pass's own
+monogenicity work, and risked either a rushed multi-hundred-line commit or a `sorry` under this pass's
+remaining budget).
+
+### `K_3`: not reached
+
+Strictly blocked behind `O_{K_2}`'s residue-field preservation, which does not close this pass (see
+above). Not attempted.
+
+### Next step
+
+Whoever continues this: build the general lemma sketched above (`R` local, `S` integral domain over
+`R`, `S ⧸ 𝔪_R S` local ⟹ `S` local — via `Ideal.isMaximal_comap_of_isIntegral_of_isMaximal` +
+`Ideal.isUnit_of_sub_one_mem_jacobson_bot` for the lift, `IsNilpotent.isUnit_quotient_mk_iff` +
+`Polynomial.IsWeaklyEisensteinAt.pow_natDegree_le_of_aeval_zero_of_monic_mem_map` for the nilpotent-
+quotient half), apply it at `R := O_{K_1}`, `S := integralClosure O_{K_1} (K_2 P₂)` (monogenic by this
+pass's `adjoin_eq_integralClosure_K_2`, Eisenstein by `Langlands/LubinTateTowerStep.lean`'s
+`isEisensteinAt_shifted`), to get `IsLocalRing O_{K_2}`. Then `IsLocalRing.
+residueFieldEquivOfAdjoinSingleton` closes `ResidueField O_{K_1} ≃+* ResidueField O_{K_2}` directly
+from `adjoin_eq_integralClosure_K_2` (need `β ∈ maximalIdeal O_{K_2}`, immediate since `β`'s image
+mod `O_{K_1}`'s maximal ideal is nilpotent by the same Eisenstein fact), composing with
+`LubinTate.residueFieldEquiv_K_1` for the full `ResidueField O ≃+* ResidueField O_{K_2}` statement.
+Only then does `K_3` become attemptable.
