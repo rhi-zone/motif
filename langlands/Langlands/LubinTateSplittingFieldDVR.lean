@@ -8,6 +8,7 @@ import Langlands.NormMap
 import Langlands.MonogenicIntegralClosure
 import Langlands.TowerValuationSubring
 import Langlands.TowerBundle
+import Langlands.LubinTateRootCountConcrete
 
 /-!
 # `O_{K_1}` is a discrete valuation ring
@@ -149,6 +150,57 @@ theorem NormedField.henselianLocalRing_valuationSubring_of_finiteDimensional
   obtain ⟨hR, -⟩ := LocalField.exists_rankOne_compatible K A hcomapA
   exact LocalField.henselianLocalRing_of_comap_eq K A hcomapA hR hfinA
 
+/-- **`↥(NormedField.valuation (K := L)).valuationSubring` is `(maximalIdeal)`-adically
+complete**, under exactly the hypotheses of
+`NormedField.henselianLocalRing_valuationSubring_of_finiteDimensional` (`L / K` finite separable,
+`K` complete-discretely-valued with finite residue field, `L`'s norm extending `K`'s). Same proof
+shape: identify `A := (NormedField.valuation (K := L)).valuationSubring` with `𝒪_L` via
+`LocalField.valuationSubring_eq_of_comap_eq`, transport finiteness of the residue field, obtain the
+`RankOne A.valuation` instance, and apply `LocalField.isAdicComplete_of_comap_eq`
+(`Langlands/TowerBundle.lean`) in place of `henselianLocalRing_of_comap_eq`. This is the instance
+`PowerSeries.exists_isWeierstrassFactorization` needs by name; `HenselianLocalRing` alone (already
+available from the theorem above) is not a substitute. -/
+theorem NormedField.isAdicComplete_valuationSubring_of_finiteDimensional
+    {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K]
+    [(NormedField.valuation (K := K)).Compatible] [CompleteSpace K]
+    [IsDiscreteValuationRing ↥(ValuativeRel.valuation K).valuationSubring]
+    [Finite (IsLocalRing.ResidueField ↥(ValuativeRel.valuation K).valuationSubring)]
+    {L : Type*} [NontriviallyNormedField L] [IsUltrametricDist L] [Algebra K L]
+    [FiniteDimensional K L] [Algebra.IsSeparable K L]
+    (hnorm : ∀ x : K, ‖algebraMap K L x‖ = ‖x‖) :
+    IsAdicComplete
+      (IsLocalRing.maximalIdeal ↥(NormedField.valuation (K := L)).valuationSubring)
+      ↥(NormedField.valuation (K := L)).valuationSubring := by
+  set 𝒪 : ValuationSubring K := (ValuativeRel.valuation K).valuationSubring with h𝒪
+  set A : ValuationSubring L := (NormedField.valuation (K := L)).valuationSubring with hAdef
+  have hcomapA : A.comap (algebraMap K L) = 𝒪 := by
+    have hsub : 𝒪 = (NormedField.valuation (K := K)).valuationSubring := by
+      have hequiv : (ValuativeRel.valuation K).IsEquiv (NormedField.valuation (K := K)) :=
+        ValuativeRel.isEquiv _ _
+      exact (Valuation.isEquiv_iff_valuationSubring _ _).mp hequiv
+    rw [hAdef, hsub]
+    ext x
+    have hnn : ‖algebraMap K L x‖₊ = ‖x‖₊ :=
+      NNReal.coe_injective (by rw [coe_nnnorm, coe_nnnorm, hnorm])
+    rw [ValuationSubring.mem_comap, Valuation.mem_valuationSubring_iff,
+      Valuation.mem_valuationSubring_iff, NormedField.valuation_apply,
+      NormedField.valuation_apply, hnn]
+  haveI : Algebra.IsAlgebraic K L := Algebra.IsAlgebraic.of_finite K L
+  have hcomapI : (LocalField.integralClosureValuationSubring ↥𝒪 L).comap (algebraMap K L) = 𝒪 :=
+    LocalField.comap_integralClosureValuationSubring K L
+  have hAeq : A = LocalField.integralClosureValuationSubring ↥𝒪 L :=
+    LocalField.valuationSubring_eq_of_comap_eq K hcomapA hcomapI
+  haveI hmodfin : Module.Finite ↥𝒪 ↥(LocalField.integralClosureValuationSubring ↥𝒪 L) :=
+    LocalField.finite (R := ↥𝒪) (M := L) K
+  haveI hlocalhom :
+      IsLocalHom (algebraMap ↥𝒪 ↥(LocalField.integralClosureValuationSubring ↥𝒪 L)) :=
+    inferInstanceAs (IsLocalHom (algebraMap ↥𝒪 ↥(integralClosure ↥𝒪 L)))
+  haveI hfinA : Finite (IsLocalRing.ResidueField ↥A) := by
+    rw [hAeq]
+    exact IsLocalRing.ResidueField.finite_of_finite (R := ↥𝒪) ‹_›
+  obtain ⟨hR, -⟩ := LocalField.exists_rankOne_compatible K A hcomapA
+  exact LocalField.isAdicComplete_of_comap_eq K A hcomapA hR hfinA
+
 namespace LubinTate
 
 open IsLocalRing Polynomial
@@ -184,6 +236,23 @@ theorem henselianLocalRing_valuationSubring_K_1
     (P : O[X]) [Algebra.IsSeparable K (K_1 (K := K) P)] :
     HenselianLocalRing ↥(NormedField.valuation (K := K_1 (K := K) P)).valuationSubring :=
   NormedField.henselianLocalRing_valuationSubring_of_finiteDimensional
+    (K := K) (L := K_1 (K := K) P) fun x => by
+      rw [K_1.norm_eq_spectralNorm, spectralNorm_extends]
+
+omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] [IsFractionRing O K] in
+/-- **`O_{K_1}` is `(maximalIdeal)`-adically complete**, under the same hypotheses as
+`henselianLocalRing_valuationSubring_K_1`. Applies
+`NormedField.isAdicComplete_valuationSubring_of_finiteDimensional` the same way
+`henselianLocalRing_valuationSubring_K_1` applies its Henselian counterpart. This is the instance
+`PowerSeries.exists_isWeierstrassFactorization` needs by name to run over `O_{K_1}`, unblocking
+`LubinTateTowerStep.lean`'s Weierstrass-preparation step at the `K_1 → K_2` tower step. -/
+theorem isAdicComplete_valuationSubring_K_1
+    [Finite (IsLocalRing.ResidueField ↥(ValuativeRel.valuation K).valuationSubring)]
+    (P : O[X]) [Algebra.IsSeparable K (K_1 (K := K) P)] :
+    IsAdicComplete
+      (IsLocalRing.maximalIdeal ↥(NormedField.valuation (K := K_1 (K := K) P)).valuationSubring)
+      ↥(NormedField.valuation (K := K_1 (K := K) P)).valuationSubring :=
+  NormedField.isAdicComplete_valuationSubring_of_finiteDimensional
     (K := K) (L := K_1 (K := K) P) fun x => by
       rw [K_1.norm_eq_spectralNorm, spectralNorm_extends]
 
@@ -232,6 +301,43 @@ theorem valuationSubring_valuation_eq_adicCompletionIntegers :
     rw [Valuation.Compatible.vle_iff_le (v := (Valued.v : Valuation (v.adicCompletion F) ℤᵐ⁰)),
       map_one]
   rw [h1, h2]
+
+/-- **The base `O := v.adicCompletionIntegers F` is `(maximalIdeal)`-adically complete.** This
+closes the gap `Langlands/LubinTateSplittingFieldDegreeConcrete.lean`'s module docstring records as
+missing: applies `isAdicComplete_of_valuationSubring` (`Langlands.UnramifiedExtension`) at `K :=
+v.adicCompletion F` — whose `NontriviallyNormedField`/`IsUltrametricDist`/`ValuativeRel`/
+`Compatible`/`CompleteSpace`/`IsDiscreteValuationRing` bundle is already available as instances
+(`Langlands.NormMap`, `Mathlib.RingTheory.DedekindDomain.AdicValuation`'s `CompleteSpace
+(adicCompletion K v)` instance) — then transports along
+`valuationSubring_valuation_eq_adicCompletionIntegers`. Residue-field finiteness comes from
+`instFiniteResidueFieldAdicCompletionIntegers` (`Langlands/LubinTateRootCountConcrete.lean`),
+itself from `[Finite (A ⧸ v.asIdeal)]`. -/
+instance isAdicComplete_adicCompletionIntegers [Finite (A ⧸ v.asIdeal)] :
+    IsAdicComplete (maximalIdeal (v.adicCompletionIntegers F)) (v.adicCompletionIntegers F) := by
+  haveI : Finite (IsLocalRing.ResidueField
+      ↥(ValuativeRel.valuation (v.adicCompletion F)).valuationSubring) := by
+    rw [valuationSubring_valuation_eq_adicCompletionIntegers]
+    infer_instance
+  have h := isAdicComplete_of_valuationSubring (v.adicCompletion F)
+  rwa [valuationSubring_valuation_eq_adicCompletionIntegers] at h
+
+/-- **`O_{K_1}` is `(maximalIdeal)`-adically complete, at this arc's concrete instantiation**, given
+`K_1 P / v.adicCompletion F` is separable and `𝒪[v.adicCompletion F]` has finite residue field —
+the same hypotheses as `henselianLocalRing_valuationSubring_K_1_of_adicCompletion`. -/
+theorem isAdicComplete_valuationSubring_K_1_of_adicCompletion
+    [Finite (IsLocalRing.ResidueField (v.adicCompletionIntegers F))]
+    {O : Type*} [CommRing O] [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)]
+    [Algebra O (v.adicCompletion F)] [IsFractionRing O (v.adicCompletion F)] (P : O[X])
+    [Algebra.IsSeparable (v.adicCompletion F) (K_1 (K := v.adicCompletion F) P)] :
+    IsAdicComplete
+      (IsLocalRing.maximalIdeal
+        ↥(NormedField.valuation (K := K_1 (K := v.adicCompletion F) P)).valuationSubring)
+      ↥(NormedField.valuation (K := K_1 (K := v.adicCompletion F) P)).valuationSubring := by
+  haveI : Finite (IsLocalRing.ResidueField
+      ↥(ValuativeRel.valuation (v.adicCompletion F)).valuationSubring) := by
+    rw [valuationSubring_valuation_eq_adicCompletionIntegers]
+    infer_instance
+  exact isAdicComplete_valuationSubring_K_1 P
 
 /-- **`O_{K_1}` is Henselian, at this arc's concrete instantiation**, given `K_1 P / v.adicCompletion
 F` is separable and `𝒪[v.adicCompletion F]` (equivalently, `v.adicCompletionIntegers F`, by
