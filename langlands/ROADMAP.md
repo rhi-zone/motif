@@ -15875,3 +15875,114 @@ identified above. Alternatively, revisit whether `IsAdicComplete` can be establi
 (e.g. proving the base-relative general theorem's `L := K_2` instantiation using the `O_{K_1}`-based
 `integralClosure` spelling as its *stated* conclusion from the start, rather than proving it for the
 base spelling and transporting after the fact) — not scoped or attempted this pass.
+
+## 62. Built the general `IsHausdorff`/`IsPrecomplete`/`IsAdicComplete` `RingEquiv` transport — `§60`/`§61`'s "no such lemma in Mathlib" claim was wrong; corrected, applied at `O_{K_2}`, two further obstacles found and diagnosed
+
+`§60`/`§61` recorded, via a loogle check, that Mathlib provides no general
+`IsHausdorff`/`IsPrecomplete`/`IsAdicComplete` transport lemma along a `RingEquiv`, and proposed
+building one from scratch as `§61`'s "Next step". **That loogle finding was wrong.** Re-querying with
+different search terms (`q="IsHausdorff, RingEquiv"` / `q="IsPrecomplete, RingEquiv"`) surfaces
+`IsHausdorff.congr_ringEquiv` / `IsPrecomplete.congr_ringEquiv` / `IsAdicComplete.congr_ringEquiv`
+(`Mathlib/RingTheory/AdicCompletion/Topology.lean`, authored 2025, present in this repo's vendored
+Mathlib checkout) — `IsAdicComplete (I.map e) S ↔ IsAdicComplete I R` for any `e : R ≃+* S`, general,
+no `IsLocalRing` dependency. Combined with `IsLocalRing.map_ringEquiv_maximalIdeal`
+(`(maximalIdeal R).map e = maximalIdeal S` given `[IsLocalRing R] [IsLocalRing S]`), specializing
+`I := maximalIdeal` gives exactly what `§60`/`§61` needed — no new general infrastructure, contrary
+to what was recorded.
+
+### What closes: the general transport lemma, `Langlands/IntegralClosureTower.lean`
+
+Root cause of the originally-diagnosed `rw`-motive failure, confirmed by minimal reproduction: `rw`
+on an *already-elaborated* hypothesis whose type mentions `IsLocalRing.maximalIdeal` fails because the
+embedded `[IsLocalRing]` instance argument is a fixed term. Mathlib's lemmas above sidestep this
+entirely by being stated for an *explicit* ideal `I : Ideal R` from the start — the obstruction never
+arises at that level of generality.
+
+New instances `isAdicComplete_integralClosure_integralClosure` and
+`isDiscreteValuationRing_integralClosure_integralClosure` (`Langlands/IntegralClosureTower.lean`),
+general (`R L M` all abstract `CommRing`s, no `IsLocalRing`-specificity beyond what the classes
+themselves require), `sorry`-free. Built via an explicit `e : ↥(integralClosure R M).toSubring ≃+*
+↥(integralClosure (↥(integralClosure R L)) M).toSubring` (`RingEquiv.subringCongr
+toSubring_integralClosure_eq`) and the two Mathlib lemmas above; `IsDiscreteValuationRing`'s
+`not_a_field'` field closes via `Ideal.map_eq_bot_iff_of_injective`. Full project build clean.
+**Commit `cfb5f34`.**
+
+### Applying it at `O_{K_2}`: real progress, plus two further obstacles found and diagnosed
+
+`Langlands/LubinTateTowerStepAdicCompleteK2.lean` (**commit `cc9a66e`**) attempts to close
+`IsAdicComplete`/`IsDiscreteValuationRing` for `O_{K_2} := integralClosure O_{K_1} (K_2 P₂)` using the
+new transport lemma. What closes, general and `sorry`-free: `isScalarTower_K_K_1_K_2`,
+`finiteDimensional_K_K_2`, `algebraIsSeparable_K_K_2` (the `K`-relative `FiniteDimensional`/
+`Algebra.IsSeparable` facts needed to instantiate the base-relative general theorems directly at
+`L := K_2 P₂`), and `isLocalHom_comp_towerHom_K_2` (the composite structure map `O → O_{K_1} →
+O_{K_2}` is local).
+
+**Obstacle 2 (found, diagnosed, and resolved as non-mathematical)**: hand-writing the goal
+`IsAdicComplete (maximalIdeal A) A` for the *doubly*-nested type `A := ↥(integralClosure
+(↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring L)) M)` as a **fresh** declaration
+(a `theorem`'s stated type, `example`, `#synth`, or `inferInstanceAs`) fails with "Application type
+mismatch" — reproduced five independent ways, all identical. Confirmed **not** a real mathematical
+obstruction: applying an *already-elaborated* general instance/theorem at the concrete type (type
+flowing by substitution, not fresh re-elaboration) succeeds cleanly every time it was tried — verified
+directly (`#check @isAdicComplete_integralClosure_integralClosure R L M _ _ ...` at the concrete `R`,
+and a generic `variable (O') [IsAdicComplete (maximalIdeal O') O']`-taking dummy theorem applied at
+`O' := A`). Practical upshot, followed throughout the new file: never state `IsAdicComplete`/
+`IsDiscreteValuationRing` as a hand-typed goal for a doubly-nested `integralClosure` type; only stage
+base-spelling facts via `haveI` and let instance search supply the target type's facts at the point
+they are *consumed* by an already-general downstream theorem.
+
+**Obstacle 3 (found, not closed)**: actually *invoking* the transport instances at `R :=
+↥(ValuativeRel.valuation K).valuationSubring` needs `[Algebra R M] [IsScalarTower R L M]` —
+`Algebra ↥(ValuativeRel.valuation K).valuationSubring (K_2 P₂)` and its compatibility with the
+existing `Algebra R (K_1 P)`/`Algebra (K_1 P) (K_2 P₂)` instances. **This does not exist in this
+repo.** Only the arc's abstract-base-`O`-relative composite (`K_2.instAlgebraO`, given `hOK`) and
+`K`-relative composite (`K_2.instAlgebraK`) are built — neither is `R := 𝒪[K]` itself. Checked
+directly (`grep`, no hits). Building it (a third three-hop composite, mirroring the existing two) is
+straightforward-looking but unbuilt plumbing, not attempted this pass.
+
+### Net state: `O_{K_2}`'s `IsAdicComplete`/`IsDiscreteValuationRing` still not usable by `TowerStep`; `K_3` still not produced
+
+Two independent gaps remain, **neither closed by the transport lemma itself** (which is genuinely
+general and does close, verified by direct application) — contrary to `§60`'s forecast that "no new
+mathematics [is] identified as needed beyond that one transport":
+
+1. **Obstacle 3 above** (missing `Algebra`/`IsScalarTower` composite at `R := 𝒪[K]`) — blocks even
+   getting `O_{K_2}`'s `IsAdicComplete`/`IsDiscreteValuationRing` instances into a form `TowerStep`
+   can consume.
+2. **The `K_2`-level analogue of `natDegree_minpoly_eq_finrank_K_1`/
+   `norm_eq_spectralNorm_pow_natDegree_K_1`/`exists_irreducible_uniformizer_K_1`** — needed to
+   construct an actual irreducible/uniformizer element of `O_{K_2}` (`TowerStep`'s `α'` input). Does
+   not exist; checked directly (`grep`, no hits for any `_K_2`-suffixed analogue). A genuine
+   ramification-degree computation, comparable in scope to the several existing files that build it
+   at `K_1`, not a corollary of anything closed this pass.
+
+No `K_3` construction — partial or otherwise — is produced. **No milestone claim is made**: the
+transport lemma itself is real, general, and closes cleanly (a genuine, reusable Mathlib-adjacent
+result, and the single biggest *previously claimed* blocker is now correctly understood as already
+solved by Mathlib), but the tower is **not yet** shown to be iterable past `K_2` — two further,
+independent, non-trivial gaps stand between here and `K_3`.
+
+### Build
+
+`nix develop -c lake build`: clean, 8803 jobs, no `sorry`, no new errors (only pre-existing-pattern
+unused-variable/unused-section-variable lint warnings). Files added:
+`Langlands/LubinTateTowerStepAdicCompleteK2.lean`. Files changed: `Langlands/
+IntegralClosureTower.lean`. Commits `cfb5f34`, `cc9a66e`.
+
+### Next step
+
+Two independent, well-scoped pieces of work, either of which can proceed independently:
+
+1. Build `Algebra ↥(ValuativeRel.valuation K).valuationSubring (K_2 P₂)` and its `IsScalarTower`
+   compatibility with the existing `K_1`-relative instances — a third three-hop composite mirroring
+   `K_2.instAlgebraO`/`K_2.instAlgebraK` (`Langlands/LubinTateTowerStepSplittingField.lean`/
+   `Langlands/LubinTateTowerStepBaseNorm.lean`). This unblocks actually consuming
+   `isAdicComplete_integralClosure_integralClosure`/`isDiscreteValuationRing_integralClosure_
+   integralClosure` at `O_{K_2}`.
+2. Build the `K_2`-level analogue of `natDegree_minpoly_eq_finrank_K_1`/
+   `norm_eq_spectralNorm_pow_natDegree_K_1`/`exists_irreducible_uniformizer_K_1`
+   (`Langlands/LubinTateSplittingFieldDVR.lean`/`Langlands/LubinTateTowerStepConcrete.lean`) to
+   produce an actual irreducible/uniformizer element of `O_{K_2}`.
+
+Only once *both* close does `LubinTateTowerStep.lean`'s `TowerStep` machinery, instantiated at
+`O' := O_{K_2}`, actually produce `K_3`'s Eisenstein polynomial.
