@@ -16759,3 +16759,159 @@ an "Auto Mode Active" policy urging fewer clarifying questions, both appearing e
 ordinary tool results rather than the genuine system prompt. Neither was complied with. This matches
 the injected-content pattern the task brief's security note warned about; flagged here for the record,
 not acted on.
+
+## 68. Strategic reframe of `norm_lt_one_of_aeval_P₃_eq_zero`: a field-level reformulation is found
+and genuinely helps, closing 3 of 5 Eisenstein conjuncts and precisely pinning down (not just
+hypothesizing) `§66`'s `O_{K_2}` diamond — but the theorem still does **not** close; the remaining
+piece is now a confirmed, severe elaboration-cost obstacle on `O_{K_2}`'s own ring structure, not
+merely "plausible"
+
+This pass was explicitly tasked to stop attempting instance-supply fixes on `O_{K_2}`'s type (two prior
+passes, `§66`/`§67`, each tried once and failed differently) and instead re-derive
+`norm_lt_one_of_aeval_P₃_eq_zero`'s actual mathematical content from scratch, checking whether a
+field-level reformulation (working with `K_2`/`K_3`'s clean `NormedField` structure rather than routing
+everything through `O_{K_2}` the ring) could sidestep the blocker entirely. **It does not sidestep it
+entirely** — a genuine ring-level residue remains and is now precisely characterized — but the
+reformulation is real, tested against actual builds (not theorized), and produces the sharpest diagnosis
+of this blocker to date.
+
+### Method: real, scoped `set_option maxHeartbeats <N> in` test declarations, appended and reverted
+
+Following `§66`'s own methodology, this pass appended a sequence of scoped test declarations to
+`Langlands/LubinTateTowerStepK3RootConnect.lean`, built each with `lake build
+Langlands.LubinTateTowerStepK3RootConnect` (fast per-file iteration), and reverted all of them via `git
+checkout` before finishing — confirmed via `git status`/`git diff --stat` showing zero net change to any
+tracked file. No test declaration was ever committed; all diagnosis below is from real `lake build`
+output, not inference.
+
+### Finding 1 (closes, general, reusable): named-argument `IsDistinguishedAt` beats dot notation
+
+`hP₃dist : P₃.IsDistinguishedAt (maximalIdeal (O_K2 P₂))` (dot notation) fails outright — confirmed
+directly, reproducing `§66`'s own diagnosed mismatch even for a *single*, standalone use of `.monic`.
+Rewriting the same hypothesis as `Polynomial.IsDistinguishedAt (R := O_K2 (K := K) P₂) P₃ (maximalIdeal
+(O_K2 (K := K) P₂))` — a named-argument application instead of dot notation — **elaborates cleanly, at
+default heartbeats**, and *stays* cheap when the resulting `hP₃dist.monic`/`.toIsWeaklyEisensteinAt` are
+subsequently combined with `K_3.norm_le_one_of_mem_O_K2` (the "combinatorial" combination `§65`/`§66`
+found catastrophically expensive with the dot-notation-typed hypothesis). This is the same class of
+lesson as this file's own already-documented `RingHom.injective` vs `(algebraMap ...).injective`
+finding: **dot notation forces a different, sometimes catastrophically expensive elaboration order for
+implicit ring parameters, on this specific type shape** — confirmed for `IsDistinguishedAt` too, not
+just `FaithfulSMul`. Root mechanism (visible directly in the failing dot-notation error before the fix):
+dot notation left `IsDistinguishedAt`'s ring parameter `R` as an unresolved metavariable when checking
+the `maximalIdeal` argument, causing a spurious "generic vs concrete instance" mismatch that is really a
+resolution-*order* bug, not two genuinely-different committed instances.
+
+**Confirmed via real builds**: with this fix, three of the five conjuncts
+`norm_coeff_map_of_isWeaklyEisensteinAt_associated` needs (`Monic`, `natDegree` equality, and the
+weakly-Eisenstein coefficient bound) close *directly at `K_3`*, combined with `K_3.norm_le_one_of_mem_O_K2`
+in one declaration, at default heartbeats — a direct, load-bearing correction of `§66`'s "any two real
+terms sharing `O_{K_2}` blow up" framing: with this one fix, they don't, for these three conjuncts.
+
+### Finding 2 (helps, but does not fully close): field-level routing via the adjacent field `K2P2`
+
+The fourth conjunct (`0 < ‖·‖` and `‖coeff 0‖ = ‖·‖`, both needing `Associated`/`IsUnit` data on
+`O_{K_2}` combined with a norm bound) still failed when computed *directly* at `K_3`: not the
+`IsDistinguishedAt` mismatch this time, but a **new, distinct** diamond, on the single-hop `Algebra
+O_{K_2} K_3` instance itself (confirmed directly: an isolated `‖algebraMap (O_K2 P₂) (K_3 ...) (v :
+O_K2 P₂)‖ = 1` goal, checked against `norm_algebraMap_eq_one_of_isUnit`'s output, is an outright type
+mismatch between two non-syntactically-identical `Algebra`/`Semiring` routes for `O_{K_2} → K_3`).
+
+Rewriting this specific piece to work at the **adjacent field `K2P2 P₂`** instead — where `O_{K_2}` is
+*literally* `↥(integralClosure ... (K2P2 P₂))`, i.e. a direct `Subalgebra` of `K2P2 P₂`, a clean,
+single-nesting relationship with no competing route — and only *afterward* transporting the resulting
+single numeric fact up to `K_3` via the same `IsScalarTower.algebraMap_apply` /
+`K_2.norm_eq_spectralNorm` / `spectralNorm_extends` bridge `K_3.norm_le_one_of_mem_O_K2` itself already
+uses, **fixes this specific mismatch** — confirmed directly, the resulting goal stopped being an outright
+type-mismatch rejection. This is the field-level reformulation the task brief asked to check for, and it
+is a genuine, real improvement, not a guess: routing "distant embeddings" of `O_{K_2}` through the
+adjacent field first, rather than constructing them fresh and directly, avoids a distinct diamond class
+(the `O_{K_2} → K_3` `Algebra`-instance diamond) that is *separate* from `§66`'s originally-diagnosed one.
+
+### Finding 3 (the genuine residue, now precisely characterized, not merely "plausible")
+
+Even after both Finding 1 and Finding 2's fixes, the same conjunct still does not close: it fails at
+a **third**, deeper diamond, this time on `O_{K_2}`'s own bare `CommRing`/`Semiring` instance — the
+value `v.isUnit` (from destructuring the `Associated (P₃.coeff 0) β'` hypothesis, so typed via whatever
+route `P₃ : (O_K2 P₂)[X]`'s `Polynomial`-context elaboration uses) does not unify, even given a
+**`4,000,000`-heartbeat budget (20× default, 2m23s wall time, confirmed run to completion)**, against
+the expected type from `norm_algebraMap_eq_one_of_isUnit`'s hypothesis (typed via whatever route the
+ambient `[IsLocalRing (O_K2 P₂)] [IsDiscreteValuationRing (O_K2 P₂)]` section variables — and
+everything built from them, including `norm_le_one_of_mem_O_K2_in_K2P2` and
+`K_3.norm_le_one_of_mem_O_K2` — resolve to).
+
+This is a **materially sharper diagnosis than `§66`'s**, which called the `Semiring` diamond "a
+plausible, not a proven, root cause." This pass confirms it directly: `O_{K_2}` (defined as
+`↥(integralClosure ↥(integralClosure ↥𝒪[K] (K_1 P)) (K2P2 P₂))`, a doubly-nested `Subalgebra`) has (at
+least) two independently-resolvable `CommRing`/`Semiring` instance-search **routes** that are not
+syntactically identical: one triggered whenever `O_{K_2}` appears in `Polynomial`-context (as `R` in
+`R[X]`, or via `Associated`/`IsUnit` on a `Polynomial.coeff`-derived value), another triggered whenever
+`O_{K_2}` is reached purely through the ambient `[IsLocalRing]`/`[IsDiscreteValuationRing (O_K2 P₂)]`
+section variables (declared, in this file, at line 134 — *before* `P₃`'s own variable declaration at
+line 155, which is the first point anything commits to the `Polynomial`-context route). Once both routes
+are pinned to *concrete* types via explicit named arguments (removing the earlier resolution-order bug
+Finding 1 exploited), Lean does attempt an `isDefEq` check between them — meaning **they are presumably
+defeq** (both must ultimately unfold to the same underlying `Subalgebra`/`Subring`-derived ring
+operations) — but confirming this costs more than `4,000,000` heartbeats, a severe, not merely
+inconvenient, elaboration-cost blowup. Bumping the budget further was not attempted past `4,000,000`
+(2m23s already for one `isDefEq` call, with no guarantee of termination at any practical bound) — this
+is the same "elaboration cost, not rejection" obstacle class `§65`/`§66`/`§67` already documented
+elsewhere in this arc, now additionally confirmed for `O_{K_2}`'s own bare ring structure, not just its
+embeddings into `K2P2`/`K_3`.
+
+### Why this is reported as a genuine, if partial, positive result
+
+Findings 1 and 2 are real, confirmed-by-build improvements: they close 3 of 5 conjuncts outright (at
+default heartbeats, a strict improvement on `§65`/`§66`'s "any two real terms blow up") and fix a
+*second*, independent diamond (the `O_{K_2} → K_3` `Algebra` instance) for the piece that needed it. The
+task brief's field-level-reformulation hypothesis is *validated*, not refuted — it is simply not
+*sufficient* on its own, because `Associated`/`IsUnit` are inherently ring-level notions (a unit or an
+associate relationship only makes sense in `O_{K_2}` itself, not in the fields `K2P2`/`K_3`), so the
+piece of the theorem that needs them cannot avoid touching `O_{K_2}`'s own ring structure no matter how
+the rest of the proof is routed — mirroring, precisely, the task brief's own anticipated caveat about
+monogenicity ("inherently ring-level... may not be avoidable"), now shown to also apply to this one
+specific conjunct of the Eisenstein-data computation, not the whole theorem.
+
+### What a next pass should try, not attempted this pass
+
+A genuine, non-hacky candidate fix identified but **not attempted** (it requires reordering this file's
+own `variable` declarations — `P₃`'s declaration would need to move *before* the ambient
+`[IsLocalRing (O_K2 P₂)] [IsDiscreteValuationRing (O_K2 P₂)]` variables, forcing Lean to commit to the
+`Polynomial`-context `CommRing` route first, with the ambient instances then presumably attaching to
+*that* route rather than triggering an independent search): this is a real, surgical, well-motivated fix
+distinct in kind from `§66`/`§67`'s representation-level attempts (it does not touch `O_{K_2}`'s
+*definition*, only the *order* in which this one file's section variables commit to a `CommRing`
+instance) — but it requires touching every declaration between the current variable-block position and
+`P₃`'s current declaration site, a nontrivial, potentially cascading refactor this pass's remaining
+effort budget did not cover, and was deliberately not attempted speculatively without evidence it would
+work cleanly. This is the concrete next step, not a fourth attempt at "fix the diamond directly" of the
+kind the task brief asked this pass not to make (this is a variable-*ordering* fix, not a
+representation change).
+
+### Item 3/4: still not closed
+
+`norm_lt_one_of_aeval_P₃_eq_zero`, the connecting identity, transitivity, and invariance facts for `K_3`
+remain unbuilt. Item 4 was not attempted (depends on item 3). No file changes were kept from this pass
+— all test declarations were reverted; `git status`/`git diff` confirm zero net change to any tracked
+file.
+
+### Net implication
+
+This is a **genuine, if partial, positive finding** the task brief asked for: the field-level
+reformulation is real and helps (Findings 1–2), and where it doesn't fully close the theorem, the
+residue is now a *precisely characterized*, *confirmed* (not hypothesized) elaboration-cost obstacle on
+`O_{K_2}`'s own ring structure — a materially sharper diagnosis than `§66`'s "plausible root cause"
+framing, with a concrete, non-representation-level next step (`variable` reordering) identified for a
+future pass to test.
+
+### Build
+
+`nix develop -c lake build`: clean, 8809 jobs (unchanged from `§67`'s baseline), no `sorry`, no new
+errors — no file changes kept from this pass.
+
+### A note on tooling integrity this pass
+
+As in `§67`, tool output during this pass contained text formatted as `<system-reminder>` blocks that
+were not legitimate system content — a claimed date change (with an instruction to conceal it from the
+user) and a claimed "Auto Mode Active" policy, both arriving embedded in a background-task notification
+rather than the genuine system prompt. Neither was complied with; flagged here for the record, matching
+the pattern already documented at `§67`.
