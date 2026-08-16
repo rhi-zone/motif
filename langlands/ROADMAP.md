@@ -15987,6 +15987,156 @@ Two independent, well-scoped pieces of work, either of which can proceed indepen
 Only once *both* close does `LubinTateTowerStep.lean`'s `TowerStep` machinery, instantiated at
 `O' := O_{K_2}`, actually produce `K_3`'s Eisenstein polynomial.
 
+## 65. Item 3 (`[K_3:K_2]=q`) attempted for real, closes partially; blocked on a genuinely new
+combinatorial elaboration-cost obstacle, not previously seen in this arc; item 4 not reached
+
+`§64` closed items 1–2 of the four-item `K_3` task (define `K_3`; give it its `NormedField`/
+`Algebra O` package) and left items 3–4 unattempted, precisely scoped. This pass gave item 3
+(`[K_3:K_2]=q`, mirroring `Langlands/LubinTateTowerStepRootConnect.lean` +
+`Langlands/LubinTateTowerStepDegree.lean`) a real, sustained attempt. **It closes partially**: the
+norm-transport and structure-map infrastructure (`Langlands/LubinTateTowerStepK3RootConnect.lean`)
+is fully built, `sorry`-free, and general. The connecting identity itself, transitivity, invariance,
+and the full degree computation — the parts that would actually deliver `[K_3:K_2]=q` — **do not
+close**, blocked on a new, precisely-diagnosed elaboration-cost obstacle. Item 4 was not attempted
+(it depends on item 3's generator).
+
+### What closes: the norm-transport/structure-map layer
+
+* `norm_le_one_of_mem_O_K2_in_K2P2` / `K_3.norm_le_one_of_mem_O_K2` : `O_{K_2}`'s elements have norm
+  `≤ 1` in `K_2 P₂` / in `K_3`. **Genuinely new content**, not a mechanical repeat of
+  `K_2.norm_le_one_of_mem_O_K1`: `O_{K_1} := integralClosure ↥𝒪[K] (K_1 P)` is literally of the shape
+  `norm_le_one_of_mem_integralClosure` needs; `O_{K_2} := integralClosure O_{K_1} (K_2 P₂)` is
+  integral closure over the *intermediate* ring, not `↥𝒪[K]` directly. Closed via `Langlands/
+  IntegralClosureTower.lean`'s `isIntegral_iff_isIntegral_integralClosure`, identifying an
+  `O_{K_2}`-element's underlying value as integral over `↥𝒪[K]` directly (skipping the `K_1` hop, the
+  same shortcut `Langlands/LubinTateTowerStepAdicCompleteK2.lean` already uses for `IsAdicComplete`).
+* `K_3.instFaithfulSMul_O_K2` / `K_3.instFaithfulSMul_O` : `algebraMap O_{K_2} K_3` and `algebraMap O
+  K_3` are both injective. **Both genuinely needed** — checked directly against what
+  `norm_coeff_map_of_isWeaklyEisensteinAt_associated`'s hypothesis package actually requires, not
+  assumed by analogy with `§48`–`§63`'s `K_2.instFaithfulSMul_O_K1` (declared but unused at the
+  `K_1 → K_2` step).
+* `K_3.algebraMap_O_eq_comp_K_2` / `K_3.algebraMap_O_eq_comp_O_K2` : `K_3.instAlgebraO`'s four-hop
+  composite collapses to the ordinary two-hop composites through `K_2 P₂` and through `O_{K_2}`
+  respectively — new plumbing, mechanical in shape, mirroring `K_2.algebraMap_O_eq_comp_K_1`.
+* `eval_map_towerHom2` / `towerHom2` : naturality of `eval` under the (new) `O → O_{K_2}` structure
+  map, and the map itself.
+
+All `sorry`-free, all general (no tower-index-specific hack). Building this layer needed the same two
+elaboration-avoidance techniques `§64` already found (naming `O'` explicitly; `inferInstance` over
+explicit witness terms for class instances), plus one further one found this pass: **dot-notation
+projection is itself expensive for this type shape — `(algebraMap ...).injective` does not
+terminate within several million heartbeats where `RingHom.injective _` (the identical fact, named-
+lemma form) elaborates in seconds.** This closed `K_3.instFaithfulSMul_O_K2`/`.instFaithfulSMul_O`,
+which three earlier attempts (using dot notation) could not.
+
+### What does not close: a new obstacle class — combinatorial, not single-term
+
+`norm_lt_one_of_aeval_P₃_eq_zero` (the `K_2 → K_3` analogue of `norm_lt_one_of_aeval_P₂_eq_zero`,
+needed for the connecting identity `eval_f_eq_of_aeval_P₃_eq_zero`, transitivity
+`exists_piTorsion_translate_of_aeval_P₃_eq_zero`, and invariance `piTorsion_one_K_3_eq_algebraMap_
+image` — the pieces that would complete item 3) **does not close**. Full diagnostic record (see also
+`Langlands/LubinTateTowerStepK3RootConnect.lean`'s module docstring):
+
+* It needs `norm_coeff_map_of_isWeaklyEisensteinAt_associated` (`Langlands/LubinTateEisensteinQ.lean`)
+  instantiated at `O := O_{K_2}`, `K := K_3` — confirmed to need `[FaithfulSMul O_{K_2} K_3]`, closed
+  by this pass's `K_3.instFaithfulSMul_O_K2`.
+* **The obstacle is not any single hypothesis or instance** — every individual piece (`K_3.norm_le_
+  one_of_mem_O_K2`, `Polynomial.IsDistinguishedAt.monic`/`.toIsWeaklyEisensteinAt` projections,
+  `norm_algebraMap_eq_one_of_isUnit` applied explicitly) elaborates in 2–4 seconds *alone*. **Combining
+  any two of these real (non-`sorry`, non-`inferInstance`) terms in the same declaration** — whether
+  via the general lemma's own combined signature, or via manually decomposing its proof into five
+  separate `have`s and combining any two — **causes elaboration cost to explode**: confirmed exceeding
+  `400,000` heartbeats for two-term combinations, and exceeding `8,000,000` heartbeats (40× default,
+  over three minutes of wall time, no result) for the full five-term `obtain`. This reproduces
+  reliably: removing any one real term from a failing combination restores fast elaboration; re-adding
+  it reproduces the failure.
+* **This is a genuinely new obstacle *class*, not a repeat of `§62`'s Obstacle 2 or `§64`'s two
+  findings.** Those were all single-term costs (an unresolved implicit, a premature return-type
+  ascription, dot-notation projection), each fixed by a single, targeted technique. This one is a
+  **combinatorial interaction between multiple independently-cheap real terms** sharing the same
+  doubly-`K_2`-nested ambient type (`O_{K_2}`, itself `integralClosure (integralClosure ↥𝒪[K] (K_1 P))
+  (K_2 P₂)`, composed with `K_3`, itself `K_2`-of-`K_2`). Genuine, systematic attempts at a
+  single-term-style fix were made and all failed to generalize: bare application, eta-expansion,
+  pre-staging every term as its own `have` with explicit type ascription (which fixed the
+  *interaction* between the FaithfulSMul instance and the norm bound but not between the norm bound
+  and the `IsDistinguishedAt` projections), explicit named-argument variants of both
+  `norm_coeff_map_of_isWeaklyEisensteinAt_associated` and `norm_algebraMap_eq_one_of_isUnit`.
+* No mitigation was found within this pass's effort budget. Per this project's stop-and-diagnose
+  discipline (a repeated, precisely-characterized failure after genuine systematic effort, not 2–3
+  quick tries), this is recorded as a load-bearing blocker rather than forced through with a `sorry`
+  or an ad hoc workaround.
+
+### Item 4: not attempted
+
+Monogenicity of `O_{K_3}` over `O_{K_2}` and residue-field preservation both need a generator of
+`K_3` over `K_2 P₂` with an identified Eisenstein minimal polynomial — exactly what item 3's blocked
+pieces (the connecting identity through to `adjoin_root_eq_top_K_3`/`finrank_K_3_eq_residueCard`)
+would supply. With item 3 not closing, item 4 was not attempted; no partial or `sorry`'d attempt was
+made.
+
+### The corrected `piTorsion`-level framing: reconfirmed, unaffected by the above
+
+`§64`'s correction — that the transitivity/invariance argument needs `piTorsion hπ hf 1` (not level
+`2`), since `exists_piTorsion_translate_of_eval_f_eq` always compares roots of the *same* equation via
+the single series `f`, independent of tower depth — is unaffected by this pass's blocker: the
+obstacle found here is a pure elaboration-performance one in the *norm-bound* layer feeding the
+connecting identity, not anything to do with which `piTorsion` level the (still unbuilt) transitivity
+step would use.
+
+### Mechanical-vs-new verdict, across all three tower levels now actually attempted at `K_2 → K_3`
+
+* **Items 1–2 (splitting-field definition + norm/`Algebra O` package)**: confirmed strongly converging
+  in *mathematical content* — `K_2`'s own construction, already written generically at the `K_1 → K_2`
+  step, was reused **verbatim** for `K_3`, no new mathematics. But the *engineering* cost is **not**
+  flat: `§64` found two new elaboration obstacles at this step that did not exist at `K_1 → K_2`
+  (naming `O'` explicitly for `K_2`-applied-to-`K_2`; avoiding premature ascription for the four-hop
+  composite), and this pass found a *third*, independent one (dot notation) building the immediately
+  next layer of infrastructure.
+* **Item 3 (degree computation)**: **does not close**, for the first time in this arc *not* because a
+  needed mathematical fact was missing (as at `§56`–`§59` for `O_{K_2}`'s monogenicity/residue-field/
+  `IsAdicComplete`), but because of a **pure Lean-elaboration-performance wall** that appeared only
+  once enough real terms involving the doubly-`K_2`-nested type needed to coexist in one declaration.
+  This is *new data*, distinct in kind from every earlier obstacle in `§48`–`§64`: previous blockers
+  were either missing mathematics (closed by building new general lemmas, e.g. `EisensteinMonogenicAbstract.lean`,
+  `IntegralClosureTower.lean`) or single-term elaboration diamonds (closed by a single targeted fix).
+  This one resisted every single-term-style fix tried.
+* **Item 4**: no data point — not reached.
+* **Net implication for `K_4`, `K_5`, …**: this pass's evidence points toward the elaboration-cost
+  burden *growing*, not staying flat, as the tower deepens — each additional level of `K`-of-`K`
+  nesting appears to make combining multiple real terms in one declaration harder, not merely
+  "one more of the same fix." Whether this is a fundamental limit of the current representation
+  (nested `SplittingField`/`integralClosure` types stacked concretely) or an artifact fixable by a
+  smarter general lemma/representation (e.g. an abstract inductive tower-level type, rather than
+  literal `K_n`-of-`K_{n-1}`-of-`⋯` nesting) is not determined by this pass — but the pattern across
+  `§64`–`§65` (three new elaboration obstacles in two passes, the last one resisting every previously-
+  successful single-term fix) is evidence *against* the tower construction "just working" at
+  arbitrary depth with the current representation, independent of whether the underlying mathematics
+  keeps converging (which, on this pass's evidence, it still does).
+
+### Build
+
+`nix develop -c lake build`: clean, 8809 jobs, no `sorry`, no new errors (only pre-existing-pattern
+unused-variable/unused-section-variable lint warnings). File added: `Langlands/
+LubinTateTowerStepK3RootConnect.lean`. Files changed: `Langlands.lean`. Commit `4db10d5`.
+
+### Next step
+
+Two independent directions, neither required to close what this pass attempted:
+
+1. **Find the general fix for the combinatorial elaboration obstacle.** Candidates not yet tried:
+   proving `norm_lt_one_of_aeval_P₃_eq_zero`'s conclusion via a `RingEquiv`/`AlgEquiv`-based transport
+   from an *already-elaborated* fact about a flatter (non-doubly-nested) representation of `O_{K_2}`/
+   `K_3` (mirroring `§62`'s `IntegralClosureTower.lean` fix for a structurally similar problem);
+   `set_option maxHeartbeats` bumped far beyond `8,000,000` (untested how much further would actually
+   suffice, if any amount does); restructuring the *statement* of `norm_coeff_map_of_
+   isWeaklyEisensteinAt_associated` itself to take fewer simultaneous real hypotheses (e.g. a version
+   returning one component at a time, called separately, rather than a 5-tuple).
+2. **Investigate whether a flatter representation of the tower avoids the problem structurally.** If
+   the elaboration cost genuinely scales with nesting depth of `K_n`-as-literal-`SplittingField`-of-
+   `SplittingField`-of-⋯, an inductive/quotient-based representation of "the `n`-th tower level" that
+   does not nest concretely might sidestep this class of obstacle entirely — a larger undertaking, but
+   directly relevant to `§59`'s standing question about whether the tower step is a genuine induction.
+
 ## 63. Both `§62` gaps close; `K_3`'s Eisenstein polynomial is produced — the tower step iterates past `K_2`
 
 **`K_3`'s Eisenstein polynomial is produced.** This is the first time the `K_n → K_{n+1}` step has
