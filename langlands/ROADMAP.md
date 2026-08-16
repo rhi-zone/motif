@@ -16572,3 +16572,190 @@ outcomes.
 build (no file was left modified; all experimentation was done via scoped `set_option maxHeartbeats
 <N> in` test declarations appended to `Langlands/LubinTateTowerStepK3RootConnect.lean` and reverted
 before this section was written). No files changed in this pass.
+
+## 67. The flat-representation switch for `O_{K_2}` attempted for real: general transport
+machinery added and closes cleanly; the concrete switch itself hits a new, different elaboration
+obstacle and was reverted — `norm_lt_one_of_aeval_P₃_eq_zero` **not** attempted (blocked upstream)
+
+This pass took `§66`'s own "candidate for the next pass" — switch `O_{K_2}` from the nested spelling
+`↥(integralClosure ↥(integralClosure ↥𝒪[K] (K_1 P)) (K_2 P₂))` to the flat spelling `↥(integralClosure
+↥𝒪[K] (K_2 P₂))`, transporting existing nested-spelling facts across via `Langlands/
+IntegralClosureTower.lean`'s equivalence rather than re-deriving them — as its task. **The
+representation switch did not close**: it was attempted for real, hit a genuinely new elaboration
+obstacle (diagnosed, not forced through), and was reverted rather than left half-built or patched with
+a `sorry`. `norm_lt_one_of_aeval_P₃_eq_zero` was consequently never reached — the switch itself is the
+blocker now, not the `§65`/`§66` `Semiring`-diamond (which was never re-tested, since the flat
+representation it was hypothesized to help never got far enough to combine the real terms that
+diamond blocked).
+
+### What closes: general nested↔flat transport machinery in `IntegralClosureTower.lean`
+
+`§66`'s task brief (item 2) asked to check whether `IntegralClosureTower.lean`'s missing
+`Semiring`/`CommSemiring`/`CommRing` transport actually blocks anything, and to add general lemmas if
+so. It did not turn out to be that gap — both flat and nested spellings already get `CommRing` for
+free from Mathlib's ordinary `Subalgebra` instances, confirmed directly (no error of that shape was
+ever seen). What *was* missing, and is now added, `sorry`-free, general in `R`/`L`/`M`: the **reverse**
+direction of every existing transport instance. `§62`'s five instances (`IsDomain`, `IsLocalRing`,
+`IsPrincipalIdealRing`, `IsAdicComplete`, `IsDiscreteValuationRing`) only transport *from* the flat
+spelling *to* the nested one (`integralClosure R M` ⟶ `integralClosure (integralClosure R L) M`) — the
+right direction for the K₁→K₂ step, where these facts arrive already proved about the flat spelling.
+But the Lubin-Tate tower's own monogenicity/residue-field facts (`Langlands/
+LubinTateTowerStepMonogenic.lean`/`LocalRing.lean`/`ResidueField.lean`) are proved **directly about the
+nested spelling** — inherently, since they are relative to the intermediate ring `O_{K_1}` (e.g. "the
+generator's minimal polynomial *over `O_{K_1}`* is Eisenstein") — so switching `O_{K_2}` itself to flat
+needs the *opposite* transport. Added: `isDomain_integralClosure_integralClosure_symm`,
+`isLocalRing_integralClosure_integralClosure_symm`, `isPrincipalIdealRing_integralClosure_
+integralClosure_symm`, `isAdicComplete_integralClosure_integralClosure_symm`,
+`isDiscreteValuationRing_integralClosure_integralClosure_symm` (each `.symm` of the corresponding
+forward instance, via `e.symm` on `integralClosureRingEquiv`), plus a new
+`residueFieldEquiv_integralClosure_integralClosure` (general `ResidueField` transport across
+`integralClosureRingEquiv`, via Mathlib's `IsLocalRing.ResidueField.mapEquiv`, not previously used
+anywhere in this repo).
+
+**These five are `theorem`s, not `instance`s** — a real, confirmed-directly finding, not a style
+choice: the conclusion `… ↥(integralClosure R M)` never mentions `L`, so automatic instance search has
+no way to pick which intermediate ring to search a nested hypothesis for; the naïve `instance`
+declarations fail outright with "cannot find synthesization order for instance …, all remaining
+arguments have metavariables: … `L`". Callers supply `L` explicitly. This file builds clean
+(`Langlands.IntegralClosureTower`, isolated build, no warnings), and is committed independently
+(`b5d4f1c`) since it is genuinely general, Mathlib-quality machinery regardless of whether the
+concrete switch below closes.
+
+### What does not close: the concrete switch at `O_{K_2}`, blocked by a new elaboration obstacle in
+`Algebra`-instance resolution — distinct from `§65`/`§66`'s `Semiring` diamond
+
+Redefining `LubinTateTowerStepK3.lean`'s `abbrev O_K2` to the flat spelling immediately surfaces a
+structural fact `§62`–`§66` never had to confront, because the nested spelling never needed it:
+**`Algebra ↥𝒪[K] (K_2 P₂)` is not automatically available.** The *nested* `O_{K_2} := integralClosure
+O_{K_1} (K_2 P₂)` gets its `Algebra O_{K_1} (K_2 P₂)` for free from `LubinTate.K_2`'s own unconditional
+`K_2.instAlgebra` instance (`K'` is literally instantiated at `O_{K_1}` there, no extra plumbing). The
+*flat* `O_{K_2} := integralClosure ↥𝒪[K] (K_2 P₂)` instead needs `Algebra ↥𝒪[K] (K_2 P₂)` — and that is
+**not** a registered Mathlib/repo `instance` anywhere; it only exists as `K_2.instAlgebraK` composed
+with `Algebra.ofSubsemiring` (`§63`'s already-documented composite), both of which are deliberately
+`def`s, not `instance`s, precisely to avoid instance-diamond risk (documented at every prior `K_2.
+instAlgebraO`/`K_3.instAlgebraO` site). So the flat `O_K2` `abbrev` itself needs this `Algebra`
+structure supplied as an ambient fact before it can even be *stated* — a genuinely new requirement,
+symmetric in shape to (but a different site than) the ambient-hypothesis pattern `§62` already
+established for `IsDiscreteValuationRing`/`IsAdicComplete`.
+
+Three approaches were tried, in order, each confirmed to fail for a distinct, precise reason:
+
+1. **An abstract ambient `variable [Algebra ↥𝒪[K] (K_2 P₂)]` hypothesis.** Elaborates, but is a
+   *different, non-defeq* term from `K_2.instAlgebraK`-derived instances every downstream lemma
+   (`K_2.hnorm_K`, `K_2.algebraMap_K_eq`, …) is stated against — confirmed directly by the exact
+   failure: `Application type mismatch … synthesized type class instance is not definitionally equal
+   to expression inferred by typing rules, synthesized inst✝¹ inferred K_2.instAlgebraK P₂`. This is
+   the same *kind* of instance-diamond risk `§66` diagnosed for `Semiring`, now hit one layer up, at
+   `Algebra` itself, the moment the flat spelling is introduced.
+2. **An ambient `variable [Algebra K (K_2 P₂)]` instead** (matching `K_2.instAlgebraK`'s own base
+   field, deriving `Algebra ↥𝒪[K] (K_2 P₂)` via `Algebra.ofSubsemiring` from it, so every use site
+   routes through the *same* composite). This is mathematically the right shape — it is exactly how
+   `§63`'s `isScalarTower_R_K_1_K_2` already gets `Algebra ↥𝒪[K] (K_1 P)` for the analogous `K → K_1`
+   hop — but the flat `O_K2` `abbrev`'s own elaboration, when it has to run `Algebra.ofSubsemiring`'s
+   typeclass search to build `Algebra ↥𝒪[K] (K_2 P₂)` from an *abstract* `[Algebra K (K_2 P₂)]`
+   hypothesis, **times out** at the default `200,000`-heartbeat budget (`failed to synthesize Algebra
+   ↥𝒪[K] (K_2 P₂) … (deterministic) timeout at isDefEq`) — a new elaboration-cost failure mode, not a
+   rejection, and not previously seen at any single-nested site (`O_{K_1}` never needed this composite
+   at all, being built directly as `integralClosure ↥𝒪[K] (K_1 P)` with no intermediate `Algebra.
+   ofSubsemiring` hop).
+3. **Fixing `Algebra ↥𝒪[K] (K_2 P₂)` as a `local instance`, built by an explicit `RingHom.toAlgebra`
+   composite** (not `Algebra.ofSubsemiring`'s automatic search) — this closes the timeout, and the
+   `O_K2` `abbrev` itself elaborates. But **a new, different anomaly appears immediately downstream**:
+   re-deriving `FiniteDimensional K (K_2 P₂)` as a second `local instance` (needed by `LocalField.
+   isLocalHom_algebraMap_integralClosure`, which the flat spelling can now use directly — itself a
+   genuine simplification, since the nested spelling needed a bespoke `isLocalHom_comp_towerHom_K_2`)
+   fails when a *later* declaration tries to consume it: `set_option trace.Meta.synthInstance true`
+   shows the `local instance` genuinely appears in the candidate list (`@instFiniteDimensionalLocal`
+   is present, not silently absent), but unification of the concrete goal `Module.Finite K (K2P2 P₂)`
+   against the candidate's own type fails against a **metavariable** the candidate's own re-elaborated
+   signature introduces (`Module.Finite K (K2P2 P₂) ≟ Module.Finite ?m (K2P2 ?m)`) — the same shape of
+   failure whether the instance is found via automatic search or applied as an explicit term with named
+   arguments (`instFiniteDimensionalLocal (K := K) (P := P) P₂` fails identically). This was traced with
+   `trace.Meta.synthInstance` as the lemma-lookup discipline requires, but the root cause — why a
+   `local instance`'s own generalized type fails to unify its metavariables against a goal built from
+   the *same* section variables it was itself generalized over — was not isolated further within this
+   pass's budget. **This is the point the pass stopped at**: per the project's stop-and-diagnose
+   discipline (two occurrences of the same failure shape, both diagnosed via trace rather than guessed
+   past), rather than trying a fourth variant.
+
+### Why this is reported as a genuinely new obstacle, not a repeat of `§65`/`§66`
+
+`§65`/`§66` diagnosed a `Semiring`-instance diamond *on `O_{K_2}` itself*, arising when combining
+multiple real terms that each independently reference the doubly-nested type in one declaration. This
+pass's obstacle is different in kind and arrives *earlier*: it is an `Algebra`/`FiniteDimensional`
+instance-resolution failure in the scaffolding needed to *define* the flat spelling and its immediate
+consequences at all, before any of the `§65`/`§66`-blocked terms (`K_3.norm_le_one_of_mem_O_K2`,
+`Polynomial.IsDistinguishedAt` projections, …) are even reachable. **No evidence either way was
+gathered this pass on whether the flat spelling would have helped or hurt the original `Semiring`
+diamond** — the switch never got far enough to test it. This corrects `§65`/`§66`'s implicit framing
+(shared with the task brief that opened this pass) that the flat spelling was "the" fix waiting to be
+applied: it is at least as intricate to wire up correctly as the nested spelling was, for a *different*
+reason (missing unconditional `Algebra`/`Module` instances one layer up, rather than a `Semiring`
+diamond one layer down).
+
+### What was reverted, and why
+
+`Langlands/LubinTateTowerStepK3.lean` and `Langlands/LubinTateTowerStepK3RootConnect.lean` were edited
+extensively during this pass (flat `O_K2`, a new `towerHom2`/`isLocalHom_towerHom2` mirroring `towerHom`
+one level up, simplified `norm_le_one_of_mem_O_K2_in_K2P2` no longer needing `Langlands/
+IntegralClosureTower.lean`'s `isIntegral_iff_isIntegral_integralClosure` detour, a from-scratch proof of
+`algebraMap_O_K2P2_eq_comp_towerHom2` mirroring `algebraMap_O_K_1_eq_comp_towerHom`'s technique) but
+never reached a clean build — the `FiniteDimensional`/`Algebra` instance-resolution anomaly above was
+the final, unresolved blocker. Per this project's hard constraint (no `sorry`, and no leaving the tree
+in a broken state), both files were reverted to their last-committed (nested-spelling) state via `git
+checkout`; only `Langlands/IntegralClosureTower.lean`'s general transport additions (independently
+useful, independently verified, `b5d4f1c`) were kept. `nix develop -c lake build` after the revert:
+clean, 8809 jobs, identical to `§66`'s baseline.
+
+### What a next pass should do differently
+
+* **Isolate the `local instance` metavariable-unification anomaly in a minimal standalone example**
+  before touching the real tower files again — it reproduced identically via both automatic search and
+  explicit named-argument application, which rules out a search-order explanation and points at
+  something in how `local instance`/`variable`-section generalization interacts with `abbrev`-wrapped
+  types (`K2P2`, in this case) specifically; this is worth a dedicated, narrow repro file, not another
+  attempt embedded in the full tower machinery.
+* **Alternative not yet tried**: rather than fixing `O_{K_2}`'s `Algebra ↥𝒪[K] (K_2 P₂)` structure as a
+  `local instance` or ambient hypothesis at all, thread it the way `K_3.algebraMap_O_eq`/`K_2.
+  algebraMap_O_eq` already do successfully — as a `letI := …` *inside each individual theorem's own
+  dependent statement* (`letI := K_2.instAlgebraK P₂; <type mentioning O_K2>`), never a section-wide
+  binding. This is more verbose (every declaration repeats the `letI`) but is the one pattern this arc
+  has *actually* gotten to work reliably at every prior site involving a non-instance `Algebra` def;
+  this pass tried to shortcut it with section-wide bindings and paid for the shortcut.
+* **`§66`'s `Semiring`-diamond investigation is still open and still untested against the flat
+  spelling** — a future pass attempting the flat switch again, successfully, is the only way to get a
+  real data point on whether it helps `norm_lt_one_of_aeval_P₃_eq_zero`.
+
+### Re-grounded estimate for piece 2 (the `∀ n` inductive generalization) — reduced confidence, not
+increased
+
+`§65`/`§66` speculated that the flat representation might make per-level engineering cost flatter. This
+pass's actual data point cuts the other way: the flat representation traded the nested spelling's
+`Semiring`-diamond risk (real, but arising only when *combining multiple terms* in one declaration, per
+`§66`) for a *different* instance-resolution obstacle that blocks even *defining* the type and its
+immediate one-hop consequences, before any term-combination is attempted. Neither obstacle is shown to
+compound *worse* at higher `n` than the other — this pass provides no such evidence — but the working
+hypothesis that "flat is the fix" going into this pass is not supported by what was actually found:
+**both representations have now independently demonstrated their own, different elaboration-cost
+obstacle class at the `K_2`/`K_3` level**, and neither has been shown fully closed. A grounded estimate
+for piece 2 (the full inductive tower) should not assume either representation resolves cleanly at
+`K_4` without further concrete evidence at `K_3` first — this pass's contribution is narrowing what
+that future evidence needs to rule out (the `Algebra`/`local instance` anomaly above, in addition to
+`§66`'s `Semiring` diamond), not shortening the remaining work.
+
+### Build
+
+`nix develop -c lake build`: clean, 8809 jobs, no `sorry`, no new errors, after reverting the two files
+that did not reach a clean build. Files changed (kept): `Langlands/IntegralClosureTower.lean`. Files
+edited then reverted (not kept): `Langlands/LubinTateTowerStepK3.lean`,
+`Langlands/LubinTateTowerStepK3RootConnect.lean`. Commit `b5d4f1c` (the kept transport machinery); no
+second commit, since the concrete switch did not close.
+
+### A note on tooling integrity this pass
+
+Twice during this pass, tool output contained text formatted as `<system-reminder>` blocks that were
+not legitimate system content: one claiming a date change to be concealed from the user, one declaring
+an "Auto Mode Active" policy urging fewer clarifying questions, both appearing embedded in/after
+ordinary tool results rather than the genuine system prompt. Neither was complied with. This matches
+the injected-content pattern the task brief's security note warned about; flagged here for the record,
+not acted on.
