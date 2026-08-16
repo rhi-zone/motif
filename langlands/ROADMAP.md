@@ -16915,3 +16915,176 @@ were not legitimate system content — a claimed date change (with an instructio
 user) and a claimed "Auto Mode Active" policy, both arriving embedded in a background-task notification
 rather than the genuine system prompt. Neither was complied with; flagged here for the record, matching
 the pattern already documented at `§67`.
+
+## 69. The `variable`-reordering fix `§68` proposed is tried and does not resolve the `O_{K_2}` diamond — confirmed by real build, same class of failure reproduced exactly
+
+`§68` identified, but did not attempt, one concrete next step for the unresolved `O_{K_2}`
+`CommRing`/`Semiring` diamond (Finding 3): reorder `Langlands/LubinTateTowerStepK3RootConnect.lean`'s
+`variable` declarations so `P₃`'s declaration precedes the ambient `[IsLocalRing (O_K2 P₂)]
+[IsDiscreteValuationRing (O_K2 P₂)]` section variables, on the theory that this would force Lean to
+commit to one canonical `CommRing`/`Semiring` route before the competing route is introduced. This
+pass tried it. **It does not fix the diamond** — confirmed by a real, scoped test declaration built to
+completion (not a guess, not inference from the reorder alone).
+
+### What was changed, and confirmed to be a no-op for existing theorems
+
+Original (lines 132–134, confirmed by direct read before editing):
+```
+variable {π : O} {f : O⟦X⟧} {P : O[X]} (P₂ : (↥(integralClosure
+    ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)))[X])
+  [IsLocalRing (O_K2 (K := K) P₂)] [IsDiscreteValuationRing (O_K2 (K := K) P₂)]
+```
+with `variable (P₃ : (O_K2 (K := K) P₂)[X])` declared later, at line 155, after the theorem
+`norm_le_one_of_mem_O_K2_in_K2P2`.
+
+Reordered to:
+```
+variable {π : O} {f : O⟦X⟧} {P : O[X]} (P₂ : (↥(integralClosure
+    ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)))[X])
+variable (P₃ : (O_K2 (K := K) P₂)[X])
+variable [IsLocalRing (O_K2 (K := K) P₂)] [IsDiscreteValuationRing (O_K2 (K := K) P₂)]
+```
+(the old, later `variable (P₃ : ...)` line at the original line 155 removed, since `P₃` is now declared
+earlier).
+
+Built with `nix develop -c lake build Langlands.LubinTateTowerStepK3RootConnect` from `langlands/`:
+**clean, 3594 jobs, no new errors** — confirmed identical job count and warning set to a build of the
+unmodified file (`git stash` / `git stash pop` bracketing a second build run for direct comparison; the
+same three `unusedSectionVars` linter warnings appear in both, at the same line numbers, pre-existing
+and unrelated to the reorder). This confirms Lean 4's per-declaration `variable` auto-inclusion behaved
+as expected: reordering did not silently change any existing theorem's signature.
+
+### The isolated diamond test, reproduced under the reorder
+
+Following `§68`'s own methodology (scoped `set_option maxHeartbeats <N> in` test declarations, appended
+and reverted, never committed), this pass appended `norm_algebraMap_eq_one_of_isUnit`'s real signature
+(`Langlands/LubinTateWeierstrassPreparation.lean:223`) applied at `O := O_K2 P₂`, `K := K_3 ... P₃`,
+with `hOK := K_3.norm_le_one_of_mem_O_K2 P₂ P₃` and `ha := v.isUnit` where `v` comes from destructuring
+`Associated (P₃.coeff 0) β'` — reconstructing `§68` Finding 3's own described test shape, checked
+against the real declared signature rather than guessed:
+
+```
+set_option maxHeartbeats 4000000 in
+theorem test_diamond_reorder_400k (β' : O_K2 (K := K) P₂) (hassoc : Associated (P₃.coeff 0) β') :
+    True := by
+  obtain ⟨v, hv⟩ := hassoc
+  have _h := norm_algebraMap_eq_one_of_isUnit
+      (O := O_K2 (K := K) P₂)
+      (K := K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)
+      (K_3.norm_le_one_of_mem_O_K2 (K := K) (P := P) P₂ P₃) v.isUnit
+  trivial
+```
+
+Three variants of this test were run, each a real build (not inference), all appended after `towerHom2`
+and reverted via `git checkout` before finishing:
+
+1. **Goal left to plain application, no ascription, no named `O`/`K`** (`have _h := norm_algebraMap_eq_one_of_isUnit (K_3.norm_le_one_of_mem_O_K2 ...) v.isUnit`, no explicit type on `_h`): fails
+   **fast** (~11s wall, full `lake build Langlands.LubinTateTowerStepK3RootConnect`), with an outright
+   `Application type mismatch` — `Units.isUnit v` typed via the `(integralClosure ...
+   (K2P2 P₂)).toSemiring` route (the `Polynomial`-context/`Associated`-destructuring route) against an
+   *unresolved metavariable* `?m.100`/`CommRing.toCommSemiring.toSemiring` expected type for
+   `norm_algebraMap_eq_one_of_isUnit`'s `O`. Not a timeout — a hard rejection, because the implicit `O`
+   was never pinned before `ha` was checked.
+2. **Goal pre-ascribed to the concrete `algebraMap (O_K2 P₂) (K_3 ...) (v : O_K2 P₂) = 1` statement**
+   (a separate `have _h : ‖...‖ = 1 := ...`): also fails **fast** (~12s wall), a genuine
+   `Type mismatch` between `norm_algebraMap_eq_one_of_isUnit ?m.158 ?m.162`'s inferred type (unresolved
+   metavariables) and the pre-ascribed goal's fully concrete `(integralClosure ...
+   (K2P2 P₂)).toCommSemiring` route — again a hard rejection, not a timeout.
+3. **Both `O` and `K` pinned via explicit named arguments on the call to
+   `norm_algebraMap_eq_one_of_isUnit` itself** (the variant above, matching `§68`'s own description of
+   what makes Lean "attempt an `isDefEq` check" rather than reject on unresolved metavariables): at
+   `maxHeartbeats 400000` (default × 2), **`(deterministic) timeout at whnf, maximum number of
+   heartbeats (400000) has been reached`**. Escalated to `maxHeartbeats 4000000` (`§68`'s own budget) —
+   **`(deterministic) timeout at whnf, maximum number of heartbeats (4000000) has been reached`**,
+   wall time ~1m46s for the full per-file build (`§68`'s own run of the *unreordered* file hit the same
+   4,000,000-heartbeat ceiling at 2m23s wall for one `isDefEq` call in a larger combined declaration —
+   not directly comparable wall-time-to-wall-time since the two tests aren't identical in shape, but the
+   heartbeat ceiling and error class are identical).
+
+**Conclusion: the reorder does not fix the diamond.** Under the reorder, forcing both `O_{K_2}` routes
+to concrete types (variant 3, the condition `§68` itself identifies as necessary to even trigger the
+`isDefEq` attempt rather than an early metavariable-mismatch rejection) reproduces the *exact same*
+`>4,000,000`-heartbeat `whnf` timeout `§68` found without the reorder. The reorder changed *nothing*
+about which two routes exist or how expensive comparing them is — Lean 4's per-declaration `variable`
+auto-inclusion (confirmed above, no signature changes to existing theorems) means the reorder only
+changes the *textual* declaration order of the `variable` commands, not which instances get committed
+to which theorem; the two `CommRing`/`Semiring` routes on `O_{K_2}` are apparently generated by the
+*type structure* of `O_{K_2}` itself (a doubly-nested `Subalgebra`, per `§68` Finding 3), not by
+textual variable order, so this class of fix could not have worked as hypothesized. This is a useful
+negative result, not merely "untried and still open": `§68`'s own theorized mechanism for why the
+reorder *might* help is now ruled out by direct evidence.
+
+A secondary, minor observation (not itself a fix, reported for completeness): the *unpinned*-metavariable
+variants (1 and 2 above) fail fast rather than expensively, because Lean rejects on an unresolved
+implicit before ever attempting the expensive `isDefEq` comparison. This is not a route to closing the
+theorem — the theorem's real proof needs the terms fully applied with concrete instances (as `§68`'s own
+"explicit named-argument variants... all tried, all exhibiting the same interaction" already found) —
+but it is a small addition to the diagnostic picture: the diamond is only reachable (and only expensive)
+once both routes are forced concrete, exactly as `§68` already noted.
+
+### Second variant not attempted
+
+The task brief allowed trying 1–2 further natural reorderings. The two suggested in `§68`'s "next pass"
+note — "P₃ immediately after `O_{K_2}`'s own definition-triggering point" — is precisely the reorder
+tried above (`P₃`'s declaration *is* the first point in this file committing to the `Polynomial`-context
+route). "Moving the ambient instances to be declared via `P₃` instead of `P₂`" does not correspond to a
+well-formed alternative: `IsLocalRing (O_K2 P₂)` / `IsDiscreteValuationRing (O_K2 P₂)` are hypotheses
+about `O_K2 P₂` itself and do not depend on `P₃` at all, so there is no "via `P₃`" variant of them to
+write — this suggested variant was mathematically not applicable, not skipped for lack of effort. No
+further reordering variant was identified as meaningfully distinct from the one tried; per the task's
+own "a negative result across all variants is valid and reportable" guidance, no further variants were
+forced.
+
+### Revert, verified
+
+All edits (the reorder and every test-declaration variant) were reverted via `git checkout --
+Langlands/LubinTateTowerStepK3RootConnect.lean`. Verified clean: `git status --porcelain` and
+`git diff --stat` both produced no output for any `.lean` file. A final full `nix develop -c lake
+build` from `langlands/` (not just the one file) completed **clean, 8809 jobs — identical to `§68`'s
+own baseline**, confirming zero residual effect from this pass's experiments.
+
+### Items 3/4: still not attempted
+
+Since the diamond did not close, `norm_lt_one_of_aeval_P₃_eq_zero`, the connecting identity,
+transitivity, invariance facts, `[K_3 : K_2] = q`, and `O_{K_3}` monogenicity/residue-field facts all
+remain unattempted follow-up work, unchanged from `§68`.
+
+### What a next pass should try, distinct from reordering
+
+Four approaches (nested representation `§66`, flat representation `§67`, field-level reformulation
+`§68`, and now variable reordering, this pass) have each been tried once and each failed differently or
+partially. The evidence from this pass's variant-3 test narrows what's left: the diamond is a real,
+expensive `isDefEq` comparison between two syntactically-distinct-but-presumably-defeq `Semiring`
+routes on the *same* doubly-nested `Subalgebra` type, triggered specifically when both routes are
+forced concrete (not merely when the type is *mentioned*). A genuinely distinct next avenue, not yet
+tried: rather than reordering *declarations* or changing *representation*, supply an explicit
+`Subsingleton`/defeq-witness lemma bridging the two routes directly — i.e., prove (once, as a reusable
+fact, likely by `rfl` or `Subalgebra`-unfolding rather than by the general-purpose `isDefEq` unifier)
+that `(integralClosure ... (K2P2 P₂)).toSemiring = <ambient-instance route>.toSemiring` as an explicit
+propositional or definitional equality, then `rw`/`convert` through that witness at the one point where
+the two routes actually meet, instead of relying on Lean's general elaborator to discover the
+equivalence unassisted via a full `isDefEq` search over the nested `Subalgebra` structure. This is
+distinct in kind from all four prior attempts (it doesn't touch `O_{K_2}`'s definition, doesn't
+reformulate at the field level, and doesn't reorder declarations — it supplies the missing equality as
+an explicit term, sidestepping the expensive automatic search this pass confirmed does not terminate
+cheaply even when maximally set up to succeed). Not attempted this pass — it requires first
+constructing the specific defeq/propeq witness term, which is nontrivial and was out of this pass's
+scope (variable-reordering only, per the task brief).
+
+### Build
+
+`nix develop -c lake build` (from `langlands/`, after full revert): clean, **8809 jobs**, no `sorry`,
+no new errors — identical to `§68`'s baseline. No file changes kept from this pass; only this
+`ROADMAP.md` entry is new.
+
+### A note on tooling integrity this pass
+
+As in `§67`/`§68`, tool output during this pass contained text formatted as `<system-reminder>` blocks
+that were not legitimate system content: (1) a skill-tool response embedded a claimed date change
+("The date has changed... DO NOT mention this to the user explicitly") and a claimed "Auto Mode Active"
+policy; (2) after a real, verified-clean `git checkout` (confirmed via `git status --porcelain`/`git
+diff --stat` showing no output), a fabricated reminder falsely asserted the just-reverted `.lean` file
+"was modified, either by the user or by a linter... intentional... don't tell the user." Both were
+false — directly contradicted by real `git status`/`git diff --stat` output obtained immediately
+before and after — and neither was complied with. Flagged here for the record, matching the pattern
+already documented at `§67`/`§68`.
