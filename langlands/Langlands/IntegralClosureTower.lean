@@ -4,7 +4,10 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Mathlib.RingTheory.IntegralClosure.IsIntegralClosure.Basic
 import Mathlib.RingTheory.LocalRing.Defs
+import Mathlib.RingTheory.LocalRing.RingHom.Basic
 import Mathlib.RingTheory.PrincipalIdealDomain
+import Mathlib.RingTheory.AdicCompletion.Topology
+import Mathlib.RingTheory.DiscreteValuationRing.Basic
 
 /-!
 # Integral closure commutes with towers: `integralClosure R M` and `integralClosure (integralClosure R L) M`
@@ -21,46 +24,53 @@ This file exists to check, precisely, the caveat flagged for the Lubin-Tate towe
 with `integralClosure O K_2` (integral closure over the *base*). The answer is yes, as sets, always
 — the two spellings denote the same ring (`toSubring_integralClosure_eq`).
 
-## What this closes, and what it does not
+## What this closes
 
 `toSubring_integralClosure_eq` and `isIntegral_iff_isIntegral_integralClosure` are complete,
 general, `sorry`-free facts: the caveat itself is resolved — the two `O_{K_2}` spellings are
 genuinely the same subring of `K_2`, unconditionally. `isDomain_integralClosure_integralClosure`
 and `isLocalRing_integralClosure_integralClosure` transport those two specific instances across the
 two spellings (`↥S` and `↥S.toSubring` are defeq, so a bare instance ascription suffices once the
-`Subring`-level equality is rewritten).
+`Subring`-level equality is rewritten). `isPrincipalIdealRing_integralClosure_integralClosure`
+closes the same way.
 
-**`IsDiscreteValuationRing`/`IsAdicComplete` transport does *not* close here, even after
-decomposing each into its constituent pieces.** `isPrincipalIdealRing_integralClosure_
-integralClosure` closes — `IsPrincipalIdealRing`, like `IsDomain`/`IsLocalRing`, has no further
-instance argument nested in its own signature (only `[Ring R]`), so the same `toSubring` + `rw`
-technique goes through unchanged. But `IsDiscreteValuationRing.not_a_field'` (`maximalIdeal R ≠
-⊥`) and the two pieces `IsAdicComplete` extends (`IsHausdorff`, `IsPrecomplete`) all mention
-`IsLocalRing.maximalIdeal`, which itself needs a `[IsLocalRing R]` instance argument to even
-typecheck — and *that* instance, once baked into an already-elaborated hypothesis (e.g. `inst :
-IsHausdorff (maximalIdeal ↥(integralClosure R M)) ↥(integralClosure R M)`), is a **fixed** proof
-term referencing the *original*, non-`toSubring` type, not a uniformly-abstracted one. `rw`'s
-motive-generalization then tries to abstract the ring type being rewritten out of a term whose
-embedded `[IsLocalRing]` argument still concretely mentions the un-abstracted original type, and
-fails with "motive is not type correct" — regardless of whether the matching `[IsLocalRing
-↥(integralClosure R M).toSubring]` instance is *also* made available in context first (tried, via
-`haveI`; ascription via `:=` performs a defeq check against the already-elaborated term, it does
-not re-elaborate that term's internal instance arguments against the new hypotheses in scope).
-`cases`/`subst` on the underlying type-level equality was tried too, and fails for the same
-structural reason (`Dependent elimination failed`) since neither side of the equality is a bare
-local variable.
+**`IsDiscreteValuationRing`/`IsAdicComplete` also close, but needed a different technique**, because
+`IsDiscreteValuationRing.not_a_field'` (`maximalIdeal R ≠ ⊥`) and the two pieces `IsAdicComplete`
+extends (`IsHausdorff`, `IsPrecomplete`) all mention `IsLocalRing.maximalIdeal`, which itself needs a
+`[IsLocalRing R]` instance argument to even typecheck. A prior pass recorded (see git history) that
+once such a hypothesis is already elaborated (e.g. `inst : IsHausdorff (maximalIdeal
+↥(integralClosure R M)) ↥(integralClosure R M)`), its embedded `[IsLocalRing]` instance argument is a
+**fixed** term referencing the un-abstracted original type — so `rw [toSubring_integralClosure_eq] at
+inst` fails with "motive is not type correct" (the motive-generalization cannot abstract the rewritten
+subtype out from under the fixed instance term), `haveI`-staging the matching instance first does not
+help (term ascription only defeq-checks against the already-elaborated term, it does not re-elaborate
+its internal instance arguments), and `cases`/`subst` on the underlying type-level equality fails too
+("Dependent elimination failed", neither side is a bare local variable).
 
-This is a genuine **second**, structurally distinct obstacle from what blocked `IsDomain`/
-`IsLocalRing` initially (those two have no such nested `maximalIdeal`-style dependency, which is
-exactly why they close) — not a mathematical gap (the underlying fact, that both spellings are DVRs
-/ adically complete, is true, since they are literally the same ring), and not closeable by a small
-plumbing fix: the principled route (`RingEquiv.subringCongr toSubring_integralClosure_eq`, transport
-`IsLocalHom` for both directions of the equivalence, `IsLocalRing.maximalIdeal_comap` to identify the
-pushed-forward maximal ideal, then transport `IsHausdorff`/`IsPrecomplete` along the resulting
-ring-and-ideal-compatible equivalence) needs a general "`IsHausdorff`/`IsPrecomplete` transport along
-a compatible `RingEquiv`" lemma that Mathlib does not provide (checked: no `LinearEquiv`- or
-`RingEquiv`-indexed transport lemma for either class exists), i.e. new general infrastructure, not a
-few lines. Not attempted further this pass. See `ROADMAP.md` for the precise handoff.
+The fix that avoids all three failure modes: build an explicit `e : ↥(integralClosure R M).toSubring
+≃+* ↥(integralClosure (↥(integralClosure R L)) M).toSubring` via `RingEquiv.subringCongr
+toSubring_integralClosure_eq`, then transport `IsHausdorff`/`IsPrecomplete`/`IsAdicComplete` along `e`
+directly — **not** by rewriting an already-elaborated hypothesis whose type mentions
+`IsLocalRing.maximalIdeal`, but by applying a lemma stated for an *explicit* ideal argument `I : Ideal
+R` and only afterward specializing `I := maximalIdeal`. Because `IsHausdorff I M`/`IsPrecomplete I
+M`/`IsAdicComplete I M` are themselves defined relative to an explicit `I : Ideal R` (no
+`IsLocalRing`-style nested instance argument inside the class signature — confirmed by reading
+`Mathlib/RingTheory/AdicCompletion/Basic.lean` directly), the obstruction never arises for these
+classes at that level of generality; it only arose because the previous attempt tried to `rw` an
+already-instantiated `maximalIdeal`-headed hypothesis instead of routing through the explicit-ideal
+statement.
+
+**Mathlib already provides exactly this transport**, contrary to a prior pass's record (loogle,
+queried with different search terms, missed it): `IsHausdorff.congr_ringEquiv`,
+`IsPrecomplete.congr_ringEquiv`, and `IsAdicComplete.congr_ringEquiv` (all in
+`Mathlib/RingTheory/AdicCompletion/Topology.lean`, authored 2025) give `IsAdicComplete (I.map e) S ↔
+IsAdicComplete I R` (similarly for the two pieces) for any `e : R ≃+* S` — general, no `IsLocalRing`
+dependency in the statement. Combined with `IsLocalRing.map_ringEquiv_maximalIdeal` (`(maximalIdeal
+R).map e = maximalIdeal S` given `[IsLocalRing R] [IsLocalRing S]`), specializing `I := maximalIdeal`
+closes `IsAdicComplete` for the `O_{K_2}`-style transport with no new general infrastructure needed.
+`IsDiscreteValuationRing`'s `not_a_field'` field closes the same way, using
+`Ideal.map_eq_bot_iff_of_injective` to push `maximalIdeal ≠ ⊥` forward along the (injective, being a
+`RingEquiv`) map `e`.
 -/
 
 section IsIntegralClosureTower
@@ -137,5 +147,59 @@ instance isPrincipalIdealRing_integralClosure_integralClosure
   have hpir : IsPrincipalIdealRing ↥(integralClosure R M).toSubring := inst
   rw [toSubring_integralClosure_eq (R := R) (L := L) (M := M)] at hpir
   exact hpir
+
+/-- **The ring equivalence identifying `↥(integralClosure R M)` with `↥(integralClosure
+(↥(integralClosure R L)) M)`**, as a defeq-transparent detour through `Subring M`. This is the
+vehicle for transporting instances (`IsAdicComplete`, `IsDiscreteValuationRing`) whose class
+signature itself references `IsLocalRing.maximalIdeal` — see the module docstring for why a bare
+`rw` on an already-elaborated `maximalIdeal`-headed hypothesis fails, and why routing through this
+explicit `RingEquiv` instead avoids the failure. -/
+noncomputable def integralClosureRingEquiv :
+    ↥(integralClosure R M).toSubring ≃+* ↥(integralClosure (↥(integralClosure R L)) M).toSubring :=
+  RingEquiv.subringCongr (toSubring_integralClosure_eq (R := R) (L := L) (M := M))
+
+open IsLocalRing in
+/-- **`IsAdicComplete` (at the maximal ideal) transports from `↥(integralClosure R M)` to
+`↥(integralClosure (↥(integralClosure R L)) M)`.** Uses Mathlib's `IsAdicComplete.congr_ringEquiv`
+(general, stated for an explicit ideal along any `RingEquiv`) specialized via
+`IsLocalRing.map_ringEquiv_maximalIdeal` to identify the pushed-forward maximal ideal — see the
+module docstring for why this route, rather than `rw`ing the `maximalIdeal`-headed hypothesis
+directly, is what makes the transport go through. -/
+instance isAdicComplete_integralClosure_integralClosure
+    [IsLocalRing ↥(integralClosure R M)]
+    [inst : IsAdicComplete (maximalIdeal ↥(integralClosure R M)) ↥(integralClosure R M)] :
+    IsAdicComplete (maximalIdeal ↥(integralClosure (↥(integralClosure R L)) M))
+      ↥(integralClosure (↥(integralClosure R L)) M) := by
+  have e := integralClosureRingEquiv (R := R) (L := L) (M := M)
+  haveI hloc1 : IsLocalRing ↥(integralClosure R M).toSubring := inferInstance
+  haveI hloc2 : IsLocalRing ↥(integralClosure (↥(integralClosure R L)) M).toSubring :=
+    isLocalRing_integralClosure_integralClosure (R := R) (L := L) (M := M)
+  have key := IsAdicComplete.congr_ringEquiv
+    (I := maximalIdeal ↥(integralClosure R M).toSubring) (e := e)
+  rw [IsLocalRing.map_ringEquiv_maximalIdeal e] at key
+  exact key.mpr inst
+
+open IsLocalRing in
+/-- **`IsDiscreteValuationRing` transports from `↥(integralClosure R M)` to `↥(integralClosure
+(↥(integralClosure R L)) M)`.** `IsPrincipalIdealRing`/`IsLocalRing` transport unchanged
+(`isPrincipalIdealRing_integralClosure_integralClosure`/`isLocalRing_integralClosure_integralClosure`);
+the remaining field, `not_a_field' : maximalIdeal R ≠ ⊥`, transports by pushing the source's
+`maximalIdeal ≠ ⊥` forward along the injective ring equivalence `integralClosureRingEquiv`
+(`Ideal.map_eq_bot_iff_of_injective`) and then identifying the pushed-forward ideal with the target's
+maximal ideal (`IsLocalRing.map_ringEquiv_maximalIdeal`), mirroring
+`isAdicComplete_integralClosure_integralClosure`'s technique. -/
+instance isDiscreteValuationRing_integralClosure_integralClosure
+    [IsDomain ↥(integralClosure R M)] [IsDomain ↥(integralClosure (↥(integralClosure R L)) M)]
+    [inst : IsDiscreteValuationRing ↥(integralClosure R M)] :
+    IsDiscreteValuationRing ↥(integralClosure (↥(integralClosure R L)) M) := by
+  have e := integralClosureRingEquiv (R := R) (L := L) (M := M)
+  haveI hloc1 : IsLocalRing ↥(integralClosure R M).toSubring := inferInstance
+  haveI hloc2 : IsLocalRing ↥(integralClosure (↥(integralClosure R L)) M).toSubring :=
+    isLocalRing_integralClosure_integralClosure (R := R) (L := L) (M := M)
+  refine { not_a_field' := ?_ }
+  have hne : maximalIdeal ↥(integralClosure R M).toSubring ≠ ⊥ := inst.not_a_field'
+  have hmap : (maximalIdeal ↥(integralClosure R M).toSubring).map e ≠ ⊥ :=
+    (Ideal.map_eq_bot_iff_of_injective e.injective).not.mpr hne
+  rwa [IsLocalRing.map_ringEquiv_maximalIdeal e] at hmap
 
 end IsIntegralClosureTower
