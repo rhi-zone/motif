@@ -15986,3 +15986,165 @@ Two independent, well-scoped pieces of work, either of which can proceed indepen
 
 Only once *both* close does `LubinTateTowerStep.lean`'s `TowerStep` machinery, instantiated at
 `O' := O_{K_2}`, actually produce `K_3`'s Eisenstein polynomial.
+
+## 63. Both `§62` gaps close; `K_3`'s Eisenstein polynomial is produced — the tower step iterates past `K_2`
+
+**`K_3`'s Eisenstein polynomial is produced.** This is the first time the `K_n → K_{n+1}` step has
+been shown to go through past `K_1 → K_2` — the concrete test this whole extended sub-effort
+(`§48`–`§62`) has been building toward. Full honest account, and precisely what this does and does
+not establish, below.
+
+### Gap 1 (the missing `Algebra`/`IsScalarTower` composite): closed, and simpler than expected
+
+`§62`'s "Next step" framed this as "a third three-hop composite mirroring `K_2.instAlgebraO`/
+`K_2.instAlgebraK`" — i.e., expected to need a hand-built `def` the way those two did. **It does
+not.** Mathlib already provides two general instances that supply it automatically:
+`Algebra.ofSubsemiring` (`Mathlib/Algebra/Algebra/Basic.lean`, priority 900: `Algebra S A` for `S` a
+subsemiring — here, subring — of `R` and `[Algebra R A]`) and `Algebra.Tower.subsemiring`
+(`Mathlib/Algebra/Algebra/Tower.lean`, priority 999: the accompanying `IsScalarTower U S A`). Once
+`K_2.instAlgebraK : Algebra K (K_2 P₂)` is `letI`-activated, both `Algebra ↥𝒪[K] (K_2 P₂)` and
+`IsScalarTower ↥𝒪[K] K (K_2 P₂)` resolve by plain `infer_instance` — confirmed directly, via a
+`trace.Meta.synthInstance`-traced probe, before writing any of the permanent code. The one thing
+still needing a one-line hand proof is `IsScalarTower ↥𝒪[K] (K_1 P) (K_2 P₂)` (not `↥𝒪[K] K
+(K_2 P₂)`) — but the two candidate composites (`↥𝒪[K] → K → K_1 P → K_2 P₂` via
+`Algebra.ofSubsemiring`, and `↥𝒪[K] → K_1 P → K_2 P₂` via the target instance) agree *definitionally*
+(`K_2.algebraMap_K_eq` is itself `rfl`), so `IsScalarTower.of_algebraMap_eq (fun x => rfl)` closes it
+in one line. `LubinTate.isScalarTower_R_K_1_K_2`, `Langlands/LubinTateTowerStepConcreteK2.lean`.
+
+### Gap 2 (the `K_2`-level uniformizer): closed via a new abstract, `ValuativeRel`-free machinery file
+
+`§62` (and the task framing for this pass) anticipated reusing `exists_irreducible_uniformizer_K_1`'s
+*technique* directly. **That specific reuse is blocked** — confirmed, not assumed: `Langlands/
+LubinTateTowerStepMonogenic.lean`'s own docstring already records (for the adjacent monogenicity
+problem) that `K_1 P` deliberately carries no `ValuativeRel`/`NontriviallyNormedField` instance,
+because building one reproduces a non-defeq diamond against the `spectralNorm`-based
+`K_1.instNontriviallyNormedField` the rest of the arc is built against. Since
+`exists_irreducible_uniformizer_K_1`'s entire machinery (`Langlands/TotallyRamifiedUniformizer.lean`)
+is stated in terms of `‖·‖`/`spectralNorm K L _` for a `NormedField`-carrying base `K`, it cannot be
+re-instantiated with `K_1 P` playing that base-field role.
+
+**What closes it instead**: a new file, `Langlands/EisensteinUniformizerAbstract.lean`, extracting
+the *tail* of `TotallyRamifiedUniformizer.lean`'s argument — the part that only uses that `R` is an
+integrally closed discrete valuation ring, not that `R` carries `ValuativeRel`/`NormedField`
+structure — exactly mirroring how `Langlands/EisensteinMonogenicAbstract.lean` (a prior pass)
+already did this for the adjacent monogenicity theorem. Two new general facts were needed along the
+way, neither previously in this repo:
+* `isLocalHom_algebraMap_integralClosure_of_isIntegrallyClosed` — `algebraMap R ↥(integralClosure R
+  L)` is local, for *any* integrally closed domain `R` with fraction field `K` and field extension
+  `L / K` — generalizing `LocalField.isLocalHom_algebraMap_integralClosure`
+  (`Langlands/MonogenicIntegralClosure.lean`), whose proof is specific to `R := ↥𝒪[K]` and uses
+  `mem_valuationSubring_of_isIntegral_algebraMap` where the general proof uses the general
+  `IsIntegrallyClosed.isIntegral_iff`.
+* `mem_maximalIdeal_of_isWeaklyEisensteinAt` — a root of a monic weakly-Eisenstein-at-`𝔪_R`
+  polynomial, evaluated in a local `R`-algebra `S` with `algebraMap R S` local, lies in `𝔪_S`. New,
+  via Mathlib's `Polynomial.IsWeaklyEisensteinAt.pow_natDegree_le_of_aeval_zero_of_monic_mem_map`
+  combined with `IsLocalRing.map_maximalIdeal_le` and primality of `𝔪_S`.
+
+The rest (`coeff_zero_associated_of_isEisensteinAt`, `adjoin_singleton_eq_top_of_adjoin_eq_
+integralClosure`, `maximalIdeal_eq_span_of_isEisensteinAt`, `irreducible_of_isEisensteinAt`) is the
+same argument `TotallyRamifiedUniformizer.lean` already makes, with `hEis` (Eisenstein-ness of the
+minimal polynomial) taken as a **direct hypothesis** instead of derived from a `hram :
+‖ϖ‖ = spectralNorm K L π ^ n` total-ramification condition — which is exactly the form the
+Weierstrass-factorization step already hands over (`P₂` is Eisenstein at `𝔪_{O_{K_1}}` by
+construction, no norm computation needed). **Instantiating this at the concrete `K_1 → K_2` step
+needed no further new mathematics**: `Langlands/LubinTateTowerStepMonogenic.lean`'s
+`adjoin_eq_integralClosure_K_2` proof already computes exactly the ingredients this abstract theorem
+needs (`hβint`, `minpoly O_{K_1} β = P₂` on the nose, `P₂`'s Eisenstein-ness, `hgen` via `finrank_K_2_
+eq_residueCard`) — they were not exported as standalone lemmas, so `LubinTate.irreducible_of_
+isEisensteinAt_K_2` (`Langlands/LubinTateTowerStepConcreteK2.lean`) reproduces that derivation
+verbatim and feeds it to `irreducible_of_isEisensteinAt` instead of `adjoin_eq_integralClosure_of_
+isEisensteinAt` — same data, different conclusion.
+
+### Assembling `K_3`'s Eisenstein polynomial
+
+`LubinTate.exists_eisenstein_tower_step_K_2` (`Langlands/LubinTateTowerStepConcreteK2.lean`) runs
+`Langlands/LubinTateTowerStep.lean`'s `exists_isWeierstrassFactorization_shifted` at `O' := O_{K_2}`
+(the `O_{K_1}`-relative spelling `TowerStep` needs), `ψ :=` the three-hop composite `O → O_{K_1} →
+O_{K_2}` (`isLocalHom_comp_towerHom_K_2`, already built in `§62`'s pass), `α' :=` the uniformizer
+from Gap 2. The result: a monic degree-`q` polynomial `P₃` over `O_{K_2}`, a Weierstrass factor of
+`f(X) - β'`, distinguished (hence Eisenstein) at `𝔪_{O_{K_2}}` — **`K_3`'s Eisenstein polynomial.**
+
+Two further elaboration-only obstacles, both resolved without new mathematics, both consistent with
+`§62`'s Obstacle 2 diagnosis (never hand-state `IsAdicComplete`/`IsDiscreteValuationRing`/anything
+mentioning `maximalIdeal` for the doubly-nested `O_{K_2}` type as a *fresh* goal):
+* `exists_eisenstein_tower_step_K_2`'s own conclusion mentions `maximalIdeal O_{K_2}` (via
+  `IsDistinguishedAt`), so `[IsDiscreteValuationRing O_{K_2}]` had to be taken as an **ambient
+  hypothesis of the statement itself** — it cannot be derived purely inside the proof body, because
+  the `Algebra K (K_2 P₂)` structure needed to even *state* that instance (`K_2.instAlgebraK`) is
+  only available after a `letI`, and the `letI` cannot run before the theorem's own return type is
+  elaborated. This is bookkeeping, not a new gap: every call site that has done the same staging
+  (`isAdicComplete_integralClosure_integralClosure` fed by the base-relative `NormedField.
+  isAdicComplete_integralClosure_of_finiteDimensional`) discharges it for free.
+* A second, previously-unseen instance of the "Application type mismatch" elaboration diamond
+  `§62`'s Obstacle 2 diagnosed for `IsAdicComplete`: applying `exists_isWeierstrassFactorization_
+  shifted` with `O'` left as a metavariable (to be unified from `hβirr`'s type) fails, because
+  `hβirr`'s `Irreducible` instance argument is elaborated via a *different* (though defeq) `Monoid`
+  path (`Semiring.toMonoid ∘ CommRing.toCommSemiring.toSemiring`, from bare `CommRing`) than the one
+  `TowerStep`'s own `O'`-parametrized statement generates when its `O'` metavariable is still
+  unresolved. Passing `O' := ` the concrete type **explicitly**, rather than letting it be inferred
+  from `hβirr`, sidesteps the unification entirely — the general lesson: when instantiating a
+  section-generic theorem at a concrete, multiply-nested `integralClosure` type, name every implicit
+  type parameter the section binds, don't rely on unification to recover it from a hypothesis's type.
+
+### Is this actually a genuine induction, or a special-cased `K_1`/`K_2` pair? Concrete evidence
+
+`§59`'s "concrete evidence, not a guess" question — is the `K_n → K_{n+1}` step actually general, or
+did `n = 1 → 2` only work because of accidents specific to that pair — now has a second, independent
+data point. The technique that produced `K_2`'s Eisenstein polynomial (Weierstrass factorization +
+Eisenstein-uniformizer machinery + `IsAdicComplete`/`IsDiscreteValuationRing` transport) reproduces
+**verbatim in structure** at the `K_1 → K_2` step to produce `K_3`'s: same `TowerStep` call, same
+uniformizer-construction shape (now via the abstract, `ValuativeRel`-free route rather than the
+`spectralNorm` route — a *necessary* substitution, not evidence against generality, since the reason
+for the substitution — no `ValuativeRel` on `K_1 P` — is itself structural, arising at every level
+past the base). The two gaps that had to close to get here (`Algebra`/`IsScalarTower` composite,
+uniformizer machinery) are exactly the two gaps `§62` predicted would need closing, in exactly the
+form predicted (a third composite; a `K_2`-level analogue of the `K_1` uniformizer machinery) — no
+new, unpredicted category of obstruction appeared. This is evidence *for* genuine iterability, though
+see "What is not yet established" below for what a fully general induction over `n` would still need.
+
+### What is genuinely established, and what is not
+
+**Established**: `K_3`'s Eisenstein polynomial `P₃` — a monic degree-`q` polynomial over `O_{K_2}`,
+Weierstrass factor of `f(X) - β'` for `β'` a uniformizer of `O_{K_2}`, distinguished (Eisenstein) at
+`𝔪_{O_{K_2}}`. This is *exactly* the same-shaped artifact `exists_eisenstein_tower_step_K_1` produces
+for `K_2` (`P₂`), and is what that theorem's own docstring calls "the level-2 Eisenstein polynomial"
+one level down.
+
+**Not yet done, and not claimed**: `Langlands.K_2`'s own definition (`Langlands/
+LubinTateTowerStepConcrete.lean`) is a one-line `def K_2 := (P₂.map (algebraMap O' K')).
+SplittingField` — mechanical once the Eisenstein polynomial exists. Defining `K_3` the same way from
+`P₃` was **not done in this pass** (out of scope — the task asked for `K_3`'s Eisenstein polynomial,
+which is the genuine mathematical content; the splitting-field `def` and re-deriving `K_3`'s own
+degree/monogenicity/separability/norm-transport facts mirroring `Langlands/
+LubinTateTowerStepDegree.lean`/`LubinTateTowerStepMonogenic.lean`/`LubinTateTowerStepSeparable.lean`/
+`LubinTateTowerStepBaseNorm.lean`/`LubinTateTowerStepSplittingField.lean` is a full further pass, not
+a one-liner — each of those files was itself substantial work at the `K_1 → K_2` level). **No claim
+is made that `K_4` would close "for free"**: this pass closed the `K_1 → K_2` instantiation of two
+specific gaps, not a theorem quantified over `n`. A hypothetical fully general induction (`TowerStep`
+applied at `O_{K_n} → O_{K_{n+1}}` for arbitrary `n`, not just `n = 1, 2`) would need, at minimum, the
+`K_2`-relative analogues of every file in the `K_1`-relative list above, generalized to accept an
+*already-constructed* tower level as input rather than being hand-instantiated at each new `n` — a
+genuine additional engineering effort, not a corollary of this pass.
+
+### Build
+
+`nix develop -c lake build`: clean, 8806 jobs, no `sorry`, no new errors (only pre-existing-pattern
+unused-variable/unused-section-variable lint warnings, same pattern as every prior pass in this arc).
+Files added: `Langlands/EisensteinUniformizerAbstract.lean`,
+`Langlands/LubinTateTowerStepConcreteK2.lean`. Files changed: `Langlands.lean`. Commits `ba704e4`
+(abstract uniformizer machinery), `788d65f` (`K_3`'s Eisenstein polynomial).
+
+### Next step
+
+Two independent options, neither required to close what this pass set out to do:
+
+1. **Define `K_3` and its supporting infrastructure** (splitting field, degree, monogenicity,
+   separability, norm transport), mirroring the `K_1 → K_2` files listed above — the natural
+   continuation if a third concrete tower level is wanted on the record, not merely its Eisenstein
+   polynomial.
+2. **Generalize the tower step to an actual induction over `n`** — the harder, more valuable
+   direction: parametrize `Langlands/LubinTateTowerStepConcreteK2.lean`-style instantiation to accept
+   an arbitrary already-built tower level (rather than being hand-written for `K_1 → K_2`
+   specifically), so that `K_4`, `K_5`, … follow by applying one lemma repeatedly instead of writing
+   a new file per level. This is the test that would finally settle `§59`'s question outright, rather
+   than accumulate further individual data points.
