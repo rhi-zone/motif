@@ -45,6 +45,8 @@ import Langlands.LubinTateTowerStep
 import Langlands.LubinTateTowerStepBaseNorm
 import Langlands.LubinTateTowerStepConcrete
 import Langlands.LubinTateTowerStepConcreteK2
+import Langlands.LubinTateTowerStepConcreteK3
+import Langlands.LubinTateTowerStepK3
 import Langlands.LubinTateTowerStepLocalRing
 import Langlands.LubinTateTowerStepResidueField
 import Langlands.LubinTateTowerStepMonogenic
