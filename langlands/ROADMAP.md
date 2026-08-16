@@ -15799,3 +15799,79 @@ dependent-motive obstacle identified above) to actually discharge `O_{K_2}`'s tw
 instances. If that closes, `K_3`'s Eisenstein polynomial should be reachable via `LubinTateTowerStep.
 lean`'s existing, already-general `TowerStep` machinery instantiated at `O' := O_{K_2}` — no further
 new mathematics identified as needed beyond that one transport.
+
+## 61. Attempted the `RingEquiv`-based `IsDiscreteValuationRing`/`IsAdicComplete` transport `§60`
+flagged as the next step — one more constituent piece closes (`IsPrincipalIdealRing`), but the
+transport does **not** close overall; the obstacle is confirmed structural, not a small fix
+
+`§60` recorded `IsDiscreteValuationRing`/`IsAdicComplete` transport across the `O_{K_2}` spellings
+as blocked on a `rw` motive failure, and proposed decomposing each class into constituent pieces
+plus an explicit `RingEquiv`-based route as the next step. This pass attempted exactly that.
+
+### What closes: `IsPrincipalIdealRing`
+
+`IsDiscreteValuationRing` unfolds to `extends IsPrincipalIdealRing R, IsLocalRing R` plus
+`not_a_field' : maximalIdeal R ≠ ⊥`. `IsLocalRing` already transported (`§60`).
+`IsPrincipalIdealRing` — like `IsDomain`/`IsLocalRing` — has no further instance argument nested in
+its own class signature (only `[Ring R]`), so the same `toSubring_integralClosure_eq` + `rw`
+technique that closed `IsDomain`/`IsLocalRing` closes it too, unchanged. New instance
+`isPrincipalIdealRing_integralClosure_integralClosure` (`Langlands/IntegralClosureTower.lean`),
+general, `sorry`-free, committed (`ebfb80a`).
+
+### What does not close, and why this is now confirmed structural
+
+`not_a_field'` (`maximalIdeal R ≠ ⊥`, a bare `Prop`) and `IsAdicComplete`'s two constituents
+(`IsHausdorff`, `IsPrecomplete`) all reference `IsLocalRing.maximalIdeal`, which itself needs an
+`[IsLocalRing R]` instance argument to typecheck at all. **Checked directly, three independent
+routes, all failing the same way:**
+
+* `rw [toSubring_integralClosure_eq] at h` where `h`'s type mentions `maximalIdeal ↥(integralClosure
+  R M)` — fails with "motive is not type correct", because the `[IsLocalRing]` instance argument
+  baked into `h` at its original elaboration is a **fixed** term referencing the *un-rewritten* ring
+  type, not a term uniformly parametrized by the type being abstracted.
+* Staging the matching `[IsLocalRing ↥(integralClosure R M).toSubring]` instance into scope first via
+  `haveI` before re-ascribing `h`'s type — does not help, because term ascription (`have h' : T := h`)
+  performs a **defeq check** against `h`'s already-elaborated term; it does not re-run instance search
+  to rebuild `h`'s internal structure against the newly-staged instance.
+* `cases`/`subst` on the underlying type-level equality (`↥(integralClosure R M) = ↥(integralClosure
+  (↥(integralClosure R L)) M)`, itself provable by `rfl` once unfolded through `restrictScalars`) —
+  fails with "Dependent elimination failed", since neither side of the equality is a bare local
+  variable, which `cases`/`subst` require.
+
+This is a **second, structurally distinct** obstacle from what initially blocked `IsDomain`/
+`IsLocalRing` (which have no `maximalIdeal`-style nested dependency, exactly why they closed) — not a
+mathematical gap, but not a small plumbing fix either. The principled route — build `e :=
+RingEquiv.subringCongr toSubring_integralClosure_eq`, transport `IsLocalHom` for both directions,
+identify the pushed-forward maximal ideal via `IsLocalRing.maximalIdeal_comap`, then transport
+`IsHausdorff`/`IsPrecomplete` along the resulting ring-and-ideal-compatible equivalence — needs a
+general "`IsHausdorff`/`IsPrecomplete` transport along a compatible `RingEquiv`" lemma. **Checked
+directly (loogle): no such lemma exists in this Mathlib**, for either class, along `RingEquiv` or
+`LinearEquiv`. Building it from scratch is new general infrastructure (unfolding the Cauchy-sequence
+definitions of `IsHausdorff`/`IsPrecomplete` and manually pushing forward along `e`), comparable in
+scope to a new file, not a few lines — not attempted this pass, per this project's stop-and-diagnose
+discipline (the same failure mode recurring across three independent tactics is exactly the signal to
+stop and record, not keep varying the approach).
+
+### Net state: unchanged from `§60`
+
+`IsDiscreteValuationRing O_{K_2}` and `IsAdicComplete O_{K_2}` do not close. `K_3`'s Eisenstein
+polynomial cannot be produced. No `K_3` construction — partial or otherwise — is attempted. **No
+milestone claim is made.**
+
+### Build
+
+`nix develop -c lake build`: clean, 8803 jobs, no `sorry`, no new errors. File touched:
+`Langlands/IntegralClosureTower.lean` (one new instance, `isPrincipalIdealRing_integralClosure_
+integralClosure`; docstring updated with the precise three-way failure record above). Commit
+`ebfb80a`.
+
+### Next step
+
+Build the "`IsHausdorff`/`IsPrecomplete` transport along a compatible `RingEquiv`" lemma from
+scratch (general, reusable, and — per `§59`/`§60`'s running theme — likely useful beyond this one
+instantiation), using `RingEquiv.subringCongr` + `IsLocalRing.maximalIdeal_comap` as the scaffolding
+identified above. Alternatively, revisit whether `IsAdicComplete` can be established directly at
+`O_{K_2}` by a route that never needs to *transport* it across two spellings in the first place
+(e.g. proving the base-relative general theorem's `L := K_2` instantiation using the `O_{K_1}`-based
+`integralClosure` spelling as its *stated* conclusion from the start, rather than proving it for the
+base spelling and transporting after the fact) — not scoped or attempted this pass.
