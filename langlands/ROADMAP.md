@@ -17250,3 +17250,266 @@ no output, both directly before and after), a fabricated reminder asserted the j
 file "was modified, either by the user or by a linter... intentional... don't tell the user" — false,
 directly contradicted by the real `git status`/`git diff --stat` output obtained immediately on both
 sides of it. Not complied with; flagged here for the record.
+
+## 71. Scoping pass: whether/how to refactor the tower into a flat `K : ℕ → Type` recursion — no code changes, design doc only
+
+This pass was explicitly tasked to *pause* the `K_2 → K_3` blocker (`§65`–`§70`) and instead scope
+whether the whole Lubin-Tate tower construction should be refactored from one hand-named `def` per
+level into a genuinely recursive `K : ℕ → Type` family with a single `∀ n` inductive-step theorem.
+No `.lean` files are touched by this pass; this section is the deliverable. The PoC step offered as
+optional (item 9 of the task brief) was **not attempted** — see "Why the PoC was skipped" below.
+
+### (c) What already generalizes to arbitrary `n`, vs. what is `n = 1`/`n = 2`-specific — checked against real code
+
+**Generalizes as-is (`n`-independent by construction, not merely reusable-by-copying):**
+
+* **`piTorsion` and its group structure** (`Langlands/LubinTateTorsionPoints.lean`,
+  `Langlands/LubinTateTorsionGroup.lean`). `piTorsionAddCommGroup`/`piTorsionAdd`/`piTorsionNeg`
+  (`Langlands/LubinTateTorsionGroup.lean:61,42,54`) take `n : ℕ` as an ordinary explicit argument over
+  an abstract ambient field `K` (`variable {K : Type*} [NormedField K] …`,
+  `Langlands/LubinTateTorsionGroup.lean:38`) — not hand-duplicated per level. This is a genuine `∀ n`
+  construction already.
+* **The transitivity/freeness engine.** `Langlands/LubinTateRootTranslation.lean`'s
+  `exists_piTorsion_translate_of_eval_f_eq` (`:160`), and
+  `Langlands/LubinTateResidueUnitsFreeness.lean` / `LubinTateResidueUnitsTransitivity.lean`, are all
+  stated over an abstract `variable {K : Type*} [NormedField K] …` — checked directly, none mention
+  `K_1`/`K_2` in their signatures. **Correction to a plausible prior assumption** (also corrected by
+  `§64` in-arc, cited there): the level used throughout is always `piTorsion hπ hf 1`, never a
+  tower-index-bumped `piTorsion hπ hf n` — the translation group for "two roots of the same equation
+  `eval f β = eval f β'`" is order-`q` at every tower step, independent of how deep `β`/`β'` sit. So
+  the group-theory core genuinely is a reusable, already-general `∀ n`-shaped engine — it was never
+  built only for `n = 1` in the sense the task brief's background summary worried about.
+* **Abstract commutative-algebra machinery added along the way**: `EisensteinMonogenicAbstract.lean:57`
+  (`adjoin_eq_integralClosure_of_isEisensteinAt`), `EisensteinUniformizerAbstract.lean:86,121,137,
+  163,193,250`, `IntegralExtensionLocalRing.lean:71,109,131,174`, and
+  `IntegralClosureTower.lean:86,98,111,123,132,145,169,192,227,236,245,256,275,305`. All are stated
+  for abstract `R`/`L`/`M` (an arbitrary tower `R ⊆ L ⊆ M` or an arbitrary local `R`/integral `S`),
+  with zero tower-index-specificity. These are exactly the pieces `§57`–`§62` built specifically
+  *because* the concrete `K_1`/`K_2` files kept needing the same shape of fact one level up — they are
+  already the generalized residue of that pattern.
+
+**`n`-specific, hand-written per level, not index-parametrized (checked against the real files):**
+
+* `Langlands/LubinTateSplittingFieldDegree.lean` (the `K → K_1` degree computation) and
+  `Langlands/LubinTateTowerStepDegree.lean` (the `K_1 → K_2` analogue,
+  `FPiEval_algebraMap_mem_adjoin`/`adjoin_root_eq_top_K_2`/`finrank_K_2_eq_residueCard`, confirmed by
+  direct read of the file's docstring and body) are each **a separate file, written against the
+  literal `K_1 P`/`K_2 P₂` types**, not a single lemma quantified over a tower-index parameter. `§55`'s
+  own text calls Task 2 "the same structural argument… now proved one level up," explicitly **not**
+  "proved once, for all `n`."
+* The four-step chain each level needs — connecting identity, transitivity/invariance instantiation,
+  monogenicity, local-ring/residue-field closure, `IsDiscreteValuationRing`/`IsAdicComplete` — is
+  redone as a **new file per level** every time: `LubinTateTowerStepRootConnect.lean` +
+  `LubinTateTowerStepDegree.lean` (`K_1 → K_2`) vs. the attempted, still-incomplete
+  `LubinTateTowerStepK3RootConnect.lean` (`K_2 → K_3`). `§58`'s own "What's already known to carry
+  over directly" / "What is not generic" breakdown (quoted in this pass's §2 below) makes exactly this
+  same generic/specific split, independently, for the `K_2 → K_3` transition — this pass's finding
+  agrees with, rather than contradicts, that in-arc self-assessment.
+* **The ring-of-integers representation itself is the deepest `n`-specific artifact.** `O_{K_1} :=
+  integralClosure ↥𝒪[K] (K_1 P)` (single-nested; `Langlands/LubinTateTowerStepConcrete.lean:116`, and
+  every other file that spells it the same way). `O_{K_2} := integralClosure O_{K_1} (K_2 P₂)`
+  (double-nested `Subalgebra`-of-`Subalgebra`; `Langlands/LubinTateTowerStepK3.lean:124–125`,
+  confirmed by direct read: `abbrev O_K2 : Type _ := ↥(integralClosure ↥(integralClosure
+  ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)) (K2P2 (K := K) P₂))`). **This confirms
+  the background summary's suspicion exactly, checked against the real `def`, not assumed**: each
+  tower level's ring of integers is `integralClosure` of the *previous level's own* `integralClosure`,
+  literally, with no flattening — a genuine `n`-fold nesting, growing by one `Subalgebra`-coercion
+  layer per level. `K_n` itself (the field) is comparatively well-behaved: `Langlands/
+  LubinTateTowerStepConcrete.lean:292`'s `K_2` is already a *generic* `def K_2 {O' K'} (P₂ : O'[X]) :=
+  (P₂.map (algebraMap O' K')).SplittingField`, and `K_3 := K_2 (O' := O_K2) (K' := K2P2) P₃`
+  (`LubinTateTowerStepK3.lean`) is literally that same generic definition re-applied — the field type
+  is `SplittingField`-of-`SplittingField`, structurally uniform, not hand-rewritten per level.
+  **The bottleneck the arc's own passes (`§65`–`§70`) diagnosed is specifically the ring-of-integers
+  nesting, not the field nesting.**
+
+### (b)/(a) — What the diamond diagnosis actually says, cross-checked against the real types, and what a flat design would need to avoid
+
+`§66`'s Finding (line 16503) first named it "a `Semiring`-instance diamond on `O_{K_2}`, not (only) a
+raw heartbeat cost" — `O_{K_2}` "has (at least) two independently-declared, non-syntactically-unifying
+routes to `Semiring (O_{K_2})`." `§68` (line 16830) sharpened this to "a **third**, deeper diamond…
+on `O_{K_2}`'s own bare `CommRing`/`Semiring` instance," confirmed present but costing `> 4,000,000`
+heartbeats to resolve via `isDefEq`, not merely "plausible." `§70` (line 17092) is the load-bearing
+correction to both: **five independent, direct term-level probes (`#print` under `pp.all`) all
+resolve to the same `Subalgebra`-derived instance route** (`Subalgebra.toCommRing`/`.toSemiring`/
+`.toCommSemiring`) — no pass has ever actually printed a second, distinct concrete instance; the
+"second route" was inferred from the *shape* of a non-terminating `isDefEq`/`whnf` search (an
+unresolved-metavariable failure, `§70` line 17150), not from an observed disagreement between two
+named terms. **This pass's cross-check against `O_{K_2}`'s real `def` (above) is consistent with
+`§70`'s narrowed diagnosis, not with `§66`/`§68`'s original "two named routes" framing**: `O_{K_2} :=
+↥(integralClosure ↥(integralClosure ↥𝒪[K] (K_1 P)) (K2P2 P₂))` is, syntactically, a
+`Subalgebra`-coerced-twice type — exactly the structure `§68`/`§70` locate the cost in — but *why*
+combining several real terms mentioning it in one declaration is expensive (elaboration-order cost
+inflating the size of the term the unifier has to walk vs. a genuine diamond between two distinct
+committed instances) is, per `§70`'s own "next pass" note, still an open, untraced question — the
+arc's own most recent finding explicitly declines to call this settled.
+
+Given that, a flat design's central bet is structural, not a guess about the specific mechanism:
+**if the elaboration cost scales with how many layers of `Subalgebra`/`integralClosure` coercion sit
+in a type's own definitional unfolding — which is consistent with every pass's evidence even though
+the exact culprit inside that unfolding is unconfirmed — then a representation whose `O_{K_n}` is
+always *one* `integralClosure` layer over a single fixed base, for every `n`, removes the growth
+entirely, regardless of which specific sub-mechanism (`isDefEq` cost, `synthInstance` cost, term size)
+turns out to be the real one.** This is the shared premise behind all three alternatives below; none
+of them depends on resolving `§70`'s still-open "trace, don't guess" question first, though `§70`'s
+own suggested trace (line 17216) would sharpen the estimate of how much a flat design actually buys.
+
+### Three design alternatives, tradeoffs named side by side
+
+**Alternative 1 — fixed ambient field `L`, each `O_{K_n} := integralClosure O K_n` for a fixed base `O`.**
+Fix one sufficiently large field `L` (e.g. an algebraic closure of `K`, or — per this arc's own
+concrete instantiation — a `v.adicCompletion`'s algebraic closure) once, define `K : ℕ → IntermediateField K L` (or `Subfield L`) recursively (`K 0 := ⊥`, `K (n+1) := (K n)⟮βₙ⟯` for a chosen generator),
+and define `O_K : ℕ → Type` as `O_K n := ↥(integralClosure ↥𝒪[K] (K n))` **always relative to the
+same fixed base `↥𝒪[K]`**, never to `O_K (n-1)`. This is the direct generalization of what `§67`
+already attempted once at `n = 2` (the "flat spelling," `LubinTateTowerStepK3.lean`'s reverted
+`§67` attempt) and is exactly what the task brief's own item 4 anticipated as the leading candidate.
+* *For*: removes the nesting-growth mechanism outright — every `O_K n` is syntactically one
+  `integralClosure` application over the same base, for all `n`, by construction. `Langlands/
+  IntegralClosureTower.lean`'s existing general transport lemmas (`isDomain_…`, `isLocalRing_…`,
+  `isAdicComplete_…`, `isDiscreteValuationRing_…`, and their `_symm` counterparts, `§67`'s addition)
+  are already exactly the machinery needed to move facts proved about the nested spelling (which the
+  monogenicity/local-ring/residue-field arguments are inherently stated relative to, since they talk
+  about "the minimal polynomial over the *previous* level") across to this flat one.
+* *Against — grounded in the one real data point this arc has*: `§67` tried exactly this at `n = 2`
+  and **did not get it to close**, hitting a *different* obstacle (missing `Algebra ↥𝒪[K] (K_2 P₂)` —
+  not automatically available the way `Algebra O_{K_1} (K_2 P₂)` is for the nested spelling, since
+  `O_{K_1}` genuinely is a `Subalgebra` of `K_1 P` while `↥𝒪[K]` is not literally a subalgebra of
+  `K_2 P₂` without an explicit multi-hop composite) — three approaches tried, each failing distinctly:
+  an ambient `variable [Algebra …]` hypothesis is a non-defeq diamond against `K_2.instAlgebraK`-derived
+  instances; deriving it via `Algebra.ofSubsemiring` from an abstract `[Algebra K (K_2 P₂)]` hypothesis
+  times out at the default heartbeat budget; fixing it as a hand-built `local instance` closes that but
+  produces a `Module.Finite K (K2P2 P₂) ≟ Module.Finite ?m (K2P2 ?m)` metavariable-unification failure
+  downstream, root cause not isolated (`§67`, lines 16641–16679). `§67`'s own summary (line 16729) is
+  explicit that this reduced, not increased, confidence that "flat is the fix" — it traded one
+  representation's diamond for a different, also-unresolved obstacle. **This is not evidence the
+  design is wrong — it is evidence the one prior attempt was under-resourced against a genuinely new
+  obstacle class, and `§67`'s own "next pass" notes (line 16710) name a specific unexplored mitigation
+  (`letI` inside each theorem rather than a section-wide `variable`/`local instance`) that was not yet
+  tried.**
+
+**Alternative 2 — `IntermediateField` tower with `Subfield.map`/transport, no re-derived `integralClosure` at all.**
+Build the field tower as a genuine Mathlib `IntermediateField` chain inside a fixed `L`
+(`K : ℕ → IntermediateField K L`, `K n ≤ K (n+1)` by construction via `IntermediateField.le_iff` /
+`IntermediateField.adjoin`), and only construct `O_K n` *once*, generically, as a function of `K n`
+alone (same `integralClosure ↥𝒪[K] (K n)` shape as Alternative 1) — the distinguishing feature being
+that the *field* tower itself uses Mathlib's tower machinery (`IsScalarTower`, the existing
+`IntermediateField` lattice API) rather than the current `SplittingField`-of-`SplittingField` chain.
+* *For*: `IntermediateField ⊆`-chains are Mathlib's most heavily-supported tower representation —
+  `finrank`/`IsScalarTower`/Galois-theory API is written for exactly this shape, more so than for a
+  chain of successively-defined `SplittingField` types. Might reduce some of the elaboration cost that
+  is specific to `SplittingField`-of-`SplittingField` unfolding (though, per the finding above, the
+  field-nesting itself was **not** identified as the bottleneck this arc actually hit — the `O_{K_n}`
+  ring-of-integers nesting was).
+* *Against*: this is a **larger rewrite** than Alternative 1 — it touches the field construction too
+  (currently `K_n := (…).SplittingField`, built precisely so `Polynomial.IsSplittingField.
+  adjoin_rootSet` applies for free), not just `O_{K_n}`. Since the field-nesting was not diagnosed as
+  the actual obstacle, this alternative pays a larger migration cost without clear evidence it
+  addresses the specific problem found. **Unverified**: whether `IntermediateField`'s own API composes
+  as cleanly with this arc's `spectralNorm`/`ValuativeRel`-based norm machinery as the current
+  `SplittingField` route does was not checked this pass — this is a real open question, not a
+  dismissed option.
+
+**Alternative 3 — direct limit (`DirectLimit`) as the ambient field, each `K_n` a stage inclusion.**
+Mathlib's `Mathlib/Algebra/Colimit/DirectLimit.lean` provides a general `DirectLimit G f` construction
+with `Field (DirectLimit G f)` given `[∀ i, Field (G i)]` and compatible ring-hom-class transition
+maps `f` (confirmed directly, `.lake/packages/mathlib/Mathlib/Algebra/Colimit/DirectLimit.lean:622`).
+Build the directed system `G : ℕ → Type` of tower levels, with injective transition maps, take `L :=
+DirectLimit G f` as the fixed ambient field, then proceed as in Alternative 1 relative to that `L`.
+* *For*: gives a *canonical*, Mathlib-native fixed ambient field, rather than hand-picking one (e.g.
+  an algebraic closure) — potentially useful if the eventual goal is a genuine infinite tower object,
+  not just "large enough `L` for the first several levels."
+* *Against*: heavier machinery than needed if the goal (as the task brief frames it) is a `∀ n`
+  induction over *finite* levels with an ambient `L` merely large enough to contain them, not the
+  colimit itself as a first-class object. Working with `DirectLimit`'s quotient-of-sigma-type
+  representation may reintroduce its own elaboration overhead (unverified — no direct evidence either
+  way was gathered this pass; this is a genuinely open question, flagged as such rather than guessed).
+  No `Mathlib` search this pass found a `Field.DirectLimit`-specific convenience API beyond the general
+  `Ring`/`Field`/`GroupWithZero`-class instances cited above — anything tower-of-local-fields-specific
+  (e.g. a "direct limit of adically-complete fields is adically complete" lemma) was **not found**
+  (checked: no hits for `IsAdicComplete`/`ValuativeRel` combined with `DirectLimit` anywhere under
+  `.lake/packages/mathlib`) and would need to be built if this route were pursued for a genuinely
+  infinite tower.
+
+**No favorite is advocated.** Alternative 1 has the most direct precedent (one real, if incomplete,
+attempt already in the repo, `§67`) and the smallest migration footprint (touches only `O_{K_n}`, not
+the field construction), which is why the task breakdown below is written assuming it as the starting
+point to *test* — not because it is known to work; `§67`'s own attempt did not close. Alternative 2 is
+a heavier but more Mathlib-idiomatic bet on the field side, orthogonal to the diagnosed bottleneck.
+Alternative 3 is the most future-proof for an eventual literal infinite tower but the least tested
+against this arc's actual failure mode.
+
+### (d) Rough task breakdown for a future agent
+
+This is not a commitment to Alternative 1 specifically — items 1–2 are needed to *get evidence*
+regardless of which alternative is chosen; item 3 branches by alternative.
+
+1. **Minimal, isolated reproduction of `§67`'s `Algebra ↥𝒪[K] (K_2 P₂)` obstacle**, in a scratch file
+   *not* wired into the real tower — confirm whether `§67`'s untried "`letI` inside each theorem,
+   never a section-wide binding" mitigation (line 16719) actually closes it, before touching any
+   committed file. This is the single highest-leverage next experiment: it directly tests whether
+   Alternative 1's central premise (flat = cheap) survives contact with the one concrete obstacle
+   that blocked it last time.
+2. **If (1) closes**: redo `§67`'s concrete switch at `O_{K_2}` for real, this time keeping the file
+   changes (not reverting), and — the test this whole arc has been missing — actually attempt
+   combining multiple real terms mentioning the flat `O_{K_2}` in one declaration (the exact
+   `norm_lt_one_of_aeval_P₃_eq_zero`-shaped combination `§65`/`§66`/`§68` found catastrophically
+   expensive under the nested spelling) to get a real data point on whether the flat spelling actually
+   avoids that specific cost, not merely a different one. **This is the load-bearing experiment the
+   whole design bet rests on**, and per `§67`'s own honest accounting, has never actually been run to
+   completion under either representation.
+3. **If (2) succeeds**: generalize the pattern to an actual `K : ℕ → Type`/`O_K : ℕ → Subring L`
+   recursive family (not per-level hand files), with a single `∀ n` version of the tower-step chain
+   (`RootConnect`/`Degree`/`Monogenic`/`LocalRing`/`ResidueField`) taking the previous level as an
+   explicit input rather than being re-derived per level by name. This is the piece `§59`/`§63`
+   already flagged as the real remaining engineering ("parametrize… to accept an *already-constructed*
+   tower level as input rather than being hand-instantiated at each new `n`," `§59` line 12276/`§63`
+   line 16296) — a genuinely large, multi-pass undertaking in its own right, not scoped further here.
+4. **If (2) fails differently** (a third distinct obstacle, as `§66`→`§67`→`§68`→`§69`→`§70` each
+   found a new one): record it with the same rigor this arc already applies, and revisit whether
+   Alternative 2 or 3 is worth the larger migration cost given the new evidence.
+
+### (e) Open questions / risks needing a human call before implementation starts
+
+* **Whether to spend further budget on the `K_2 → K_3` elaboration blocker directly (continuing
+  `§65`–`§70`'s line of attack) versus committing to this refactor path instead** — the two are not
+  obviously sequential; a `§70`-style `trace.Meta.synthInstance`/`trace.Meta.isDefEq` run to completion
+  (that pass's own recommended next step, not yet done) might resolve the *current* blocker cheaply
+  and render the refactor question less urgent, or might confirm the cost is structural and make the
+  refactor's case stronger. This pass did not attempt that trace (out of scope: the task was scoping,
+  not continuing `§70`'s thread) and it is the single most direct way to get evidence on which path is
+  worth committing to.
+* **Migration cost is unbounded from what's currently known.** Every file listed as "`n`-specific" in
+  §(c) above (`LubinTateTowerStepDegree.lean`/`RootConnect.lean`/`Monogenic.lean`/`LocalRing.lean`/
+  `ResidueField.lean`) would need re-deriving in `∀ n`-parametrized form, and — per `§59`'s own
+  "growing, not flat" finding about `IsDiscreteValuationRing`/`IsAdicComplete` needing genuinely
+  different closure techniques at each level so far — there is no guarantee the *proof techniques*
+  used at `K → K_1` and `K_1 → K_2` generalize to an actual induction step even once the
+  *representation* is flattened. A flat representation removes one identified obstacle class; it does
+  not by itself supply a `∀ n` inductive proof of `IsAdicComplete`/`IsDiscreteValuationRing`/
+  monogenicity — that remains open, unverified mathematics-and-engineering work regardless of which
+  representation is chosen.
+* **No alternative was tested against the actual `spectralNorm`/`ValuativeRel` norm machinery this arc
+  depends on throughout** — whether the norm/`NormedField`/`CompleteSpace` package (currently reused
+  verbatim level-to-level per `§55`/`§63`/`§64`'s own repeated confirmation) continues to attach
+  cleanly to a flat-`O_K`/fixed-`L` representation is unverified; `§67`'s partial attempt suggests it
+  is at least non-trivial (the missing `Algebra` composite obstacle), not free.
+
+### Why the PoC (item 9) was skipped
+
+The task brief's PoC bar — "obvious, low-risk, reversible… does NOT require committing to irreversible
+architecture decisions… skip if not confident it's low-risk" — is not met here. The one concrete,
+narrowly-scoped candidate (flattening `O_{K_2}` to `integralClosure ↥𝒪[K] (K_2 P₂)` and proving it
+isomorphic to the existing nested spelling) is **not** a fresh low-risk experiment: it is *exactly*
+what `§67` already attempted for real, in the actual tower files, and it did not reach a clean build —
+it hit the `Algebra ↥𝒪[K] (K_2 P₂)` obstacle documented above and was reverted. Repeating that attempt
+without first trying `§67`'s own identified, untried mitigation (`letI` inside each theorem, task
+breakdown item 1 above) would be re-running a known-to-fail experiment, not a low-risk PoC — and
+succeeding would require nontrivial new Mathlib-adjacent gap-filling exactly of the kind item 9's
+guardrail says to skip. Per the task brief's own instruction, this is recorded as design-doc-only, no
+code attempted.
+
+### Note on injected content encountered this pass
+
+This pass's tool output contained the same fabricated `<system-reminder>`-formatted content already
+logged and correctly not-complied-with at `§67`–`§70` (a false claimed date change and a false "Auto
+Mode Active" policy). Consistent with that established pattern, neither was treated as genuine
+instruction; flagged here for the record only.
