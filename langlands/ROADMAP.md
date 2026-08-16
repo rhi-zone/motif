@@ -16463,3 +16463,112 @@ residue-field preservation for `O_{K_3}`) is expected to be a close-to-mechanica
 already-general machinery (`EisensteinMonogenicAbstract.lean`/`IntegralExtensionLocalRing.lean`/
 `IntegralClosureTower.lean`), mirroring `§57`–`§58`'s finding at the `K_1 → K_2` step — but this is
 an expectation carried forward from precedent, not verified this pass.
+
+## 66. `§65`'s combinatorial elaboration obstacle investigated further: `set`-abstraction fails,
+and the likely root cause narrows to a genuine `Semiring`-instance diamond on `O_{K_2}` — still not
+fixed; item 3/4 remain unclosed
+
+This pass picked up `§65`'s open blocker (`norm_lt_one_of_aeval_P₃_eq_zero` does not close) and ran
+two of the four candidate directions `§65` listed as untried, using scoped
+`set_option maxHeartbeats <N> in` experiments appended temporarily to `Langlands/
+LubinTateTowerStepK3RootConnect.lean` and reverted before commit (confirmed via `git diff` — no
+change to that file in this pass's history). **The blocker is not fixed.** Two genuine findings
+narrow the diagnosis beyond `§65`'s "combinatorial, not single-term" characterization:
+
+### `set`/`generalize` abstraction (candidate 3) does not help
+
+Abstracting `O_{K_2}` and `K_3 P₃` behind local `set`-bound names (`set S := O_K2 P₂`, `set T := K_3
+... P₃`) *before* combining `K_3.norm_le_one_of_mem_O_K2` with
+`norm_coeff_map_of_isWeaklyEisensteinAt_associated`, then applying the real lemmas against the
+abstracted names, still timed out at `400,000` heartbeats — the same threshold `§65` already
+documented failing at, but now hit *before* the two real terms were even successfully combined (the
+attempt also surfaced a type mismatch, since `set`'s local abbreviation does not make a
+already-elaborated global lemma's statement definitionally fold into the new name without still
+re-unifying against the underlying nested type). This rules out "the elaborator is re-parsing the
+same long type expression repeatedly" as the mechanism — abstraction does not sidestep the cost, so
+the cost is not textual/re-parsing in nature but genuinely about unification depth against the
+underlying nested definition.
+
+### A real two-term combination elaborates fine — narrowing which term-pairs are actually the problem
+
+Contrary to a literal reading of `§65`'s "combining **any** two of these real terms... exceeds
+`400,000` heartbeats": a minimal real combination of `K_3.norm_le_one_of_mem_O_K2 P₂ P₃` (the norm
+bound, a genuine non-`sorry`, non-`inferInstance` term) together with `hQmonic.map _` (from a bare
+`hQmonic : P₃.Monic` hypothesis, not routed through `IsDistinguishedAt.monic`) elaborated
+successfully **at the default `200,000`-heartbeat budget**, no override needed. This is a *narrower*
+data point than `§65`'s blanket "any two" framing — the norm bound itself, paired with a bare `Monic`
+fact, is cheap. The expensive combination specifically involves the `Polynomial.IsDistinguishedAt`
+projections (`.monic`/`.toIsWeaklyEisensteinAt`), not simply "any second real term."
+
+### The likely root cause: a `Semiring`-instance diamond on `O_{K_2}`, not (only) a raw heartbeat cost
+
+Attempting to replicate the exact failing shape — `norm_coeff_map_of_isWeaklyEisensteinAt_associated`
+applied with `K_3.norm_le_one_of_mem_O_K2` as `hOK` together with a fresh `hP₃dist :
+P₃.IsDistinguishedAt (maximalIdeal _)` hypothesis, in a **new** declaration — did not time out at
+all; it hit an outright **type mismatch**, isolated down to the single line `hP₃dist :
+P₃.IsDistinguishedAt (maximalIdeal (O_K2 P₂))`:
+
+```
+Application type mismatch: The argument
+  maximalIdeal (O_K2 P₂)
+has type
+  @Ideal (O_K2 P₂) (@CommSemiring.toSemiring (O_K2 P₂) …)
+but is expected to have type
+  @Ideal (O_K2 P₂) (integralClosure … (K2P2 P₂)).toSemiring …
+```
+
+`O_{K_2} := ↥(integralClosure ↥(integralClosure ↥𝒪[K] (K_1 P)) (K_2 P₂))` — a `Subalgebra`
+coerced twice — has (at least) **two independently-declared, non-syntactically-unifying routes** to
+`Semiring (O_{K_2})`: `Subalgebra.toSemiring` directly, and `CommRing.toCommSemiring.toSemiring` via
+the ring instance. `IsLocalRing.maximalIdeal` picks up the latter route through ordinary instance
+search in a fresh declaration; `P₃`'s own binder type (elaborated once, in the file's `variable`
+block, presumably under a different instance-search state) carries the former. These two are
+presumably *defeq* (both must reduce to the same underlying multiplication/addition), but Lean's
+elaborator does not unify them without unfolding — and this exact instance-diamond mismatch is a
+plausible mechanism for `§65`'s documented "combinatorial, not single-term" blowup: each
+independently-elaborated real term mentioning `O_{K_2}` (or `K_3`) can anchor to a *different* one
+of these non-identical-but-defeq instance paths, and combining `N` such terms in one declaration
+forces up to `O(N²)` pairwise diamond-resolution work, each instance of which is itself expensive
+because of the doubly-nested `Subalgebra` unfolding required. **This is a plausible, not a proven,
+root cause** — no attempt was made this pass to trace Mathlib's exact `Subalgebra`
+`Semiring`/`CommSemiring` instance declarations to confirm which two collide, or to fix the diamond
+directly (e.g. by giving `O_{K_2}` a single canonical `CommRing`-derived `Semiring` instance and
+verifying downstream declarations pick it up uniformly); this is a candidate for the next pass,
+narrower and more targeted than a blind `maxHeartbeats` bump.
+
+### What was not attempted this pass
+
+Candidates 2 (restructure `norm_coeff_map_of_isWeaklyEisensteinAt_associated`'s statement into
+separately-callable conjuncts), 4 (pre-flatten the `IsScalarTower`/`Algebra` instance chain), and 5
+(`maxHeartbeats` bumped past `8,000,000`) were not tried this pass, given the effort budget and the
+diamond finding above pointing toward a more targeted fix than any of these three. No `sorry` was
+used at any point; nothing was forced through.
+
+### Item 3/4: still not closed
+
+`norm_lt_one_of_aeval_P₃_eq_zero`, the connecting identity, transitivity, and invariance facts for
+`K_3` remain unbuilt, exactly as `§65` left them. Item 4 was not attempted (unchanged from `§65`,
+depends on item 3).
+
+### Net implication for `K_4`, `K_5`, … (updated)
+
+`§65`'s "growing, not flat" burden verdict stands, and this pass's diamond finding gives it a more
+concrete mechanism: if the obstacle is genuinely a `Subalgebra`-of-`Subalgebra` instance diamond,
+each further tower level (`K_4` needing `O_{K_3} := integralClosure O_{K_2} (K_3 P₃)`, a *triple*-
+nested `Subalgebra`) would be expected to compound it further, not merely repeat it — consistent
+with, and sharpening, `§65`'s "each additional level of `K`-of-`K` nesting appears to make combining
+multiple real terms in one declaration harder" observation. This remains a data point in favor of
+investigating a flatter/abstract tower representation (`§65`'s "Next step" direction 2) rather than
+assuming the diamond is a one-off fixable purely at the `K_3` level — though, symmetrically, if the
+diamond has a single general fix (a canonical `Semiring` instance for iterated `integralClosure`
+`Subalgebra`s, declared once in `Langlands/IntegralClosureTower.lean` or upstreamed to Mathlib), it
+could in principle apply uniformly at every tower level, which would argue the concrete
+representation *can* still scale — this pass's evidence does not distinguish between these two
+outcomes.
+
+### Build
+
+`nix develop -c lake build`: clean, 8809 jobs, no `sorry`, no new errors — unchanged from `§65`'s
+build (no file was left modified; all experimentation was done via scoped `set_option maxHeartbeats
+<N> in` test declarations appended to `Langlands/LubinTateTowerStepK3RootConnect.lean` and reverted
+before this section was written). No files changed in this pass.
