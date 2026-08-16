@@ -16148,3 +16148,168 @@ Two independent options, neither required to close what this pass set out to do:
    specifically), so that `K_4`, `K_5`, … follow by applying one lemma repeatedly instead of writing
    a new file per level. This is the test that would finally settle `§59`'s question outright, rather
    than accumulate further individual data points.
+
+## 64. `K_3` built as a genuine field object with its `NormedField`/`Algebra O` package; a new
+elaboration-performance obstacle class found and fixed; `[K_3 : K_2] = q` and monogenicity/
+residue-field preservation **not attempted** — scoped precisely, with the `piTorsion`-level question
+this pass's own derivation resolves in passing
+
+This pass took `§63`'s "Not yet done, and not claimed" item — `K_3` as a genuine field object, not
+merely its Eisenstein polynomial `P₃` — as its task: items 1–2 of the four-item brief (define `K_3`;
+give it its `NormedField`/`CompleteSpace`/`Algebra O` package) close. Items 3–4 (`[K_3:K_2]=q`;
+monogenicity/residue-field preservation for `O_{K_3}`) do not close and were not attempted beyond
+scoping — see below for exactly why, and what the scoping itself already establishes.
+
+### Item 1 (`K_3` as a field object): closes, and is fully mechanical
+
+`LubinTate.K_2` (`Langlands/LubinTateTowerStepConcrete.lean`) was already generic in its own free
+parameters `O'`/`K'` — the task brief's own framing anticipated this. `K_3 P₃ := K_2 (K' := K') P₃`
+(`Langlands/LubinTateTowerStepConcreteK3.lean`) is *literally* that same construction, instantiated
+one level further; its `Field`/`Algebra K'`/`IsSplittingField` instances forward from `K_2`'s own
+verbatim. No new mathematical or engineering content. `K_3` is marked `@[reducible]` (a deviation
+from `K_2`'s own plain `def`, forced by the elaboration obstacle below, not a style choice — see
+Item 2).
+
+### Item 2 (`NormedField`/`CompleteSpace`/`Algebra O` package): closes, mechanical modulo two new
+elaboration obstacles
+
+`Langlands/LubinTateTowerStepSplittingField.lean`'s `NormExtension` section (`K_2`'s own norm
+package) is likewise already generic in `O'`/`K'`, and its own docstring predicted exactly this
+reuse ("reusable verbatim at the *next* tower step"). **Confirmed directly, not assumed**:
+`K_2.instNontriviallyNormedField`/`.instIsUltrametricDist`/`.instCompleteSpace`/`.instNormedSpace`,
+applied at `O' := O_{K_2}`, `K' := K_2 P₂`, solve for `K_3` verbatim — the only prerequisite,
+`Algebra O_{K_2} (K_2 P₂)`, resolves by ordinary instance search (`O_{K_2}` is, exactly as
+`Langlands/LubinTateTowerStepMonogenic.lean`'s docstring found one level down for `O_{K_1}`, a
+genuine `Subalgebra`-coerced type of `K_2 P₂`). The one genuinely new piece is `K_3.instAlgebraO`,
+the four-hop composite `Algebra O (K_3 P₃)` (`O → O_{K_1} → O_{K_2} → K_2 P₂ → K_3 P₃`, one hop
+longer than `K_2.instAlgebraO`'s three-hop composite) — new plumbing, but mechanical in shape,
+exactly as the task brief anticipated.
+
+**Two new elaboration obstacles were found and fixed while building this, neither previously seen
+at the `K → K_1` or `K_1 → K_2` steps:**
+
+1. **`K_2` applied at a `K_2`-nested `K'`.** Hand-writing a goal or instance whose stated type is
+   `K_2 (K' := K_2 (K' := K_1 P) P₂) P₃` — i.e. applied at a base field `K'` that is itself a `K_2`
+   application, rather than a `K_1`-application as at the `K_1 → K_2` step — fails with "Application
+   type mismatch" if `O'` is left implicit or `_`: the elaborator never unifies `O'` with `P₃`'s
+   actual ring before checking the application. This is the *same shape* of diamond `§62`'s
+   Obstacle 2 already diagnosed for the doubly-nested `integralClosure` type, now hitting `K_2`/
+   `K_3`'s own `SplittingField`-based construction instead, confirming the general lesson ("name
+   every implicit type parameter, don't rely on unification") extends to a new site. **Fix**:
+   supply `O'` explicitly by name everywhere `K_3`/`K_2` is applied at this doubly-nested level.
+2. **Catastrophic elaboration cost, not just rejection.** Even with `O'` named, an *explicit proof
+   term* checked against a `K_3 (O' := ...) (K' := ...) P₃`-mentioning goal is not merely slow but
+   effectively intractable: a single `instance` built from an explicit witness term exceeded
+   `1_000_000` heartbeats, and one variant was left running unbounded for over four minutes with no
+   result. **Two independent, confirmed-by-timing fixes**: (a) `inferInstance` (typeclass search)
+   closes the identical goal in about two seconds where the equivalent explicit witness term times
+   out — used for every `NontriviallyNormedField`/`IsUltrametricDist`/`CompleteSpace`/`NormedSpace`/
+   `FiniteDimensional` instance; (b) for `K_3.instAlgebraO` (a hand-built composite, not a
+   pre-existing instance `inferInstance` could find), omitting the explicit return-type ascription
+   and letting Lean infer it — ascribing `Algebra O (K_3 ...)` up front propagates that expected
+   type into every inner `algebraMap`/`.comp` step during elaboration and does not terminate;
+   inferring the type and paying the one needed defeq check only once, at each downstream use site,
+   is fast (confirmed directly). A third, smaller mitigation — naming `O_{K_2}`/`K_2 P₂` once via
+   `abbrev` rather than repeating the raw nested expression at each site — compounds with the above.
+   Full account, including the specific timings, in `Langlands/LubinTateTowerStepK3.lean`'s module
+   docstring.
+
+This is a genuinely new obstacle *class* relative to `§48`–`§63`: prior "Application type mismatch"
+diamonds were outright rejections (provable-or-not was never in question, only whether the stated
+goal elaborated at all); this one is a goal that **is** provable and **is** accepted by the checker,
+just only after reformulating to avoid an elaboration cost that scales unworkably with how many
+times the doubly-`K_2`-nested type is written out fresh. Whether this compounds further at a `K_4`
+level (`K_3`-of-`K_3`-of-`K_2`-of-`K_1`) is not tested — plausible, not verified.
+
+### Items 3–4: not attempted, scoped precisely — including a correction to the task brief's own
+framing
+
+Item 3 (`[K_3:K_2]=q`) needs a `K_3`-level analogue of `Langlands/LubinTateTowerStepRootConnect.lean`
++ `Langlands/LubinTateTowerStepDegree.lean` (the "connecting identity" `eval f β' = algebraMap β`,
+the open-unit-ball norm bound for roots of `P₃`, the `π`-torsion transitivity/invariance argument,
+reassembly into `(K_2 P₂)⟮β'⟯ = ⊤` and the `finrank` statement) — genuinely new content each of the
+prior two tower steps needed its own file for, not a corollary of items 1–2. Item 4 (monogenicity/
+residue-field preservation for `O_{K_3}`) is, by contrast, expected to be close to free once item 3
+supplies a generator: `EisensteinMonogenicAbstract.lean`/`IntegralExtensionLocalRing.lean`/
+`IntegralClosureTower.lean` are all already fully general in `R`/`L`, not tower-specific — this is
+exactly the "no new mathematical content, only new Lean engineering" situation `§57`–`§58` found for
+the analogous `K_1 → K_2` step, and nothing in this pass's investigation contradicts it.
+
+**Neither was attempted this pass**, for the same reason `§56`–`§59` repeatedly gave for stopping
+rather than rushing: item 3's own machinery (`RootConnect`+`Degree`'s combined size at the `K_1→K_2`
+step) is comparable to this pass's own item-1–2 work, and attempting it in the remaining budget
+risked either a rushed, under-verified multi-hundred-line commit or a `sorry` — both against this
+project's hard constraints. What *is* recorded, as real analytical progress toward item 3 (not
+merely a restatement of the brief):
+
+**The task brief's framing — that item 3 needs "`piTorsion hπ hf 2`, the `K_2`-level torsion, one
+level up from what `K_1`/`K_2` used" — does not hold, checked by direct derivation from the already-
+built machinery, not assumed.** `Langlands/LubinTateRootTranslation.lean`'s
+`exists_piTorsion_translate_of_eval_f_eq` (the transitivity engine both `§50`'s `K → K_1` argument
+and `Langlands/LubinTateTowerStepRootConnect.lean`'s `K_1 → K_2` argument already use) compares two
+roots of the *same* equation `eval f β = eval f β'` — a single application of the *original* series
+`f`, never `iter f n` — and its conclusion is always `piTorsion hπ hf 1` (order `q`), independent of
+which tower level `β`/`β'` live at. `Langlands/LubinTateTowerStep.lean`'s own `TowerStep` section
+confirms the pattern generating each Eisenstein polynomial always shifts by `f(X) - α_{n-1}` (the
+*previous* level's own generator, via the fixed series `f`), never `iter f n`. So a `K_3`-level
+generator `β''` (root of `P₃`) satisfies `f(β'') = β'` (`β'` the `K_2`-level generator, itself
+satisfying `f(β') = α`, `α` satisfying `f(α) = 0` — `β''` is a genuine `π³`-torsion point in the
+classical sense, but the *relative* translation group connecting two roots of the *same* equation
+`f(X) = β'` is, by the general shape of `exists_piTorsion_translate_of_eval_f_eq`, `piTorsion hπ hf
+1` again — exactly the same level used at `K_1 → K_2`, not a bumped index. The genuinely new content
+`§64`'s hypothetical item-3 file would need is not a different `piTorsion` level, but the *invariance*
+half (`piTorsion_one_K_2_eq_algebraMap_image`'s `K_3`-level analogue: level-`1` torsion does not grow
+from `K_2` to `K_3`) and the connecting-identity half (`eval_f_eq_of_aeval_P₂_eq_zero`'s analogue) —
+both mirror their `K_1 → K_2` counterparts in *shape*, but (per this pass's Item 2 findings) will
+themselves need the doubly-`K_2`-nested-type mitigations (named `O'`, `inferInstance` over explicit
+terms, no premature return-type ascription) to elaborate at all.
+
+### Is the tower step now converging to something reusable — the three-level comparison the task asked for
+
+Across `K → K_1` (`§40`–`§48`), `K_1 → K_2` (`§48`–`§63`), and this pass's `K_2 → K_3` attempt:
+
+* **Splitting-field definition + `NormedField`/`CompleteSpace`/`Algebra O` package (items 1–2)**:
+  genuinely converging. `K_2`'s own construction (`def`, `NormExtension` section) was *already*
+  written generically enough at the `K_1 → K_2` step to be reused **verbatim** for `K_3` — no new
+  mathematics needed for the reusable parts, only a mechanical instantiation. The one new piece each
+  level needs (the explicit `Algebra O (K_n P_n)` composite, one hop longer each time) is
+  mechanical in *content* — but, newly discovered this pass, **not free in elaboration cost**: each
+  additional level of `K`-of-`K` nesting appears to make direct term-checking against the composite
+  type more expensive, forcing an increasingly deliberate set of elaboration-avoidance techniques
+  (documented above) that did not exist at the `K_1 → K_2` step, where the nesting was only one level
+  deep. **This is new data against unconditional convergence**: the *mathematical* content is
+  converging, but the *engineering* cost per level, on this one data point, is not obviously flat.
+* **Degree/monogenicity/residue-field (items 3–4)**: not tested this pass (item 3 not attempted), so
+  this pass adds no new data point on `§59`'s standing finding that these need fresh, non-index-
+  bumped content at every level (`§59`'s `IsDiscreteValuationRing`/`IsAdicComplete` findings, `§56`–
+  `§58`'s residue-field findings). What this pass *does* add: a corrected understanding that the
+  `piTorsion` level used in the transitivity/invariance argument is **not** tower-level-indexed (it
+  is always level `1`, the order-`q` translation group for roots of "the same equation"), contrary to
+  what a naive index-bumping intuition (and the task brief itself) suggested — the *invariance* half
+  (does level-`1` torsion already fully exist at the previous level, so it doesn't need to grow) is
+  where the genuinely new content lives at each step, not the transitivity level index. This
+  clarification should make a future item-3 attempt strictly easier to scope than the task brief's
+  original framing suggested.
+
+**No milestone claim is made about `K_4`, `K_5`, …**: this pass closed two of the four items the task
+asked for, found a new (and now-documented) obstacle class in the two it closed, and precisely scoped
+(without attempting) the two it did not, including a genuine correction to the initial task framing.
+
+### Build
+
+`nix develop -c lake build`: clean, 8808 jobs, no `sorry`, no new errors (only pre-existing-pattern
+unused-variable/unused-section-variable lint warnings, same pattern as every prior pass in this arc).
+Files added: `Langlands/LubinTateTowerStepConcreteK3.lean`, `Langlands/LubinTateTowerStepK3.lean`.
+Files changed: `Langlands.lean`. Commit `bcfbf74`.
+
+### Next step
+
+Build the `K_3`-level `RootConnect`+`Degree` analogue (item 3), applying this pass's elaboration
+findings from the start (never write the doubly-`K_2`-nested type as a fresh, explicit-term-checked
+goal; name `O'` explicitly; prefer `inferInstance`/type-inference over explicit ascription wherever
+possible) — this should avoid re-discovering the same obstacles the hard way. Once item 3 supplies a
+generator `β''` of `K_3` over `K_2` with Eisenstein minimal polynomial `P₃`, item 4 (monogenicity/
+residue-field preservation for `O_{K_3}`) is expected to be a close-to-mechanical instantiation of
+already-general machinery (`EisensteinMonogenicAbstract.lean`/`IntegralExtensionLocalRing.lean`/
+`IntegralClosureTower.lean`), mirroring `§57`–`§58`'s finding at the `K_1 → K_2` step — but this is
+an expectation carried forward from precedent, not verified this pass.
