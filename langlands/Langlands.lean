@@ -13,6 +13,7 @@ import Langlands.CyclicGaloisSubfields
 import Langlands.CyclicSubgroups
 import Langlands.CyclotomicDifferentExponent
 import Langlands.EisensteinMonogenicAbstract
+import Langlands.EisensteinUniformizerAbstract
 import Langlands.FiniteIndexNormalSubgroupMulEquiv
 import Langlands.FiniteIndexSubgroupsZ
 import Langlands.HeightOneSpectrumRationalPrimeTower
