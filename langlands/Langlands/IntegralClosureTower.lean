@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Mathlib.RingTheory.IntegralClosure.IsIntegralClosure.Basic
 import Mathlib.RingTheory.LocalRing.Defs
+import Mathlib.RingTheory.PrincipalIdealDomain
 
 /-!
 # Integral closure commutes with towers: `integralClosure R M` and `integralClosure (integralClosure R L) M`
@@ -29,23 +30,37 @@ and `isLocalRing_integralClosure_integralClosure` transport those two specific i
 two spellings (`↥S` and `↥S.toSubring` are defeq, so a bare instance ascription suffices once the
 `Subring`-level equality is rewritten).
 
-**`IsDiscreteValuationRing`/`IsAdicComplete` transport does *not* close here.** Both classes bundle
-a further instance argument into their own signature (`IsDiscreteValuationRing` requires
-`[IsDomain R]`; `IsAdicComplete`'s ideal argument is `IsLocalRing.maximalIdeal`, itself requiring
-`[IsLocalRing R]`), and that auxiliary instance is *also* stated relative to one spelling
-(`↥(integralClosure R M).toSubring`) but gets embedded, at elaboration time, as a **fixed** proof
-term inside the very type being rewritten — `rw`'s motive-generalization then tries to abstract the
-rewritten subterm out of a type whose other, non-generalized argument still depends on the concrete,
-un-abstracted term, and fails with "motive is not type correct". This was hit consistently (not a
-one-off): every attempt to rewrite `IsDiscreteValuationRing`/`IsAdicComplete` across the
-`Subring`-level equality, including forcing the auxiliary `IsDomain`/`IsLocalRing` instance into
-scope first via `haveI`, hit the same failure. The blocker is a genuine Lean elaboration obstacle
-(dependent motives across classes with nested instance arguments), not a mathematical gap — the
-underlying *fact* (both rings are DVRs / adically complete, since they are literally the same ring)
-is true, but turning it into a Lean `instance` needs a different technique (e.g. building an
-explicit `RingEquiv.subringCongr`-based ring equivalence and proving `IsDiscreteValuationRing`/
-`IsAdicComplete` transport along a `RingEquiv` from scratch, which Mathlib does not provide
-off-the-shelf) that was not completed in this pass. See `ROADMAP.md` for the precise handoff.
+**`IsDiscreteValuationRing`/`IsAdicComplete` transport does *not* close here, even after
+decomposing each into its constituent pieces.** `isPrincipalIdealRing_integralClosure_
+integralClosure` closes — `IsPrincipalIdealRing`, like `IsDomain`/`IsLocalRing`, has no further
+instance argument nested in its own signature (only `[Ring R]`), so the same `toSubring` + `rw`
+technique goes through unchanged. But `IsDiscreteValuationRing.not_a_field'` (`maximalIdeal R ≠
+⊥`) and the two pieces `IsAdicComplete` extends (`IsHausdorff`, `IsPrecomplete`) all mention
+`IsLocalRing.maximalIdeal`, which itself needs a `[IsLocalRing R]` instance argument to even
+typecheck — and *that* instance, once baked into an already-elaborated hypothesis (e.g. `inst :
+IsHausdorff (maximalIdeal ↥(integralClosure R M)) ↥(integralClosure R M)`), is a **fixed** proof
+term referencing the *original*, non-`toSubring` type, not a uniformly-abstracted one. `rw`'s
+motive-generalization then tries to abstract the ring type being rewritten out of a term whose
+embedded `[IsLocalRing]` argument still concretely mentions the un-abstracted original type, and
+fails with "motive is not type correct" — regardless of whether the matching `[IsLocalRing
+↥(integralClosure R M).toSubring]` instance is *also* made available in context first (tried, via
+`haveI`; ascription via `:=` performs a defeq check against the already-elaborated term, it does
+not re-elaborate that term's internal instance arguments against the new hypotheses in scope).
+`cases`/`subst` on the underlying type-level equality was tried too, and fails for the same
+structural reason (`Dependent elimination failed`) since neither side of the equality is a bare
+local variable.
+
+This is a genuine **second**, structurally distinct obstacle from what blocked `IsDomain`/
+`IsLocalRing` initially (those two have no such nested `maximalIdeal`-style dependency, which is
+exactly why they close) — not a mathematical gap (the underlying fact, that both spellings are DVRs
+/ adically complete, is true, since they are literally the same ring), and not closeable by a small
+plumbing fix: the principled route (`RingEquiv.subringCongr toSubring_integralClosure_eq`, transport
+`IsLocalHom` for both directions of the equivalence, `IsLocalRing.maximalIdeal_comap` to identify the
+pushed-forward maximal ideal, then transport `IsHausdorff`/`IsPrecomplete` along the resulting
+ring-and-ideal-compatible equivalence) needs a general "`IsHausdorff`/`IsPrecomplete` transport along
+a compatible `RingEquiv`" lemma that Mathlib does not provide (checked: no `LinearEquiv`- or
+`RingEquiv`-indexed transport lemma for either class exists), i.e. new general infrastructure, not a
+few lines. Not attempted further this pass. See `ROADMAP.md` for the precise handoff.
 -/
 
 section IsIntegralClosureTower
@@ -109,5 +124,18 @@ instance isLocalRing_integralClosure_integralClosure
   have hloc : IsLocalRing ↥(integralClosure R M).toSubring := inst
   rw [toSubring_integralClosure_eq (R := R) (L := L) (M := M)] at hloc
   exact hloc
+
+/-- **`IsPrincipalIdealRing` transports from `↥(integralClosure R M)` to `↥(integralClosure
+(↥(integralClosure R L)) M)`.** Same technique as `isDomain_integralClosure_integralClosure` —
+`IsPrincipalIdealRing`, like `IsDomain`/`IsLocalRing`, has no further instance argument nested in
+its own signature (only `[Ring R]`), so the `toSubring` + `rw` route stays well-typed. This is the
+piece of `IsDiscreteValuationRing` (`extends IsPrincipalIdealRing, IsLocalRing` plus `not_a_field'`)
+that *does* close; see the module docstring for why the other two pieces do not. -/
+instance isPrincipalIdealRing_integralClosure_integralClosure
+    [inst : IsPrincipalIdealRing ↥(integralClosure R M)] :
+    IsPrincipalIdealRing ↥(integralClosure (↥(integralClosure R L)) M) := by
+  have hpir : IsPrincipalIdealRing ↥(integralClosure R M).toSubring := inst
+  rw [toSubring_integralClosure_eq (R := R) (L := L) (M := M)] at hpir
+  exact hpir
 
 end IsIntegralClosureTower
