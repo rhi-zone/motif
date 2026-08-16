@@ -15699,3 +15699,103 @@ mathematics) and commit it with no `sorry`. Then either (a) build `ValuativeRel 
 for `IsAdicComplete`, or (b) prove the general "finite module over an adically-complete Noetherian
 local ring is adically complete" fact directly (checked: absent from this Mathlib) as a standalone,
 `ValuativeRel`-free alternative — before `K_3`'s Eisenstein polynomial can be produced at all.
+
+## 60. The `O_{K_2}` integral-closure-spelling caveat resolves (general, checked); `K`'s norm
+extends to `K_2` directly; the base-relative `IsDiscreteValuationRing`/`IsAdicComplete` route
+still does *not* close, for a newly-identified, precise reason
+
+This pass tested the hypothesis that `§59`'s two remaining gaps (`IsDiscreteValuationRing O_{K_2}`,
+`IsAdicComplete O_{K_2}`) might close by applying `Langlands/LubinTateSplittingFieldDVR.lean`'s
+`NormedField.isDiscreteValuationRing_valuationSubring_of_finiteDimensional` and
+`Langlands/LubinTateTowerStepConcrete.lean`'s `NormedField.isAdicComplete_integralClosure_of_
+finiteDimensional` directly at the *original* base `K` (which carries the real `[ValuativeRel K] […]`
+bundle) and `L := K_2`, skipping the `K_1` hop entirely — rather than at `K := K_1` (which lacks the
+bundle, `§56`–`§59`'s standing blocker).
+
+### How `K_1` actually got its instances, confirmed
+
+`isDiscreteValuationRing_valuationSubring_K_1`/`isAdicComplete_valuationSubring_K_1`
+(`LubinTateSplittingFieldDVR.lean`) and `LubinTate.isAdicComplete_integralClosure_K_1`
+(`LubinTateTowerStepConcrete.lean`) all apply the two theorems above with `K := ` the original base
+and `L := K_1 P`, discharging `hnorm : ∀ x : K, ‖algebraMap K (K_1 P) x‖ = ‖x‖` via `K_1.norm_eq_
+spectralNorm` + `spectralNorm_extends`. Both general theorems are already stated generically in `L`
+— `FiniteDimensional K L` and `hnorm`, nothing about how many intermediate fields sit between `K`
+and `L` — confirming the task's premise: nothing in their statements is `K_1`-specific.
+
+### The integral-closure-transitivity caveat: real, and resolved generally
+
+`LubinTateTowerStep.lean`'s `TowerStep` section needs `O' := O_{K_2} := integralClosure O_{K_1}
+(K_2 P₂)` (integral closure over the *intermediate* ring `O_{K_1} := ↥(integralClosure ↥𝒪[K]
+(K_1 P))`), but applying the base-relative theorems at `K := ` original base, `L := K_2 P₂` produces
+`IsDiscreteValuationRing`/`IsAdicComplete` for `↥(integralClosure ↥𝒪[K] (K_2 P₂))` — integral
+closure over the *base*, syntactically a different ring. **Checked directly, not assumed**: these
+two spellings denote the *same* subring of `K_2`, unconditionally — `Langlands/
+IntegralClosureTower.lean`'s `isIntegral_iff_isIntegral_integralClosure`: for any tower `R ⊆ L ⊆ M`,
+`x : M` is integral over `R` iff integral over `↥(integralClosure R L)`, by transitivity of
+integrality alone (`↥(integralClosure R L)` is always integral over `R`; no hypothesis on `L` — not
+finite, not algebraic — is needed). `toSubring_integralClosure_eq` states this as literal equality of
+`Subring M` values. General, `sorry`-free, committed (`71cd9ad`).
+
+`IsDomain`/`IsLocalRing` transport across the two spellings closes (`isDomain_integralClosure_
+integralClosure`, `isLocalRing_integralClosure_integralClosure`, same file): `↥S` and `↥S.toSubring`
+are defeq, so a bare instance ascription plus one `rw` at the `Subring`-level equality suffices.
+
+**`IsDiscreteValuationRing`/`IsAdicComplete` transport does *not* close**, and this is a newly
+identified, separate obstacle from anything `§56`–`§59` flagged — not a mathematical gap (the
+underlying fact, that both spellings are DVRs / adically complete, is true, since they are literally
+the same ring), but a Lean elaboration one: both classes bundle a further instance argument into
+their own signature (`IsDiscreteValuationRing` requires `[IsDomain R]`; `IsAdicComplete`'s ideal
+argument is `IsLocalRing.maximalIdeal`, requiring `[IsLocalRing R]`), and every attempt to `rw` across
+the `Subring`-level equality — including forcing the auxiliary `IsDomain`/`IsLocalRing` instance into
+scope first via `haveI` — hit "motive is not type correct": the auxiliary instance gets embedded as a
+**fixed** term inside the type being rewritten, and `rw`'s motive-generalization cannot abstract the
+rewritten subterm out from under it. Hit consistently (four independent variants, not a one-off) —
+per this project's stop-and-diagnose rule, this was recorded rather than patched further. Closing it
+needs a different technique (e.g. an explicit `RingEquiv.subringCongr`-based ring equivalence with
+`IsDiscreteValuationRing`/`IsAdicComplete` transported along a `RingEquiv` from scratch — Mathlib does
+not provide this off-the-shelf) not attempted here.
+
+### `K`'s norm extends to `K_2` directly: the task's specific claim checked and refuted, then built fresh
+
+The task hypothesized `hnorm : ∀ x : K, ‖algebraMap K K_2 x‖ = ‖x‖` was "already sitting in"
+`LubinTateTowerStepConcrete.lean` (lines ~178–194), built for a different purpose. **Checked directly
+— false as stated**: no such fact exists in that file or anywhere in this repo prior to this pass.
+What *does* exist, in `LubinTateTowerStepSplittingField.lean` (`K_2.hOK_transport`), is a different
+fact: a `≤ 1` bound for the *outer ring* `O`'s norm (`hOK`), not a norm *equality* for the
+`ValuativeRel`-bundle base `K` — built to transport `NonarchimedeanPowerSeriesEval`'s base ring down
+the tower, not reusable for the `hnorm` hypothesis the DVR/AdicComplete theorems need.
+
+The fact itself, once correctly targeted, was straightforward to build fresh (`Langlands/
+LubinTateTowerStepBaseNorm.lean`, committed `71cd9ad`): `K_2.instAlgebraK` (the explicit two-hop
+composite `Algebra K (K_2 P₂)` via `K → K_1 P → K_2 P₂`, mirroring `K_2.instAlgebraO`'s three-hop
+construction one level up but simpler since `K_1` already carries `Algebra K (K_1 P)` directly) and
+`K_2.hnorm_K`, closed by two applications of `spectralNorm_extends` chained through the composite —
+exactly the same two-step pattern `K_2.hOK_transport` already uses, just for `K`'s own norm instead
+of `O`'s bound. No spectral-norm transitivity lemma was needed (a concern raised while scoping this):
+`spectralNorm_extends` is unconditional for any `Algebra K L`, so chaining it twice through the
+tower's `algebraMap` composite suffices.
+
+### Net state: `IsDiscreteValuationRing O_{K_2}` / `IsAdicComplete O_{K_2}` still do not close
+
+With `hnorm` now available (`K_2.hnorm_K`) and `FiniteDimensional K (K_2 P₂)` obtainable (tower law,
+not separately checked this pass), the base-relative general theorems *would* produce
+`IsDiscreteValuationRing`/`IsAdicComplete` for `↥(integralClosure ↥𝒪[K] (K_2 P₂))` — but transporting
+those two specific instances across to the `O_{K_1}`-relative spelling `LubinTateTowerStep.lean`
+needs is exactly the piece that does not close (above). So `§59`'s bottom line is unchanged: `K_3`'s
+Eisenstein polynomial still cannot be produced, and no `K_3` construction — partial or otherwise — is
+attempted this pass. **No milestone claim is made.**
+
+### Build
+
+`nix develop -c lake build`: clean, 8803 jobs, no `sorry`, no new errors (only pre-existing-pattern
+unused-variable lint warnings). Files added: `Langlands/IntegralClosureTower.lean`,
+`Langlands/LubinTateTowerStepBaseNorm.lean`. Commit `71cd9ad`.
+
+### Next step
+
+Build the `RingEquiv`-based transport of `IsDiscreteValuationRing`/`IsAdicComplete` across
+`RingEquiv.subringCongr toSubring_integralClosure_eq` (or an equivalent technique that avoids the
+dependent-motive obstacle identified above) to actually discharge `O_{K_2}`'s two remaining
+instances. If that closes, `K_3`'s Eisenstein polynomial should be reachable via `LubinTateTowerStep.
+lean`'s existing, already-general `TowerStep` machinery instantiated at `O' := O_{K_2}` — no further
+new mathematics identified as needed beyond that one transport.
