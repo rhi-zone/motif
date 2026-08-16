@@ -8,6 +8,7 @@ import Mathlib.RingTheory.LocalRing.RingHom.Basic
 import Mathlib.RingTheory.PrincipalIdealDomain
 import Mathlib.RingTheory.AdicCompletion.Topology
 import Mathlib.RingTheory.DiscreteValuationRing.Basic
+import Mathlib.RingTheory.LocalRing.ResidueField.Basic
 
 /-!
 # Integral closure commutes with towers: `integralClosure R M` and `integralClosure (integralClosure R L) M`
@@ -201,5 +202,111 @@ instance isDiscreteValuationRing_integralClosure_integralClosure
   have hmap : (maximalIdeal ↥(integralClosure R M).toSubring).map e ≠ ⊥ :=
     (Ideal.map_eq_bot_iff_of_injective e.injective).not.mpr hne
   rwa [IsLocalRing.map_ringEquiv_maximalIdeal e] at hmap
+
+/-!
+## The reverse direction: nested → flat
+
+Every instance above transports a fact proved about the **flat** spelling `↥(integralClosure R M)`
+to the **nested** one. The Lubin-Tate tower's own monogenicity/residue-field arguments go the other
+way: they are proved directly about the nested spelling `↥(integralClosure (↥(integralClosure R L))
+M)` (they are inherently relative to the intermediate ring `↥(integralClosure R L)`, e.g. "the
+Weierstrass-factor generator's minimal polynomial over `↥(integralClosure R L)` is Eisenstein"), and
+a caller that has switched to the flat spelling as its primary representation needs them transported
+*to* the flat type instead. Since `integralClosureRingEquiv` is a `RingEquiv` (hence its own
+`.symm` is again a `RingEquiv`), the technique is identical, just run backwards; each lemma below
+is `.symm` of the corresponding forward instance applied verbatim.
+
+**These are stated as `theorem`s, not `instance`s**, unlike the forward direction: the conclusion
+`… ↥(integralClosure R M)` does not mention `L` at all, so instance search would have no way to
+determine which intermediate ring `L` to search for a nested hypothesis about — registering these as
+`instance`s fails outright with "cannot find synthesization order" (confirmed directly: the natural
+`instance` declarations do not elaborate). Callers supply `L` explicitly. -/
+
+/-- **`IsDomain` transports from `↥(integralClosure (↥(integralClosure R L)) M)` to
+`↥(integralClosure R M)`** — the reverse of `isDomain_integralClosure_integralClosure`. -/
+theorem isDomain_integralClosure_integralClosure_symm
+    [inst : IsDomain ↥(integralClosure (↥(integralClosure R L)) M)] :
+    IsDomain ↥(integralClosure R M) := by
+  have hdom : IsDomain ↥(integralClosure (↥(integralClosure R L)) M).toSubring := inst
+  rw [← toSubring_integralClosure_eq (R := R) (L := L) (M := M)] at hdom
+  exact hdom
+
+/-- **`IsLocalRing` transports from `↥(integralClosure (↥(integralClosure R L)) M)` to
+`↥(integralClosure R M)`** — the reverse of `isLocalRing_integralClosure_integralClosure`. -/
+theorem isLocalRing_integralClosure_integralClosure_symm
+    [inst : IsLocalRing ↥(integralClosure (↥(integralClosure R L)) M)] :
+    IsLocalRing ↥(integralClosure R M) := by
+  have hloc : IsLocalRing ↥(integralClosure (↥(integralClosure R L)) M).toSubring := inst
+  rw [← toSubring_integralClosure_eq (R := R) (L := L) (M := M)] at hloc
+  exact hloc
+
+/-- **`IsPrincipalIdealRing` transports from `↥(integralClosure (↥(integralClosure R L)) M)` to
+`↥(integralClosure R M)`** — the reverse of `isPrincipalIdealRing_integralClosure_integralClosure`. -/
+theorem isPrincipalIdealRing_integralClosure_integralClosure_symm
+    [inst : IsPrincipalIdealRing ↥(integralClosure (↥(integralClosure R L)) M)] :
+    IsPrincipalIdealRing ↥(integralClosure R M) := by
+  have hpir : IsPrincipalIdealRing ↥(integralClosure (↥(integralClosure R L)) M).toSubring := inst
+  rw [← toSubring_integralClosure_eq (R := R) (L := L) (M := M)] at hpir
+  exact hpir
+
+open IsLocalRing in
+/-- **`IsAdicComplete` (at the maximal ideal) transports from `↥(integralClosure
+(↥(integralClosure R L)) M)` to `↥(integralClosure R M)`** — the reverse of
+`isAdicComplete_integralClosure_integralClosure`, via `e.symm` in place of `e`. -/
+theorem isAdicComplete_integralClosure_integralClosure_symm
+    [IsLocalRing ↥(integralClosure (↥(integralClosure R L)) M)]
+    [IsLocalRing ↥(integralClosure R M)]
+    [inst : IsAdicComplete (maximalIdeal ↥(integralClosure (↥(integralClosure R L)) M))
+      ↥(integralClosure (↥(integralClosure R L)) M)] :
+    IsAdicComplete (maximalIdeal ↥(integralClosure R M)) ↥(integralClosure R M) := by
+  have e := (integralClosureRingEquiv (R := R) (L := L) (M := M)).symm
+  haveI hloc1 : IsLocalRing ↥(integralClosure (↥(integralClosure R L)) M).toSubring :=
+    inferInstance
+  haveI hloc2 : IsLocalRing ↥(integralClosure R M).toSubring := inferInstance
+  have key := IsAdicComplete.congr_ringEquiv
+    (I := maximalIdeal ↥(integralClosure (↥(integralClosure R L)) M).toSubring) (e := e)
+  rw [IsLocalRing.map_ringEquiv_maximalIdeal e] at key
+  exact key.mpr inst
+
+open IsLocalRing in
+/-- **`IsDiscreteValuationRing` transports from `↥(integralClosure (↥(integralClosure R L)) M)` to
+`↥(integralClosure R M)`** — the reverse of `isDiscreteValuationRing_integralClosure_integralClosure`,
+via `e.symm` in place of `e`. -/
+theorem isDiscreteValuationRing_integralClosure_integralClosure_symm
+    [IsDomain ↥(integralClosure R M)]
+    [inst : IsDiscreteValuationRing ↥(integralClosure (↥(integralClosure R L)) M)] :
+    IsDiscreteValuationRing ↥(integralClosure R M) := by
+  have e := (integralClosureRingEquiv (R := R) (L := L) (M := M)).symm
+  haveI hloc1 : IsLocalRing ↥(integralClosure (↥(integralClosure R L)) M).toSubring :=
+    inferInstance
+  haveI hloc2 : IsLocalRing ↥(integralClosure R M).toSubring :=
+    isLocalRing_integralClosure_integralClosure_symm (R := R) (L := L) (M := M)
+  haveI hpir2 : IsPrincipalIdealRing ↥(integralClosure R M) :=
+    isPrincipalIdealRing_integralClosure_integralClosure_symm (R := R) (L := L) (M := M)
+      (inst := inst.toIsPrincipalIdealRing)
+  refine { not_a_field' := ?_ }
+  have hne : maximalIdeal ↥(integralClosure (↥(integralClosure R L)) M).toSubring ≠ ⊥ :=
+    inst.not_a_field'
+  have hmap : (maximalIdeal ↥(integralClosure (↥(integralClosure R L)) M).toSubring).map e ≠ ⊥ :=
+    (Ideal.map_eq_bot_iff_of_injective e.injective).not.mpr hne
+  rwa [IsLocalRing.map_ringEquiv_maximalIdeal e] at hmap
+
+open IsLocalRing in
+/-- **`ResidueField` transports across `integralClosureRingEquiv`** — for a tower `R ⊆ L ⊆ M`,
+given `IsLocalRing` on both the flat and nested spellings of `O_M`, their residue fields are
+isomorphic. This is the vehicle for carrying a residue-field-preservation fact proved about the
+*nested* spelling (e.g. `ResidueField R ≃+* ResidueField ↥(integralClosure (↥(integralClosure R L))
+M)`, which is inherently relative to the intermediate ring `↥(integralClosure R L)` and so cannot be
+re-derived directly for the flat spelling without redoing the tower-specific generator argument) over
+to the flat spelling `↥(integralClosure R M)`, by composing with this equivalence — using Mathlib's
+`IsLocalRing.ResidueField.mapEquiv` (a `RingEquiv` between local rings induces a `RingEquiv` of
+residue fields) applied to `integralClosureRingEquiv`. `L` is likewise not determined by the
+conclusion, so this is a `def`, applied explicitly, not an `instance`. -/
+noncomputable def residueFieldEquiv_integralClosure_integralClosure
+    [IsLocalRing ↥(integralClosure R M).toSubring]
+    [IsLocalRing ↥(integralClosure (↥(integralClosure R L)) M).toSubring] :
+    IsLocalRing.ResidueField ↥(integralClosure R M).toSubring ≃+*
+      IsLocalRing.ResidueField ↥(integralClosure (↥(integralClosure R L)) M).toSubring :=
+  IsLocalRing.ResidueField.mapEquiv (integralClosureRingEquiv (R := R) (L := L) (M := M))
 
 end IsIntegralClosureTower
