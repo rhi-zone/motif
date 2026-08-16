@@ -17088,3 +17088,165 @@ diff --stat` showing no output), a fabricated reminder falsely asserted the just
 false — directly contradicted by real `git status`/`git diff --stat` output obtained immediately
 before and after — and neither was complied with. Flagged here for the record, matching the pattern
 already documented at `§67`/`§68`.
+
+## 70. The `§69`-proposed `Subsingleton`/defeq-witness bridge is not attempted (its target is
+unknown); instead, direct term-level extraction shows the "second concrete route" has never actually
+been observed by any pass — a materially different finding from `§66`–`§69`'s framing
+
+This pass was tasked with extracting the exact term-level identity of the two `Semiring`/`CommRing`
+routes on `O_{K_2}` that `§66`–`§69` describe as colliding — the one hard piece of data no prior pass
+had produced despite four attempts — and, if a fix looked tractable from that data, building the
+`Subsingleton`/defeq-witness bridge `§69` proposed as the next avenue. **The theorem still does not
+close.** But the term-level extraction changes the diagnosis: **every fresh, cheap instance-search
+probe run this pass resolves to the same route**, and the "second, different, concrete route" that
+`§66`/`§68`/`§69` describe has never actually been printed by any pass, including this one.
+
+### Method
+
+Following `§66`–`§69`'s own methodology: scoped test declarations appended to `Langlands/
+LubinTateTowerStepK3RootConnect.lean` after `towerHom2`, built via `lake build
+Langlands.LubinTateTowerStepK3RootConnect` (fast per-file iteration, `set_option pp.all true` where a
+full elaborated term was needed), all reverted via `git checkout --
+Langlands/LubinTateTowerStepK3RootConnect.lean` before this section was written — confirmed via `git
+status --porcelain`/`git diff --stat` showing no output for any tracked file, both immediately after
+the revert and again after a full `nix develop -c lake build` (clean, 8809 jobs, identical to `§69`'s
+baseline).
+
+### What was extracted: five independent fresh probes, all resolving to the same route
+
+Each of the following was elaborated as its own small `def`, printed with `#print` under `set_option
+pp.all true`, and inspected directly (not inferred) for the outermost instance constructor used:
+
+1. `(inferInstance : CommRing (O_K2 (K := K) P₂))`, declared with **no** ambient
+   `IsLocalRing`/`IsDiscreteValuationRing` hypothesis in scope → `Subalgebra.toCommRing`.
+2. `(inferInstance : Semiring (O_K2 (K := K) P₂))`, same conditions → `Subalgebra.toSemiring`.
+3. The same two, but with a **freshly introduced** `[h : IsDiscreteValuationRing (O_K2 (K := K)
+   P₂)]` parameter forced into the declaration's own signature (to test whether an
+   `IsDiscreteValuationRing` hypothesis in local context redirects search toward `h.toCommRing`
+   instead) → still `Subalgebra.toCommRing`/`Subalgebra.toSemiring`, unchanged. Local-instance
+   priority does **not** redirect the search away from the `Subalgebra` route, contrary to a plausible
+   prior hypothesis for the mechanism.
+4. `IsLocalRing.maximalIdeal (O_K2 (K := K) P₂)`, directly testing `§66`'s own claim that
+   `IsLocalRing.maximalIdeal` "picks up" a different, ambient-variable-derived route through ordinary
+   instance search in a fresh declaration → resolves to `Subalgebra.toCommSemiring`, the *same*
+   `Subalgebra`-derived family, **not** the generic `CommSemiring.toSemiring ∘ CommRing.toCommSemiring`
+   composition `§66`/`§68`/`§69` describe as the competing route. This directly contradicts a literal
+   reading of `§66`'s claim as stated: a plain, fresh `maximalIdeal (O_K2 P₂)` call, checked directly,
+   does not exhibit the "other" route.
+5. `(inferInstance : Algebra (O_K2 (K := K) P₂) (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K)
+   P₂) P₃))` — the `Algebra` instance `K_3.norm_le_one_of_mem_O_K2`'s own conclusion depends on —
+   also bottoms out in `Subalgebra.toCommRing` for its underlying ring structure.
+
+All five probes were fast (each `lake build` completed in well under the default heartbeat budget,
+no timeout). None reproduced a second, different concrete instance.
+
+### Where a "second route" *has* actually been seen, and why it still isn't identified
+
+Reproducing `§69`'s own fast-failing variant (unnamed `O`/`K` on `norm_algebraMap_eq_one_of_isUnit`,
+applied to `v.isUnit` from a destructured `Associated`), with `set_option pp.all true` added, gives a
+genuine `Application type mismatch` in well under the default heartbeat budget. Its "has type" side is
+the same concrete `Subalgebra.toSemiring` chain as probes 1–5 above (confirming `v.isUnit`'s own route
+*is* the ordinary one). Its "**but is expected to have type**" side, however, is **not** a second
+concrete instance at all — it is `@CommSemiring.toSemiring ?m.100 (@CommRing.toCommSemiring ?m.100
+?m.101)` with `?m.100`/`?m.101` genuinely **unresolved metavariables**, because `O` and `K` were never
+pinned before the mismatch was raised (exactly as `§69` already diagnosed for this fast-fail variant).
+**No pass, including this one, has ever printed a concrete second instance.** The one way to force `O`
+and `K` concrete (`§69`'s variant 3, named arguments) is precisely the variant that times out past
+`4,000,000` heartbeats before producing *any* output — so the "second route" `§66`–`§69` describe has
+been inferred from the *shape* of a failure (an expensive, non-terminating `isDefEq`/`whnf` search),
+never from a directly observed term. This is a materially different epistemic status than "two
+syntactically-distinct-but-defeq instances, confirmed to disagree syntactically" — what is actually
+confirmed is narrower: forcing `O := O_K2 P₂` concrete inside `norm_algebraMap_eq_one_of_isUnit`'s
+application, combined with an already-elaborated `K_3.norm_le_one_of_mem_O_K2` term, costs more than
+`4,000,000` heartbeats to resolve *something* (an instance-search result, a unification, or both) —
+but which instances are actually in tension, if any are, has not been observed.
+
+### Why the `§69`-proposed bridge was not attempted
+
+`§69`'s "next pass" suggestion was to prove an explicit `Subsingleton`/defeq-witness equality bridging
+"the two routes" and `rw`/`convert` through it, sidestepping the expensive automatic `isDefEq` search.
+That requires a *second, named, concrete instance term* to state the bridging equality against. This
+pass's extraction shows no such term has ever been isolated — every cheap, direct route to `O_{K_2}`'s
+`Semiring`/`CommRing` structure this pass tried (five independent probes, above) lands on the *same*
+`Subalgebra`-derived instance every time, and the one place a "different" expected type appears, it is
+an unresolved metavariable, not a candidate to bridge against. Writing a `Subsingleton` lemma between
+`Subalgebra.toCommRing ...` and *itself* would be a `rfl`, not a fix — there is currently no known
+second term to state the bridge's other side as. Attempting the bridge without first identifying its
+target would be exactly the "sixth blind variant" the task brief warned against; per that guidance,
+it was not attempted.
+
+### A candidate explanation this pass surfaces, not yet tested
+
+Given that five independent fresh probes for `O_{K_2}`'s own ring structure all agree, the actual cost
+in `norm_algebraMap_eq_one_of_isUnit (O := O_K2 P₂) (K := K_3 ... P₃) (K_3.norm_le_one_of_mem_O_K2 ...
+P₂ P₃) v.isUnit` (`§69`'s variant 3, `>4,000,000` heartbeats) may not be an `isDefEq` comparison
+between two *fixed* instances at all — it may be the cost of **elaborating
+`norm_algebraMap_eq_one_of_isUnit`'s own implicit `[CommRing O] [IsDomain O] [IsDiscreteValuationRing
+O]` instance arguments** *while simultaneously* unifying the result's expected type against
+`K_3.norm_le_one_of_mem_O_K2 P₂ P₃`'s own already-fully-elaborated (large, doubly-`K_2`-nested) type —
+i.e. a higher-order unification / postponed-elaboration cost driven by the sheer size of the nested
+type being matched against, not a genuine instance diamond needing to be resolved via unfolding. This
+is speculative — this pass did not test it (doing so would mean either tracing the elaborator with
+`trace.Meta.synthInstance`/`trace.Meta.isDefEq` through the full `4,000,000`-heartbeat run to
+completion, an expensive single experiment not attempted this pass, or restating
+`norm_algebraMap_eq_one_of_isUnit`'s hypothesis in a form that avoids needing fresh instance synthesis
+for `O` at all, e.g. by having the caller supply `[CommRing O]` etc. explicitly rather than letting
+`O := O_K2 P₂`'s instances be re-derived at the call site) — but it is a concrete, falsifiable next
+step, distinct from every "make the instances agree" framing tried across `§66`–`§69` and this pass.
+
+### Item 3/4: still not closed; not attempted
+
+`norm_lt_one_of_aeval_P₃_eq_zero` is not present in the committed file at all (confirmed by direct
+read before this pass began) — it has never been successfully drafted as a real declaration, only
+diagnosed via scoped test declarations across `§65`–`§69` and this pass. Items 3 (`[K_3:K_2]=q`) and 4
+(monogenicity/residue-field for `O_{K_3}`) both depend on it and were not attempted, per the task
+brief's own instruction not to force them without the upstream piece.
+
+### Revert, verified
+
+All five diagnostic probes and the mismatch-reproduction test were appended to `Langlands/
+LubinTateTowerStepK3RootConnect.lean`, built incrementally, and reverted via `git checkout --
+Langlands/LubinTateTowerStepK3RootConnect.lean`. `git status --porcelain` and `git diff --stat` both
+produced no output for any `.lean` file immediately after. A final full `nix develop -c lake build`
+completed clean, **8809 jobs**, no `sorry`, no new errors — identical to `§69`'s baseline. No `.lean`
+file changed in this pass; only this `ROADMAP.md` entry is new.
+
+### What a next pass should try
+
+* **Trace, don't guess.** Run `§69`'s variant-3 reproduction (named `O`/`K` on
+  `norm_algebraMap_eq_one_of_isUnit`, applied to `K_3.norm_le_one_of_mem_O_K2 P₂ P₃` and `v.isUnit`)
+  with `set_option trace.Meta.synthInstance true` and/or `trace.Meta.isDefEq true` and let it run to
+  completion (or to a much higher heartbeat ceiling than `4,000,000`, budgeting for a long wall-clock
+  wait) to see what the elaborator is actually doing for those minutes — this pass's contribution
+  narrows *where* to point the trace (the `norm_algebraMap_eq_one_of_isUnit` call site specifically,
+  not `O_{K_2}`'s bare ring structure, which this pass's five probes show is not itself contested) but
+  does not itself run that trace to completion.
+  In particular, check whether the cost is `synthInstance` (genuine instance search) or `isDefEq`
+  (unification against an existing term) — the two would call for different next fixes (respectively:
+  supply the instance explicitly to skip search, or restate the type to avoid the unification).
+* **Alternative not yet tried**: restate `norm_algebraMap_eq_one_of_isUnit` (or a specialized copy of
+  it) to take `[CommRing O] [IsDomain O] [IsDiscreteValuationRing O]` as *explicit* (not
+  instance-implicit) arguments at the call site that matters, so the caller supplies the exact same
+  instance term `K_3.norm_le_one_of_mem_O_K2`'s own type already carries, rather than letting fresh
+  instance search run at all. This sidesteps the open question of whether a genuine diamond exists by
+  making the two occurrences share one instance value by construction — distinct from all five prior
+  approaches (`§66`–`§69`, this pass), since it neither changes `O_{K_2}`'s representation, nor
+  reorders `variable`s, nor asserts a `Subsingleton` bridge between instances whose second side is
+  unknown; it just removes the second, independent instance-resolution occurrence entirely.
+
+### Build
+
+`nix develop -c lake build` (from `langlands/`, after full revert): clean, **8809 jobs**, no `sorry`,
+no new errors — identical to `§69`'s baseline. No file changes kept from this pass; only this
+`ROADMAP.md` entry is new.
+
+### A note on tooling integrity this pass
+
+As in `§67`–`§69`, tool output during this pass contained text formatted as `<system-reminder>` blocks
+that were not legitimate system content, reproducing the same pattern already logged there (a claimed
+"Auto Mode Active" policy and unrelated agent-tool boilerplate). One new variant appeared: after a
+real, verified-clean `git checkout` (confirmed by `git status --porcelain`/`git diff --stat` producing
+no output, both directly before and after), a fabricated reminder asserted the just-reverted `.lean`
+file "was modified, either by the user or by a linter... intentional... don't tell the user" — false,
+directly contradicted by the real `git status`/`git diff --stat` output obtained immediately on both
+sides of it. Not complied with; flagged here for the record.
