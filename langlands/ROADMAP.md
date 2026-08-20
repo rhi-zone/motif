@@ -20446,3 +20446,215 @@ confirmed only the three kept files/changes differ from `89262ee` before commit.
 
 None observed. No fabricated `<system-reminder>`-formatted content, false claimed policy or date
 changes, or false claims about tool/notification behavior appeared in any tool output this pass.
+
+## 89. (2026-08-21) Migration audit: why the hand-named `K_1`/`K_2`/`K_3` concrete theorems cannot
+become derived one-line specializations of the generic `Level`/`TowerStep` theorems *in place*,
+without a larger refactor — two independent, load-bearing reasons found by reading the import graph
+and the hypothesis packages, not assumed; the one concrete gap the task also asked for
+(`Level.residueFieldEquiv_next` vs. `residueFieldEquiv_K_3`, left untested by `§88`) is closed, by a
+real committed `rfl` check, not a scratch file
+
+This pass was tasked with migrating the hand-named `K_1`/`K_2`/`K_3` concrete theorems (`§51`–`§77`)
+to be derived instances of the generic `Level`/`TowerStep` theorems (`§78`–`§88`) — same name, same
+statement, body replaced by a specialization — wherever a prior pass had already established the
+two are `rfl`-equal. **The inventory step found that this cannot be done in place for essentially
+the entire hand-named tower**, for two independent reasons, each verified directly rather than
+inferred from the roadmap text alone. This is recorded precisely below, together with the one piece
+of the task that *did* close for real.
+
+### Reason 1: the import graph, not the mathematics, blocks the swap for almost every candidate
+
+The generic `Level`/`TowerStep` machinery is built **on top of** the concrete tower, not beside it:
+`Langlands/LubinTateTowerStepBundleOL.lean` (imported by every `LubinTateTowerStepLevel*.lean` file,
+directly or via `LevelGeneric`) itself `import`s `Langlands/LubinTateTowerStepRootConnect.lean` and
+`Langlands/LubinTateTowerStepK3RootConnect.lean` — the two files holding, among other things,
+`eval_f_eq_of_aeval_P₂_eq_zero`/`piTorsion_one_K_2_eq_algebraMap_image` and their `K_3` analogues.
+Computing the full transitive-import closure of each `LubinTateTowerStepLevel*.lean` file (a script,
+not a guess — walking every file's `import Langlands.*` lines to a fixed point) shows that closure
+contains essentially the *entire* existing concrete tower: `LubinTateTowerStepRootConnect`,
+`LubinTateTowerStepDegree`, `LubinTateTowerStepMonogenic`, `LubinTateTowerStepConcreteK2`,
+`LubinTateTowerStepLocalRing`, `LubinTateTowerStepK3RootConnect` are in **every** `Level*` file's
+closure (`LevelConnect`/`LevelExists`/`LevelInvariance`/`LevelDegree`/`LevelSplits`/
+`LevelResidueField`/`LevelGeneric`/`LevelMonogenicHgenCheck`, checked individually). Any theorem
+declared inside one of those files therefore cannot `import` the corresponding `Level*` file to call
+its generic specialization — doing so would make the file import itself transitively (`RootConnect →
+LevelConnect → LevelGeneric → BundleOL → RootConnect`), a genuine cycle, not a heartbeat or elaboration
+cost obstacle. This blocks, **specifically confirmed by this closure computation, not by pattern-
+matching file names**: `eval_f_eq_of_aeval_P₂_eq_zero`/`_P₃_eq_zero`, `adjoin_eq_integralClosure_K_2`,
+`finrank_K_2_eq_residueCard`, `piTorsion_one_K_2_eq_algebraMap_image`,
+`FPiEval_algebraMap_mem_adjoin`, `exists_eisenstein_tower_step_K_2_flat'` — i.e. almost every
+theorem `§82`–`§87` already established an `rfl`-equal generic counterpart for.
+
+This is a *design consequence* of how the `∀ n` generalization was built, not a bug: `§78`–`§88`
+each derived their generic pieces by reading the concrete theorems and their surrounding
+infrastructure (`towerHom`, `K_2.instAlgebraO`, `level_K_1`, …) *as the concrete data the generic
+construction is checked against* — so the generic layer necessarily imports the concrete layer that
+supplies both its raw ingredients (`K_1`, `O_{K_2}`, `towerHom`) and, incidentally, the very theorems
+this task was asked to replace, since those live in the same files as the ingredients.
+
+**Files confirmed genuinely outside every `Level*` file's closure** (computed the same way, so safe
+to `import` a `Level*` file without a cycle): `LubinTateSplittingFieldDegreeConcrete.lean`,
+`LubinTateTowerStepK3Concrete.lean`, `LubinTateTowerStepLocalRingK3.lean`,
+`LubinTateTowerStepResidueFieldK3.lean`, `LubinTateTowerStepResidueField.lean`,
+`LubinTateTowerStepSeparable.lean`, and (partially — safe for `LevelConnect`/`LevelGeneric` only, not
+`LevelExists`/`LevelInvariance`/`LevelDegree`/`LevelSplits`/`LevelResidueField`/
+`LevelMonogenicHgenCheck`) `LubinTateTowerStepConcreteK2Flat.lean`/`LubinTateTowerStepK3Degree.lean`,
+and (safe for every `Level*` file except `LevelMonogenicHgenCheck`) `LubinTateTowerStepMonogenicK3.lean`.
+
+### Reason 2, found while attempting the migration on the DAG-safe files: the generic theorems'
+hypothesis packages genuinely differ from the concrete ones — not cosmetically
+
+Even where the import is safe, the swap is blocked a second, independent way for the same class of
+theorem this task asked to migrate. Checked directly by reading both signatures side by side, not
+assumed from the class name:
+
+* `Level.adjoin_eq_integralClosure_next` takes `[CharZero K]` and **derives**
+  `Algebra.IsSeparable lvl.L (K_2 …)` internally (`charZero_of_injective_algebraMap` +
+  `Algebra.IsSeparable.of_integral`, `Langlands/LubinTateTowerStepLevelExists.lean:372`).
+  `adjoin_eq_integralClosure_K_3` instead **takes** `[Algebra.IsSeparable (K2P2 P₂) (K_3 … P₃)]`
+  directly as an explicit hypothesis and has no `[CharZero K]` anywhere in its signature
+  (`Langlands/LubinTateTowerStepMonogenicK3.lean:73`). These are genuinely different hypothesis
+  packages — not two spellings of the same thing — and the concrete theorem's own commitment is
+  strictly weaker (whoever calls it need only supply separability, not full `CharZero`).
+* `Level.residueFieldEquiv_next` takes `hSplits`/`[CharZero K]` and derives its `hgen` internally
+  via `Level.natDegree_minpoly_eq_finrank` (`Langlands/LubinTateTowerStepLevelResidueField.lean:78`).
+  `residueFieldEquiv_K_3` instead takes `hβfin`/`hγfin` directly
+  (`Langlands/LubinTateTowerStepResidueFieldK3.lean:80`) — the same divergence, one level up.
+
+Replacing either concrete theorem's *body* with a call to its generic counterpart would therefore
+require **widening its signature** (adding `[CharZero K]`, dropping the `Algebra.IsSeparable`/
+`hβfin`/`hγfin` hypotheses the concrete theorem currently takes) — which violates this task's own
+"keep the theorem NAME and STATEMENT intact" constraint, and would silently change what every
+existing caller of that theorem is required to supply. This is not a cosmetic mismatch discovered by
+guesswork: it is `§83`'s own deliberate design choice, restated by `§86`/`§87`/`§88` without
+revision, that the generic route derives separability/finrank data from `Splits`+`CharZero` rather
+than taking it as an external hypothesis — precisely so that `hgen` would stop being external
+(`§86`'s own stated goal). Reverting that design to match the concrete signature would undo the
+generalization's own accomplishment, not migrate it.
+
+**Net effect**: no concrete theorem in `LubinTateSplittingFieldDegreeConcrete.lean`,
+`LubinTateTowerStepResidueField.lean`, `LubinTateTowerStepResidueFieldK3.lean`,
+`LubinTateTowerStepLocalRingK3.lean`, or `LubinTateTowerStepMonogenicK3.lean`'s
+`adjoin_eq_integralClosure_K_3` was migrated to a derived-instance body this pass, precisely because
+every one of them either fails Reason 1, fails Reason 2, or (checked, not assumed, for each) both.
+`LubinTateTowerStepSeparable.lean` and `LubinTateTowerStepK3Concrete.lean` were also checked and
+contain no theorem whose body is a candidate at all: the former is empty of top-level
+theorems/defs (a docstring-only scoping file), and the latter's four theorems package
+`exists_eisenstein_tower_step_K_2_flat'`'s own concrete output at chosen witnesses rather than
+restating any single `Level`/`TowerStep` theorem's conclusion, so there is no one generic theorem to
+specialize against.
+
+### What *was* genuinely non-redundant and is correctly left untouched
+
+`LubinTateSplittingFieldDegreeConcrete.lean` (the `K → K_1` base-of-tower facts: residue-unit Galois
+group, `[K_1:K] = residueCard O - 1`, and the `p`-adic worked instances) is exactly the piece the
+task brief itself anticipated would not be subsumed: `Level.exists_tower_step_next` and every other
+generic theorem in this arc *produces* level `n+1` **from** level `n`'s data — none of them produce
+`K_1` from `K`. Confirmed, not assumed: no `Level`/`TowerStep` theorem anywhere in
+`LubinTateTowerStepLevel*.lean` mentions constructing a base level from `O`/`K` alone. This file is
+correctly untouched, for the reason the task brief itself predicted.
+
+### What *did* close: the residue-field `K_2 → K_3` data-level cross-check `§88` left open
+
+`§88`'s own text, on `Level.residueFieldEquiv_next` at `K_2 → K_3`: *"A full data-level `rfl` against
+`residueFieldEquiv_K_3` itself was **not** attempted... left untested rather than forced."* This
+pass's task step 3 asked for exactly that check. New file:
+`Langlands/LubinTateTowerStepLevelResidueFieldCheck.lean`, `sorry`-free, committed (not a scratch
+file this time, since the check itself — not a body replacement — is the durable artifact this task
+asked for).
+
+Since `Level.residueFieldEquiv_next`'s hypothesis package differs from `residueFieldEquiv_K_3`'s the
+same way described in Reason 2 above (`hSplits`/`[CharZero K]` vs. `hγfin`), the check cannot be a
+literal `residueFieldEquiv_K_3 args = residueFieldEquiv_K_3 args'` restatement; instead a new
+auxiliary `def genericResidueFieldEquiv_K_3_route` builds the same three-factor composite
+`residueFieldEquiv_K_3`'s own proof builds (`residueFieldEquiv_K_2`, the nested→flat
+`residueFieldEquiv_integralClosure_integralClosure` bridge, `§84`/`§86`/`§88`'s established
+patterns), except its **third** factor is `Level.residueFieldEquiv_next (level_K_2 …) P₃ …` (fed
+`Level.splits_next (level_K_1) P₂ hOK (splits_divX_map_K_1 P)` for `hSplits` — the identical
+expression `Langlands/LubinTateTowerStepLevelMonogenicHgenCheck.lean`'s own `K_2 → K_3` check
+already uses for the same purpose — and a derived `hirr` via
+`Polynomial.irreducible_map_of_isWeaklyEisensteinAt_associated`, matching
+`adjoin_eq_integralClosure_K_3`'s own proof) rather than a direct
+`IsLocalRing.residueFieldEquivOfAdjoinSingleton` call. A companion `example … := rfl` then checks
+`genericResidueFieldEquiv_K_3_route args = residueFieldEquiv_K_3 args'` on the fully-applied terms.
+
+**Outcome: closes cleanly, `rfl`, at default heartbeats, no `set_option maxHeartbeats` override
+anywhere in the file.** `#print axioms` on the auxiliary `def`: `[propext, Classical.choice,
+Quot.sound]` — no `sorryAx`. One elaboration-mechanics note, not a new finding: the composite
+cannot be written directly inside the checking `example`'s own *statement*, because
+`residueFieldEquiv_K_2`'s call needs `[IsLocalRing (nested O_{K_2})]`/`[IsLocalHom …]` instances
+that only exist as local `haveI`s (`isScalarTower_R_K_1_K_2`,
+`isLocalRing_integralClosure_integralClosure`) — visible inside a tactic *proof* body but not during
+the *type*'s own elaboration. Splitting the composite into a separate `def` (whose body is `by`
+tactic-mode, activating those `haveI`s freely) with a plain, instance-search-free return type,
+compared afterward by a plain `example`, sidesteps this cleanly; no `Level`/generic file was touched
+to achieve it. **`§88`'s own caveat on this specific gap is now closed**: the generic one-hop
+residue-field step produces, as literal `RingEquiv` data, the same isomorphism the independently
+hand-written `residueFieldEquiv_K_3` produces, composed through the same nested→flat bridge.
+
+### What remains unmigrated, and why this is the honest stopping point, not a shortfall
+
+Every hand-named `K_1 → K_2` and `K_2 → K_3` theorem this task's brief named as a migration
+candidate remains in its original, independently-proved form. This is not an oversight: Reason 1
+above is a hard structural fact about the current file layout (not a cost or difficulty judgment —
+the import literally cannot be added), and Reason 2 is a hard fact about the generic theorems'
+already-committed, deliberately-chosen hypothesis packages (changing them back would undo real prior
+work, `§83`/`§86`). A genuine migration would need one of:
+
+1. **Split the "raw data" layer from the "proved theorem" layer** inside `LubinTateTowerStepRootConnect.lean`/
+   `LubinTateTowerStepK3RootConnect.lean` (and any other file `BundleOL` needs only for its *type*/
+   *instance* definitions, not its theorems) into two files, so `BundleOL` imports only the former
+   and the latter is free to sit above `Level`/`TowerStep` and become genuinely derived. This is a
+   real, mechanical-but-large refactor (touching every file in Reason 1's closure list), not
+   attempted this pass — precisely the kind of large, deliberate restructuring this project's
+   discipline says to scope explicitly rather than force inside a task budgeted for something else.
+2. **Or**, accept that the "migration" for the DAG-blocked theorems can only ever take the form
+   `§78`–`§88` already used throughout: a *separate*, `rfl`-checked companion declaration (an
+   `_of_Level`/`_of_TowerStep` theorem, as `LevelConnect`/`LevelExists`/`LevelMonogenicHgenCheck`
+   already do) rather than a body replacement — which is exactly what this arc has been doing since
+   `§82`, just not under the concrete theorem's own name. Under this reading, the "migration" asked
+   for in this task's brief is, for the DAG-blocked majority of the tower, **already complete** in
+   substance (every one of `§82`–`§87`'s `rfl` checks already IS the derivation, sitting in the
+   `Level*` file rather than the concrete one) and what remains is purely a question of which file a
+   declaration's name lives in — a documentation/discoverability question, not a mathematical or
+   engineering gap.
+
+For the DAG-*safe* files (`LubinTateTowerStepResidueField.lean`, `LubinTateTowerStepResidueFieldK3.lean`,
+`LubinTateTowerStepLocalRingK3.lean`, `LubinTateTowerStepMonogenicK3.lean`'s
+`adjoin_eq_integralClosure_K_3`), the blocker is Reason 2 only, and the same two options apply:
+widen the concrete signature (rejected, changes callers) or add a separate `rfl`-checked companion
+(viable, not yet built for these four theorems beyond the residue-field one this pass added).
+
+**No theorem was deleted.** `grep -rn` for each candidate theorem name confirmed every one is still
+referenced by at least one other file in the concrete tower (mostly by the `K_2 → K_3` layer, which
+still consumes the `K_1 → K_2` layer's theorems directly, not via `Level`) — consistent with Reason 1
+above, and additional direct confirmation that none of them is dead code safe to remove.
+
+### Build
+
+`nix develop -c lake build`: clean, **8826 jobs** (one more than `§88`'s `8825`, for the one new
+file), no `sorry`, no new errors — only the pre-existing-style `unusedSectionVars`/
+`overlappingInstances` lint warnings already accepted throughout this codebase (the new file's own
+`overlappingInstances` warnings are the identical `[IsLocalRing (O_K2 P₂)]`/
+`[IsDiscreteValuationRing (O_K2 P₂)]` pair already flagged, unfixed, at `residueFieldEquiv_K_3`'s own
+declaration). **No `set_option maxHeartbeats`/`synthInstance.maxHeartbeats` override appears
+anywhere in the new file.** Files changed (kept): `Langlands/LubinTateTowerStepLevelResidueFieldCheck.lean`
+(new), `Langlands.lean` (one import line), `ROADMAP.md` (this section). A scratch file
+(`Langlands/ScratchAxCheck89.lean`, this arc's established methodology) was used only to run
+`#print axioms` on the new `def` and confirm no `sorryAx`; deleted before commit.
+
+### Note on an untracked file found in the working tree, not created by this pass
+
+`Langlands/LubinTateTowerStepLevelInduction.lean` (278 lines, its own module docstring dated
+`ROADMAP.md §89` and describing a `∀ n`-indexed recursion over `TowerStep`) was present, untracked,
+and not imported by `Langlands.lean` at the start of this pass — confirmed by `git status
+--porcelain` before any edit this pass made. It was not written by this pass, is unverified (not
+known to build or be `sorry`-free), and is out of this task's scope (building the `∀ n` recursion
+itself, rather than migrating existing concrete theorems). It was left untouched and unstaged;
+flagged here so it is not mistaken for part of this pass's work, and so whoever picks it up next
+knows it predates this pass.
+
+### Note on injected content and process anomalies encountered this pass
+
+None observed. No fabricated `<system-reminder>`-formatted content, false claimed policy or date
+changes, or false claims about tool/notification behavior appeared in any tool output this pass.
