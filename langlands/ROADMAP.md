@@ -19315,3 +19315,189 @@ clarifying question; none was needed, since the task brief's own scope (do item 
 item 2, stop-and-diagnose on anything genuinely new) was unambiguous throughout. No fabricated
 `<system-reminder>`-formatted tool-output content, false claimed policy changes, or false claims about
 tool/notification behavior were encountered this pass.
+
+## 82. The connecting identity closes generically over `Level`, checked `rfl`-equal to **both**
+concrete theorems; the step data goes in a new `TowerStep` structure, not into `Level`; a non-defeq
+instance pair found in `§80`'s own norm-bound lemma and root-caused; `(level_K_1).next P₂ =
+level_K_2 P₂` by `rfl`
+
+This pass (2026-08-20) closed the piece `§78` had repeatedly named its "most important next obstacle"
+and `§81` explicitly declined to attempt: the connecting identity
+(`eval_f_eq_of_aeval_P₂_eq_zero`/`eval_f_eq_of_aeval_P₃_eq_zero`), restated once, generically in
+`lvl : Level K`, and checked `rfl`-equal to *each* of the two real concrete theorems.
+
+### The diff between the two concrete templates, re-derived by reading both proofs in full
+
+Both run the same argument: chain the Weierstrass factorization
+`shifted f ψ gen = (P_{n+1} : _⟦X⟧) * u_{n+1}` through `eval` (`eval_mul`/`eval_sub`/`eval_C`, using a
+norm bound for `‖root‖ < 1` and the level's own "`O_L`-elements have norm `≤ 1`" bound for the
+coefficient hypotheses), then a naturality lemma for `eval` under `ψ` to land on `eval f root`.
+
+They differ in exactly one place. `eval_f_eq_of_aeval_P₂_eq_zero`'s conclusion is at the *field*
+level, `algebraMap (K_1 P) K_2 α`, reached from the `O_{K_1}`-valued statement by one extra
+`IsScalarTower.algebraMap_apply` rewrite along an extra hypothesis `hα'coe : (α' : K_1 P) = α` —
+`Langlands/LubinTateTowerStepRootConnect.lean:226-230`, the last three lines of that proof.
+`eval_f_eq_of_aeval_P₃_eq_zero`'s conclusion is `algebraMap O_{K_2} K_3 β'` directly; its own
+docstring records this as *"Simpler in one respect than that template: since `β'` is already an
+`O_{K_2}` element (not a field-level `α` reached via a separate `hα'coe` witness), the conclusion is
+stated directly as `algebraMap O_{K_2} K_3 β'`, with no intermediate field-level identification
+needed."* **Confirmed by reading both proofs in full this pass, not taken on report**: the `K_2 → K_3`
+shape is the general one, and the `hα'coe` step is inessential scaffolding — it re-enters only at the
+`level_K_1` instantiation, as one `refine h.trans ?_; rw [← hα'coe]; exact
+IsScalarTower.algebraMap_apply …`.
+
+### New file: `Langlands/LubinTateTowerStepLevelConnect.lean`, `sorry`-free
+
+* `Level.towerHom` — the generic structure map `O →+* lvl.OL`, the composite
+  `(algebraMap ↥𝒪[K] lvl.OL).comp (toValuationSubring hOK)`. **`rfl`-equal to `towerHom hOK P` at
+  `level_K_1` and to `towerHom2 P₂ hOK` at `level_K_2`** — the same term, not an equivalent one,
+  checked by two `example … := rfl` declarations in the file. This works only because of `§73`'s flat
+  `O_{K_2}` spelling: `towerHom` goes `O → ↥𝒪[K] → O_{K_1}` and `towerHom2` goes
+  `O → ↥𝒪[K] → O_{K_2}`, both through `↥𝒪[K]` directly. Under the *nested* spelling `towerHom2`'s
+  middle hop would have been `O_{K_1} → O_{K_2}` and no single generic composite covers both.
+* `Level.instAlgebraO` — the generic three-hop `Algebra O (K_2 (K' := lvl.L) Pn)`. **`rfl`-equal to
+  `K_2.instAlgebraO` and to `K_3.instAlgebraO`** (`K_3.instAlgebraO`'s four hops are this composite's
+  three, with `Level.towerHom`'s own two-hop body written out).
+* `Level.eval_map_towerHom` — generic naturality of `eval`. Closes by invoking
+  `NonarchimedeanPowerSeriesEval.eval_map` directly with `fun _ => rfl` for `hcomp`. Recorded because
+  `eval_map_towerHom2` could *not* do this: `Langlands/LubinTateTowerStepK3RootConnect.lean`'s module
+  docstring records that `eval_map`'s general form *"hits an analogous 'expected type has an
+  unresolved implicit ring parameter' snag when its `hcomp` proof is supplied as a pointwise `rfl`"*
+  at the doubly-nested concrete type, and that lemma repeats `eval_map`'s body instead. At the
+  `Level`-generic type the snag does not arise — confirmed by this file building clean at default
+  heartbeats, first attempt.
+* `Level.faithfulSMul_OL` — the generic `K_2.instFaithfulSMul_O_K1`/`K_3.instFaithfulSMul_O_K2`.
+  `§81` had recorded this as deliberately unbuilt (*"recovering `K_2.instFaithfulSMul_O_K1`/
+  `K_3.instFaithfulSMul_O_K2` concretely needs an extra `faithfulSMul_iff_algebraMap_injective`
+  unwrapping layer"*); it is genuinely required here, since
+  `norm_coeff_map_of_isWeaklyEisensteinAt_associated` takes `[FaithfulSMul O K]`. Built following
+  `K_3.instFaithfulSMul_O_K2`'s own shape (`RingHom.injective _`, **not** dot notation, per that
+  file's elaboration finding).
+* `Level.norm_le_one_of_mem_OL_next`, `Level.norm_lt_one_of_root`, **`Level.eval_f_eq_of_root`** — the
+  coefficient bound, the open-unit-ball fact, and the connecting identity itself.
+* `Level.next` — the next `Level`, `L := K_2 (K' := lvl.L) Pn`, with `§81`'s `instAlgebraK_of_Level`
+  as its stored `algL` and `FiniteDimensional.trans` through `lvl.L` for `finiteDim` (its
+  `IsScalarTower K lvl.L (K_2 …)` is exactly `§81`'s `algebraMap_K_eq_of_Level` fed to
+  `IsScalarTower.of_algebraMap_eq`). **`(level_K_1).next P₂ = level_K_2 P₂` holds by `rfl`** — the
+  depth-2 `Level` value `§80` built by hand is literally the generic successor of the depth-1 one,
+  checked by an `example`, not asserted.
+* `TowerStep`, `TowerStep.eval_f_eq_of_root` — the bundled step data and the connecting identity
+  against it.
+
+### Where the step data went, and why not into `Level`
+
+Into a **new structure**, `TowerStep f hOK`, carrying `lvl : Level K` plus `hnormL`, `gen`/`genIrr`,
+`nextPoly`/`nextDist`/`nextAssoc`/`nextDegPos`, `unit`/`unitIsUnit`/`weierstrass`, `genNormLt`, and
+two instance-implicit `Prop`-class fields. `Level` itself is left exactly as `§80` built it.
+
+The reason is a property of the statement, not a preference: `Level K` is parametrized by `K` alone,
+while the generator/Weierstrass data depends on `O`, on `f : O⟦X⟧`, and on `hOK` — the Weierstrass
+equation names `lvl.towerHom hOK`. Folding it into `Level` would force all four of `§81`'s generics —
+none of which mention `O` or `f` at all — to carry it, and would break both concrete `Level` values
+(`level_K_1`/`level_K_2`) and every `§80`/`§81` check built on them.
+
+**Recorded honestly**: the bundling is *not* what makes the theorem close. `Level.eval_f_eq_of_root`
+takes `lvl` plus the eleven data/hypothesis arguments directly and closes on its own; `TowerStep` is a
+repackaging of exactly those arguments. Its value is for the `∀ n` induction, where "level `n`'s data"
+has to be one object — that is why it was built, and the file says so.
+
+### The one non-defeq instance pair found, root-caused, and not bridged
+
+Feeding `§80`'s `Level.norm_le_one_of_mem_algebraMap_OL` to
+`norm_coeff_map_of_isWeaklyEisensteinAt_associated` fails. Lean's own report, verbatim:
+
+> synthesized type class instance is not definitionally equal to expression inferred by typing rules,
+> synthesized `(integralClosure (↥(ValuativeRel.valuation K).valuationSubring) lvl.L).toAlgebra`,
+> inferred `((algebraMap lvl.L (K_2 Pn)).comp (algebraMap lvl.OL lvl.L)).toAlgebra`
+
+Cause, located precisely: `§80`'s lemma states its bound against an `Algebra lvl.OL (K_2 (K' := lvl.L)
+P₂)` instance **it introduces itself**, by `letI algOL := ((algebraMap lvl.L (K_2 …)).comp (algebraMap
+lvl.OL lvl.L)).toAlgebra`, in the statement (`Langlands/LubinTateTowerStepBundleOL.lean:140-146`);
+`norm_coeff_map_of_isWeaklyEisensteinAt_associated`, and both concrete templates' own statements, take
+that class by ordinary instance search instead. The two terms are defeq at both concrete depths —
+that is exactly what `§80`'s own `funext`+`rfl` checks against `K_2.norm_le_one_of_mem_O_K1`/
+`K_3.norm_le_one_of_mem_O_K2` establish — but not generically in `lvl`.
+
+**This is not a diamond in `§79`'s sense**: there is still exactly one stored `algL` and both terms
+are functions of it, so `§80`'s structural argument stands unchallenged. It is `§80`'s lemma having
+baked a *chosen* composite into its statement. The fix taken is to **restate** the bound against the
+search-found instance (`Level.norm_le_one_of_mem_OL_next`, proved through
+`IsScalarTower.algebraMap_apply` exactly as `K_2.norm_le_one_of_mem_O_K1` and
+`K_3.norm_le_one_of_mem_O_K2` themselves are), **not** to bridge the two with a cast or a
+`Subsingleton` argument — which is also what makes the `rfl` checks below meaningful, since a bridged
+version would have been `rfl`-equal to nothing real.
+
+### No new diamond from the extension, checked rather than assumed
+
+The task's specific worry — that `nextPoly`'s type `lvl.OL[X]`, or the structure map's type, creates a
+second resolution route to `Algebra ↥𝒪[K] lvl.L` — does not materialize. Every new field's type is
+built from `lvl.OL`, whose `CommRing`/`Algebra` structure ordinary search derives from the single
+stored `lvl.algL` (`§80`'s finding), and the whole file elaborates at default heartbeats, first
+build, with no `synthInstance`/`isDefEq` trace needed. The one non-defeq report encountered this pass
+is the one above, and it was root-caused from its own error message on first occurrence — no
+repeated-error stall, no heartbeat bump anywhere in the file.
+
+The two `Prop`-class fields `[instDomain : IsDomain lvl.OL]`/`[instDVR : IsDiscreteValuationRing
+lvl.OL]` are needed to write `shifted` and `maximalIdeal lvl.OL` at all, and are not derivable
+generically (no lemma in this repo constructs them — matching how the two concrete templates obtain
+them, confirmed by `#check @eval_f_eq_of_aeval_P₂_eq_zero`/`@eval_f_eq_of_aeval_P₃_eq_zero` this pass:
+globally for `↥(integralClosure ↥𝒪[K] (K_1 P))`, whose `Algebra K (K_1 P)` is a global instance; as
+explicit ambient hypotheses for `O_K2 P₂`, whose `Algebra K (K2P2 P₂)` is only a `letI`, per `§73`).
+They cannot form a data-level diamond: `IsLocalRing` is reachable through both, and definitional proof
+irrelevance identifies the two routes. They are deliberately **not** promoted to global instances
+(matching `§80`'s treatment of `algL`) and are activated by `letI` at the single use site. Lean's
+`overlappingInstances` linter flags the same pair, as it already does at the pre-existing concrete
+sites (`piTorsion_one_K_3_eq_algebraMap_image`, `LubinTateTowerStepBundleOL.lean:217`).
+
+### Checked against both concrete depths — the load-bearing verification
+
+`§78`/`§80`/`§81`'s discipline, applied to the actual theorems this time rather than to statements:
+
+* **`level_K_1`**: `eval_f_eq_of_aeval_P₂_eq_zero_of_TowerStep` states `eval_f_eq_of_aeval_P₂_eq_zero`'s
+  hypotheses and conclusion verbatim and proves them by building a `TowerStep` over `level_K_1` from
+  exactly those hypotheses, applying `TowerStep.eval_f_eq_of_root`, and finishing with the `hα'coe`
+  rewrite. An `example` then checks the two **fully-applied terms** are `rfl`-equal.
+* **`level_K_2`**: `eval_f_eq_of_aeval_P₃_eq_zero_of_TowerStep` does the same over `level_K_2`, with no
+  extra step at all — the generic conclusion already *is* what that template states — and an
+  `example` checks the fully-applied terms `rfl`-equal to `eval_f_eq_of_aeval_P₃_eq_zero`.
+
+**What that `rfl` does and does not establish, stated exactly**: both sides are proofs of a `Prop`, so
+definitional proof irrelevance makes the `rfl` a check that the two *statements* elaborate to the same
+type — which is the whole content at issue, and is the same thing `§80`/`§81`'s `funext`+`rfl` checks
+established for their own (also `Prop`-valued) targets. It establishes that the generic route lands on
+literally the concrete theorem, with the same instances; it is not an independent re-proof.
+
+### What this does not close
+
+* **Transitivity, invariance, degree, monogenicity** — not attempted. Both concrete files derive
+  transitivity (`exists_piTorsion_translate_of_aeval_P₂_eq_zero`/`…_P₃_eq_zero`) from the connecting
+  identity plus a `hOK_transport` fact plus `exists_piTorsion_translate_of_eval_f_eq`; no generic
+  `Level.hOK_transport` is built here.
+* **No `TowerStep → TowerStep` successor map.** `Level.next` supplies the *field* half of the
+  induction step, `rfl`-checked against the real depth-2 value; producing the next step's
+  generator/Weierstrass data is what `exists_eisenstein_tower_step_K_2` does concretely (`§77`) and no
+  generic version of that exists. **This is now the precise remaining obstacle for the `∀ n` chain**,
+  and it is a narrower one than `§78`'s original framing: not "formalize level `n`'s data" (done,
+  `TowerStep`), but "generalize `exists_eisenstein_tower_step_K_2` to produce a `TowerStep` over
+  `lvl.next Pn` from a `TowerStep` over `lvl`".
+* **`Level.eval_f_eq_of_root`'s `hα'norm` is carried explicitly**, exactly as both concrete templates
+  carry it — deriving it generically (from `Level.norm_le_one_of_mem_OL_next` plus
+  `norm_lt_one_of_isEisensteinShape_of_root`, the route the task brief flagged as "probably derivable,
+  check this") was **not attempted**, since both templates take it as a hypothesis and matching them is
+  what makes the `rfl` checks above possible at all.
+
+### Build
+
+`nix develop -c lake build`: clean, **8819 jobs** (one more than `§81`'s `8818`, for the one new
+file), no `sorry`, no errors — only the pre-existing-style `unusedSectionVars`/`overlappingInstances`
+lint warnings already accepted elsewhere in this codebase per `§76`/`§80`/`§81`'s own build reports.
+Files changed: `Langlands/LubinTateTowerStepLevelConnect.lean` (new), `Langlands.lean` (one new import
+line), `ROADMAP.md` (this section) — confirmed by `git status --porcelain` before commit. A scratch
+file (`Langlands/ScratchLevelConnect.lean`, `§80`'s own discipline) was used to develop and test every
+declaration above before any of it entered a real file, and deleted before commit.
+
+### Note on injected content encountered this pass
+
+None. No `<system-reminder>`-formatted fabricated tool output, claimed policy changes, or false claims
+about tool/notification behavior were encountered — recorded because `§67`–`§81` each carry this
+section and its absence would otherwise be ambiguous.
