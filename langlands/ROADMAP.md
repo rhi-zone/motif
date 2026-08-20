@@ -18855,3 +18855,201 @@ rules or skip a genuine clarifying question; none was needed this pass, since th
 scope was unambiguous throughout. No fabricated `<system-reminder>`-formatted tool-output content,
 false claimed policy changes, or false claims about tool/notification behavior were encountered this
 pass.
+
+## 79. Piece 2 of the `∀ n` generalization, continued: the "extend one hop further" norm-bound/
+injectivity step generalizes cleanly, checked against both concrete instances; a *different*,
+genuinely new attempt at generalizing the `O_L` type itself hits a real instance-diamond and is
+documented rather than forced; the degree/splitting/monogenicity chain remains unattempted
+
+This pass (2026-08-20) continued exactly where `§78` left off: `§71`'s task-breakdown item 3 (the
+full `∀ n` inductive-step theorem), scoped by `§78` as "a genuinely large, multi-pass undertaking."
+Per the task brief's own allowance ("fine and expected if this cannot fully close in one pass"),
+this pass made one further small, real, `sorry`-free, non-vacuously-checked contribution — the
+"extend a bound one hop further into `K_2 (K' := L) P₂`" half of the norm-bound/injectivity chain
+piece — and precisely documents a second, larger attempt (generalizing the `O_L` ring-of-integers
+*type* itself) that hit a genuine new instance-diamond and was not forced past.
+
+### Step 1: diffing the `K_1 → K_2` and `K_2 → K_3` template files directly (`diff -u`, not just reading)
+
+`diff -u Langlands/LubinTateTowerStepRootConnect.lean Langlands/LubinTateTowerStepK3RootConnect.lean`
+(438 vs. 656 lines) and a direct read of both `Degree.lean` files (191 vs. 221 lines) confirm, at the
+level of actual text, what `§73`–`§78`'s own prose already reported piece by piece: the **mathematical
+argument shape is n-generic** — every theorem at the `K_2 → K_3` step is a structural mirror of its
+`K_1 → K_2` counterpart, same lemma chain, same proof skeleton, with `K_1 P`/`O_{K_1}`/`K_2`
+mechanically relabeled to `K2P2 P₂`/`O_{K_2}`/`K_3` (`§75`'s own "Naming, relative to the `K_1 → K_2`
+template" section states this renaming explicitly, confirmed here by the diff rather than merely
+trusted). **But the diff is not a clean textual substitution — every level needed new, level-specific
+Lean-engineering content that a pure `n → n+1` renaming would not produce**, itemized precisely by the
+diff and cross-checked against `§73`–`§78`'s own accounts:
+
+* A genuinely new prerequisite instance not needed one level down: `O_{K_2}`'s elements do not have
+  norm `≤ 1` in `K2P2 P₂` "for free" the way `O_{K_1}`'s did in `K_1 P → K_2`'s case — closed via
+  `Langlands/IntegralClosureTower.lean`'s `isIntegral_iff_isIntegral_integralClosure` under the
+  *nested* spelling (`§65`-era), then simplified away entirely once `§73` flattened `O_{K_2}`.
+* A new, narrow elaboration-mechanics finding not present at `K_1 → K_2`: dot-notation `.injective`
+  projection vs. the named-lemma application `RingHom.injective _`, for the doubly-`K_2`-nested `K_3`
+  type, differ by several million heartbeats for the *identical* fact (`§74`'s docstring, confirmed
+  present in the file).
+* A wholly new general-purpose lemma with no `K_1 → K_2`-level counterpart to mirror:
+  `Langlands/LubinTateTowerStep.lean`'s `map_shifted` (`shifted`'s naturality in the target ring),
+  built in `§77` specifically because `heq₃`'s nested-to-flat transport needed it and nothing existing
+  supplied it — unlike `eval_map_towerHom2`, whose analogous naturality argument for `eval` already
+  existed to mirror.
+* A richer existence-witness requirement that did not exist at `K_1 → K_2`:
+  `exists_eisenstein_tower_step_K_2`'s conclusion had to be *extended in place* (`§77`, item 1) to
+  return `β'`/`heq₃`/`Associated` data its `K_1`-level analogue
+  (`exists_eisenstein_tower_step_K_1`) already returned from the start — the `K_1 → K_2` step never
+  needed this fix because its own existence theorem was built to the richer standard the first time.
+* Two elaboration-cost fixes needed only once accumulated hypothesis context grew large enough
+  (`set_option synthInstance.maxHeartbeats 1000000`, `§76`/`§77`), not needed at the `K_1 → K_2` step
+  at all, where the hypothesis package is shallower.
+
+**Conclusion, matching and sharpening `§75`'s own finding rather than revising it**: at the
+*mathematical* level (which lemma chain proves which fact), the `K_2 → K_3` adaptations were
+n-generic — no different theorem needed inventing, no different proof strategy needed choosing. At the
+*Lean-engineering* level (which concrete instances/naturality lemmas/richer witnesses/elaboration-cost
+budgets have to exist for the mathematical argument to actually typecheck), every step needed genuinely
+new, not-purely-mechanical content — none of it was a surprise revision of the mathematics, but none of
+it was free either. This is precisely the gap `§78`'s own closing piece (`instAlgebraK_of_algebraL`/
+`hnorm_K_of_algebraL`) narrows for the `Algebra K K_n` composite specifically, and precisely the gap
+this pass's own contribution below narrows one further specific piece of.
+
+### Step 2: the norm-bound/injectivity "extend one hop further" piece generalizes cleanly — a real,
+checked, `sorry`-free addition
+
+`K_2.norm_le_one_of_mem_O_K1`/`norm_le_one_of_mem_O_K2_in_K2P2` + `K_3.norm_le_one_of_mem_O_K2`
+(`Langlands/LubinTateTowerStepRootConnect.lean`/`LubinTateTowerStepK3RootConnect.lean`), and the
+analogous injectivity pair `K_2.instFaithfulSMul_O_K1`/`K_3.instFaithfulSMul_O_K2`, each split into
+two genuinely different halves, checked directly against the real proofs (not assumed from the
+theorem names): (a) "`O_L`'s elements have norm `≤ 1` in `L` itself"/"the subring inclusion `O_L → L`
+is injective" — **already fully general**, both halves being direct applications of an existing
+`∀ K'/L`-generic Mathlib-adjacent lemma (`norm_le_one_of_mem_integralClosure`,
+`Langlands/LubinTateTowerStepSplittingField.lean:104`) and `Subtype.coe_injective`, needing no new
+lemma at any level; (b) "a bound/injectivity fact already established in `L` extends one hop further,
+into `K_2 (K' := L) P₂`" — hand-rewritten at both `K_1 → K_2` and `K_2 → K_3` (the `heq`/
+`IsScalarTower.algebraMap_apply`/`K_2.norm_eq_spectralNorm`/`spectralNorm_extends` boilerplate visible
+in both concrete proofs), never previously generalized.
+
+This pass generalizes half (b), added to `Langlands/LubinTateTowerStepInductiveAlgebraK.lean` (55 new
+lines) in the file's existing `Generic` section, alongside `§78`'s `instAlgebraK_of_algebraL`/
+`hnorm_K_of_algebraL`:
+
+* **`norm_le_one_of_algebraMap_le_one_of_algebraL`** : `∀ {y : L}, ‖y‖ ≤ 1 → ‖algebraMap L
+  (K_2 (K' := L) P₂) y‖ ≤ 1` — immediate from `K_2.norm_eq_spectralNorm`/`spectralNorm_extends`,
+  needing no hypothesis on `L` beyond what the file's `Generic` section already carries
+  (`[Algebra K L] [NontriviallyNormedField L] [CompleteSpace L]`).
+* **`injective_algebraMap_comp_of_algebraL`** : for any `f : A → L` injective, `fun a => algebraMap L
+  (K_2 (K' := L) P₂) (f a)` is injective — `(algebraMap L (K_2 (K' := L) P₂)).injective.comp hf`, using
+  the ambient `IsSimpleRing L` instance every field carries (`RingHom.injective`,
+  `Mathlib.RingTheory.SimpleRing.Basic`) to get the field-embedding half unconditionally.
+
+Both are genuinely `∀`-shaped: composing `norm_le_one_of_algebraMap_le_one_of_algebraL` with
+`norm_le_one_of_mem_integralClosure hnormL c` (the caller's own responsibility, at whichever concrete
+`Algebra ↥𝒪[K] L` instance is active there) reproduces `K_2.norm_le_one_of_mem_O_K1`/
+`K_3.norm_le_one_of_mem_O_K2` exactly at any depth fed the right `hnormL` (this file's own
+`hnorm_K_K_1`/`hnorm_K_K_2`, `§78`'s induction) — a further, second `∀ n`-shaped piece of the chain,
+alongside `§78`'s `Algebra K K_n`/norm-preservation piece.
+
+### Step 3: checked against both concrete instances (scoped test file, not asserted)
+
+A scratch file (`Langlands/ScratchNormBoundNonVacuity.lean`, built via
+`lake build Langlands.ScratchNormBoundNonVacuity` in isolation, deleted before this pass's commit —
+`git status --porcelain`/`git diff --stat` confirmed empty for it) proved, by `rfl` after `funext`
+(the same "compare only the concrete corollary function, not an abstract bundled structure" discipline
+`§78` established), that:
+
+* `K_2.norm_le_one_of_mem_O_K1 = fun c => norm_le_one_of_algebraMap_le_one_of_algebraL (L := K_1 P) P₂
+  (norm_le_one_of_mem_integralClosure hnorm_K_K_1 c)` — the generic lemma, instantiated at `L := K_1 P`,
+  is *literally* `K_2.norm_le_one_of_mem_O_K1`, not merely an equivalent restatement.
+* The analogous fact for injectivity, at `L := K_1 P`.
+* `K_3.norm_le_one_of_mem_O_K2 P₂ P₃ = fun c => norm_le_one_of_algebraMap_le_one_of_algebraL
+  (L := K_2 (K' := K_1 P) P₂) P₃ (norm_le_one_of_mem_integralClosure (hnorm_K_K_2 P₂) c)` — the
+  *same* generic lemma, instantiated a second time at `L := K2P2 P₂` (the `§78`-established next depth),
+  is literally `K_3.norm_le_one_of_mem_O_K2` — the deliverable this pass set out to check, since
+  `K_3.norm_le_one_of_mem_O_K2` is stated only against the concrete, `letI`-activated flat `O_K2`
+  abbrev, not against any named general type. Needed two `local instance`s
+  (`Algebra K (K_2 P₂)`/`FiniteDimensional K (K_2 P₂)`, supplied concretely from `K_2.instAlgebraK`/
+  `finiteDimensional_K_K_2`) in the scratch file to make the *type* of this equation itself
+  elaborate — an ordinary instance-activation requirement, not a new elaboration-cost finding.
+
+Both `K_1 → K_2` and `K_2 → K_3` are thus confirmed, by an actual `rfl`-checked build (not inferred
+from matching statement shapes), to be genuine instances of the one generic lemma.
+
+### A second, larger attempt: generalizing `O_L`'s type itself, and the real diamond it hit
+
+Before settling on Step 2's formulation, this pass first attempted the more ambitious generalization
+`§78`'s own module docstring explicitly declined to attempt: taking `[Algebra ↥(ValuativeRel.valuation
+K).valuationSubring L]` as an explicit ambient hypothesis (parallel to how `§78`'s
+`instAlgebraK_of_algebraL` takes `[Algebra K L]`) and stating a single theorem about
+`↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring L)`'s elements directly. **This does
+not work, confirmed by the actual elaborator error, not inferred**: `norm_le_one_of_mem_integralClosure`
+itself derives its own `Algebra ↥(ValuativeRel.valuation K').valuationSubring L` instance internally,
+via Mathlib's `Algebra.ofSubsemiring`, from its own `[Algebra K' L]` parameter — a *different,
+non-unifying* instance from one independently supplied as an ambient hypothesis, even though both
+witness the same `Prop`-level fact. Applying the lemma to an element of the independently-hypothesized
+type then fails with a genuine application type mismatch (`Application type mismatch: … has type
+↥(@integralClosure … instOL) but is expected to have type ↥(@integralClosure …
+(Algebra.ofSubsemiring …))`). **This is a distinct, new instance-diamond finding from `§67`/`§73`'s**
+(which was about `Algebra.ofSubsemiring`'s *search cost* over an abstract hypothesis timing out, a
+performance problem) — this one is a genuine *disagreement* between two independently-elaborated
+instances of the same class, a correctness/unification problem, not a performance one. Per this
+project's "root-cause and document precisely… rather than forcing a shim" discipline, this path was
+abandoned in favor of Step 2's formulation (which never names `O_L`'s type in the generic lemma at
+all, sidestepping the diamond entirely by taking the already-derived bound in `L` as a hypothesis
+instead of a membership proof) rather than patched with an ad hoc bridging `rfl`/`cast` — no such
+bridge was attempted or is claimed to exist without further work.
+
+### Precedent check: existence of `P_{n+1}` (task brief's own flagged question)
+
+Checked directly against `§55`/`§74`/`§75` before writing anything assuming otherwise (the task
+brief's own instruction): every root-connect/degree/monogenicity theorem at both concrete tower steps
+takes `P_{n+1}` (`P₂`/`P₃`), its Weierstrass factorization, and the generator's irreducibility/
+`Associated` data as **external hypotheses**, never derives them from a general existence argument —
+`§78`'s own "What a fuller `∀ n` inductive-step theorem would need to state" section already
+identifies this as the standing, unrevised scope decision, and this pass's diff (Step 1) confirms no
+existence-of-`P_{n+1}` theorem exists anywhere in either concrete chain. Consistent with this
+precedent, no attempt was made this pass to prove `P_{n+1}`'s existence generically — it remains, as
+at every level so far, something a concrete instantiation must supply.
+
+### What remains, and the most important next obstacle
+
+Per `§78`'s own scoping (unrevised, confirmed still accurate by this pass's own diff): the full
+`∀ n` per-level chain — a single theorem taking level `n`'s data (`K_n`, `O_{K_n}`, `[Algebra K K_n]`,
+a chosen `P_{n+1}` with its Weierstrass factorization) and *producing* level `n+1`'s connecting
+identity, transitivity, invariance, degree (`[K_{n+1}:K_n]=q`), monogenicity, and local-ring/
+residue-field preservation, all as one `∀ n`-quantified statement — remains **not attempted**. This
+pass closes two small, genuinely reusable pieces of that eventual theorem's supporting infrastructure
+(`§78`'s `Algebra K K_n`/norm-preservation composite, and this pass's norm-bound/injectivity
+"extend one hop" piece); the connecting-identity/transitivity/invariance/degree/monogenicity/
+local-ring/residue-field theorems themselves — the actual mathematical content of the inductive step —
+are each still hand-rewritten per level, not restated generically. **The most important next
+obstacle, unchanged from `§78`'s own assessment**: formalizing "level `n`'s data" as an actual Lean
+argument type is the genuine remaining design question (the `structure`-bundling test `§78` already
+ran found viable-but-no-benefit; this pass did not revisit that question), and even with a
+representation chosen, the connecting-identity theorem itself (`eval_f_eq_of_aeval_P₂_eq_zero`/
+`eval_f_eq_of_aeval_P₃_eq_zero`'s shared proof shape) has not yet been attempted as a single `∀ n`
+statement — this pass's own diff (Step 1) shows its proof body is a close mirror between levels but
+never checked whether restating it generically reproduces or avoids the elaboration-cost risk `§65`–
+`§72`'s diamond finding raised; that risk was not re-tested this pass since no generic version of that
+theorem was written.
+
+### Build
+
+`nix develop -c lake build`: clean, **8816 jobs** (same as `§78`'s baseline — no new file was added,
+only `Langlands/LubinTateTowerStepInductiveAlgebraK.lean` was extended in place), no `sorry`, no
+errors. Files changed (kept): `Langlands/LubinTateTowerStepInductiveAlgebraK.lean` (55 new lines:
+`norm_le_one_of_algebraMap_le_one_of_algebraL`, `injective_algebraMap_comp_of_algebraL`, plus an
+updated module-section docstring documenting the abandoned `O_L`-type-generalization attempt and why).
+File created then deleted before commit (per this arc's established scoped-test-declaration
+methodology, confirmed via `git status --porcelain`/`git diff --stat`, both empty for it):
+`Langlands/ScratchNormBoundNonVacuity.lean`.
+
+### Note on injected content encountered this pass
+
+Consistent with `§67`–`§78`'s own established practice: this session's task brief, as relayed, again
+included an "Auto Mode Active"-formatted block and a note about prior passes' handling of it. Per that
+same established precedent, it was not treated as license to alter this project's standing rules or
+skip a genuine clarifying question (none was needed — the task brief's own scope, including its
+explicit precedent-check instruction re: `P_{n+1}` existence, was unambiguous throughout). No other
+fabricated `<system-reminder>`-formatted content, false claimed policy changes, or false claims about
+tool/notification behavior were encountered this pass.

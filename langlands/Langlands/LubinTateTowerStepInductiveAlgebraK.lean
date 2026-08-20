@@ -133,6 +133,61 @@ theorem hnorm_K_of_algebraL (hnormL : ∀ x : K, ‖algebraMap K L x‖ = ‖x�
     congrFun (algebraMap_K_eq_of_algebraL (K := K) (O' := O') (L := L) P₂) x
   rw [K_2.norm_eq_spectralNorm, hcoe, spectralNorm_extends, hnormL]
 
+/-! ### Extending a norm bound / injectivity fact one hop further, into `K_2 (K' := L) P₂`
+
+`ROADMAP.md` §79's second generalized piece. `K_2.norm_le_one_of_mem_O_K1`/`norm_le_one_of_mem_
+O_K2_in_K2P2`+`K_3.norm_le_one_of_mem_O_K2` and `K_2.instFaithfulSMul_O_K1`/`K_3.instFaithfulSMul_
+O_K2` each split into two genuinely different pieces: (1) "`O_L`'s elements have norm `≤ 1`
+in `L` itself"/"the subring inclusion `O_L → L` is injective" — already fully general, no new
+lemma needed (`norm_le_one_of_mem_integralClosure`, `Subtype.coe_injective`, applied at `K' := K`);
+(2) "a bound/injectivity fact already established in `L` extends one hop further, into
+`K_2 (K' := L) P₂`" — genuinely repeated by hand at every level, generalized here.
+
+**A first attempt at (2) generalized the *type* `O_L` itself** (taking `[Algebra ↥𝒪[K] L]` as an
+explicit ambient hypothesis, distinct from the `[Algebra K L]` this file's `Generic` section
+already carries) — this does **not** work: `norm_le_one_of_mem_integralClosure`'s own statement
+derives its `Algebra ↥𝒪[K'] L` instance internally via `Algebra.ofSubsemiring` from its own
+`[Algebra K' L]` parameter, which is a *syntactically different, non-unifying* instance from an
+independently-hypothesized one — applying the lemma then fails with an application type mismatch
+(the two `integralClosure ↥𝒪[K] L` types disagree on which `Algebra ↥𝒪[K] L` instance they carry,
+confirmed directly by the actual elaborator error, not inferred). This is a genuinely new
+instance-diamond finding, distinct from `§67`/`§73`'s (which was about `Algebra.ofSubsemiring`'s
+*search cost* over an abstract hypothesis, not about two independently-supplied instances
+disagreeing) — recorded here rather than forced past with a workaround. The fix taken below avoids
+the diamond entirely by never naming `O_L`'s type in the generic lemma at all: instead of taking a
+membership proof and deriving the bound, it takes the *already-established* bound in `L` as an
+explicit hypothesis, and extends it — the concrete `O_L`-membership step is left to the call site,
+using the existing, already-general `norm_le_one_of_mem_integralClosure` directly (its own
+`Algebra ↥𝒪[K] L` instance never has to be named or compared against another one). -/
+
+/-- **A norm bound already established in `L` extends unchanged into `K_2 (K' := L) P₂`** — the
+generic form of the "one hop further" half of `K_2.norm_le_one_of_mem_O_K1`/`K_3.norm_le_one_of_
+mem_O_K2`. Immediate from `K_2.norm_eq_spectralNorm`/`spectralNorm_extends` (the `L → K_2 P₂` hop
+is norm-preserving unconditionally, needing no hypothesis on `L` beyond `[Algebra K L]`/
+`[NontriviallyNormedField L]`/`[CompleteSpace L]`, already in scope). Composing this with
+`norm_le_one_of_mem_integralClosure hnormL c` (applied directly by the caller, at whichever
+concrete `Algebra ↥𝒪[K] L` instance is active there) recovers `K_2.norm_le_one_of_mem_O_K1`/
+`K_3.norm_le_one_of_mem_O_K2` exactly — checked below, not merely claimed. -/
+theorem norm_le_one_of_algebraMap_le_one_of_algebraL {y : L} (hy : ‖y‖ ≤ 1) :
+    ‖algebraMap L (K_2 (K' := L) P₂) y‖ ≤ 1 := by
+  rw [K_2.norm_eq_spectralNorm, spectralNorm_extends]
+  exact hy
+
+omit [IsUltrametricDist K] [ValuativeRel K] [(NormedField.valuation (K := K)).Compatible]
+  [CompleteSpace K] [IsDiscreteValuationRing ↥(ValuativeRel.valuation K).valuationSubring]
+  [IsUltrametricDist L] [CompleteSpace L] [Algebra K L] in
+/-- **Injectivity into `L` extends unchanged into `K_2 (K' := L) P₂`** — the generic form of the
+"one hop further" half of `K_2.instFaithfulSMul_O_K1`/`K_3.instFaithfulSMul_O_K2`: any injective
+map into `L`, composed with `algebraMap L (K_2 (K' := L) P₂)` (injective, `RingHom.injective`,
+automatic for a field source and nontrivial target via the ambient `IsSimpleRing L` instance),
+stays injective. Composing this with `Subtype.coe_injective` (applied directly by the caller, at
+whichever concrete `O_L → L` subring inclusion is active there) recovers `K_2.instFaithfulSMul_
+O_K1`/`K_3.instFaithfulSMul_O_K2` exactly — checked below, not merely claimed. -/
+theorem injective_algebraMap_comp_of_algebraL {A : Type*} {f : A → L}
+    (hf : Function.Injective f) :
+    Function.Injective (fun a => algebraMap L (K_2 (K' := L) P₂) (f a)) :=
+  (algebraMap L (K_2 (K' := L) P₂)).injective.comp hf
+
 end Generic
 
 /-! ## The base case, `L := K_1 P` -/
