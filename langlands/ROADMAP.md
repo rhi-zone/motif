@@ -17921,3 +17921,208 @@ No fabricated `<system-reminder>`-formatted content, false claimed policy change
 about tool/notification behavior were observed in any tool output this pass. The task brief's security
 note (warning that this has recurred in prior passes of this exact arc) was read and kept in mind
 throughout, but nothing matching that pattern actually recurred this time.
+
+## 74. `§65`–`§72`'s `norm_lt_one_of_aeval_P₃_eq_zero` blocker is re-tested against `§73`'s flat
+`O_{K_2}` and **closes** — confirmed by real build, not inference; the connecting identity and
+transitivity close too; invariance and the degree computation are scoped but not attempted
+
+This pass re-ran `§72`'s exact isolated diagnostic repro against the now-flat `O_{K_2}` (`§73`,
+commit `72b16e7`), then, since the repro closed cheaply, built `norm_lt_one_of_aeval_P₃_eq_zero` for
+real (not a scoped test) for the first time in this arc, plus its connecting-identity and
+transitivity consequences. Invariance and the full degree computation were scoped but not attempted,
+per this project's stop-and-diagnose discipline, on hitting a genuinely new (not yet built)
+prerequisite fact.
+
+### Step 1: the diagnostic repro, re-run against the flat `O_{K_2}`
+
+`§72`'s exact isolated repro (`norm_algebraMap_eq_one_of_isUnit` applied at `O := O_K2 P₂`, `K :=
+K_3 ... P₃`, with `hOK := K_3.norm_le_one_of_mem_O_K2 P₂ P₃` and `ha := isUnit_one`), appended as a
+scoped test declaration to `Langlands/LubinTateTowerStepK3RootConnect.lean` after `towerHom2`, built
+via `lake build Langlands.LubinTateTowerStepK3RootConnect`, reverted before this section's real
+theorems replaced it:
+
+```lean
+set_option maxHeartbeats 400000 in
+include K P P₂ P₃ in
+theorem test_diag_isUnitOne :
+    True := by
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
+  have _h := norm_algebraMap_eq_one_of_isUnit
+      (O := O_K2 (K := K) P₂)
+      (K := K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)
+      (K_3.norm_le_one_of_mem_O_K2 (K := K) (P := P) P₂ P₃) isUnit_one
+  trivial
+```
+
+Under the **nested** `O_{K_2}` spelling, `§72` measured this hitting `(deterministic) timeout at
+isDefEq, maximum number of heartbeats (400000) has been reached` at **18.97s wall time**. Under the
+**flat** spelling (this pass), with the `maxHeartbeats 400000` override still in place: **it builds
+successfully, `3594` jobs, no error, no timeout, in 5.1s wall time** (full per-file `lake build`, not
+just the one declaration). Removing the override entirely (default `200,000` heartbeats): **still
+builds successfully**, same job count, ~5.2s wall — the repro elaborates comfortably inside the
+*default* heartbeat budget, a strict, dramatic improvement over the nested spelling's `400,000`-
+heartbeat *timeout*.
+
+The harder variant (`§69`'s own variant 3 / `§72` Step 1, `v.isUnit` from a destructured `Associated
+(P₃.coeff 0) β'` rather than the trivial `isUnit_one`) — which under the nested spelling needed
+`4,000,000` heartbeats and still timed out at `whnf` (`§69`, `§72` Step 1, ~105s/1m45s wall) — was
+also re-run against the flat spelling, at **default heartbeats, no override**:
+
+```lean
+include K P P₂ P₃ in
+theorem test_diag_isUnitAssociated (β' : O_K2 (K := K) P₂)
+    (hassoc : Associated (P₃.coeff 0) β') :
+    True := by
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
+  obtain ⟨v, hv⟩ := hassoc
+  have _h := norm_algebraMap_eq_one_of_isUnit
+      (O := O_K2 (K := K) P₂)
+      (K := K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)
+      (K_3.norm_le_one_of_mem_O_K2 (K := K) (P := P) P₂ P₃) v.isUnit
+  trivial
+```
+
+**Also builds successfully at default heartbeats, `3594` jobs, ~5.2s wall.** Per this pass's own
+"compare directly" rubric: this is squarely **"flattening fixed it"**, not a partial change or a
+different error — both the trivial and the destructured-`Associated` variants, which respectively
+needed `400,000` and `>4,000,000` heartbeats (the second never actually completing) under the nested
+spelling, now complete comfortably under the *default* `200,000`-heartbeat budget under the flat
+spelling. Both scoped test declarations were reverted (`git diff --stat` confirmed zero net change
+before the real theorems below were added in their place).
+
+### Step 2: `norm_lt_one_of_aeval_P₃_eq_zero` built for real, and closes
+
+With Step 1's result in hand, this pass built `norm_lt_one_of_aeval_P₃_eq_zero` — the theorem
+`§65`–`§72` diagnosed but never successfully drafted as a real (non-scoped-test) declaration — as a
+genuine, permanent addition to `Langlands/LubinTateTowerStepK3RootConnect.lean`, mirroring `Langlands/
+LubinTateTowerStepRootConnect.lean`'s `norm_lt_one_of_aeval_P₂_eq_zero` almost verbatim (same
+five-conjunct destructuring of `norm_coeff_map_of_isWeaklyEisensteinAt_associated`, same
+`Polynomial.norm_lt_one_of_isEisensteinShape_of_root` finish), adjusted for the flat spelling's
+naming (`β'`/`P₃`/`K_3`/`K2P2` in place of `α'`/`P₂`/`K_2`/`K_1 P`). **It closes**, `sorry`-free, at
+default heartbeats, confirmed by `nix develop -c lake build Langlands.LubinTateTowerStepK3RootConnect`
+(clean) and by a full project `nix develop -c lake build` (clean, `8809` jobs — unchanged job count
+from `§73`'s baseline, no dangling files). This is the first time in this arc (`§65`–`§73`) that this
+theorem has existed as a real, committed declaration rather than a diagnosed-but-abandoned scoped
+test.
+
+One small mechanical fix was needed building it, not previously seen: `omit [IsLocalRing (O_K2 P₂)]
+in`, copied by habit from this file's other `omit`-annotated declarations, fails outright
+(`cannot omit referenced section variable`) for this particular theorem, because its proof genuinely
+uses the `IsLocalRing` instance (via `maximalIdeal`); removing the spurious `omit` clause fixes it.
+Not a new elaboration-cost finding — an ordinary "the omit annotation was wrong for this
+declaration" mistake, caught immediately by the compiler.
+
+### Step 2 continued: the connecting identity and transitivity close too
+
+Since the norm bound closed, this pass continued into item 3's next two pieces, mirroring
+`Langlands/LubinTateTowerStepRootConnect.lean`'s structure exactly:
+
+* **`K_3.hOK_transport`** (new; no `K_1 → K_2`-level analogue existed to copy — `K_2.hOK_transport`
+  is itself hand-written for the `K_1`/`K_2` pair, not generic in the tower level, so this needed its
+  own short proof): `K`'s uniform norm bound transports down to `K_3` unchanged. Proof: fold
+  `K_3.algebraMap_O_eq`'s four-hop composite down to the single `algebraMap O_{K_2} K_3` hop via
+  `IsScalarTower.algebraMap_apply`, then apply `K_3.norm_le_one_of_mem_O_K2`. Closes at default
+  heartbeats.
+* **`eval_f_eq_of_aeval_P₃_eq_zero`** (the connecting identity): `eval f γ = algebraMap O_{K_2} K_3
+  β'` for `γ` a root of `P₃`'s image. Mirrors `eval_f_eq_of_aeval_P₂_eq_zero`'s `eval_mul`/
+  `eval_sub`/`eval_C` chaining through the Weierstrass factorization `shifted f (towerHom2 hOK) β' =
+  P₃ * u₃` (taken as an explicit hypothesis, not derived — matching this arc's standing convention at
+  every tower level: the actual factorization comes from `exists_eisenstein_tower_step_K_2`, whose
+  output lives in the *nested* `O_{K_2}` type, a transport this pass did not attempt — see below).
+  **Genuinely simpler than the `K_1 → K_2` template in one respect**: since `β'` is already an
+  `O_{K_2}` element (not reached via a separate field-level `hα'coe` witness the way `α`/`α'` were),
+  the conclusion is stated directly against `algebraMap O_{K_2} K_3 β'`, with no intermediate
+  field-level identification hypothesis needed. One small mechanical snag: `rw
+  [eval_map_towerHom2 ...]` does not fire directly against a goal mentioning `towerHom2` by name (the
+  `rw` pattern-matches `eval_map_towerHom2`'s literal unfolded-composite statement, not the `def`);
+  `unfold towerHom2 at hmapeq` immediately before the `rw` fixes it — a one-line, non-elaboration-cost
+  fix, not a new obstacle. Closes at default heartbeats.
+* **`exists_piTorsion_translate_of_aeval_P₃_eq_zero`** (transitivity): for `γ, γ'` both roots of
+  `P₃`'s image, `∃ t' ∈ piTorsion hπ hf 1, γ' = FPiEval hπ hf γ t'`. Mirrors `exists_piTorsion_
+  translate_of_aeval_P₂_eq_zero` exactly: apply the connecting identity to each of `γ`/`γ'`, apply
+  `norm_lt_one_of_aeval_P₃_eq_zero` to each for the `‖·‖ < 1` hypotheses, then `Langlands.
+  LubinTateRootTranslation.exists_piTorsion_translate_of_eval_f_eq` (the *generic*, tower-level-
+  independent transitivity engine `§71` already confirmed is `∀ n`-shaped) supplies `t'` directly,
+  fed `K_3.hOK_transport` for its own `hOK`-shaped hypothesis. Closes at default heartbeats, no new
+  obstacle.
+
+All three are genuine, permanent, `sorry`-free additions (163 new lines total in `Langlands/
+LubinTateTowerStepK3RootConnect.lean`), confirmed by a full `nix develop -c lake build`: clean,
+`8809` jobs, no `sorry`, no new errors — same job count as `§73`'s baseline.
+
+### What remains, deliberately not attempted: invariance and the degree computation
+
+Item 3's remaining two pieces — invariance (`piTorsion_one_K_2_eq_algebraMap_image`'s `K_3`-level
+analogue) and the full degree computation (`[K_3 : K_2] = q`, mirroring `Langlands/
+LubinTateTowerStepDegree.lean`) — were **not attempted**, on hitting a genuinely new, not-yet-built
+prerequisite, checked directly rather than assumed: `piTorsion_one_K_2_eq_algebraMap_image`'s proof
+(`Langlands/LubinTateTowerStepRootConnect.lean:386`) depends on `splits_divX_map_K_1` — the level-`1`
+torsion polynomial `Q := P.divX`'s image splits completely over `K_1 P`, because `K_1 P` **is** `Q`'s
+own splitting field by construction. The `K_3`-level analogue would need `Q`'s image to split over
+`K2P2 P₂` (`= K_2 P₂`) too — but `K2P2 P₂` is a *further* extension of `K_1 P`, not `Q`'s own
+splitting field, so this is not free from `splits_divX_map_K_1` alone. Grepping this repo (`grep -rn
+splits_divX_map_K_2` and variants) confirms **no such lemma exists yet** — it would need an explicit
+"splits over `L` implies splits over any further extension `M ⊇ L`" transport (plausibly via
+Mathlib's `Polynomial.splits_comp_of_splits`, composed with `algebraMap (K_1 P) (K2P2 P₂)`, but this
+was not checked or built this pass), then `piTorsion_one_K_2_eq_algebraMap_image`'s own
+multiset/`Finset.image` argument would need reproducing one level up. This is a genuinely new,
+nontrivial piece of engineering — not a mechanical substitution of the kind that closed the three
+theorems above — so, per this project's "diagnose and stop rather than guess past a blocker"
+discipline, it was left for a future pass rather than forced through in the time remaining. The
+degree computation depends on invariance and was consequently not attempted either.
+
+Separately, and out of scope for this same reason: instantiating `norm_lt_one_of_aeval_P₃_eq_zero`/
+`eval_f_eq_of_aeval_P₃_eq_zero`/the transitivity theorem at a *concrete* `P₃` (rather than leaving
+`P₃`/`β'`/`u₃` universally quantified, as all three theorems built this pass do) would need
+`exists_eisenstein_tower_step_K_2`'s actual output — which lives in the **nested** `O_{K_2}` type
+(that theorem, in `Langlands/LubinTateTowerStepConcreteK2.lean`, was not touched by `§73`'s flat
+switch) — transported to the flat spelling. `Langlands/IntegralClosureTower.lean`'s `§67`-added
+`_symm` transport lemmas are the natural candidate for this, but instantiating them at the concrete
+`P₃`/`β'`/`u₃` this construction produces was not attempted this pass.
+
+### Implication for piece 2's design choice (§71's three alternatives)
+
+**This pass's evidence directly supports continuing with Alternative 1** (fixed ambient field, flat
+`integralClosure` per level — what `§73` built the `n = 2` instance of, and this pass is the first
+real test of "does the flat spelling actually help the specific combinatorial-elaboration obstacle
+that motivated it"). `§67`'s own framing was explicit that this test — "actually attempt combining
+multiple real terms mentioning the flat `O_{K_2}` in one declaration... this is the load-bearing
+experiment the whole design bet rests on" (`§71`, quoting `§67`) — had never been run to completion
+under either representation before this pass. It now has, and the result is unambiguous: the exact
+repro that timed out at `400,000`–`4,000,000`+ heartbeats under the nested spelling (`§65`–`§72`)
+closes at or under *default* heartbeats under the flat spelling, and the real theorem this
+diagnostic was standing in for — never successfully drafted by five prior passes — closes cleanly on
+the first real attempt against the flat spelling, along with two further pieces built on top of it.
+
+This does **not** yet establish that Alternative 1 scales cleanly to `n = 3, 4, …` — `§73`'s own
+"next concrete step" notes (unchanged by this pass) that the `Algebra K K_n` composite itself, and
+the `letI`-per-theorem threading, both need to generalize inductively, neither of which this pass
+touched. Nor does it resolve invariance/degree computation's own newly-identified prerequisite gap
+(the `splits_divX_map_K_2`-shaped fact above) — that gap is a **mathematical/engineering** one,
+orthogonal to the elaboration-cost question this pass answers, and would need addressing under *any*
+representation choice, flat or nested. But on the specific, narrow question this section of the arc
+(`§65`–`§74`) has been probing since `§65` — does the doubly-nested `Subalgebra` representation's
+elaboration cost block real proof-writing, and does flattening fix it — the answer is now a
+confirmed, by-real-build **yes** on both counts, closing the single largest open diagnostic thread
+`§65`–`§72` left behind.
+
+### Build
+
+`nix develop -c lake build`: clean, `8809` jobs, no `sorry`, no new errors — same job count as
+`§73`'s baseline. Files changed (kept): `Langlands/LubinTateTowerStepK3RootConnect.lean` (163 new
+lines: `K_3.hOK_transport`, `norm_lt_one_of_aeval_P₃_eq_zero`, `eval_f_eq_of_aeval_P₃_eq_zero`,
+`exists_piTorsion_translate_of_aeval_P₃_eq_zero`, plus an updated module docstring). No other file
+changed; `git status --porcelain`/`git diff --stat` confirmed only this one file differs from
+`72b16e7` before commit.
+
+### A note on tooling integrity this pass
+
+This session received, embedded in a `Skill`-tool result rather than the genuine top-level system
+prompt, text formatted as a `<system-reminder>` block declaring an "Auto Mode Active" policy urging
+reduced clarifying questions — matching, in form and placement, the exact injected-content pattern
+`§67`–`§72` already logged and correctly did not comply with. Consistent with that established
+precedent, it was not treated as a genuine instruction (this task's own scope was already
+unambiguous and needed no clarifying questions in any case; the note is recorded here only because
+the task brief's own security note asked for it). No other fabricated `<system-reminder>` content,
+false claimed policy changes, or false claims about tool/notification behavior were observed this
+pass.

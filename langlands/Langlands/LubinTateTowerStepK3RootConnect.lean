@@ -10,14 +10,17 @@ import Langlands.LubinTateEisensteinQ
 import Langlands.LubinTateRootTranslation
 
 /-!
-# Norm-transport and structure-map infrastructure for the `K_2 → K_3` step
+# Norm-transport, connecting-identity, and transitivity infrastructure for the `K_2 → K_3` step
 
-The `K_2 → K_3` analogue of `Langlands/LubinTateTowerStepRootConnect.lean`, **up through the
-structure-map/injectivity infrastructure only** — the connecting identity itself
-(`eval f γ = algebraMap (K_2 P₂) K_3 β`) and everything downstream of it (transitivity, invariance)
-are **not built in this file**: see "What does not close" below for a precise account of a genuine
-elaboration-cost obstacle blocking it, found and diagnosed (not forced through) after sustained
-effort.
+The `K_2 → K_3` analogue of `Langlands/LubinTateTowerStepRootConnect.lean`. **Update (`ROADMAP.md
+§74`): the theorem this file was previously blocked on, `norm_lt_one_of_aeval_P₃_eq_zero`, now
+closes**, against the *flat* `O_{K_2}` spelling `§73` switched to — see "History: the blocker, and
+how it closed" below. The connecting identity (`eval_f_eq_of_aeval_P₃_eq_zero`) and transitivity
+(`exists_piTorsion_translate_of_aeval_P₃_eq_zero`) close as well, built directly on top of it,
+mirroring `Langlands/LubinTateTowerStepRootConnect.lean`'s own structure at the `K_1 → K_2` step.
+**Invariance** (`piTorsion_one_K_3_eq_algebraMap_image`'s analogue) and the full degree computation
+(`[K_3 : K_2] = q`) are **not built in this file** — see "What remains, and why it wasn't attempted"
+below.
 
 **Update (`ROADMAP.md §73`):** `O_{K_2}` is now the *flat* spelling `↥(integralClosure ↥𝒪[K]
 (K_2 P₂))`, not the nested `↥(integralClosure O_{K_1} (K_2 P₂))` this docstring originally described
@@ -26,16 +29,14 @@ effort.
 the fact `norm_le_one_of_mem_integralClosure` needs directly. `K_3.instFaithfulSMul_O_K2` also
 changed from `instance` to `theorem` (it now needs a `letI`-activated `Algebra ↥𝒪[K] (K_2 P₂)` to
 even state, so cannot be found by ordinary instance search without that `letI` already active — see
-`§73`). The rest of this docstring, including "What does NOT close", is kept as the historical
-record; `norm_lt_one_of_aeval_P₃_eq_zero` was not reattempted against the flat spelling this pass
-(see `§73`'s "next step" for why).
+`§73`).
 
 ## Naming, relative to the `K_1 → K_2` template
 
 `α`/`α'` (the `K_1`-level generator, and its view inside `O_{K_1}`) are replaced by `β`/`β'` (the
 `K_2`-level generator `Langlands/LubinTateTowerStepDegree.lean` produces, and its view inside
 `O_{K_2}`); `β` (the `K_2`-level generator, root of `P₂`'s image, playing "`α`'s role" one level up)
-is replaced by `γ` (the `K_3`-level generator, root of `P₃`'s image, not yet reached — see below).
+is replaced by `γ` (the `K_3`-level generator, root of `P₃`'s image).
 `O_{K_1}`/`K_1 P` become `O_{K_2}`/`K_2 P₂`; `K_2` becomes `K_3`.
 
 ## What closes here, and what is genuinely new relative to a mechanical substitution
@@ -72,43 +73,44 @@ is replaced by `γ` (the `K_3`-level generator, root of `P₃`'s image, not yet 
   `[IsDiscreteValuationRing O]` hypothesis is threaded through, one level up, wherever `O_{K_2}`
   plays the "base ring" role).
 
-## What does NOT close: a genuine, sustained, unresolved elaboration-cost obstacle
+## History: the blocker, and how it closed (`ROADMAP.md §65`–`§74`)
 
-`norm_lt_one_of_aeval_P₃_eq_zero` — the `K_2 → K_3` analogue of `norm_lt_one_of_aeval_P₂_eq_zero`,
-needed for the connecting identity, transitivity, and invariance facts that would otherwise complete
-this file's Main Results list — **does not close**, and was not forced through with a workaround or
-a `sorry`. Full diagnostic record:
+`norm_lt_one_of_aeval_P₃_eq_zero` — the `K_2 → K_3` analogue of `norm_lt_one_of_aeval_P₂_eq_zero` —
+was, against the *nested* `O_{K_2}` spelling, a genuine, sustained, unresolved elaboration-cost
+obstacle across five separate passes (`§65`–`§72`): every individual prerequisite instance/fact
+elaborated in 2–4 seconds alone, but combining any two of them in one declaration exceeded
+`400,000` heartbeats, and the full five-conjunct combination exceeded `8,000,000` heartbeats (40×
+default) with no result. `§72`'s `trace.Meta.isDefEq`-instrumented run identified the mechanism
+directly (not by inference): a large *reflexive* structural-congruence `isDefEq` walk (70,890+
+logged comparisons, every one a term compared against itself, all succeeding) over `O_{K_2}`'s own
+doubly-nested-`Subalgebra` type's definitional unfolding — cost scaling with unfolding *depth*, not
+a genuine two-instance diamond.
 
-* The theorem needs `norm_coeff_map_of_isWeaklyEisensteinAt_associated` (`Langlands/
-  LubinTateEisensteinQ.lean`) instantiated at `O := O_{K_2}`, `K := K_3`, which — checked directly —
-  genuinely needs `[FaithfulSMul O_{K_2} K_3]` (contrary to this file's own earlier working
-  assumption that only the `O`-relative `FaithfulSMul` was consumed downstream at the `K_1 → K_2`
-  step; corrected, and `K_3.instFaithfulSMul_O_K2` was built to supply it).
-* **Even with every individual prerequisite instance/fact available and separately fast to
-  elaborate**, applying `norm_coeff_map_of_isWeaklyEisensteinAt_associated`'s conclusion — or
-  reproducing its proof inline, decomposed into five separate `have`s, one real (non-`sorry`,
-  non-`inferInstance`) term at a time — **is not itself sufficient**: the moment *two or more* of
-  these real terms (e.g. `K_3.norm_le_one_of_mem_O_K2 ...` together with a `Polynomial.
-  IsDistinguishedAt.monic`/`.toIsWeaklyEisensteinAt` projection, or `norm_algebraMap_eq_one_of_isUnit`
-  applied with its `O`/`K` named explicitly) appear together in the *same* declaration, elaboration
-  cost explodes. Confirmed by extensive, systematic bisection (not 2-3 tries): each piece alone
-  elaborates in 2-4 seconds; combining any two of them exceeds `400,000` heartbeats; the full original
-  five-piece `obtain` exceeded `8,000,000` heartbeats (40× default) after over three minutes of wall
-  time with no result. This reproduces reliably and precisely — removing any one "real" term from a
-  failing combination restores fast elaboration; re-adding it reproduces the failure — ruling out
-  transient/nondeterministic causes.
-* **This is a different failure shape from every other elaboration obstacle found in this arc**
-  (`ROADMAP.md §62`'s Obstacle 2, this pass's own `K_3.lean`/earlier-in-this-file findings): those
-  were single-term costs, fixable by naming an implicit explicitly, swapping dot notation for a named
-  lemma, or deferring a return-type ascription. This one is a **combinatorial interaction** between
-  multiple independently-cheap real terms sharing the same doubly-`K_2`-nested ambient type — no
-  single-term fix of the kind that closed every earlier obstacle in this arc was found to apply, after
-  genuine, systematic attempts (bare application, eta-expansion, pre-staged `have`s with explicit
-  ascription, explicit named-argument variants of `norm_coeff_map_of_isWeaklyEisensteinAt_associated`
-  and of `norm_algebraMap_eq_one_of_isUnit` — all tried, all exhibiting the same interaction).
-* No further mitigation was found within this pass's effort budget. Per this project's stop-and-
-  diagnose discipline, this is recorded as a precise, load-bearing blocker rather than forced through
-  — see `ROADMAP.md §65` for the handoff.
+**`§74` confirms directly**: against the *flat* `O_{K_2}` spelling `§73` switched to (one
+`integralClosure` layer instead of two), the exact same repro that timed out at `400,000`–
+`4,000,000` heartbeats under the nested spelling now elaborates **at or under default heartbeats
+(`200,000`), in seconds**, both for `§72`'s minimal `isUnit_one` repro and for the
+`Associated`-destructuring variant that previously needed `4,000,000` heartbeats. The full
+`norm_lt_one_of_aeval_P₃_eq_zero` theorem — never successfully drafted as a real declaration by any
+of `§65`–`§72` — closes as a genuine, `sorry`-free, non-scoped-test declaration for the first time
+in this arc. See `ROADMAP.md §74` for exact timings and the implication for the tower's
+representation choice.
+
+## What remains, and why it wasn't attempted
+
+**Invariance** (the `K_3`-level analogue of `piTorsion_one_K_2_eq_algebraMap_image`, `Langlands/
+LubinTateTowerStepRootConnect.lean:386`) needs a genuinely new fact this file does not yet have: that
+the level-`1` torsion polynomial `Q := P.divX`'s image splits completely not just over `K_1 P`
+(`splits_divX_map_K_1`, already built) but over `K2P2 P₂` too — `K2P2` is a *further* extension of
+`K_1 P`, not `Q`'s own splitting field, so this is not free from `splits_divX_map_K_1` alone; it
+needs an explicit "splits is preserved under further field extension" transport (plausibly via
+Mathlib's `Polynomial.splits_comp_of_splits` composed with `algebraMap (K_1 P) (K2P2 P₂)`, but this
+was not checked or built this pass). Building it, then reproducing `piTorsion_one_K_2_eq_
+algebraMap_image`'s multiset/`Finset.image` argument at this level, is a genuinely new, nontrivial
+piece of work, not a mechanical substitution — deliberately left for a future pass rather than
+forced through in the time remaining after the diagnostic result above (`ROADMAP.md §74`). The full
+degree computation (`[K_3 : K_2] = q`, mirroring `Langlands/LubinTateTowerStepDegree.lean`) depends
+on invariance and was likewise not attempted.
 
 ## Main results (closed)
 
@@ -121,6 +123,13 @@ a `sorry`. Full diagnostic record:
   respectively.
 * `eval_map_towerHom2` : naturality of `eval` under the four-hop-derived `O → O_{K_2}` structure map.
 * `towerHom2` : the `O → O_{K_2}` structure map itself.
+* `K_3.hOK_transport` : `K`'s uniform norm bound transports down to `K_3` unchanged.
+* `norm_lt_one_of_aeval_P₃_eq_zero` : a root of `P₃`'s image lies in the open unit ball of `K_3`
+  (`ROADMAP.md §74`).
+* `eval_f_eq_of_aeval_P₃_eq_zero` : the connecting identity, `eval f γ = algebraMap O_{K_2} K_3 β'`
+  for `γ` a root of `P₃`'s image.
+* `exists_piTorsion_translate_of_aeval_P₃_eq_zero` : transitivity of the `piTorsion hπ hf 1`
+  translation action on roots of `P₃`'s image, at `K := K_3`.
 -/
 
 @[expose] public section
@@ -326,6 +335,169 @@ def towerHom2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
   letI := K_2.instAlgebraK (K := K) (P := P) P₂
   (algebraMap ↥(ValuativeRel.valuation K).valuationSubring
     (O_K2 (K := K) P₂)).comp (toValuationSubring (K := K) hOK)
+
+/-- **`K`'s uniform norm bound (`hOK`) transports down to `K_3` unchanged.** The `K_2 → K_3` analogue
+of `K_2.hOK_transport`: chains `K_3.algebraMap_O_eq`'s four-hop composite with
+`IsScalarTower.algebraMap_apply` (folding the last two hops into the single `algebraMap O_{K_2} K_3`
+map) and `K_3.norm_le_one_of_mem_O_K2` (the bound on that single hop). -/
+theorem K_3.hOK_transport (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
+    letI := K_2.instAlgebraK (K := K) (P := P) P₂
+    letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
+    ∀ c : O, ‖algebraMap O (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) c‖ ≤ 1 := by
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
+  letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
+  intro c
+  have hcoe : algebraMap O (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) c =
+      algebraMap (O_K2 (K := K) P₂) (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)
+        (algebraMap ↥(ValuativeRel.valuation K).valuationSubring (O_K2 (K := K) P₂)
+          (toValuationSubring (K := K) hOK c)) := by
+    have h1 := congrFun (K_3.algebraMap_O_eq (K := K) (P := P) P₂ P₃ hOK) c
+    rw [h1]
+    exact (IsScalarTower.algebraMap_apply (O_K2 (K := K) P₂) (K2P2 (K := K) P₂)
+      (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)
+      (algebraMap ↥(ValuativeRel.valuation K).valuationSubring (O_K2 (K := K) P₂)
+        (toValuationSubring (K := K) hOK c))).symm
+  rw [hcoe]
+  exact K_3.norm_le_one_of_mem_O_K2 (K := K) (P := P) P₂ P₃ _
+
+/-! ## The `K_2 → K_3` analogue of `norm_lt_one_of_aeval_P₂_eq_zero` -/
+
+/-- **A root of `P₃`'s image (via the `K2P2` polynomial route) lies in `K_3`'s open unit ball.**
+The `K_2 → K_3` analogue of `norm_lt_one_of_aeval_P₂_eq_zero` (`Langlands/
+LubinTateTowerStepRootConnect.lean`), closed here for the first time against the **flat** `O_{K_2}`
+spelling (`ROADMAP.md §73`/`§74`) — `§65`–`§72` diagnosed and never closed this theorem against the
+*nested* spelling, blocked on a severe `isDefEq`-cost obstacle now confirmed (`§74`) to be resolved
+by the flat switch. Same argument as `norm_lt_one_of_aeval_P₂_eq_zero`, one level up: `Langlands.
+EisensteinRootNorm`'s ultrametric-only Eisenstein-polygon computation (no irreducibility over a base
+field needed), fed the norm data `norm_coeff_map_of_isWeaklyEisensteinAt_associated`
+(`Langlands.LubinTateEisensteinQ`) produces from `P₃`'s `O_{K_2}`-level Eisenstein data (`hP₃dist`/
+`hassoc`). `hβ'irr`/`hβ'norm` are carried as explicit hypotheses (not derived from `O_{K_2}`'s own
+construction), matching this arc's standing convention at every tower level. -/
+theorem norm_lt_one_of_aeval_P₃_eq_zero (β' : O_K2 (K := K) P₂) (hβ'irr : Irreducible β')
+    (hP₃dist : P₃.IsDistinguishedAt (maximalIdeal _)) (hassoc : Associated (P₃.coeff 0) β')
+    (hdeg : 0 < P₃.natDegree)
+    (hβ'norm : letI := K_2.instAlgebraK (K := K) (P := P) P₂
+      ‖algebraMap _ (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) (β' : _)‖ < 1)
+    {γ : K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃}
+    (hγroot : Polynomial.aeval γ (P₃.map (algebraMap _ (K2P2 (K := K) P₂))) = 0) :
+    letI := K_2.instAlgebraK (K := K) (P := P) P₂
+    ‖γ‖ < 1 := by
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
+  have hstep : Polynomial.aeval γ P₃ = 0 := by
+    rw [aeval_map_eq_eval_coe] at hγroot
+    rwa [eval_coe_eq_aeval] at hγroot
+  haveI := K_3.instFaithfulSMul_O_K2 (K := K) (P := P) P₂ P₃
+  obtain ⟨hmonic, hdegeq, hc0, -, hweak⟩ :=
+    norm_coeff_map_of_isWeaklyEisensteinAt_associated
+      (K := K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)
+      (K_3.norm_le_one_of_mem_O_K2 (K := K) (P := P) P₂ P₃) hβ'irr hP₃dist.monic
+      hP₃dist.toIsWeaklyEisensteinAt hassoc
+  refine Polynomial.norm_lt_one_of_isEisensteinShape_of_root hmonic (by rw [hdegeq]; exact hdeg)
+    hβ'norm hc0 hweak
+    (by rw [Polynomial.aeval_def, ← Polynomial.eval_map] at hstep; exact hstep)
+
+/-- **The connecting identity itself**: for `γ` a root of `P₃`'s image, `eval f γ` equals `β'`
+(the `O_{K_2}`-level generator `P₃`'s constant term is built from), algebra-mapped into `K_3` — the
+`K_2 → K_3` analogue of `eval_f_eq_of_aeval_P₂_eq_zero`. Simpler in one respect than that template:
+since `β'` is already an `O_{K_2}` element (not a field-level `α` reached via a separate `hα'coe`
+witness), the conclusion is stated directly as `algebraMap O_{K_2} K_3 β'`, with no intermediate
+field-level identification needed. Chains the Weierstrass factorization
+`shifted f (towerHom2 hOK) β' = (P₃ : _⟦X⟧) * u₃` through `eval` (`eval_mul`/`eval_sub`/`eval_C`,
+using `norm_lt_one_of_aeval_P₃_eq_zero` for the `‖γ‖ < 1` hypothesis and
+`K_3.norm_le_one_of_mem_O_K2` for the coefficient-bound hypotheses), then `eval_map_towerHom2` to
+land on `eval f γ` itself. -/
+theorem eval_f_eq_of_aeval_P₃_eq_zero (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1)
+    (β' : O_K2 (K := K) P₂) (u₃ : (O_K2 (K := K) P₂)⟦X⟧) (_hu₃ : IsUnit u₃)
+    (heq₃ :
+      letI := K_2.instAlgebraK (K := K) (P := P) P₂
+      shifted f (towerHom2 (K := K) (P := P) P₂ hOK) β' = (P₃ : _⟦X⟧) * u₃)
+    (hβ'irr : Irreducible β') (hP₃dist : P₃.IsDistinguishedAt (maximalIdeal _))
+    (hassoc : Associated (P₃.coeff 0) β') (hdeg : 0 < P₃.natDegree)
+    (hβ'norm : letI := K_2.instAlgebraK (K := K) (P := P) P₂
+      ‖algebraMap _ (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) (β' : _)‖ < 1)
+    {γ : K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃}
+    (hγroot : Polynomial.aeval γ (P₃.map (algebraMap _ (K2P2 (K := K) P₂))) = 0) :
+    letI := K_2.instAlgebraK (K := K) (P := P) P₂
+    letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
+    NonarchimedeanPowerSeriesEval.eval f γ =
+      algebraMap (O_K2 (K := K) P₂) (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)
+        β' := by
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
+  letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
+  have hγnorm : ‖γ‖ < 1 :=
+    norm_lt_one_of_aeval_P₃_eq_zero (K := K) (P := P) P₂ P₃ β' hβ'irr hP₃dist hassoc hdeg hβ'norm
+      hγroot
+  have hstep0 : NonarchimedeanPowerSeriesEval.eval
+      (↑P₃ : PowerSeries (O_K2 (K := K) P₂)) γ = 0 := by
+    rw [← aeval_map_eq_eval_coe (K' := K2P2 (K := K) P₂)]; exact hγroot
+  have hbP₃ : ∀ n, ‖algebraMap _ (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)
+      (PowerSeries.coeff n (↑P₃ : PowerSeries (O_K2 (K := K) P₂)))‖ ≤ 1 :=
+    fun n ↦ K_3.norm_le_one_of_mem_O_K2 (K := K) (P := P) P₂ P₃ _
+  have hbu₃ : ∀ n, ‖algebraMap _ (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)
+      (PowerSeries.coeff n u₃)‖ ≤ 1 :=
+    fun n ↦ K_3.norm_le_one_of_mem_O_K2 (K := K) (P := P) P₂ P₃ _
+  have hshifted0 : NonarchimedeanPowerSeriesEval.eval
+      (shifted f (towerHom2 (K := K) (P := P) P₂ hOK) β') γ = 0 := by
+    rw [heq₃, NonarchimedeanPowerSeriesEval.eval_mul hbP₃ hbu₃ hγnorm, hstep0, zero_mul]
+  have hbfmap : ∀ n, ‖algebraMap _ (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)
+      (PowerSeries.coeff n (PowerSeries.map (towerHom2 (K := K) (P := P) P₂ hOK) f))‖ ≤ 1 :=
+    fun n ↦ K_3.norm_le_one_of_mem_O_K2 (K := K) (P := P) P₂ P₃ _
+  have hbCβ' : ∀ n, ‖algebraMap _ (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)
+      (PowerSeries.coeff n (PowerSeries.C β' : PowerSeries _))‖ ≤ 1 :=
+    fun n ↦ K_3.norm_le_one_of_mem_O_K2 (K := K) (P := P) P₂ P₃ _
+  have hsub : NonarchimedeanPowerSeriesEval.eval
+      (PowerSeries.map (towerHom2 (K := K) (P := P) P₂ hOK) f) γ -
+      NonarchimedeanPowerSeriesEval.eval (PowerSeries.C β' : PowerSeries _) γ = 0 := by
+    rw [← NonarchimedeanPowerSeriesEval.eval_sub hbfmap hbCβ' hγnorm]
+    exact hshifted0
+  rw [NonarchimedeanPowerSeriesEval.eval_C] at hsub
+  have hmapeq : NonarchimedeanPowerSeriesEval.eval
+      (PowerSeries.map (towerHom2 (K := K) (P := P) P₂ hOK) f) γ =
+      algebraMap _ (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) β' :=
+    sub_eq_zero.mp hsub
+  unfold towerHom2 at hmapeq
+  rwa [eval_map_towerHom2 (K := K) (P := P) P₂ P₃ hOK γ] at hmapeq
+
+/-! ## Transitivity of the translation action on roots of `P₃`'s image -/
+
+/-- **Transitivity of the `piTorsion hπ hf 1` translation action on roots of `P₃`'s image, at
+`K := K_3`.** The `K_2 → K_3` analogue of `exists_piTorsion_translate_of_aeval_P₂_eq_zero`: for
+`γ, γ'` both roots (via the `K2P2` polynomial route), there is `t' ∈ piTorsion hπ hf 1` (evaluated
+inside `K_3`) with `γ' = F_π(γ, t')`. Both `eval f γ` and `eval f γ'` equal `algebraMap O_{K_2} K_3
+β'` by `eval_f_eq_of_aeval_P₃_eq_zero` (applied to each root separately), hence to each other;
+`Langlands.LubinTateRootTranslation.exists_piTorsion_translate_of_eval_f_eq` (the *generic*
+transitivity fact) then supplies `t'` directly. -/
+theorem exists_piTorsion_translate_of_aeval_P₃_eq_zero (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1)
+    {π : O} (hπ : Irreducible π) {f : O⟦X⟧} (hf : IsLubinTatePoly π (residueCard O) f)
+    (β' : O_K2 (K := K) P₂) (u₃ : (O_K2 (K := K) P₂)⟦X⟧) (_hu₃ : IsUnit u₃)
+    (heq₃ :
+      letI := K_2.instAlgebraK (K := K) (P := P) P₂
+      shifted f (towerHom2 (K := K) (P := P) P₂ hOK) β' = (P₃ : _⟦X⟧) * u₃)
+    (hβ'irr : Irreducible β') (hP₃dist : P₃.IsDistinguishedAt (maximalIdeal _))
+    (hassoc : Associated (P₃.coeff 0) β') (hdeg : 0 < P₃.natDegree)
+    (hβ'norm : letI := K_2.instAlgebraK (K := K) (P := P) P₂
+      ‖algebraMap _ (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) (β' : _)‖ < 1)
+    {γ γ' : K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃}
+    (hγroot : Polynomial.aeval γ (P₃.map (algebraMap _ (K2P2 (K := K) P₂))) = 0)
+    (hγ'root : Polynomial.aeval γ' (P₃.map (algebraMap _ (K2P2 (K := K) P₂))) = 0) :
+    letI := K_2.instAlgebraK (K := K) (P := P) P₂
+    letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
+    ∃ t' ∈ piTorsion (K := K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) hπ hf 1,
+      γ' = FPiEval hπ hf γ t' := by
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
+  letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
+  have h1 := eval_f_eq_of_aeval_P₃_eq_zero (K := K) (P := P) P₂ P₃ hOK β' u₃ _hu₃ heq₃ hβ'irr
+    hP₃dist hassoc hdeg hβ'norm hγroot
+  have h2 := eval_f_eq_of_aeval_P₃_eq_zero (K := K) (P := P) P₂ P₃ hOK β' u₃ _hu₃ heq₃ hβ'irr
+    hP₃dist hassoc hdeg hβ'norm hγ'root
+  have hγnorm : ‖γ‖ < 1 :=
+    norm_lt_one_of_aeval_P₃_eq_zero (K := K) (P := P) P₂ P₃ β' hβ'irr hP₃dist hassoc hdeg hβ'norm
+      hγroot
+  have hγ'norm : ‖γ'‖ < 1 :=
+    norm_lt_one_of_aeval_P₃_eq_zero (K := K) (P := P) P₂ P₃ β' hβ'irr hP₃dist hassoc hdeg hβ'norm
+      hγ'root
+  exact exists_piTorsion_translate_of_eval_f_eq (K_3.hOK_transport (K := K) (P := P) P₂ P₃ hOK) hπ
+    hf hγnorm hγ'norm (h1.trans h2.symm)
 
 end LubinTate
 
