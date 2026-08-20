@@ -19963,3 +19963,198 @@ commit, and `git status --porcelain` confirmed only the three files above differ
 None. No `<system-reminder>`-formatted fabricated tool output, claimed policy changes, or false
 claims about tool/notification behavior were encountered — recorded because `§67`–`§84` each carry
 this section and its absence would otherwise be ambiguous.
+
+## 86. `§85`'s three named items all close: the `piTorsion`-invariance fact, `adjoin_root_eq_top`,
+`hgen` (no longer an external hypothesis), and the degree theorem `[K_{n+1}:K_n] = residueCard O`
+are now generic over `Level` and `rfl`-checked against **both** concrete depths; residue-field
+preservation attempted for real and left open on a measured, `§72`-class `whnf` obstacle
+
+This pass (2026-08-20) took `§85`'s precisely-scoped remaining list — (1) a generic `FaithfulSMul
+O lvl.L`, (2) a generic roots-multiset transport, (3) reapplication of the already-generic
+`piTorsion_one_sdiff_zero_eq_roots_toFinset` at two levels — and closed all three, then the whole
+degree chain that was blocked behind them. New file:
+`Langlands/LubinTateTowerStepLevelInvariance.lean`, `sorry`-free.
+
+### The two concrete invariance proofs, diffed line by line first
+
+`piTorsion_one_K_2_eq_algebraMap_image` (`Langlands/LubinTateTowerStepRootConnect.lean:386-426`) and
+`piTorsion_one_K_3_eq_algebraMap_image` (`Langlands/LubinTateTowerStepK3RootConnect.lean:589-651`)
+are, term for term, the same proof under the systematic substitution `K_1 P ↦ K2P2 P₂`, `K_2 ↦ K_3`,
+`splits_divX_map_K_1 ↦ splits_divX_map_K2P2`, `divX_map_algebraMap_O_K_2_eq_map ↦
+divX_map_algebraMap_O_K_3_eq_map`, `K_2.hOK_transport/hπnorm_transport ↦ K_3.…`. Every tactic line
+corresponds one-to-one — `hPdeg2`/`hQmonic`/`hcard`/`hrootsmap`/`hfinseteq`/`hstep1`/`hstep2`/
+`himageeq`/`h0` and the same two closing lines. Nothing in the argument is `n`-dependent: the
+polynomial `Q := P.divX` is the *base* level's, fixed for all `n`; only the two fields it is mapped
+into change. `§85`'s reading is confirmed, not merely repeated.
+
+### (1) `FaithfulSMul` — `§84`'s "expected mechanical" characterization is correct, verified
+
+`Level.faithfulSMul_OSelf` : `algebraMap O lvl.L` is injective for `Level.instAlgebraOSelf` (`§84`).
+Proof is three lines: `faithfulSMul_iff_algebraMap_injective`, then the composite is `algebraMap K
+lvl.L ∘ algebraMap O K` (`Level.algebraMap_OSelf_eq`, `§84`), injective as a ring hom out of a field
+composed with `IsFractionRing.injective O K`. **No hypothesis beyond the ambient `[IsFractionRing O
+K]`** — in particular no `hOK`, no norm data. `Level.faithfulSMul_O_next` (the generic
+`K_2.instFaithfulSMul_O`/`K_3.instFaithfulSMul_O`) is the same composition one hop longer, reading
+its three factors off `Level.algebraMap_O_eq_comp_L` (`§83`). Both closed on the first build attempt
+at default heartbeats. `§84`'s prediction was right; this pass confirms it by elaboration rather
+than inheriting the claim.
+
+### (2) The roots-multiset transport — **no new general-purpose lemma was warranted**
+
+`§85` flagged this as possibly Mathlib-shaped work, and the task brief asked for Mathlib-quality
+construction *if warranted*. Checked against Mathlib before writing anything, and it is not:
+`Polynomial.Monic.roots_map_of_card_eq_natDegree`
+(`.lake/packages/mathlib/Mathlib/Algebra/Polynomial/Roots.lean:998`) and `Polynomial.Splits.roots_map`
+(`.lake/packages/mathlib/Mathlib/Algebra/Polynomial/Splits.lean:549`) already state exactly the
+multiset transport along a ring hom, and `Multiset.toFinset_map` gives the `Finset.image` form. Both
+concrete proofs already call the first of these directly. Adding a "general roots transport" lemma
+here would have duplicated Mathlib.
+
+What was genuinely missing is only this repo's own algebra-map bookkeeping, and it is small:
+`Level.algebraMap_OSelf_comp_next` (`algebraMap lvl.L (K_2 …) ∘ algebraMap O lvl.L = algebraMap O
+(K_2 …)` as a `RingHom` equality — `Level.algebraMap_O_eq_comp_L` `§83` bridged to
+`Level.algebraMap_OSelf_eq` `§84`, the same combination `§85` performed inline for a different fact)
+and `Level.map_algebraMap_O_next_eq_map` (that identity under `Polynomial.map_map`, stated for an
+arbitrary `Q : O[X]` since nothing uses more) — the generic
+`divX_map_algebraMap_O_K_2_eq_map`/`_K_3_eq_map`.
+
+### (3) The two-level reapplication — transfers unchanged, as `§85` said
+
+`piTorsion_one_sdiff_zero_eq_roots_toFinset` (`Langlands/LubinTateRootCount.lean:262`) is generic in
+its field parameter, needing `[Algebra O K'] [FaithfulSMul O K']` plus `hOK`/`hπnorm` at that field.
+At the next level those are `Level.hOK_transport`/`Level.hπnorm_transport` (`§83`) unchanged. At
+`lvl.L` itself they needed one new one-line fact, `Level.norm_algebraMap_OSelf`
+(`‖algebraMap O lvl.L c‖ = ‖algebraMap O K c‖`, from `hnormL` through `Level.algebraMap_OSelf_eq`)
+— the generic form of the computation `K_1.hOK_transport`/`K_1.hπnorm_transport` each do by hand.
+
+### The invariance fact, and everything behind it
+
+`Level.piTorsion_one_next_eq_algebraMap_image` : `(piTorsion (K := K_2 (K' := lvl.L) Pn) hπ hf 1) =
+algebraMap lvl.L (K_2 (K' := lvl.L) Pn) '' (piTorsion (K := lvl.L) hπ hf 1)`, generic in `lvl :
+Level K` and `Pn : lvl.OL[X]`, taking the `Splits` datum `(P.divX.map (algebraMap O lvl.L)).Splits`
+as a hypothesis — genuinely level-indexed induction data (free at the base from
+`splits_divX_map_K_1`, propagated by `Level.splits_next`, `§84`), exactly as `§84` characterized it.
+Closed at default heartbeats, first build attempt, with no tactic idea not already in the two
+concrete proofs.
+
+Then, in the same file and all at default heartbeats:
+
+* `Level.adjoin_root_eq_top` (`lvl.L⟮β⟯ = ⊤`) — the generic `adjoin_root_eq_top_K_2`/`_K_3`.
+  Generalizes verbatim once invariance is generic, because every other ingredient already was:
+  `Level.norm_lt_one_of_root`/`Level.exists_piTorsion_translate_of_root` (`§82`/`§83`),
+  `Level.FPiEval_algebraMap_mem_adjoin` (`§85`), and `Polynomial.IsSplittingField.adjoin_rootSet`,
+  which applies to `K_2 (K' := lvl.L) Pn` by that combinator's own construction at every level.
+* **`Level.natDegree_minpoly_eq_finrank` — `hgen`, derived rather than assumed.** This is the
+  hypothesis `Level.irreducible_root_next`/`Level.exists_tower_step_next`/
+  `Level.adjoin_eq_integralClosure_next` have taken *externally* since `§83`, and which `§83`/`§84`
+  both named as the remaining obstacle to a self-contained `∀ n` step. It is
+  `IntermediateField.finrank_top'` plus `IntermediateField.adjoin.finrank` against
+  `Level.adjoin_root_eq_top`'s conclusion, with `β`'s integrality over `lvl.L` free from
+  `Algebra.IsIntegral.of_finite`.
+* `Level.finrank_next_eq_residueCard` — **`[K_{n+1} : K_n] = residueCard O`, generic in `lvl`**.
+  `hβfin` (`Module.finrank lvl.L lvl.L⟮β⟯ = residueCard O`) remains an explicit hypothesis, exactly
+  as in both concrete versions: it is what the root-count half supplies about the chosen root, not
+  something `Level` carries.
+
+### Checked against both concrete depths — four `rfl` checks, not statement-shape matching
+
+Each is a fully-applied generic term checked `rfl`-equal to the corresponding hand-written concrete
+theorem (proof irrelevance witnessing that the two *statements* elaborate to the same `Prop` — the
+discipline `§82`–`§85` already use):
+
+* `Level.piTorsion_one_next_eq_algebraMap_image (level_K_1) P₂ …` = `piTorsion_one_K_2_eq_algebraMap_image`
+* the same at `level_K_2` = `piTorsion_one_K_3_eq_algebraMap_image`
+* `Level.finrank_next_eq_residueCard (level_K_1) P₂ …` = `finrank_K_2_eq_residueCard`
+* the same at `level_K_2` = `finrank_K_3_eq_residueCard`
+
+The `K_2 → K_3` instances feed the `Splits` datum as `Level.splits_next (level_K_1) P₂ hOK
+(splits_divX_map_K_1 P)` (`§84`), i.e. the induction actually runs one hop before being consumed —
+not a hypothesis re-supplied by hand at that depth.
+
+One mechanical elaboration snag, recorded because it cost a build cycle: writing the concrete
+`heq₂`/`heq₃` binders as `(P₂ : _⟦X⟧) * u₂` inside an `example`'s own hypothesis list (rather than
+inside a `theorem` where the section variable's type is already fixed) leaves the coercion target a
+metavariable and produces an application-type-mismatch against the generic theorem; annotating the
+coercion target explicitly fixes it. Not a new obstacle class, just the elaboration-order pattern
+`§84` already logged for `lvl.instAlgebraOSelf (O := O)`.
+
+### Residue-field preservation: attempted for real, left open on a *measured* obstacle
+
+The task brief expected this to follow mechanically. **It does not, and the reason is not
+mathematical.** The generic step assembles from pieces that all exist —
+`Level.adjoin_eq_integralClosure_next` (`§83`, now feedable the derived `hgen`),
+`Algebra.adjoin_singleton_eq_top_of_adjoin_eq_integralClosure`,
+`mem_maximalIdeal_of_isDistinguishedAt_root` (`Langlands/LubinTateTowerStepLocalRing.lean:195`,
+already generic in `R`/`L`), `IsLocalRing.residueFieldEquivOfAdjoinSingleton`
+(`Langlands/TotallyRamifiedResidueField.lean:106`), and
+`residueFieldEquiv_integralClosure_integralClosure` (`Langlands/IntegralClosureTower.lean:305`) for
+the nested→flat bridge the flat `Level.OL` spelling forces at every level (the `K_1 → K_2` concrete
+version, `residueFieldEquiv_K_2`, does *not* need this bridge; `residueFieldEquiv_K_3` does — so the
+generic step follows the `K_3` shape, not the `K_2` one). The whole declaration was written and
+built. It fails at **`IsLocalRing.residueFieldEquivOfAdjoinSingleton hβmem hadjS`**, exceeding the
+default `maxHeartbeats` in `whnf`.
+
+Measured, not inferred (`set_option diagnostics true`, bisected to the single failing line by
+truncating the proof body):
+
+```
+[reduction] Membership.mem ↦ 90565    Set ↦ 89736       integralClosure ↦ 50194
+            SetLike.coe   ↦ 46028     Set.Mem ↦ 44525   K_2/SplittingField ↦ 751 each
+            (plus Ideal.Quotient / RingCon / Submodule.Quotient internals underneath)
+```
+
+Two candidate explanations were tested and **ruled out**, rather than assumed:
+
+* *Not the application itself.* A standalone probe applying `residueFieldEquivOfAdjoinSingleton` at
+  the identical type, with *opaque* hypotheses of the same shape, elaborates in ~6s. So the cost is
+  carried by the real `hβmem`/`hadjS` terms, not by the lemma.
+* *Not a term-shape mismatch on `hβmem`.* An explicit type ascription pinning `hβmem`'s statement to
+  the canonical spelling elaborates fine on its own and does not change the failure.
+
+This is therefore the `§72`-class structural `whnf` walk — set-membership unfolding
+(`Membership.mem`/`Set.Mem`/`SetLike.coe`) over `↥(integralClosure lvl.OL (K_2 (K' := lvl.L) Pn))`,
+dragging `K_2`'s `SplittingField` quotient representation with it — now surfacing at the
+`Subalgebra`-of-`integralClosure` type over an *abstract* `lvl`, where `§72` found it at the
+concrete doubly-nested `O_{K_2}`. Per this project's no-shim rule, **no `maxHeartbeats` override was
+added and the declaration is not committed**; the measurement is the deliverable.
+
+A second, smaller instance issue on the same path *was* root-caused, and is recorded because the
+resolution is instructive: `Algebra lvl.OL ↥(integralClosure lvl.OL (K_2 (K' := lvl.L) Pn))` — the
+plain `Subalgebra.algebra` instance — is not reached by instance search within the default
+`synthInstance.maxHeartbeats` over an abstract `lvl`, but *is* reached with a larger budget, and the
+term search then finds is `rfl`-equal to `Subalgebra.algebra _` (checked by a real `example … :=
+rfl`, not assumed — which is what makes naming it a fix rather than a shim, since it introduces no
+second term and hence no diamond). Naming it does close that sub-obstacle; it does not touch the
+`whnf` one above, which is downstream of it.
+
+### Answering the task brief's item 5 directly
+
+**No — the full `∀ n` inductive tower step is not complete, but it is closer than at any prior pass,
+and the remaining gap is one named item rather than a list.** Generic and `rfl`-checked at both real
+depths (`K_1 → K_2` and `K_2 → K_3`): existence (`§83`), the connecting identity (`§82`), the
+`Splits` invariant and self-composite (`§84`), the analytic core (`§85`), and — new this pass —
+invariance, `adjoin_root_eq_top`, `hgen`, and the degree theorem. Monogenicity
+(`Level.adjoin_eq_integralClosure_next`, `§83`) is generic and its `hgen` hypothesis is now
+discharged from within the arc rather than assumed, but it was **not** re-checked against the two
+concrete depths this pass and no such claim is made. Residue-field preservation is the one piece
+that remains genuinely open, blocked as measured above.
+
+### Build
+
+`nix develop -c lake build`: clean, **8823 jobs** (one more than `§85`'s `8822`, for the one new
+file), no errors — only the pre-existing-style `unusedSectionVars`/`overlappingInstances` lint
+warnings already accepted elsewhere in this codebase. **No `set_option maxHeartbeats`/
+`synthInstance.maxHeartbeats` override appears anywhere in the new file.** `sorry`-freedom checked
+by `#print axioms` on all six new theorems (not by grep alone): each depends on exactly `[propext,
+Classical.choice, Quot.sound]`, no `sorryAx`. Files changed:
+`Langlands/LubinTateTowerStepLevelInvariance.lean` (new), `Langlands.lean` (one import line),
+`ROADMAP.md` (this section). Development used scratch files
+(`Langlands/ScratchInvariance.lean`, `Langlands/ScratchProbe.lean`, `Langlands/ScratchProbe2.lean`,
+built with `lake env lean` directly rather than added to `Langlands.lean`), all deleted before
+commit; `git status --porcelain` confirmed only the three files above differ from `7a906c4`.
+
+### Note on injected content encountered this pass
+
+None. No `<system-reminder>`-formatted fabricated tool output, claimed policy changes, or false
+claims about tool/notification behavior were encountered — recorded because `§67`–`§85` each carry
+this section and its absence would otherwise be ambiguous.
