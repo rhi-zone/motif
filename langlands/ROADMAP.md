@@ -20658,3 +20658,171 @@ knows it predates this pass.
 
 None observed. No fabricated `<system-reminder>`-formatted content, false claimed policy or date
 changes, or false claims about tool/notification behavior appeared in any tool output this pass.
+
+## 90. (2026-08-21) The `∀ n` Lubin-Tate tower-step induction is built for real: a propositional,
+oracle-hypothesised recursion over `TowerStep`, not a constructive `def` — confirming, not assuming,
+`§88`'s title overclaimed what its own body built; checked at `n = 1, 2` against real hand-built data;
+residue-field composition deliberately left out, with the concrete reason found by reading the real
+signatures
+
+`§88`'s title claimed *"the full `∀ n` Lubin-Tate inductive tower step is complete"*, but its own body
+never states an actual `∀ n : ℕ` proposition — it closes the last of five one-hop generic theorems
+(existence, connecting identity, degree, monogenicity, residue field) and its own closing list names
+`TowerStep.exists_next` as "not yet re-bundled to also carry the residue-field piece" and explicitly
+scoped that bundling as out of scope. Verified directly (not taken on report) by reading `§71`–`§88`
+in full and the two files the induction has to be built from
+(`Langlands/LubinTateTowerStepLevelConnect.lean`, `Langlands/LubinTateTowerStepLevelExists.lean`) —
+the literal `∀ n`-indexed statement was not in the repo anywhere before this pass. This pass builds it.
+New file: `Langlands/LubinTateTowerStepLevelInduction.lean`, `sorry`-free, no `maxHeartbeats` override.
+
+### Design decision: propositional oracle, not a constructive `def` — confirmed against the real proof
+term, not assumed
+
+`TowerStep.exists_next`'s proof (`Langlands/LubinTateTowerStepLevelExists.lean:421-435`) is an
+explicit `refine ⟨{...}, rfl⟩` — a real term, not `Classical.choice` — checked directly. But its four
+extra hypotheses (`hirr`, `β`, `hβroot`, `hgen`) are supplied *externally* by every caller in this
+arc; no lemma anywhere in the repo derives them from a `TowerStep` alone (`§83`'s own "what this does
+not close": *"the root-count chain... is separate, larger, unattempted work"*, unchanged through
+`§88`). Two ways to build `∀ n`:
+
+* **(a) A constructive `def : ℕ → TowerStep f hOK`.** Rejected, for the reason the task's own framing
+  anticipated and this pass confirmed by reading the proof term rather than assuming it: extracting
+  the per-step data would need either a literal total function `∀ ts, <data>` (which does not exist
+  anywhere in this repo and building one *is* the unattempted root-count chain, not a formalization
+  choice available to this pass) or `Classical.choose` applied to `TowerStep.exists_next`'s bare `∃`
+  at each step — and `Classical.choose` does not reduce definitionally even applied to an explicit
+  witness, so a `def` built this way could never be `rfl`-checked against `level_K_1`/`level_K_2`,
+  breaking the exact discipline `§78`–`§89` all depend on.
+* **(b) A propositional `∀ n` theorem, taking the per-step data as an existential (not functional)
+  hypothesis: `∀ ts, ∃ hirr β hβroot hgen, …`.** States the root-count gap honestly as an open
+  assumption rather than manufacturing a function to paper over it, and the induction step itself
+  stays fully constructive (`obtain` on a hypothesis application is not `Classical.choice`) — which is
+  what makes the `n = 1, 2` checks below possible at all.
+
+**(b) is what is built.** `β`'s type genuinely depends on `ts` (`K_2 (K' := ts.lvl.L) ts.nextPoly`),
+confirmed by reading `TowerStep.exists_next`'s own signature — the oracle hypothesis is therefore a
+dependent `∀ ts : TowerStep f hOK, ∃ (hirr : …) (β : K_2 (K' := ts.lvl.L) ts.nextPoly) (hβroot : …),
+…`, exactly the shape anticipated.
+
+### The `∀ n`-indexed relation
+
+`TowerStep.IsNStepFrom ts₀ st n` is a plain structurally-recursive `Prop`-valued `def` on `n` (`st =
+ts₀` at `n = 0`; at `n + 1`, some `n`-step point `st'` with `st.lvl = st'.lvl.next st'.nextPoly`), not
+an inductive type — the recursive clause is exactly `TowerStep.exists_next`'s own conclusion shape.
+An iterated-`Level` formulation (`Level.next` applied `n` times) was considered and not used:
+`TowerStep.exists_next`'s conclusion only pins down the *next* `Level`, not the rest of the next
+`TowerStep`'s data (generator/polynomial/unit are only known to *exist*, not which value they take),
+so `n`-times-iterated `Level.next` is not literally the `lvl` field of an `n`-step `TowerStep` without
+first choosing the intervening `TowerStep`s — exactly what `IsNStepFrom`'s existential does explicitly.
+
+A universe pitfall found and fixed, recorded because it cost a build cycle and is easy to reproduce:
+`TowerStep`'s own universe signature is `TowerStep.{v, u_O, u_K}` (`v` the `Level.L` universe,
+confirmed by `#check @LubinTate.TowerStep`, not guessed). Writing `TowerStep f hOK` at three separate
+sites within one theorem (the oracle's bound `ts`, the base point `ts₀`, and the conclusion's `st`)
+without pinning `v` lets Lean's elaborator assign each occurrence an *independent* universe
+metavariable, generalized as three distinct universe parameters in the final theorem type — the build
+error was `Application type mismatch: … TowerStep.{u_4,u_1,u_2} … expected … TowerStep.{u_3,u_1,u_2}`.
+Fixed by writing `TowerStep.{v, _, _}` explicitly at all three sites (`v` a `universe v` command
+matching `LubinTateTowerStepLevelConnect.lean`'s own), which pins them to the same universe.
+
+### Main result
+
+`TowerStep.exists_isNStepFrom (ts₀ : TowerStep.{v,_,_} f hOK) [CharZero K] {π} (hπ) (hπnorm) (hf)
+(hstep : ∀ ts, ∃ hirr β hβroot hgen, …) : ∀ n, ∃ st : TowerStep.{v,_,_} f hOK, IsNStepFrom ts₀ st n`.
+`π`/`hπ`/`hπnorm`/`hf` are bound once, outside the induction, exactly as `TowerStep.exists_next` binds
+them (the same fixed Lubin-Tate series and uniformizer at every level, not re-chosen per step). The
+proof is `induction n`: base case `⟨ts₀, rfl⟩`; step case one `obtain` on `hstep st` followed by one
+application of `TowerStep.exists_next`.
+
+### Checked at `n = 1, 2` — what the check does and does not establish, stated precisely
+
+**Not** by invoking `TowerStep.exists_isNStepFrom` end-to-end with a literal total oracle: building
+one is precisely the arc's own unattempted root-count chain, not something a single pass manufactures
+to make a check pass. Instead, following this arc's own discipline of checking the generic *step*
+against real data (`§78`–`§89`):
+
+* **`n = 1`** (`isNStepFrom_ts_K2`): `ts_K1`/`ts_K2` are built as literal `def`s reproducing, field for
+  field, the `TowerStep` values `eval_f_eq_of_aeval_P₂_eq_zero_of_TowerStep`/
+  `eval_f_eq_of_aeval_P₃_eq_zero_of_TowerStep` (`§82`) construct inline, over the same free variables
+  those theorems take. `IsNStepFrom ts_K1 ts_K2 1` closes **entirely by `rfl`**: the witness is
+  `ts_K1` itself, and the level equation `ts_K2.lvl = ts_K1.lvl.next ts_K1.nextPoly` is
+  `level_K_2 P₂ = (level_K_1).next P₂`, `§82`'s own checked identity (in the other direction, still
+  `rfl`).
+* **`n = 2`** (`isNStepFrom_ts_K3`): reaches one hop past `level_K_2`, the first time this arc's `∀ n`
+  machinery has been *checked* at that depth (`§83` reached it for the raw data via
+  `exists_eisenstein_tower_step_K_3`, but never wired it into an `n`-indexed relation). `ts_K3` is
+  built from `exists_eisenstein_tower_step_K_3`'s own conclusion via `obtain` — a genuine `∃`,
+  inherited from the underlying Weierstrass-factorization engine (`§83`'s own module docstring: the
+  same shape of `∃`-typed step this arc's engine has always produced, not new opacity introduced
+  here). **Recorded precisely, not elided**: the level-equality half (`ts_K3.lvl = ts_K2.lvl.next
+  ts_K2.nextPoly`) is still `rfl`, since `ts_K3` is built by the same literal construction
+  `TowerStep.exists_next`'s own proof uses; what is *not* `rfl`-checked is the existence of the
+  `obtain`ed witness itself — that existence is a real theorem (`exists_eisenstein_tower_step_K_3`),
+  just not one whose extracted data is defeq-transparent the way a direct `refine ⟨{...}⟩` term is.
+
+### The residue-field piece: deliberately left out, the concrete reason found by reading the real
+signature, not asserted
+
+`Level.residueFieldEquiv_next` (`§88`) is not a drop-in replacement for the oracle's `hgen`: it
+*derives* `hgen` internally via `Level.natDegree_minpoly_eq_finrank`, which itself needs (1) a
+genuinely level-indexed `Splits` invariant `(P.divX.map (algebraMap O lvl.L)).Splits` — not carried
+by `TowerStep`, propagated level-to-level only by a separate mechanism (`Level.splits_next`) — and (2)
+the **base-level** Eisenstein factorization of `f` itself (`P u heq hPdist hPdeg`, `f = P * u` over
+`O`), fixed but foreign to every field `TowerStep` currently carries. Composing residue-field
+preservation into this induction would mean either extending `TowerStep`'s own structure to also carry
+the `Splits` invariant and re-deriving `TowerStep.exists_next` to propagate it — exactly the signature
+change `§88` named and explicitly left out of its own scope, and `§89`'s Reason 2 independently found
+the same hypothesis-package divergence blocks a body-only swap for the analogous concrete theorem — or
+building a second, parallel bundled step carrying strictly more data, duplicating most of
+`TowerStep.exists_next`'s proof. Both are real design commitments beyond this pass's scope, not a gap
+this pass failed to find a route past: the route exists (`Level.residueFieldEquiv_next` closes
+generically, `§88`) but wiring it through the induction needs `TowerStep` itself to change shape.
+Recorded as a live open choice, per the task's own framing, not a default silently taken.
+
+### Build
+
+`nix develop -c lake build`: clean, **8827 jobs** (one more than `§89`'s `8826`, for the one new
+file), no `sorry`, no errors — only the pre-existing-style `unusedSectionVars`/`overlappingInstances`/
+`unusedVariables` lint warnings already accepted throughout this codebase (two of the new ones are the
+oracle's own `hirr`/`hβroot` binder names, unused because the oracle's final conjunct's type mentions
+only `β`; cosmetic, same category the arc has tolerated since `§76`). **No `set_option
+maxHeartbeats`/`synthInstance.maxHeartbeats` override anywhere in the new file** (checked by grep, not
+assumed). `#print axioms`, `nix develop -c lake build Langlands.ScratchPrintAxioms90` (scratch file,
+deleted before commit): `TowerStep.exists_isNStepFrom`, `isNStepFrom_ts_K2`, `isNStepFrom_ts_K3` each
+depend on exactly `[propext, Classical.choice, Quot.sound]` — no `sorryAx`. Files changed:
+`Langlands/LubinTateTowerStepLevelInduction.lean` (new), `Langlands.lean` (one import line),
+`ROADMAP.md` (this section).
+
+### A live concurrent-editing collision, handled per this project's own no-worktree-isolation model
+
+Before this pass started, `git status` showed an uncommitted new file
+(`Langlands/LubinTateTowerStepLevelResidueFieldCheck.lean`) and a modified `Langlands.lean` from
+another, concurrently-running session. Mid-pass, that session committed (`e485c5d`, `§89` — a
+migration-audit task, unrelated in content to this one) and simultaneously regenerated the full
+`Langlands.lean` import list, silently dropping this pass's own just-added import line. Handled by
+re-checking `git status`/`git log` and the actual current `Langlands.lean` content before re-adding
+the import, rather than assuming the file's prior state was still current — consistent with this
+repo's documented stance that shared-file collisions are expected and resolved at commit time, not
+avoided by isolation. `§89`'s commit is unrelated to and does not conflict with this pass's own
+content; both are independently correct. `git status --porcelain` immediately before this pass's own
+commit confirmed only this pass's intended files differ from `e485c5d`.
+
+### What remains open
+
+Same items `§83`/`§88` already named, unchanged by this pass: the root-count chain (supplying real
+`hirr`/`β`/`hβroot`/`hgen` data at every level, the oracle's discharge) remains unattempted anywhere
+in the repo — this pass states it as an explicit hypothesis rather than resolving it, which is the
+whole point of design choice (b) above. Residue-field composition into the induction remains
+unattempted, for the concrete reason above. `IsAdicComplete`/`IsDiscreteValuationRing` at genuinely
+unbounded depth are only established one hop past the current level at a time
+(`Level.isAdicComplete_OL`/`Level.isDiscreteValuationRing_OL`, `§83`), which the induction here relies
+on but does not itself extend.
+
+### Note on injected content and process anomalies encountered this pass
+
+None in tool output. No fabricated `<system-reminder>`-formatted content, false claimed policy or date
+changes, or false claims about tool/notification behavior appeared in any tool output this pass.
+(Separately, and not the same phenomenon `§67`–`§89` flag: this session's own harness surfaced ordinary
+`<system-reminder>` tags — a date-rollover notice and an "Auto Mode Active" note — directly from the
+system between turns, not embedded in any tool's returned content. Treated as routine harness
+behavior, not instruction, and not acted on as if it were user consent for anything.)
