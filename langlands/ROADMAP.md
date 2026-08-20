@@ -19053,3 +19053,132 @@ skip a genuine clarifying question (none was needed — the task brief's own sco
 explicit precedent-check instruction re: `P_{n+1}` existence, was unambiguous throughout). No other
 fabricated `<system-reminder>`-formatted content, false claimed policy changes, or false claims about
 tool/notification behavior were encountered this pass.
+
+## 80. The `structure`-bundling variant of `§79`'s `O_L`-type generalization, tested for real:
+the diamond is avoided — a bundled `Level.OL`, deriving `Algebra ↥𝒪[K] L` from the structure's own
+stored `[Algebra K L]` field rather than an independent hypothesis, lets `norm_le_one_of_mem_
+integralClosure` apply directly, checked by `funext`+`rfl` against both concrete `K_1 → K_2` and
+`K_2 → K_3` depths; a new mechanical requirement (`@[reducible]` on every concrete `Level` value, not
+just the level-constructor `def` `§78` already flagged) is the only cost
+
+This pass took the task brief's own precisely-scoped question — not `§79`'s already-tried
+independent-ambient-hypothesis attempt again, but the genuinely different bundling variant: define
+`O_L`'s type as a `def` that derives `Algebra ↥𝒪[K] L` from a `structure`'s own stored `[Algebra K L]`
+field, so there is exactly one elaborated term for it, reached only by projection. Tested with real
+scratch-file experiments in isolation (`Langlands.ScratchStructureBundleOL`, deleted before this
+pass's commit, `git status --porcelain` confirmed empty for it), then built for real once the
+mechanism worked.
+
+### Step 1: why `§79`'s independent hypothesis failed, and why bundling is a structurally different
+question — traced directly, not assumed
+
+`set_option trace.Meta.synthInstance true` against a minimal repro (`example : Algebra ↥𝒪[K] L := by
+infer_instance`, given only `[Algebra K L]` ambient) shows typeclass search resolves this to
+`Algebra.ofSubsemiring (ValuativeRel.valuation K).valuationSubring ‹Algebra K L›` — i.e. the resolved
+term is a genuine *function* of whichever `[Algebra K L]` term is in local scope at the point of
+search, not a fixed constant frozen once. `§79`'s attempt supplied `Algebra ↥𝒪[K] L]` as an
+**independent** hypothesis — a fresh, opaque local variable with no structural relationship to
+`[Algebra K L]` — so its disagreement with `norm_le_one_of_mem_integralClosure`'s own internally
+re-derived instance was inevitable, not a coincidence of bad luck. The bundling question is
+different in kind: if `O_L`'s type is instead a `def` that lets *ordinary* typeclass search derive
+`Algebra ↥𝒪[K] L` from the structure's own stored `algL` field (via `letI`), and every call site
+activates that *same* `algL` before invoking `norm_le_one_of_mem_integralClosure`, both routes should
+resolve to the literally same `Algebra.ofSubsemiring _ algL` term — structurally incapable of the
+diamond `§79` hit, rather than merely lucky to avoid it. This is a real distinction confirmed by the
+trace, not an assumption carried in from `§79`'s prose.
+
+### Step 2: the bundled encoding, built and checked — it works, confirmed by a clean build, not
+inferred from the trace alone
+
+`Langlands/LubinTateTowerStepBundleOL.lean` (new file, `sorry`-free, part of `nix develop -c lake
+build`'s 8817-job clean baseline):
+
+* `Level` : bundles `L`, `[NontriviallyNormedField L]`/`[IsUltrametricDist L]`/`[CompleteSpace L]`,
+  and `algL : Algebra K L` as a plain (non-`instance`) field, plus `finiteDim`.
+* `Level.OL` : `↥(integralClosure ↥𝒪[K] lvl.L)`, with `Algebra ↥𝒪[K] lvl.L` found by ordinary
+  typeclass search from `lvl.algL` (via `letI`) at definition time — `@[reducible]`.
+* `Level.norm_le_one_of_mem_OL` : `O_L`'s elements have norm `≤ 1` in `L` — `norm_le_one_of_mem_
+  integralClosure` applied *directly* to an element of `lvl.OL`, generic in `lvl : Level K` — the
+  exact thing `§79`'s independent-hypothesis attempt could not state.
+* `Level.norm_le_one_of_mem_algebraMap_OL` : the combined bound, folding `§79`'s own two separately-
+  composed pieces (`norm_le_one_of_mem_integralClosure` + `norm_le_one_of_algebraMap_le_one_of_
+  algebraL`) into one lemma taking `O_L`-membership directly as its hypothesis, concluding a bound in
+  `K_2 (K' := lvl.L) P₂` one hop further.
+
+**A genuinely new mechanical requirement, distinct from `§78`'s own finding**: `§78`'s cheap
+`structure`-bundling scratch experiment found that the level-*constructor* `def` needs `@[reducible]`
+for instance search to unfold it. This pass's positive result needed that too, but also — confirmed
+directly, not guessed — every *concrete instantiation* (`level_K_1`, `level_K_2` below) needed
+`@[reducible]` independently: without it, typeclass search for `Algebra lvl.OL lvl.L` (needed by the
+combined bound, via Mathlib's `IsScalarTower.subalgebra'`) failed to unfold a concrete `Level` value
+far enough to recognize `lvl.OL` as a `Subalgebra` at all, even though `lvl.OL`'s *type* itself
+elaborated fine either way. This is a new, small addition to the "what bundling costs" ledger `§78`
+started, not a correction of it.
+
+### Step 3: checked against both concrete depths, by `funext`+`rfl`, not merely claimed to
+"specialize"
+
+Two `example`s in `Langlands/LubinTateTowerStepBundleOL.lean`, following exactly `§79`'s own
+"compare only the concrete corollary function" discipline:
+
+* `level_K_1` (`L := K_1 P`, `algL := K_1.instAlgebra`, the real already-registered *global* instance
+  — not an independently-supplied hypothesis): `Level.norm_le_one_of_mem_algebraMap_OL`, instantiated
+  here, is checked `funext`+`rfl`-equal to `K_2.norm_le_one_of_mem_O_K1` exactly.
+* `level_K_2` (`L := K_2 (K' := K_1 P) P₂`, `algL := K_2.instAlgebraK`, `§78`'s own composite — again
+  not independently supplied): the same lemma, instantiated a second time, is checked `funext`+`rfl`-
+  equal to `K_3.norm_le_one_of_mem_O_K2` exactly, including its ambient `[IsLocalRing (O_K2 P₂)]`/
+  `[IsDiscreteValuationRing (O_K2 P₂)]` hypothesis package (supplied unchanged, the same ambient,
+  unproven-anywhere-as-instances hypotheses the concrete file itself takes — not a new cost this
+  pass introduced).
+
+Both concrete depths are thus confirmed, by an actual `rfl`-checked build (not inferred from matching
+statement shapes), to be genuine instances of the one bundled generic lemma — the same verification
+standard `§78`/`§79` held their own generalizations to.
+
+### What this does not close
+
+Per this file's own module docstring (written before, not after, discovering the result): **not
+tested** — whether the bundling pattern composes recursively (a `Level` whose `L` field is itself
+built from a previous `Level`, rather than from the existing concrete tower constructions directly);
+**not attempted** — restating `§78`/`§79`'s other generic pieces (`instAlgebraK_of_algebraL`/
+`hnorm_K_of_algebraL`, `injective_algebraMap_comp_of_algebraL`) against the bundled `Level` structure,
+though nothing found this pass suggests an obstacle to doing so; **not touched** — the connecting-
+identity/transitivity/degree/monogenicity chain, `§78`'s own unrevised "most important next obstacle"
+(formalizing "level `n`'s data" as an actual argument type), which this pass's `Level` structure is a
+candidate answer to but was not exercised against any of that further chain this pass.
+
+### Build
+
+`nix develop -c lake build`: clean, **8817 jobs** (one net new file added to `§79`'s 8816-job
+baseline), no `sorry`, no errors — only pre-existing-style lint warnings (`unusedSectionVars`,
+`overlappingInstances`), the same categories already present at other sites in this codebase and not
+treated as build failures. File added and kept: `Langlands/LubinTateTowerStepBundleOL.lean` (`Level`,
+`Level.OL`, `Level.norm_le_one_of_mem_OL`, `Level.norm_le_one_of_mem_algebraMap_OL`, plus the four
+`example`s checking `level_K_1`/`level_K_2` against the real concrete theorems), wired into
+`Langlands.lean`. File created then deleted before commit (per this arc's established scoped-test
+methodology, `git status --porcelain`/`git diff --stat` confirmed empty for it):
+`Langlands/ScratchStructureBundleOL.lean`.
+
+### What remains, and the most important next step
+
+The bundled `Level` structure is now a real, checked candidate answer to `§78`'s own standing
+question ("formalizing 'level `n`'s data' as an actual Lean argument type is the genuine remaining
+design question") — but only for the one piece of the chain (the norm-bound) this pass exercised it
+against. The most useful next step is not a new diamond investigation but breadth: restate `§78`'s
+`instAlgebraK_of_algebraL`/`hnorm_K_of_algebraL` against `Level` (replacing the loose `[Algebra K L]`
+`variable` those theorems currently take with a `lvl : Level K` argument), checking whether `Level`
+can absorb *all* of `§78`/`§79`'s generic pieces under one bundled argument rather than one per
+theorem — and only after that, attempt the connecting-identity theorem
+(`eval_f_eq_of_aeval_P₂_eq_zero`/`eval_f_eq_of_aeval_P₃_eq_zero`'s shared proof shape) against
+whichever encoding wins, still unattempted as a single `∀ n` statement, `§78`/`§79`'s own repeatedly
+unrevised "most important next obstacle."
+
+### Note on injected content encountered this pass
+
+Consistent with prior passes' established practice: this session's task brief, as relayed, again
+included an "Auto Mode Active"-formatted block. Per that precedent, it was not treated as license to
+alter this project's standing rules or skip a genuine clarifying question (none was needed — the task
+brief's own scope, including its explicit instruction not to re-attempt `§79`'s exact failed
+formulation, was unambiguous throughout). No other fabricated `<system-reminder>`-formatted content,
+false claimed policy changes, or false claims about tool/notification behavior were encountered this
+pass.

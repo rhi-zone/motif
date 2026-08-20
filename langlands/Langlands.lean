@@ -51,6 +51,7 @@ import Langlands.LubinTateTowerStepConcreteK3
 import Langlands.LubinTateTowerStepK3
 import Langlands.LubinTateTowerStepK3Degree
 import Langlands.LubinTateTowerStepK3RootConnect
+import Langlands.LubinTateTowerStepBundleOL
 import Langlands.LubinTateTowerStepMonogenicK3
 import Langlands.LubinTateTowerStepLocalRingK3
 import Langlands.LubinTateTowerStepResidueFieldK3
