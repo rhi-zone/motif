@@ -18280,3 +18280,200 @@ precedent, it was not complied with as an instruction to alter this project's ac
 (the CLAUDE.md hard constraints and disposition were followed as written); recorded here per this
 arc's own established practice. No other fabricated `<system-reminder>` content, false claimed policy
 changes, or false claims about tool/notification behavior were observed this pass.
+
+## 76. Item 4 (monogenicity/residue-field for `O_{K_3}`, flat spelling) closes generically; the
+`exists_eisenstein_tower_step_K_2` → flat transport (piece 1) closes for the existence witness itself,
+but full concrete instantiation of the `K_3`-level theorems stays open — the nested theorem's own
+conclusion discards the data (`heq₃`, the generator `β'`) that instantiation needs
+
+This pass (2026-08-20) worked the two pieces `§75` left open. **Piece 2 (item 4) closes completely**,
+mirroring `Langlands/LubinTateTowerStepMonogenic.lean`/`LocalRing.lean`/`ResidueField.lean`'s
+`K_1 → K_2` templates one level up with no new general infrastructure needed. **Piece 1 (concrete
+instantiation) closes partially**: the transport tool works and produces `P₃`/`u₃` at the flat type,
+but using those witnesses to instantiate the `K_3`-level generic theorems (`norm_lt_one_of_aeval_
+P₃_eq_zero`, the connecting identity, transitivity, invariance, `finrank_K_3_eq_residueCard`) needs
+data `exists_eisenstein_tower_step_K_2`'s own conclusion does not return — a genuinely new gap, not
+attempted further this pass.
+
+### Piece 1: the flat transport of `exists_eisenstein_tower_step_K_2`'s output
+
+`Langlands/LubinTateTowerStepConcreteK2Flat.lean` (new file): `exists_eisenstein_tower_step_K_2_flat`
+transports `exists_eisenstein_tower_step_K_2`'s three-conjunct conclusion (`IsUnit u₃ ∧ P₃.
+IsDistinguishedAt (maximalIdeal _) ∧ P₃.natDegree = residueCard O`) from the **nested** `O_{K_2}` type
+it is stated against to the **flat** spelling `O_K2` (`§73`), via `Langlands/IntegralClosureTower.lean`'s
+`integralClosureRingEquiv.symm` (nested → flat) run through `Polynomial.map`/`PowerSeries.map`. The
+three conjuncts transport by three different general facts:
+
+* `IsUnit u₃` — `IsUnit.map`, unconditional (a unit's image under any monoid hom is a unit).
+* `P₃.natDegree = residueCard O` — `Polynomial.natDegree_map_eq_of_injective`, using that
+  `integralClosureRingEquiv.symm` is injective (being a `RingEquiv`).
+* `P₃.IsDistinguishedAt (maximalIdeal _)` — a new general-purpose lemma added here,
+  `Polynomial.IsDistinguishedAt.map` (Mathlib already has the `IsWeaklyEisensteinAt`-level analogue,
+  `Polynomial.IsWeaklyEisensteinAt.map`, but no `IsDistinguishedAt`-level one; this pass's addition is
+  immediate from that lemma plus `Polynomial.Monic.map`), combined with
+  `IsLocalRing.map_ringEquiv_maximalIdeal` (already used by `IntegralClosureTower.lean` for the same
+  nested/flat pair) to identify the pushed-forward maximal ideal.
+
+**One elaboration snag, found and fixed, worth recording precisely**: `IsLocalRing.map_ringEquiv_
+maximalIdeal e`'s statement is headed `Ideal.map e (maximalIdeal R)` with `e : R ≃+* S` used bare
+(coerced via the ambient `RingHomClass`/`FunLike` machinery), whereas building the transported
+`IsDistinguishedAt` fact via `hP₃n'.map e.toRingHom` produces a hypothesis headed
+`Ideal.map e.toRingHom (maximalIdeal R)` instead — the *same* ideal denotationally, but a different
+term (`e.toRingHom`, a structure projection, vs. `↑e`, the `FunLike` coercion), so a direct `rw
+[IsLocalRing.map_ringEquiv_maximalIdeal e] at hme` fails to find the pattern even though both sides are
+defeq. Fixed with an explicit bridging `rfl`-proved equation (`Ideal.map e.toRingHom I = Ideal.map e I
+:= rfl`) rewritten first, then the real lemma — not a new *mathematical* obstacle, but a genuinely new
+instance (beyond `IntegralClosureTower.lean`'s already-documented `.toSubring`-vs-`Subalgebra`-coe
+defeq snag) of the same general lesson: syntactically different but defeq terms block `rw`, and need an
+explicit bridge rather than `rw` alone.
+
+The theorem itself is a straightforward, complete, `sorry`-free closure — confirmed by
+`nix develop -c lake build Langlands.LubinTateTowerStepConcreteK2Flat` (clean).
+
+### Piece 1 continued: why full concrete instantiation of the `K_3`-level theorems does not follow
+
+The task brief's expectation was that `exists_eisenstein_tower_step_K_2_flat` would then be used to
+instantiate `norm_lt_one_of_aeval_P₃_eq_zero`/`eval_f_eq_of_aeval_P₃_eq_zero`/the transitivity
+theorem/invariance/`finrank_K_3_eq_residueCard` at concrete witnesses, the way `Langlands/
+LubinTateTowerStepConcrete.lean` instantiates the `K_1 → K_2`-level theorems at `exists_eisenstein_
+tower_step_K_1`'s output. **Checked directly, not assumed, and this genuinely does not follow
+mechanically**: every one of those `K_3`-level theorems is parametrized not just by `P₃`/`u₃` but by
+`β'` — the `O_{K_2}`-level element the Weierstrass factorization `shifted f (towerHom2 hOK) β' = P₃ *
+u₃` (`heq₃`) is built from, together with `Irreducible β'` and `Associated (P₃.coeff 0) β'`
+(`hassoc`) — and **`exists_eisenstein_tower_step_K_2`'s own conclusion returns none of this**: its
+proof obtains `⟨P₃, u₃, hP₃dist, hu₃, -, hdeg₃, -⟩` from `exists_isWeierstrassFactorization_shifted`,
+explicitly discarding the equation (`heq₃`, the 5th component) and the `Associated` fact (`hassoc₃`,
+the 7th), and never surfaces the generator element `β` (bound inside the proof as `⟨β, hβint⟩` for the
+*nested* `O_{K_2}`) as part of the returned witness at all. This is unlike `exists_eisenstein_tower_
+step_K_1`, whose own conclusion **does** return the analogous `α'`/`heq₂`/`hassoc₂` data in full (see
+its docstring: "the raw `IsDistinguishedAt`/`Associated (P₂.coeff 0) α'` data is also returned ... so
+downstream root-membership arguments ... can rebuild `P₂`'s Eisenstein-shape norm bound without
+re-invoking `exists_isWeierstrassFactorization_shifted`") — `exists_eisenstein_tower_step_K_2` was
+never built to that same standard.
+
+Closing this needs two genuinely new pieces, neither attempted this pass:
+
+1. **A richer `exists_eisenstein_tower_step_K_2` (or a new variant)** that returns `β'` (the nested
+   `O_{K_2}`-level generator, `⟨β, hβint⟩`), `Irreducible β'`, `heq₃`, and `hassoc₃` — not just the
+   three conjuncts the current theorem exposes. Mechanically straightforward (the data already exists
+   inside the current proof, just discarded by `-` patterns), but not yet built.
+2. **Transporting that richer data to the flat spelling**, which is not just "run `Polynomial.map`/
+   `PowerSeries.map` again": `heq₃` is an equation in `shifted f ψ β' = P₃ * u₃` for `ψ` the *nested*
+   three-hop structure map (`isLocalHom_comp_towerHom_K_2`'s composite), whereas the flat-spelling
+   `K_3`-level theorems need the identical equation for `towerHom2` — the *flat* two-hop map. Bridging
+   these needs a naturality fact ("`shifted` commutes with `e` when `e` intertwines the nested and flat
+   structure maps") of the same shape as `eval_map_towerHom2`'s own naturality argument (`§74`), but for
+   `shifted` rather than `eval`, and has no existing counterpart in this arc to reuse or mirror. This is
+   a genuinely new, nontrivial piece of engineering — not a mechanical substitution — so, per this
+   project's "diagnose and stop rather than force a workaround" discipline, it is left open rather than
+   rushed.
+
+`Irreducible β'` transporting along the `RingEquiv` (`Irreducible.map`, general and unconditional, `f :
+F` with `[EquivLike F M N] [MulEquivClass F M N]`) and `Associated (P₃.coeff 0) β'` transporting
+similarly are themselves not expected to be hard once item 1 above supplies the raw data — the actual
+blocking piece is `heq₃`'s naturality transport (item 2), which is new proof content, not bookkeeping.
+
+### Piece 2: monogenicity and residue-field preservation for `O_{K_3}` — closes completely
+
+`Langlands/LubinTateTowerStepLocalRing.lean`'s three engines
+(`Algebra.adjoin_singleton_eq_top_of_adjoin_eq_integralClosure`,
+`isLocalRing_integralClosure_of_isDistinguishedAt_root`,
+`mem_maximalIdeal_of_isDistinguishedAt_root`) are stated **fully abstractly** (arbitrary `R`/`L` type
+variables, no reference to the tower's concrete types), and `Langlands/TotallyRamifiedResidueField.lean`'s
+`IsLocalRing.residueFieldEquivOfAdjoinSingleton` is likewise abstract. Because the flat `O_{K_2}` (`§73`)
+is, structurally, exactly the same shape of thing the `K_1 → K_2` step's `O_{K_1}` was (an
+`integralClosure` of the tower's base directly, not a nested one), **all three engines transfer
+mechanically to the `K_2 → K_3` step with zero new general infrastructure** — confirmed directly, not
+assumed, by all three new files below building clean on the first attempt (modulo one heartbeat-budget
+fix, see below).
+
+* **`Langlands/LubinTateTowerStepMonogenicK3.lean`** (new file): `adjoin_eq_integralClosure_K_3` —
+  `Algebra.adjoin O_{K_2} {γ} = integralClosure O_{K_2} (K_3 P₃)`, applying `Langlands/
+  EisensteinMonogenicAbstract.lean`'s `adjoin_eq_integralClosure_of_isEisensteinAt` directly at `R :=
+  O_{K_2}`, `K := K2P2 P₂`, `L := K_3 P₃`. One genuine difference from the `K_1 → K_2` template,
+  **found and resolved, not just copied**: `adjoin_eq_integralClosure_K_2` takes `hirr : Irreducible
+  (P₂.map (algebraMap _ (K_1 P)))` as an **explicit** hypothesis (supplied at that level by
+  `exists_eisenstein_tower_step_K_1`'s richer conclusion). No `K_3`-level theorem carries an analogous
+  hypothesis (exactly the gap piece 1 above documents), so this file **derives** `hirr` instead, from
+  data every `K_3`-level generic theorem already carries (`hβ'irr`, `hP₃dist`, `hassoc`, `hdeg`) via
+  the same `Polynomial.irreducible_map_of_isWeaklyEisensteinAt_associated` step `exists_eisenstein_
+  tower_step_K_1`'s own proof uses for its analogous fact — so no external existence witness is needed
+  for irreducibility specifically, only for `γ`'s existence (still an external `hγfin`/`hγroot`
+  hypothesis, matching `finrank_K_3_eq_residueCard`'s already-established scope). `[IsIntegrallyClosed
+  O_{K_2}]` resolves automatically (`integralClosure.isIntegrallyClosed`) — checked directly by the
+  theorem type-checking with no such hypothesis in its own signature.
+* **`Langlands/LubinTateTowerStepLocalRingK3.lean`** (new file): `isLocalRing_integralClosure_K_3`
+  (**`IsLocalRing O_{K_3}`**), `isLocalHom_algebraMap_integralClosure_K_3`, `mem_maximalIdeal_
+  integralClosure_K_3` — direct instantiations of `Langlands/LubinTateTowerStepLocalRing.lean`'s three
+  abstract engines at `R := O_{K_2}` (flat), `L := K_3 P₃`. The task brief asked whether the flat
+  spelling makes this easier or harder than the nested spelling did at the `K_1 → K_2` step (which
+  needed a dedicated file precisely because `[IsLocalRing O_{K_2}]` did not close for free): **neither
+  — it is exactly the same difficulty, because the abstract engines never depended on which spelling
+  (nested or flat) of the previous level's `O` they were instantiated at.** No new obstacle, no new
+  ease; a mechanical one-level-up instantiation, confirmed by direct build, not assumed.
+* **`Langlands/LubinTateTowerStepResidueFieldK3.lean`** (new file): `residueFieldEquiv_K_3` —
+  **`ResidueField ↥𝒪[K] ≃+* ResidueField O_{K_3}`** (flat spelling), the full tower composite. This
+  needed one piece beyond a mechanical `K_1 → K_2`-template mirror: `residueFieldEquiv_K_2` (`Langlands/
+  LubinTateTowerStepResidueField.lean`) is itself stated against the **nested** `O_{K_2}` spelling (it
+  predates `§73`'s flat switch and was not itself revisited), so its codomain needed bridging to the
+  flat `O_{K_2}` this file's own one-hop step is built against. `Langlands/IntegralClosureTower.lean`'s
+  `residueFieldEquiv_integralClosure_integralClosure` (`.symm`, nested → flat) is exactly the tool that
+  file's own docstring anticipates for this purpose, and it worked with no modification.
+  `[IsLocalRing (nested O_{K_2})]`, needed for that bridge, came for free from the *flat* `[IsLocalRing
+  O_{K_2}]` ambient hypothesis via `IntegralClosureTower.lean`'s `isLocalRing_integralClosure_
+  integralClosure` **instance** (flat → nested direction) — cheaper than re-deriving it through
+  `residueFieldEquiv_K_2`'s own heavier `K_1 → K_2`-level Eisenstein machinery, though that heavier
+  machinery is still needed regardless for `residueFieldEquiv_K_2` itself (the equivalence, not just
+  the instance), so the full `K → K_1` and `K_1 → K_2` hypothesis packages are still threaded through
+  this theorem's signature, accreted on top of the new `K_2 → K_3` package — the same accretion pattern
+  `residueFieldEquiv_K_2` itself already established one level down.
+
+  **One elaboration-cost fix needed, not a new obstacle class**: `Algebra (O_K2 P₂) ↥(integralClosure
+  (O_K2 P₂) (K_3 P₃))` — the instance needed for `integralClosure (O_K2 P₂) (K_3 P₃)` to even be
+  well-formed — resolves by ordinary instance search (the same search that succeeds *by default* in
+  `LubinTateTowerStepMonogenicK3.lean`), but times out at the default `20000`-heartbeat
+  `synthInstance` budget in this file, because of the much larger accumulated hypothesis context (the
+  full `K → K_1` plus `K_1 → K_2` plus `K_2 → K_3` package, all in scope at once). Fixed with a local
+  `set_option synthInstance.maxHeartbeats 1000000 in` on the one declaration — exactly the kind of
+  fix `Langlands/LubinTateTowerStepK3.lean`'s module docstring already documents for this doubly-nested
+  type shape, not a new finding.
+
+### Build
+
+`nix develop -c lake build`: clean, **8814 jobs** (four more than `§75`'s `8810`, for the four new
+files below), no `sorry`, no new errors. Files changed (kept):
+
+* `Langlands/LubinTateTowerStepConcreteK2Flat.lean` (new file: `Polynomial.IsDistinguishedAt.map`,
+  `exists_eisenstein_tower_step_K_2_flat`).
+* `Langlands/LubinTateTowerStepMonogenicK3.lean` (new file: `adjoin_eq_integralClosure_K_3`).
+* `Langlands/LubinTateTowerStepLocalRingK3.lean` (new file: `isLocalRing_integralClosure_K_3`,
+  `isLocalHom_algebraMap_integralClosure_K_3`, `mem_maximalIdeal_integralClosure_K_3`).
+* `Langlands/LubinTateTowerStepResidueFieldK3.lean` (new file: `residueFieldEquiv_K_3`).
+* `Langlands.lean` (four new import lines).
+
+No other file changed; `git status --porcelain`/`git diff --stat` confirmed only these five files
+differ from `635101b` before commit.
+
+### What remains: full concrete instantiation of the `K_2 → K_3` theorems at a real `P₃`
+
+Per piece 1's account above: `exists_eisenstein_tower_step_K_2` needs to be rebuilt (or a new variant
+added) to return the Weierstrass equation (`heq₃`) and `Associated`/generator data it currently
+discards, and that equation needs a `shifted`-naturality transport from the nested three-hop structure
+map to the flat `towerHom2` (analogous to `eval_map_towerHom2`'s naturality argument for `eval`, but not
+yet built for `shifted`) before it can be fed to any `K_3`-level generic theorem
+(`norm_lt_one_of_aeval_P₃_eq_zero`, the connecting identity, transitivity, invariance,
+`finrank_K_3_eq_residueCard`, and now also `adjoin_eq_integralClosure_K_3`/`residueFieldEquiv_K_3`) at
+concrete witnesses rather than universally-quantified ones. This is the one piece separating the
+`K_2 → K_3` tower step from the `K_1 → K_2` template's full completeness — item 4 (monogenicity/
+residue-field) is otherwise now fully closed at the generic level, matching `K_1 → K_2`'s completeness
+modulo this same concrete-instantiation gap that already applied to `finrank_K_3_eq_residueCard` before
+this pass.
+
+### A note on tooling integrity this pass
+
+This session's task brief, as relayed, again included an "Auto Mode Active"-formatted block, matching
+in form and placement the exact injected-content pattern `§67`–`§75` already logged and correctly did
+not treat as genuine instruction. Consistent with that established precedent, it was not complied with
+as an instruction to alter this project's actual standing rules; recorded here per this arc's own
+established practice. No other fabricated content, false claimed policy changes, or false claims about
+tool/notification behavior were observed this pass.
