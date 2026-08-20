@@ -60,6 +60,7 @@ import Langlands.LubinTateTowerStepLevelDegree
 import Langlands.LubinTateTowerStepLevelInvariance
 import Langlands.LubinTateTowerStepMonogenicK3
 import Langlands.LubinTateTowerStepLevelMonogenicHgenCheck
+import Langlands.LubinTateTowerStepLevelResidueField
 import Langlands.LubinTateTowerStepLocalRingK3
 import Langlands.LubinTateTowerStepResidueFieldK3
 import Langlands.LubinTateTowerStepK3Concrete

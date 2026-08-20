@@ -20305,3 +20305,144 @@ content pattern) was not complied with; the scratch file was deleted before comm
 plan, and no other action was taken on the basis of that message. No other fabricated
 `<system-reminder>` content, false claimed policy changes, or false claims about tool/notification
 behavior were observed this pass.
+
+## 88. (2026-08-20) The residue-field `whnf` blocker `§72`/`§86`/`§87` left open closes: the full
+`∀ n` Lubin-Tate inductive tower step is complete, sorry-free, at default heartbeats, with no
+`maxHeartbeats` override anywhere in the closing path
+
+`§87` named exactly one untried candidate for the abstract-`Level` residue-field `whnf` timeout inside
+`IsLocalRing.residueFieldEquivOfAdjoinSingleton hβmem hadjS`: avoid the caller reconstructing
+`⟨β, hβint⟩`'s underlying integrality witness more than once. This pass built that candidate, verified
+it against real measured heartbeat data (not assumption), and it closes the theorem at the plain
+default `200,000`-heartbeat budget. This was the last open piece of the `∀ n` induction; with it
+closed, existence, connecting-identity, degree, monogenicity, and residue-field are now all proved
+once, generically over `Level`/`TowerStep`, each checked against both real concrete tower depths.
+
+### Method
+
+Reproduced `§87`'s repro from scratch (not from any leftover file — none was committed from `§87`), a
+new scratch file (`Langlands/ScratchResidueFieldLevel3.lean`, deleted before commit, this arc's
+established methodology) assembling the identical chain `§86`/`§87` describe: `Level.natDegree_
+minpoly_eq_finrank` → `Level.adjoin_eq_integralClosure_next` → `Algebra.adjoin_singleton_eq_top_of_
+adjoin_eq_integralClosure` / `mem_maximalIdeal_of_isDistinguishedAt_root` → `IsLocalRing.
+residueFieldEquivOfAdjoinSingleton`. Confirmed the exact `§87` failure first: default heartbeats,
+**`(deterministic) timeout at whnf, maximum number of heartbeats (200000) has been reached`** at the
+final `exact IsLocalRing.residueFieldEquivOfAdjoinSingleton hβmem hadjS` line, with `hβint`/`hβroot'`
+constructed the way every concrete call site in this arc constructs them: `hβint` via a `refine ⟨Pn,
+hPndist.monic, ?_⟩; rwa […]` tactic block, and a *separate*, independently-elaborated `hβroot' :
+Polynomial.aeval β Pn = 0` (also via a `rwa […]` tactic block reproving the identical fact) fed to
+`mem_maximalIdeal_of_isDistinguishedAt_root`. Both `hβmem`'s and `hadjS`'s *types* embed the subtype
+value `⟨β, hβint⟩`, but the two occurrences carried term-level-distinct (though propositionally
+identical) proof terms for the integrality witness.
+
+**The fix**: derive `hβroot'` once, then build `hβint` directly as the term-mode subtype `⟨Pn,
+hPndist.monic, hβroot'⟩` (no second tactic block, no independent re-derivation), so both `hβmem` and
+`hadjS` are built from the literal same `hβint` term. Bisected by direct rebuild at each heartbeat
+value (not estimated): the un-deduplicated version does not close even at `maxHeartbeats 1000000`
+reduced no further than somewhere between `202,000` (still times out) and `210,000` (closes) — a real
+measurement, barely over the default `200,000` budget. The deduplicated version closes cleanly at the
+plain default, confirmed by a clean rebuild (stale `.olean`/`.c` artifacts removed first): **`Built
+Langlands.ScratchResidueFieldLevel3 (8.6s)`**, no timeout, no override.
+
+One thing tried in combination and found to make things *worse*, recorded so it is not retried blind:
+`§87`'s own explicit named `A`/`B`/`π` arguments on `IsLocalRing.residueFieldEquivOfAdjoinSingleton`,
+applied *on top of* the deduplication, pushed the `whnf` timeout back onto the theorem's *stated
+conclusion type* (the return-type check line) instead of the tactic body — still failing at default
+heartbeats. The two mitigations do not compose; only the deduplication (without the explicit-argument
+fix) was kept.
+
+This confirms the `§72`/`§86`/`§87` diagnosis was accurate in *kind* (a reflexive structural-congruence
+`whnf` walk, not a diamond, not instance search) but incomplete in *scope*: part of the walk's
+measured cost was genuinely avoidable term-level duplication introduced by the caller reconstructing
+the same integrality witness twice — not solely an intrinsic property of unifying the doubly-nested
+`Subalgebra` type itself, as `§86`/`§87`'s framing (accurately, given what they had measured) treated
+it.
+
+### What was built and committed
+
+`Langlands/LubinTateTowerStepLevelResidueField.lean` (new), `Level.residueFieldEquiv_next`
+(`Langlands/LubinTateTowerStepLevelResidueField.lean:78`): **`ResidueField lvl.OL ≃+* ResidueField
+↥(integralClosure lvl.OL (K_2 (K' := lvl.L) Pn))`**, generic in `lvl : Level K` — the one-hop
+residue-field-preservation step. `sorry`-free. Builds at default heartbeats with no `set_option
+maxHeartbeats`/`synthInstance.maxHeartbeats` override anywhere in the file.
+
+### Checked against both real concrete depths
+
+Not by data-level `rfl` against the full hand-written `residueFieldEquiv_K_2`/`residueFieldEquiv_K_3`
+(those are `def`s producing `RingEquiv` *data*, not `Prop`s — proof irrelevance does not apply the way
+it does for every other `rfl` check `§82`–`§87` used, so a data-level `rfl` is a materially stronger,
+different claim than those checks were). What was actually checked, scratch files
+(`Langlands/ScratchResidueFieldRfl.lean`, `Langlands/ScratchResidueFieldLevelK3.lean`, both deleted
+before commit):
+
+* **`K_1 → K_2`**: `(residueFieldEquiv_K_1 …).trans (Level.residueFieldEquiv_next (level_K_1) P₂ …) =
+  residueFieldEquiv_K_2 … ` closes by `rfl`, at default heartbeats (`8.6s`→`2.4s` wall for the check
+  file). One elaboration-order friction, unrelated to the `whnf` blocker: `heq₂`'s stated type
+  (`shifted f (towerHom hOK P) α' = …`) needed an explicit `(by exact heq₂)` cast to convert to
+  `shifted f (level_K_1).towerHom hOK α' = …` before the application would accept it directly —
+  cosmetic, not a cost finding. **This is real evidence the generic one-hop theorem is not just
+  well-typed but produces the same residue-field isomorphism (as data) that the concrete, independently
+  hand-written `K_1 → K_2` proof produces.**
+* **`K_2 → K_3`**: `Level.residueFieldEquiv_next (level_K_2) P₃ …`, fed the full `K_2 → K_3` hypothesis
+  package (matching `§86`'s hgen-check file's own argument list) and the same two `letI`s that pattern
+  already needed (`(level_K_2 …).algL`, `(level_K_2 …).finiteDim`, for `IsFractionRing (level_K_2
+  …).OL (level_K_2 …).L` to resolve — the `§83`-documented pattern, not a new finding), **elaborates
+  cleanly at default heartbeats** (`4.4s`). A full data-level `rfl` against `residueFieldEquiv_K_3`
+  itself was **not** attempted: that concrete theorem's own codomain is reached through a *different*,
+  already-catalogued nested-vs-flat `Subring`/`Subalgebra` bridge
+  (`residueFieldEquiv_integralClosure_integralClosure`, `Langlands/IntegralClosureTower.lean`) that
+  `residueFieldEquiv_K_3` itself needed *before* this pass (that file already carries a pre-existing,
+  previously-accepted `set_option synthInstance.maxHeartbeats 1000000 in` for an unrelated instance-
+  search cost, `§86`'s own documented finding, not something this pass added or needed to touch) —
+  composing through that bridge is an orthogonal, already-understood elaboration item, not part of
+  what this pass's fix addresses, and was left untested rather than forced.
+
+### `#print axioms`, every closing generic theorem
+
+Real output, `nix develop -c lake build Langlands.ScratchPrintAxioms` (scratch file, deleted before
+commit):
+
+```
+'LubinTate.Level.residueFieldEquiv_next' depends on axioms: [propext, Classical.choice, Quot.sound]
+'LubinTate.Level.adjoin_eq_integralClosure_next' depends on axioms: [propext, Classical.choice, Quot.sound]
+'LubinTate.Level.exists_tower_step_next' depends on axioms: [propext, Classical.choice, Quot.sound]
+'LubinTate.Level.natDegree_minpoly_eq_finrank' depends on axioms: [propext, Classical.choice, Quot.sound]
+'LubinTate.Level.finrank_next_eq_residueCard' depends on axioms: [propext, Classical.choice, Quot.sound]
+'LubinTate.TowerStep.exists_next' depends on axioms: [propext, Classical.choice, Quot.sound]
+```
+
+No `sorryAx` anywhere. Standard Mathlib axiom set only.
+
+### The final `∀ n` tower-step theorem set, generic over `Level`/`TowerStep`
+
+* **Existence**: `Level.exists_tower_step_next`, `Langlands/LubinTateTowerStepLevelExists.lean:305`.
+* **Connecting identity**: `Level.eval_f_eq_of_root`, `Langlands/LubinTateTowerStepLevelConnect.lean:294`
+  (`§82`).
+* **Degree**: `Level.finrank_next_eq_residueCard`, `Langlands/LubinTateTowerStepLevelInvariance.lean:388`
+  (`§86`).
+* **Monogenicity**: `Level.adjoin_eq_integralClosure_next`, `Langlands/LubinTateTowerStepLevelExists.lean:372`
+  (`§83`, `hgen` derived not assumed since `§86`/`§87` item 1).
+* **Residue field**: `Level.residueFieldEquiv_next`, `Langlands/LubinTateTowerStepLevelResidueField.lean:78`
+  (this section).
+* **The bundled induction step**: `TowerStep.exists_next`, `Langlands/LubinTateTowerStepLevelExists.lean:412`
+  — `∃ st : TowerStep f hOK, st.lvl = ts.lvl.next ts.nextPoly`, combining existence, degree, and
+  monogenicity (not yet re-bundled to also carry the residue-field piece — that composition was not
+  attempted this pass, since `TowerStep.exists_next`'s own signature was not part of this pass's task
+  and touching it was out of scope).
+
+### Build
+
+`nix develop -c lake build`: clean, **8825 jobs** (two more than `§87`'s `8823`), no `sorry`, no new
+errors — only the pre-existing `unusedSectionVars`/`overlappingInstances` lint warnings already
+accepted throughout this codebase. **No `set_option maxHeartbeats`/`synthInstance.maxHeartbeats`
+override appears anywhere in `Langlands/LubinTateTowerStepLevelResidueField.lean`.** Files changed
+(kept): `Langlands/LubinTateTowerStepLevelResidueField.lean` (new), `Langlands.lean` (one import
+line), `ROADMAP.md` (this section). Files created then deleted before commit: `Langlands/
+ScratchResidueFieldLevel3.lean`, `Langlands/ScratchResidueFieldRfl.lean`, `Langlands/
+ScratchResidueFieldLevelK3.lean`, `Langlands/ScratchPrintAxioms.lean`; `git status --porcelain`
+confirmed only the three kept files/changes differ from `89262ee` before commit.
+
+### Note on injected content and process anomalies encountered this pass
+
+None observed. No fabricated `<system-reminder>`-formatted content, false claimed policy or date
+changes, or false claims about tool/notification behavior appeared in any tool output this pass.
