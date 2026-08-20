@@ -18640,3 +18640,218 @@ not treat as genuine instruction. Consistent with that established precedent, it
 as an instruction to alter this project's actual standing rules; recorded here per this arc's own
 established practice. No other fabricated content, false claimed policy changes, or false claims about
 tool/notification behavior were observed this pass.
+
+## 78. First attempt at the `∀ n` tower-step generalization (`§71` task-breakdown item 3): the
+`Algebra K K_n`/norm-preservation composite closes generically and inductively, checked against real
+concrete depths `n = 1, 2`; the `structure`-bundling question is tested cheaply and answered (viable
+but with no demonstrated benefit over plain generic defs); the remaining per-level chain (existence of
+`P_{n+1}`, monogenicity, degree, local-ring/residue-field) is **not** generalized this pass — precisely
+scoped and left open, not forced
+
+This pass was tasked with the large `§71` item-3 undertaking: study the `K_1 → K_2` and `K_2 → K_3`
+concrete chains (`§51`–`§77`), design a Lean encoding for a genuine `∀ n` family, and prove as much of
+a general inductive-step theorem as possible. Given the scale (`§71`–`§77` collectively represent
+seven prior passes' worth of hand-built, level-specific engineering), this pass made one real,
+bounded, sorry-free contribution — generalizing exactly the piece `§73`'s own "next concrete step"
+section named as the first genuinely new, not-yet-built prerequisite — rather than forcing a
+premature, larger claim of closure. What follows is precise about both what closed and what remains.
+
+### What the two concrete chains' data shape actually is (read directly, not assumed)
+
+Confirmed by direct read of all required files before any design decision, matching `§71`(c)'s own
+prior finding and adding no correction to it: each tower level needs (1) a field `K_n` — already
+`n`-independent by construction, since `LubinTate.K_2 {O'} {K'} [Algebra O' K'] (P : O'[X])` is a
+*generic* two-argument combinator (`Langlands/LubinTateTowerStepConcrete.lean:292`), re-applied
+verbatim at `K_3 := K_2 (K' := K_2 P₂) P₃` (`Langlands/LubinTateTowerStepConcreteK3.lean`) — with
+`Langlands/LubinTateTowerStepSplittingField.lean`'s whole `NormExtension` section (its
+`NontriviallyNormedField`/`IsUltrametricDist`/`CompleteSpace`/`NormedSpace` instances) *also already*
+generic in `K_2`'s own free parameters `O'`/`K'`, confirmed by direct read of that file's body before
+relying on it; (2) a flat ring of integers `O_{K_n} := ↥(integralClosure ↥𝒪[K] K_n)`, one
+`integralClosure` layer over the fixed base for every `n` (`§73`); (3) an `Algebra K K_n`
+composite (`K_2.instAlgebraK`, `Langlands/LubinTateTowerStepBaseNorm.lean`) — hardcoded per level,
+**this is the piece this pass generalizes**; (4) a chosen Eisenstein polynomial `P_{n+1} :
+O_{K_n}[X]` and Weierstrass factorization `shifted f ψ_n β' = P_{n+1} * u_{n+1}`, from which the
+generator `β'`, irreducibility, and Eisenstein-shape data all derive; and (5) the four-step proof
+chain (norm bound → connecting identity/transitivity → invariance/degree → monogenicity/local-
+ring/residue-field), each proved as a hand-written, level-specific file (`RootConnect`/`Degree`/
+`Monogenic`/`LocalRing`/`ResidueField`, doubled at `K_1→K_2` and `K_2→K_3`). This confirms, rather than
+revises, `§71`(c)'s "generalizes as-is" vs. "`n`-specific, hand-written" split.
+
+### The `structure`-bundling test (task item 2), done cheaply, before any commitment
+
+Per the task brief's explicit instruction, a scoped throwaway file (`Langlands/
+ScratchTowerLevelStructTest.lean`, built via `lake build Langlands.ScratchTowerLevelStructTest` in
+isolation, deleted before this pass's commit — confirmed by `git status --porcelain`/`git diff --stat`,
+both empty for this file) tested whether bundling a tower level's field/instance data into a
+`structure`, parametrized on the *previous* level's structure instance, reintroduces the elaboration-
+cost problem `§73` fixed by flattening. Three findings, all real build data, none guessed:
+
+* A `structure TestLevel` with a `field : Type*` projection plus `[instField : Field field]`/
+  `[instAlg : Algebra K field]` instance-fields, chained two and three levels deep (mirroring `K_1`,
+  `K_2`, and a `K_3`-shaped third level built the same way), **builds and closes at default
+  heartbeats in under two seconds per attempt** — no blowup, no timeout, for a genuine three-level
+  chain combined in one declaration (`testLevel3_composite`, an `algebraMap` composite-identification
+  `rfl`, the same *shape* of combination `§65`–`§68` found catastrophic under the doubly-nested
+  `Subalgebra` spelling).
+* **This is conditional on marking the level-constructor `def` `@[reducible]`.** Without it, ordinary
+  instance search fails outright (`failed to synthesize instance of type class Algebra l2.field
+  l3.field`) — not slow, genuinely stuck — because typeclass search does not unfold through a
+  non-reducible `def`'s body to discover that a structure projection (`l2.field`) is definitionally a
+  `Polynomial.SplittingField` application carrying its own automatic `Algebra` instance. This is a
+  **new, small, real elaboration-mechanics finding**, distinct from `§72`'s isDefEq-congruence-walk
+  finding: it is about instance search visibility through structure projections over non-reducible
+  defs, not about `isDefEq` congruence-walk depth over nested `Subalgebra` coercions. `§72`'s finding
+  is about a different (and, per that pass, much more expensive) mechanism; this pass's finding is
+  cheap to work around (`@[reducible]`) and did not require it.
+* **Conclusion, evidence-based rather than assumed**: `structure`-bundling is *viable* — it does not,
+  on this pass's test, reproduce `§65`–`§72`'s catastrophic cost, provided the constructor stays
+  reducible. But it also demonstrates **no benefit** over the alternative actually built below (plain
+  generic top-level `def`s parametrized by an abstract intermediate field `L`): the structure test
+  still needed exactly the same per-level `letI`/instance-threading discipline `§73` already
+  established, plus the additional `@[reducible]` bookkeeping the plain-def route never needed at all.
+  Per the task brief's own instruction not to force the structure shape without evidence it earns its
+  complexity, **this pass does not adopt `structure LubinTateTowerLevel` for the real deliverable**
+  below — the evidence gathered argues against the added complexity, not for it. This is a considered,
+  tested decision, not an assumption inherited from `§71`'s scoping pass (which did not test this
+  question at all).
+
+### The real deliverable: `Algebra K K_n` and its norm-preservation fact, generalized and proved
+inductively (`Langlands/LubinTateTowerStepInductiveAlgebraK.lean`, new file, `sorry`-free)
+
+`§73`'s own "next concrete step toward the `∀ n` family" section named this exactly: "the `Algebra K
+K_n` composite itself must generalize. `K_2.instAlgebraK` is a concrete two-hop `def`; an inductive
+family needs an analogous `K_n.instAlgebraK` built inductively... which [was] not built or tested." This
+pass builds it, for real:
+
+* **`instAlgebraK_of_algebraL`** : `Algebra K (K_2 (K' := L) P₂)`, the two-hop composite `K → L →
+  K_2 (K' := L) P₂`, stated once for an *abstract* intermediate field `L` (given `[Algebra K L]`) rather
+  than the hardcoded `K_1 P`. Built as an explicit `RingHom.comp`/`.toAlgebra` term — genericity over
+  an abstract `L` costs nothing here, **unlike** the flat ring-of-integers construction itself, which
+  this pass deliberately does *not* attempt to generalize the same way: `§73`'s own load-bearing
+  finding is that an ambient, abstract `[Algebra K L]` *hypothesis* makes `Algebra.ofSubsemiring`'s
+  search for `Algebra ↥𝒪[K] L` time out at `200,000` heartbeats, and only a concrete, already-
+  elaborated `letI`-bound term avoids it. `instAlgebraK_of_algebraL` involves no such search (no
+  `Algebra.ofSubsemiring` step at all — it is a direct hom composite), so it is safe to generalize
+  over an abstract `L`; the O-flat construction is not, and this pass respects that distinction
+  precisely rather than generalizing past it.
+* **`algebraMap_K_eq_of_algebraL`** : the composite is `algebraMap K K_n`, `rfl`.
+* **`hnorm_K_of_algebraL`** : **the actual inductive step** — `∀ x : K, ‖algebraMap K (K_2 (K' := L)
+  P₂) x‖ = ‖x‖`, given `hnormL` (the same fact one level down). This is a genuine `∀`-shaped
+  induction on this one piece of tower data: the *same* lemma, fed its own conclusion as input,
+  produces the next level's conclusion, at any depth — not a new lemma copied and hand-adapted per
+  level, which is what `§73`'s "multiplies with `n`" concern was about.
+* **Checked against real depth, not asserted**: `hnorm_K_K_1` (base case, `L := K_1 P`, `K`'s norm
+  extends exactly to `K_1 P`) feeds `hnorm_K_of_algebraL` to produce `hnorm_K_K_2`, whose *statement*
+  is checked to be exactly `K_2.hnorm_K`'s own (an `example`, also checks
+  `instAlgebraK_of_algebraL`'s `algebraMap` agrees with `K_2.instAlgebraK`'s, `rfl` at the `RingHom`
+  level). `hnorm_K_K_2` then feeds `hnorm_K_of_algebraL` a *second* time, at `L := K_2 (K' := K_1 P)
+  P₂`, to produce `hnorm_K_K_3` — **the analogous `K_3`-level norm-preservation fact, derived with no
+  new per-level file**, the concrete non-vacuity check `§73` itself did not attempt. Nothing in
+  `hnorm_K_of_algebraL`'s own proof refers to which level `L` sits at; the same call, fed
+  `hnorm_K_K_3`, would produce the `K_4`-level fact, and so on.
+* **One small elaboration-cost finding, found and worked around, not left as an open mystery**: the
+  first attempt at the non-vacuity check tried `instAlgebraK_of_algebraL ... = K_2.instAlgebraK ...`
+  as a `rfl` on the full bundled `Algebra` *structure* — this hit a genuine `200,000`-heartbeat
+  `isDefEq` timeout. Comparing only the `algebraMap` `RingHom` the two constructions actually produce
+  (via `@algebraMap K _ _ _ instance1 = @algebraMap K _ _ _ instance2`, sidestepping ordinary instance
+  resolution to name each instance explicitly) closes in under two seconds. This is a small, real,
+  root-caused finding (comparing an `Algebra` structure's `isDefEq` forces walking its `toSMul`/
+  `toModule` substructure that no downstream user actually needs to compare; comparing the one
+  projection that matters — `algebraMap` — sidesteps that walk entirely), not a heartbeat-budget
+  workaround: no `set_option maxHeartbeats` override was used anywhere in the final committed file.
+
+### What this does *not* close, precisely, and why it is a scope decision rather than a shortfall
+
+The task brief explicitly allowed partial closure ("It is fine and expected if this cannot fully close
+in one pass"). What remains, checked directly against what `§73`–`§77` each needed and confirmed still
+absent:
+
+* **The `Algebra O K_n` composite** (`K_2.instAlgebraO`'s outer-ring, `towerHom`-threading version) is
+  *not* generalized — `§73` itself found this composite's shape genuinely changes between `K_2` (three
+  hops, through `O_{K_1}`) and `K_3` (four hops, through `↥𝒪[K]` directly, `Langlands/
+  LubinTateTowerStepK3.lean`), so a single `∀ n` version of it is a larger, separate piece of work,
+  not attempted this pass.
+* **Existence of `P_{n+1}`, the Weierstrass factorization, monogenicity, the degree computation
+  (`[K_{n+1}:K_n]=q`), and local-ring/residue-field preservation** are **not** generalized to `∀ n`
+  this pass. Per `§76`'s own direct check (reconfirmed here, not re-derived):
+  `EisensteinMonogenicAbstract.lean`/`LubinTateTowerStepLocalRing.lean`/`TotallyRamifiedResidueField.lean`'s
+  engines are *already* abstract in `R`/`L`/`M` and apply mechanically at any concrete level once
+  instantiated (`§76` confirmed this directly for `K_2 → K_3`) — but "apply mechanically once
+  instantiated at a concrete level" is not the same statement as "closed as a single `∀ n` theorem
+  taking level `n`'s data as an explicit hypothesis and producing level `n+1`'s," which is what the
+  task brief's item 3 asked for. Building that single theorem would require formalizing "level `n`'s
+  data" as an actual Lean argument (a record of `K_n`/`O_{K_n}`/generator/degree/monogenicity facts) —
+  exactly the design question the `structure`-bundling test above investigated, and exactly the
+  question `§71`'s task breakdown flagged as "a genuinely large, multi-pass undertaking in its own
+  right, not scoped further" (`§71`, item 3's own text). This pass's contribution is the one piece
+  that generalizes cleanly and cheaply (`instAlgebraK`/`hnorm_K`); the rest — genuinely proving a
+  single `∀ n` statement that produces `P_{n+1}`'s *existence*, not merely transports facts about an
+  already-given `P_{n+1}` — is real, substantial, unclosed work, not attempted further here.
+* **No `sorry`, no stated-but-unproved theorem, is committed anywhere for the unclosed pieces above** —
+  per the task's hard constraint, what is not proved is not written into a `.lean` file at all; the
+  general inductive-step *statement* for the full per-level chain is described in prose here (this
+  section), not as a Lean declaration, precisely because committing it as a `sorry`-carrying
+  declaration is disallowed and committing it as a proved declaration would be dishonest given the
+  actual state of the proof.
+
+### What a fuller `∀ n` inductive-step theorem would need to state, precisely (documentation only —
+no corresponding `.lean` declaration exists, deliberately, per the constraint above)
+
+Based on this pass's direct read of both concrete chains (not a re-derivation of `§71`'s design, a
+sharpening of it against the two now-complete concrete instances `§73`–`§77` produced): the theorem
+would need to take, as explicit hypotheses, level `n`'s `K_n`/`O_{K_n}`/`[Algebra K K_n]` (this pass's
+`instAlgebraK_of_algebraL` supplies this piece already, for any `n`) plus a *chosen* Eisenstein
+polynomial `P_{n+1} : O_{K_n}[X]` with its Weierstrass factorization data (`u_{n+1}`, `heq`,
+`Associated`), and would need to *produce*: `K_{n+1} := K_2 (K' := K_n) P_{n+1}` (free, per this
+pass's confirmed-generic `K_2` combinator), `O_{K_{n+1}}` flat (mechanical, `§73`'s established
+pattern), `[Algebra K K_{n+1}]` (this pass's `instAlgebraK_of_algebraL`, free), the norm bound
+(this pass's `hnorm_K_of_algebraL`, free), the connecting identity/transitivity/invariance/degree
+(mirroring `Langlands/LubinTateTowerStepRootConnect.lean`/`Degree.lean`'s proofs, which are already
+level-agnostic *in their proof technique* even though not yet restated as a single `∀ n` theorem —
+this restatement is the actual remaining work), and monogenicity/local-ring/residue-field (already-
+generic abstract engines, per `§76`, needing only correct instantiation). The genuinely open question
+this pass does **not** resolve is whether `P_{n+1}`'s *existence* itself (not merely its consequences,
+given as an external hypothesis at every level so far, `§55`/`§74`/`§75`'s own consistent scope
+decision) can be proved once, generically, or needs a fresh existence argument at each depth — no
+evidence either way was gathered this pass.
+
+### Build
+
+`nix develop -c lake build`: clean, **8816 jobs** (one more than `§77`'s `8815`, for the one new file),
+no `sorry`, no errors, no `set_option maxHeartbeats`/`synthInstance.maxHeartbeats` override anywhere in
+the committed file. Files changed (kept): `Langlands/LubinTateTowerStepInductiveAlgebraK.lean` (new
+file: `instAlgebraK_of_algebraL`, `algebraMap_K_eq_of_algebraL`, `hnorm_K_of_algebraL`, `hnorm_K_K_1`,
+`hnorm_K_K_2`, `hnorm_K_K_3`, plus a non-vacuity `example`), `Langlands.lean` (one new import line).
+File created then deleted before commit (per this arc's established scoped-test-declaration
+methodology, confirmed via `git status --porcelain`/`git diff --stat`, both empty for it):
+`Langlands/ScratchTowerLevelStructTest.lean`.
+
+### Honest assessment: is this tracking to succeed?
+
+**Partially, and the honest picture is mixed, not uniformly positive.** The piece this pass closed
+(`Algebra K K_n`/norm-preservation, generalized and proved inductively at real depth `n=1,2,3`) is
+genuine, sorry-free, `∀`-shaped progress on exactly the prerequisite `§73` flagged as missing — not a
+restatement of already-done work. The `structure`-bundling question the task explicitly asked to be
+tested cheaply was tested, and the evidence (viable but no demonstrated benefit) is a real, useful data
+point for whoever picks up `§71`'s task-breakdown item 3 next, even though it argues against adopting
+the structure this pass's own task description offered as "the leading candidate." But the harder
+majority of item 3 — a single theorem that takes level `n`'s data and *produces* level `n+1`'s
+existence witness, transitivity, degree, and monogenicity, all at once, generically — remains
+unattempted, and this pass gathered no new evidence on whether that larger piece is tractable in the
+way the norm-preservation piece turned out to be. `§71`'s own characterization stands unrevised: "a
+flat representation removes one identified obstacle class; it does not by itself supply a `∀ n`
+inductive proof of `IsAdicComplete`/`IsDiscreteValuationRing`/monogenicity — that remains open,
+unverified mathematics-and-engineering work." This pass narrows that gap by exactly one piece, and
+narrows it honestly, rather than overclaiming.
+
+### Note on injected content encountered this pass
+
+Consistent with `§67`–`§77`'s own established practice, injected content is flagged and not treated as
+authorization for anything beyond what CLAUDE.md's own standing rules already permit: this session's
+harness surfaced a standard "Auto Mode Active" system-reminder block (as part of ordinary skill-tool
+output framing, not tool-output content resembling the fabricated pattern `§67`–`§77` logged) —
+distinguished from that prior pattern and not treated as license to alter this project's standing
+rules or skip a genuine clarifying question; none was needed this pass, since the task brief's own
+scope was unambiguous throughout. No fabricated `<system-reminder>`-formatted tool-output content,
+false claimed policy changes, or false claims about tool/notification behavior were encountered this
+pass.

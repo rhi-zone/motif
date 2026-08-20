@@ -43,6 +43,7 @@ import Langlands.LubinTateTorsionGroup
 import Langlands.LubinTateRootTranslation
 import Langlands.LubinTateTowerStep
 import Langlands.LubinTateTowerStepBaseNorm
+import Langlands.LubinTateTowerStepInductiveAlgebraK
 import Langlands.LubinTateTowerStepConcrete
 import Langlands.LubinTateTowerStepConcreteK2
 import Langlands.LubinTateTowerStepConcreteK2Flat
