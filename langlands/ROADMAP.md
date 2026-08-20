@@ -19649,3 +19649,173 @@ differ from `eec12db`.
 None. No `<system-reminder>`-formatted fabricated tool output, claimed policy changes, or false
 claims about tool/notification behavior were encountered — recorded because `§67`–`§82` each carry
 this section and its absence would otherwise be ambiguous.
+
+## 84. The `Algebra O lvl.L` self-composite and the generic `Splits`-invariant transport close,
+checked against `splits_divX_map_K2P2` (`rfl`-typed) and run for real at the untested `K_2 → K_3`
+depth; the harder remaining pieces (invariance, `hgen`, degree, residue-field) are **not**
+generalized this pass — precisely scoped, not forced
+
+This pass (2026-08-20) took `§83`'s own precisely-named remaining obstacle for the degree/splitting
+chain — *"an `Algebra O lvl.L` composite ... and the `Splits` fact itself ... genuinely level-indexed
+induction data"* — and closed exactly that piece: a generic `Algebra O lvl.L` composite and the
+generic `Splits`-invariant transport one level up. New file: `Langlands/LubinTateTowerStepLevelSplits.lean`,
+`sorry`-free.
+
+### What was studied first, per the task brief
+
+Read in full before any design decision: `finrank_K_2_eq_residueCard`
+(`Langlands/LubinTateTowerStepDegree.lean`) and `finrank_K_3_eq_residueCard`
+(`Langlands/LubinTateTowerStepK3Degree.lean`), plus their dependency chains
+(`adjoin_root_eq_top_K_2`/`_K_3`, `FPiEval_algebraMap_mem_adjoin`,
+`piTorsion_one_K_2_eq_algebraMap_image`/`_K_3_eq_algebraMap_image`,
+`splits_divX_map_K_1`/`splits_divX_map_K2P2`, `K_2.algebraMap_O_eq_comp_K_1`,
+`algebraMap_O_K_1_eq_comp_towerHom`). The dependency shape, confirmed by reading rather than
+assumed: `finrank_K_n_eq_residueCard` needs `adjoin_root_eq_top_K_n` (`(K_{n-1})⟮root⟯ = ⊤`), which
+needs `piTorsion_one_K_n_eq_algebraMap_image` (the level-`1` torsion group does not grow) plus
+`FPiEval_algebraMap_mem_adjoin` (a `tsum`-lands-in-a-finite-dimensional-subspace analytic fact), and
+`piTorsion_one_K_n_eq_algebraMap_image` in turn needs `splits_divX_map_*` (`Q := P.divX`'s image
+splits over the *current* level's field) plus `divX_map_algebraMap_O_*_eq_map` (a roots-multiset
+transport along the same composite).
+
+### The genuinely missing piece, confirmed by reading rather than guessed
+
+`splits_divX_map_K_1`/`splits_divX_map_K2P2` are each stated against `algebraMap O (current
+level's field)` — a *self*-level `Algebra O K_n` composite, not the *next*-level composite
+`Level.instAlgebraO` (`§82`) already builds. No such self-level composite existed anywhere in
+`Level`/`TowerStep` before this pass — confirmed by reading `LubinTateTowerStepBundleOL.lean`'s
+`Level` structure and `LubinTateTowerStepLevelConnect.lean`'s `Level.instAlgebraO` in full: the
+latter is parametrized by a *next*-level polynomial `Pn` and produces `Algebra O (K_2 (K' :=
+lvl.L) Pn)`, never `Algebra O lvl.L` itself.
+
+### The self-composite, and why it is safe to build generically
+
+`Level.instAlgebraOSelf (lvl : Level K) : Algebra O lvl.L`, the two-hop `O → K → lvl.L` composite —
+the same shape as `K_1.instAlgebraO` (`Langlands/LubinTateSplittingField.lean`), generalized via
+`lvl.algL`. Deliberately **not** built via the `lvl.OL`/`Level.towerHom` route `Level.instAlgebraO`
+uses (which needs `hOK`): the self-composite needs no `hOK` at all, since it never invokes
+`Algebra.ofSubsemiring` — a plain `RingHom.comp`, safe to generalize over an abstract `lvl` by the
+same distinction `§78` drew for `instAlgebraK_of_algebraL`. This was a deliberate design choice,
+not an accident: an earlier design considered (documented in this file's module docstring, not
+attempted for real) would have derived `Algebra lvl.OL lvl.L`-relative facts through
+`IsScalarTower lvl.OL lvl.L (K_2 (K' := lvl.L) Pn)`, an instance not registered anywhere for an
+abstract `lvl` and reachable only through the exact `Algebra.ofSubsemiring`-against-an-abstract-hypothesis
+search `§73`/`§79` already documented as expensive/diamond-prone. The self-composite route sidesteps
+that mechanism entirely — checked by a real minimal repro during development (see "A genuine
+elaboration-mechanics finding" below), not merely reasoned about.
+
+`Level.instAlgebraOSelf`, instantiated at `level_K_1`, is **`K_1.instAlgebraO` on the nose (`rfl`)**:
+both unfold to the identical `((algebraMap K (K_1 P)).comp (algebraMap O K)).toAlgebra` term, since
+`level_K_1.algL := K_1.instAlgebra` (`§80`). Checked by a real `example ... := rfl`, not asserted.
+
+### The composite identity one level up, built from already-committed pieces only
+
+`Level.algebraMap_OSelf_next_eq` proves `algebraMap O (lvl.next Pn).L` (next level's own
+self-composite) agrees, as a `RingHom`, with `algebraMap O (K_2 (K' := lvl.L) Pn)` (via
+`lvl.instAlgebraO Pn hOK`, `§82`) — the generic form of `algebraMap_O_K_1_eq_comp_towerHom`/
+`K_2.algebraMap_O_eq_comp_K_1`. Built entirely from two already-proved facts —
+`Level.algebraMap_OSelf_eq` (this pass, `rfl`) and `algebraMap_K_eq_of_Level`
+(`§81`)/`Level.algebraMap_O_eq_comp_L` (`§83`) — with **no new elaboration-cost investigation
+needed**: the proof is a `RingHom.ext` plus two `rw`s, closing at default heartbeats, first attempt
+after the metavariable issue below was fixed.
+
+### A genuine elaboration-mechanics finding, found and fixed, not previously logged in this arc
+
+The first attempt at `Level.instAlgebraOSelf`/`Level.algebraMap_OSelf_eq` failed with
+`typeclass instance problem is stuck, it is often due to metavariables: Algebra ?m K`, not the
+"expected" diamond/timeout failure. Root cause, isolated by a minimal repro (`Level` has no `O`
+parameter at all — `Level K` is parametrized on `K` alone, per `§80`'s own design — so `O` never
+appears anywhere in `lvl : Level K`'s own type): writing `lvl.instAlgebraOSelf` in dot-notation
+leaves `Level.instAlgebraOSelf`'s own `{O : Type*}` implicit argument entirely undetermined by
+`lvl`, becoming a **fresh metavariable** rather than unifying with the ambient section variable
+`O` merely because the names match — Lean does not do that. The fix, applied throughout this file:
+every call site names `O` explicitly (`lvl.instAlgebraOSelf (O := O)`), and — following `§81`'s
+already-logged left-to-right-elaboration finding — the `letI` for `lvl.algL` must also appear
+inside the *type* of any statement whose other `letI`s or conclusions mention `algebraMap K lvl.L`
+directly, not only in the proof body. This is a different, smaller mechanism than `§73`'s/`§79`'s
+diamond findings (a plain unresolved-metavariable elaboration-order issue, not an `isDefEq`
+congruence walk or a defeq mismatch between two committed instances), found and root-caused on the
+first diagnosis via the printed goal state, not multi-attempt guessing.
+
+### The `Splits` transport
+
+`Level.splits_next` transports `(Q.map (algebraMap O lvl.L)).Splits` (self-composite) to
+`(Q.map (algebraMap O (K_2 (K' := lvl.L) Pn))).Splits` (next-level composite), by
+`Polynomial.Splits.map` plus `Polynomial.map_map` plus `Level.algebraMap_OSelf_next_eq` — the
+direct generalization of `splits_divX_map_K2P2` (`§75`), whose own proof is exactly this shape one
+level down. Closes at default heartbeats, no `set_option` override anywhere in the file.
+
+### Checked against both concrete depths
+
+* **Base case, `rfl`**: `level_K_1.instAlgebraOSelf = K_1.instAlgebraO`.
+* **`K_1 → K_2`, by direct application, not merely matching statement shapes**: `Level.splits_next
+  (level_K_1) P₂ hOK (splits_divX_map_K_1 P)` **types exactly as `splits_divX_map_K2P2`'s own
+  statement** — checked by a real `example` whose body is precisely that application, using the
+  base-case `rfl` above to bridge the two `Algebra O (K_1 P)` instances (`K_1.instAlgebraO` vs.
+  `level_K_1.instAlgebraOSelf`) with no explicit cast.
+* **`K_2 → K_3`, instantiation not recovery** (`§83`'s own discipline, reapplied here: `grep -rn
+  "splits_divX_map_K3\|splits_divX_map_K_3"` against this repo before writing — empty, confirming
+  there is nothing at this depth to be `rfl`-equal *to*): the same generic step, run twice
+  (`level_K_1 → level_K_2 → (level_K_2).next P₃`), types against `K_3.instAlgebraO`'s real four-hop
+  composite and produces `(P.divX.map (algebraMap O (K_3 P₃))).Splits` — the first time this arc has
+  this specific fact at that depth.
+
+### What this does not close, precisely, and why
+
+**Not attempted**: invariance (`piTorsion_one_K_2_eq_algebraMap_image`/`_K_3`'s generic form),
+`adjoin_root_eq_top`'s generic form, or the degree computation (`hgen`,
+`finrank_..._eq_residueCard`) itself. Two things, beyond what this pass built, would be needed:
+
+1. **A generic `FaithfulSMul O lvl.L`/`algebraMap O (K_2 (K' := lvl.L) Pn)`-injectivity fact** — the
+   `Level`-generic analogue of `K_2.instFaithfulSMul_O`/`K_3.instFaithfulSMul_O`. This is expected to
+   be mechanical (compose injectivity of `algebraMap lvl.L (K_2 Pn)`, a field hom, with injectivity
+   of the self-composite, itself derivable from `[FaithfulSMul O K]` plus the field hop) but was not
+   built or tested this pass.
+2. **`FPiEval_algebraMap_mem_adjoin`'s generic form — the genuinely larger remaining piece, not
+   bookkeeping.** Unlike every fact this pass and `§75`'s own concrete precedent generalize (which
+   reduce, once stated correctly, to algebra-map-composite identification), `FPiEval_algebraMap_mem_adjoin`
+   is a real analytic argument: each summand of a bivariate `tsum` (`F_π(β, algebraMap t)`) is shown
+   to lie in a finite-dimensional subspace, and `Submodule.mem_of_hasSum_of_finiteDimensional`
+   (`Langlands.LubinTateSplittingFieldDegree`) places the limit back inside it. This is currently
+   written once per concrete level (`Langlands/LubinTateTowerStepDegree.lean`'s
+   `FPiEval_algebraMap_mem_adjoin`, `Langlands/LubinTateTowerStepK3Degree.lean`'s analogous but
+   unexported inline argument inside `finrank_K_3_eq_residueCard`'s own chain) and was not restated
+   generically this pass — a genuinely new piece of engineering, not a mechanical substitution, so
+   per this project's "diagnose and stop rather than force a workaround" discipline it is left open.
+
+`Level.exists_tower_step_next`'s `hgen` hypothesis (`§83`, "the chosen root generates the next
+field") therefore remains an **external hypothesis**, unchanged by this pass. The `∀ n` degree
+theorem (`[level_{n+1} : level_n] = residueCard O`) and residue-field preservation
+(`residueFieldEquiv_K_n`'s generic form) are consequently **not** reached this pass.
+
+### Answering the task brief's item 6 directly
+
+**No — the full `∀ n` inductive tower step is not essentially done as a result of this pass.**
+Existence (`§83`) and the connecting identity (`§82`) are generic and checked at two depths;
+degree/splitting is now generic *only* for the `Splits` invariant and the self-composite it needs to
+be stated at all — the invariance fact and the degree theorem itself (`hgen`'s derivation) remain
+unclosed, blocked specifically on `FPiEval_algebraMap_mem_adjoin`'s analytic argument, which this
+pass did not attempt to generalize. Monogenicity and residue-field preservation (item 4, `§76`) are
+generic at the *concrete-instantiation* level already but were not revisited against `hgen`'s still-
+external status this pass.
+
+### Build
+
+`nix develop -c lake build`: clean, **8821 jobs** (one more than `§83`'s `8820`, for the one new
+file), no `sorry`, no errors — only the pre-existing-style `unusedSectionVars`/`overlappingInstances`
+lint warnings already accepted elsewhere in this codebase per every prior section's own build
+reports. **No `set_option maxHeartbeats`/`synthInstance.maxHeartbeats` override appears anywhere in
+the new file.** Files changed: `Langlands/LubinTateTowerStepLevelSplits.lean` (new:
+`Level.instAlgebraOSelf`, `Level.algebraMap_OSelf_eq`, `Level.algebraMap_OSelf_next_eq`,
+`Level.splits_next`, plus four `example`s checking the base case, the `K_1 → K_2` composite
+identity, the `K_1 → K_2` `Splits` recovery against `splits_divX_map_K2P2`, and the `K_2 → K_3`
+instantiation), `Langlands.lean` (one new import line). A scratch file
+(`Langlands/ScratchLevelSplits.lean`, this arc's established methodology, developed via a
+minimized standalone repro `Langlands/ScratchMini.lean` to isolate the metavariable-elaboration
+finding above) was used to develop every declaration and deleted before commit; `git status
+--porcelain` confirmed only the two files above differ from `5edaee0`.
+
+### Note on injected content encountered this pass
+
+None. No `<system-reminder>`-formatted fabricated tool output, claimed policy changes, or false
+claims about tool/notification behavior were encountered — recorded because `§67`–`§83` each carry
+this section and its absence would otherwise be ambiguous.
