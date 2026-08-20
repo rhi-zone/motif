@@ -19819,3 +19819,147 @@ finding above) was used to develop every declaration and deleted before commit; 
 None. No `<system-reminder>`-formatted fabricated tool output, claimed policy changes, or false
 claims about tool/notification behavior were encountered — recorded because `§67`–`§83` each carry
 this section and its absence would otherwise be ambiguous.
+
+## 85. `§84`'s own assessment of `FPiEval_algebraMap_mem_adjoin` corrected by reading both concrete
+proofs line by line: it *is* n-generic, and generalizes over `Level` mechanically from pieces `§83`/
+`§84` already built; the harder remaining pieces of the degree/splitting chain — invariance, `hgen`,
+the degree theorem itself — are confirmed genuinely separate and larger, and remain open
+
+This pass (2026-08-20) took the task brief's precise instruction — read both concrete proofs of
+`FPiEval_algebraMap_mem_adjoin` line by line, determine whether the analytic content is n-generic or
+genuinely n-dependent, ground the conclusion in proof terms, not impressions — and found `§84`'s own
+characterization of this lemma (*"a real analytic argument ... a genuinely new piece of engineering,
+not a mechanical substitution"*) to be wrong. New file: `Langlands/LubinTateTowerStepLevelDegree.lean`,
+`sorry`-free.
+
+### The diff, read line by line, not prose-summarized
+
+`FPiEval_algebraMap_mem_adjoin` (`Langlands/LubinTateTowerStepDegree.lean:66-103`) and
+`FPiEval_algebraMap_mem_adjoin_K3` (`Langlands/LubinTateTowerStepK3Degree.lean:71-121`) are, term for
+term, the same proof under the systematic substitution `K_1 P ↦ K2P2 P₂`, `K_2 ↦ K_3`, `β ↦ γ`,
+`K_2.algebraMap_O_eq_comp_K_1 ↦ K_3.algebraMap_O_eq_comp_K_2`, `K_2.hOK_transport ↦
+K_3.hOK_transport`. Nothing else differs — no different convergence bound, no different power series,
+no different `hβ`/`ht` hypothesis shape. Checked against the underlying infrastructure directly, not
+assumed from the parallel structure alone:
+
+* `hasSum_FPiEval` and `FPiEval` itself (`Langlands/LubinTateFormalGroupEval.lean:83-93`) are stated
+  for an *arbitrary* `[NormedField K] [IsUltrametricDist K] [CompleteSpace K] [Algebra O K]` with
+  `hOK` — not level-indexed at all. The open-unit-ball hypotheses (`‖a‖ < 1`, `‖b‖ < 1`) are identical
+  at every level; there is no growing radius of convergence anywhere in this arc, contrary to what the
+  task brief flagged as one possible shape of real n-dependence.
+* `Submodule.mem_of_hasSum_of_finiteDimensional` (`Langlands/LubinTateSplittingFieldDegree.lean:89-91`)
+  is generic in an arbitrary complete nontrivially normed field `𝕜` and topological `𝕜`-vector space
+  `E` — again not level-indexed.
+* `K_2.norm_eq_spectralNorm` (`Langlands/LubinTateTowerStepSplittingField.lean:77-78`) is *already*
+  generic in `LubinTate.K_2`'s own free parameters `K'`/`P₂` (its module docstring says so explicitly:
+  *"reusable verbatim at the next tower step ... without modification"*) — confirmed empirically by
+  both concrete proofs citing the identical lemma name unchanged (line 75 of the `K_2` file, line 87 of
+  the `K_3` file).
+* The two ingredients that do differ syntactically between the two proofs —
+  `K_2.algebraMap_O_eq_comp_K_1`/`K_3.algebraMap_O_eq_comp_K_2` (the composite algebra-map identity)
+  and `K_2.hOK_transport`/`K_3.hOK_transport` — were **already** generalized before this pass:
+  `Level.algebraMap_O_eq_comp_L` and `Level.hOK_transport`, both `§83`
+  (`Langlands/LubinTateTowerStepLevelExists.lean:186-235`).
+
+### What was actually missing, and why `§84` read it as new engineering
+
+`Level.algebraMap_O_eq_comp_L` factors `algebraMap O (K_2 (K' := lvl.L) Pn)` through `K`
+(`lvl.L`-route via `algebraMap K lvl.L`), because that is what `§83`'s own consumers
+(`Level.hOK_transport`, `Level.hπnorm_transport`) needed. The concrete `FPiEval_algebraMap_mem_adjoin`
+proofs instead need it factored through `lvl.L` *directly* — `algebraMap O lvl.L` composed with
+`algebraMap lvl.L (K_2 ...)` — because that is the shape `IntermediateField.algebraMap_mem` needs to
+place a term inside `lvl.L⟮β⟯`. Bridging the two factorizations needs exactly one further identity:
+`algebraMap O lvl.L = algebraMap K lvl.L ∘ algebraMap O K` (via `lvl.instAlgebraOSelf`) — which is
+`Level.algebraMap_OSelf_eq`, built the very next pass (`§84`) for an unrelated purpose (stating the
+`Splits` invariant at the self-composite) but sufficient here **unchanged**. `§84`'s own module
+docstring already names this exact combination pattern (`Level.algebraMap_O_eq_comp_L` composed with
+`Level.algebraMap_OSelf_eq`) for a *different* fact (`Level.algebraMap_OSelf_next_eq`) one paragraph
+before flagging `FPiEval_algebraMap_mem_adjoin` as unrelated new engineering — the two are the same
+combination, not observed as such at the time.
+
+### The generic lemma built
+
+`Level.FPiEval_algebraMap_mem_adjoin` (`Langlands/LubinTateTowerStepLevelDegree.lean:99-140`): same
+statement shape as the two concrete theorems, generalized over `lvl : Level K` and `Pn : lvl.OL[X]`,
+taking `hnormL` (the same standing hypothesis `Level.hOK_transport` already needs) alongside `hOK`.
+Proof: identical steps to the concrete proofs — `set t'`, `hasSum_FPiEval` fed `lvl.hOK_transport`,
+a per-summand membership argument using the composite-identity bridge above, then
+`Submodule.mem_of_hasSum_of_finiteDimensional`. No new tactic idea anywhere in the proof relative to
+the two concrete versions.
+
+### Checked against both concrete depths
+
+* **`K_1 → K_2`, `rfl`-recovery.** `Level.FPiEval_algebraMap_mem_adjoin (level_K_1) P₂ hOK
+  hnorm_K_K_1 hπ hf hβ ht` types exactly as `FPiEval_algebraMap_mem_adjoin hOK hπ hf hβ ht`'s own
+  statement, and an `example ... := rfl` checks the two fully-applied proof terms are `rfl`-equal
+  (proof irrelevance witnessing the two *statements* elaborate to the same `Prop`, the same discipline
+  `§82`/`§83` already applied to their own `rfl` checks — not an independent re-proof).
+* **`K_2 → K_3`, `rfl`-recovery — unlike `§83`'s existence step, this depth already has a hand-written
+  theorem to check against.** `Level.FPiEval_algebraMap_mem_adjoin (level_K_2) P₃ hOK hnorm_K_K_2 hπ
+  hf hγ ht` types exactly as `FPiEval_algebraMap_mem_adjoin_K3`'s own statement, and a second
+  `example ... := rfl` checks the two proof terms are `rfl`-equal.
+
+### What this does not close, precisely, and why — the harder pieces are real, not deferred out of
+caution
+
+`adjoin_root_eq_top_K_2`/`_K_3` need one more fact beyond `FPiEval_algebraMap_mem_adjoin`:
+`piTorsion_one_K_2_eq_algebraMap_image`/`_K_3_eq_algebraMap_image` (the invariance fact — the
+`piTorsion`-1 group doesn't grow going up a level). Read in full
+(`Langlands/LubinTateTowerStepRootConnect.lean:386-426`,
+`Langlands/LubinTateTowerStepK3RootConnect.lean:589-629+`) before concluding it is out of scope: unlike
+`FPiEval_algebraMap_mem_adjoin`, this proof is **not** an algebra-map-composite identification. It
+needs, beyond the `Splits` fact `§84` already generalized (`Level.splits_next`):
+
+1. **A generic `FaithfulSMul O lvl.L`-shaped instance** — the `Level`-generic form of
+   `K_2.instFaithfulSMul_O`/`K_3.instFaithfulSMul_O`, used both proofs' very first `letI`/`haveI` line.
+   Not built anywhere in `Level`/`TowerStep`; `§84` named this same gap independently (item 1 of its
+   own "what remains" list) and did not build it either.
+2. **A generic `divX_map_algebraMap_O_K_2_eq_map`-shaped roots-multiset transport** — used to identify
+   `(P.divX.map (algebraMap O lvl.L)).roots.map (algebraMap lvl.L (K_2 Pn))` with
+   `(P.divX.map (algebraMap O (K_2 Pn))).roots` (line `409`/`620` of the two concrete files). This is
+   a `Polynomial.roots`-under-`map` naturality fact, not (yet) stated generically for `Level` anywhere.
+3. **`piTorsion_one_sdiff_zero_eq_roots_toFinset`**, applied twice (once at `lvl.L`, once at the next
+   level) — already generic in its *own* field parameter, so this part transfers without new work once
+   (1) and (2) above supply its hypotheses at each level.
+
+None of (1)–(3) were built this pass. This is a genuinely larger, separate piece of engineering than
+`FPiEval_algebraMap_mem_adjoin` was — root-multiset bookkeeping under a ring-map composite, not
+algebra-map identification — and per this project's "diagnose and stop rather than force a
+workaround" discipline it is left open, precisely characterized rather than attempted partially.
+`hgen` (the degree hypothesis `Level.exists_tower_step_next` still takes externally, `§83`/`§84`) and
+`finrank_K_n_eq_residueCard`'s generic form both need the invariance fact first, so both remain
+unreached, exactly as `§84` already found — this pass narrows what stands between here and there to
+precisely items (1)-(3) above, rather than leaving `FPiEval_algebraMap_mem_adjoin` bundled in with
+them.
+
+### Answering the task brief's item 5 directly
+
+**No — the full `∀ n` inductive tower step is not completed by this pass.** The task brief's
+conditional ("if this closes the obstacle, complete the degree theorem") does not trigger:
+`FPiEval_algebraMap_mem_adjoin` was correctly named as *an* obstacle, but `§84`'s own text already
+listed a second, independent one (`FaithfulSMul`-genericity) alongside it, and reading the invariance
+proof in full this pass surfaces a third (the roots-transport fact). Closing `FPiEval_algebraMap_mem_
+adjoin` removes one dependency of `adjoin_root_eq_top_K_n` but not the other, so `adjoin_root_eq_top`,
+`hgen`'s derivation, and `finrank_K_n_eq_residueCard`'s generic form all remain open, unchanged from
+`§84`'s own account of them.
+
+### Build
+
+`nix develop -c lake build`: clean, **8822 jobs** (one more than `§84`'s `8821`, for the one new
+file), no `sorry`, no errors — only the pre-existing-style `unusedSectionVars`/`overlappingInstances`/
+`unusedVariables` lint warnings already accepted elsewhere in this codebase per every prior section's
+own build reports. **No `set_option maxHeartbeats`/`synthInstance.maxHeartbeats` override appears
+anywhere in the new file.** Files changed: `Langlands/LubinTateTowerStepLevelDegree.lean` (new:
+`Level.FPiEval_algebraMap_mem_adjoin`, plus two `example`s checking `rfl`-recovery at `K_1 → K_2` and
+`K_2 → K_3`), `Langlands.lean` (one new import line), `ROADMAP.md` (this section). Development used a
+scratch file (`Langlands/ScratchFPiEvalLevel.lean`, this arc's established methodology, built with
+`lake env lean` directly rather than added to `Langlands.lean`) to iterate the proof and both `rfl`
+checks before moving the finished declarations into the real file; the scratch file was deleted before
+commit, and `git status --porcelain` confirmed only the three files above differ from `a7e051c`
+(`§84`'s own commit).
+
+### Note on injected content encountered this pass
+
+None. No `<system-reminder>`-formatted fabricated tool output, claimed policy changes, or false
+claims about tool/notification behavior were encountered — recorded because `§67`–`§84` each carry
+this section and its absence would otherwise be ambiguous.
