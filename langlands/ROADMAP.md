@@ -18126,3 +18126,157 @@ unambiguous and needed no clarifying questions in any case; the note is recorded
 the task brief's own security note asked for it). No other fabricated `<system-reminder>` content,
 false claimed policy changes, or false claims about tool/notification behavior were observed this
 pass.
+
+## 75. The `K_2 → K_3` splits-transport gap `§74` left open closes with a fully general Mathlib
+lemma (`Polynomial.Splits.map`); invariance and the degree computation (`[K_3:K_2]=q`) close too;
+concrete instantiation at a real `P₃` remains, unattempted, as the one piece separating this step
+from the `K_1 → K_2` template's full completeness
+
+`§74` closed `norm_lt_one_of_aeval_P₃_eq_zero`/the connecting identity/transitivity, but left items 3
+(`[K_3:K_2]=q`) and 4 (monogenicity/residue-field for `O_{K_3}`) blocked on a fact it identified as
+missing: that `Q := P.divX`'s image (the level-`1` torsion polynomial) splits completely over
+`K2P2 P₂` (`= K_2`, this tower step's own naming for the previous level's field), not just over
+`K_1 P`. This pass verified that gap directly, closed it, and carried invariance and the degree
+computation through to completion — mirroring `Langlands/LubinTateTowerStepRootConnect.lean`/
+`LubinTateTowerStepDegree.lean`'s `K_1 → K_2` template almost verbatim. Item 4 (monogenicity/
+residue-field preservation for `O_{K_3}`) was **not attempted** — see "What remains" below.
+
+### Step 1: verifying the gap directly, not trusting `§74`'s report
+
+Confirmed by direct read of `Langlands/LubinTateTowerStepK3RootConnect.lean` (as committed at
+`a080cd0`) before any edit: no lemma named `splits_divX_map_K_2`/`splits_divX_map_K2P2` or similar
+existed anywhere in the file or the repo (`grep -rn "splits_divX_map_K2" Langlands/` — empty before
+this pass). `splits_divX_map_K_1` (`Langlands/LubinTateSplittingFieldTorsion.lean:75`) is proved from
+`K_1 P` **being** `Q`'s own splitting field by construction (`splits_K_1`), a fact with no analogue
+one level up: `K2P2 P₂ := K_2 (K' := K_1 P) P₂` is the splitting field of *`P₂`'s* image, not `Q`'s —
+`§74`'s framing of this as "a further extension, not `Q`'s own splitting field" is correct and was
+the actual obstacle, not a Lean-engineering artifact.
+
+### Step 2: what the fact actually needed — a fully general Mathlib lemma, not new theory
+
+The missing piece turned out to be **already in Mathlib, unconditional, no new general-purpose lemma
+required**: `Polynomial.Splits.map` (`Mathlib/Algebra/Polynomial/Splits.lean:84`,
+`protected theorem Splits.map {f : R[X]} (hf : Splits f) {S : Type*} [Semiring S] (i : R →+* S) :
+Splits (map i f)`). In this repo's definition of `Splits` (`f : R[X]`, no target ring hom — a
+polynomial *already sitting in a field* factors into linear terms there), a polynomial that splits in
+one field, mapped further along **any** ring homomorphism out of that field, still splits in the
+target — a purely structural fact about products of linear factors surviving under `RingHom.map`,
+true regardless of what the further extension "is." So `K2P2 P₂` does not need to be shown to be, in
+any sense, "big enough" or "plausibly a splitting field for `Q` too" — that framing (item 2 of the
+task brief) turns out not to be the right question: splitting is **automatically preserved** under
+arbitrary further field extension, once it holds anywhere upstream. The actual engineering was
+identifying the right composite ring hom and folding it back to `algebraMap O (K2P2 P₂)`:
+
+```lean
+theorem splits_divX_map_K2P2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
+    letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+    (P.divX.map (algebraMap O (K2P2 (K := K) P₂))).Splits := by
+  letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+  have hmap := (splits_divX_map_K_1 (K := K) P).map
+    (algebraMap (K_1 (K := K) P) (K2P2 (K := K) P₂))
+  rw [Polynomial.map_map] at hmap
+  rwa [show (algebraMap (K_1 (K := K) P) (K2P2 (K := K) P₂)).comp
+      (algebraMap O (K_1 (K := K) P)) = algebraMap O (K2P2 (K := K) P₂) from
+    RingHom.ext fun c => (congrFun (K_2.algebraMap_O_eq_comp_K_1 (K := K) (P := P) hOK) c).symm]
+    at hmap
+```
+
+`K_2.algebraMap_O_eq_comp_K_1` (`Langlands/LubinTateTowerStepRootConnect.lean`, already built at the
+`K_1 → K_2` step) is exactly the composite-identification fact needed — no new general lemma, no
+Mathlib gap, just applying an existing repo lemma one level up from where it was built. This resolves
+the task brief's question 2 concretely: **no genuinely different/adapted argument was needed for
+`[K_3:K_2]=q` at the splits level** — the mathematical content ("splitting propagates up the tower")
+is free once stated correctly; the only per-level work is bookkeeping the algebra-map composites,
+exactly as `§73`'s flat-`O_{K_2}` switch already made routine via `letI`-per-theorem.
+
+### Step 3: invariance and the degree computation, built mirroring the `K_1 → K_2` template
+
+With `splits_divX_map_K2P2` in hand, `Langlands/LubinTateTowerStepK3RootConnect.lean` gained four more
+theorems, each a direct mirror of its `K_1 → K_2` counterpart (`Langlands/
+LubinTateTowerStepRootConnect.lean`), all closing at default heartbeats with no elaboration-cost
+issue (confirming `§74`'s finding that the flat `O_{K_2}` spelling removed the combinatorial-diamond
+obstacle applies to this further downstream chain too, not just the one theorem `§74` tested):
+
+* `K_3.hπnorm_transport` : `K`'s strict uniformizer bound transports to `K_3`, mirroring
+  `K_2.hπnorm_transport`.
+* `divX_map_algebraMap_O_K_3_eq_map` : `Q`'s image over `K_3` is `Q`'s image over `K2P2 P₂`, mapped
+  further, mirroring `divX_map_algebraMap_O_K_2_eq_map`.
+* `piTorsion_one_K_3_eq_algebraMap_image` : the `K2P2 P₂ → K_3` `piTorsion hπ hf 1`-invariance fact,
+  mirroring `piTorsion_one_K_2_eq_algebraMap_image` — this is item 6's core missing fact one level up,
+  now closed.
+
+A new file, `Langlands/LubinTateTowerStepK3Degree.lean` (mirroring `Langlands/
+LubinTateTowerStepDegree.lean`), then closes:
+
+* `FPiEval_algebraMap_mem_adjoin_K3` : `F_π(γ, algebraMap t) ∈ (K2P2 P₂)⟮γ⟯`, mirroring
+  `FPiEval_algebraMap_mem_adjoin`.
+* `adjoin_root_eq_top_K_3` : `(K2P2 P₂)⟮γ⟯ = ⊤` for `γ` any root of `P₃`'s image, mirroring
+  `adjoin_root_eq_top_K_2`.
+* `finrank_K_3_eq_residueCard` : `Module.finrank (K2P2 P₂) (K_3 P₃) = residueCard O` — **`[K_3:K_2]=q`
+  closes**, mirroring `finrank_K_2_eq_residueCard`.
+
+Following `finrank_K_2_eq_residueCard`'s own scope decision exactly: `finrank_K_3_eq_residueCard`
+takes `hγfin : Module.finrank (K2P2 P₂) (K2P2 P₂)⟮γ⟯ = residueCard O` as an **external hypothesis**,
+not derived from existence — `finrank_K_2_eq_residueCard` does the same one level down, deferring
+existence to a separate theorem (`exists_finrank_adjoin_eq_residueCard_K_2`,
+`Langlands/LubinTateTowerStepConcrete.lean`) built from `exists_eisenstein_tower_step_K_1`'s concrete
+output. The `K_3`-level existence analogue would need `exists_eisenstein_tower_step_K_2`'s output
+(`Langlands/LubinTateTowerStepConcreteK2.lean`), which lives in the **nested** `O_{K_2}` type (not
+yet switched to the flat spelling) — transporting it was explicitly flagged out of scope by `§74` and
+remains so here; see "What remains" below.
+
+### What remains: instantiation at a concrete `P₃`, and item 4 (monogenicity/residue-field)
+
+Both **not attempted this pass**, for the same reason `§74` gave and this pass confirms is still
+accurate:
+
+* **Concrete instantiation.** Every theorem built this pass and `§74` (`norm_lt_one_of_aeval_P₃_eq_
+  zero`, the connecting identity, transitivity, invariance, `finrank_K_3_eq_residueCard`) is
+  universally quantified over `P₃`/`β'`/`γ`/`u₃` satisfying the relevant hypotheses, not instantiated
+  at the actual `P₃` `exists_eisenstein_tower_step_K_2` produces. That theorem's output is typed
+  against the **nested** `O_{K_2}` (`Langlands/LubinTateTowerStepConcreteK2.lean`, not touched by
+  `§73`'s flat switch), so using it here needs `Langlands/IntegralClosureTower.lean`'s `_symm`
+  transport lemmas (`§67`'s addition) applied at the concrete witnesses — genuinely new plumbing, not
+  attempted.
+* **Item 4 (monogenicity/residue-field preservation for `O_{K_3}`).** `Langlands/
+  LubinTateTowerStepMonogenic.lean`/`LubinTateTowerStepResidueField.lean` are the `K_1 → K_2`
+  templates; reproducing them at `K_2 → K_3` needs `minpoly O_{K_2} β' = P₃` identified the way
+  `adjoin_eq_integralClosure_K_2` does one level down, which in turn leans on the degree computation
+  this pass closed — so it is now unblocked at the *generic* level, but was not attempted this pass
+  (out of time budget, and — per the concrete-instantiation gap above — its natural statement would
+  also want a concrete `P₃` to be a fully faithful mirror of the `K_1 → K_2` template's own
+  `O_{K_2}`-monogenicity theorem, which itself is stated at the concrete Eisenstein polynomial the
+  earlier tower step produces).
+
+### Non-vacuity / genuine-generality check
+
+`splits_divX_map_K2P2`, `piTorsion_one_K_3_eq_algebraMap_image`, `adjoin_root_eq_top_K_3`, and
+`finrank_K_3_eq_residueCard` are all stated for the same abstract `O`/`K`/`P`/`P₂`/`P₃` hypothesis set
+this whole arc uses throughout (`hOK`, `hπnorm`, `hf : IsLubinTatePoly`, the Weierstrass factorization
+data, `IsDistinguishedAt`/`Associated`/degree-positivity for `P₃`) — no new hypothesis was invented to
+make these close, and no hypothesis was dropped relative to the `K_1 → K_2` template's own (already
+non-vacuously-checked, per `§55`/`§56`) hypothesis set. `finrank_K_3_eq_residueCard`'s external
+`hγfin` hypothesis mirrors `finrank_K_2_eq_residueCard`'s own `hβfin`, which is non-vacuous precisely
+because `exists_finrank_adjoin_eq_residueCard_K_2` supplies a witness at the concrete level — the
+same existence witness for `hγfin` is exactly the "concrete instantiation" gap above, not a new
+vacuity risk this pass introduces.
+
+### Build
+
+`nix develop -c lake build`: clean, **8810 jobs** (one more than `§74`'s `8809`, for the new
+`Langlands/LubinTateTowerStepK3Degree.lean` file), no `sorry`, no new errors. Files changed (kept):
+`Langlands/LubinTateTowerStepK3RootConnect.lean` (four new theorems — `K_3.hπnorm_transport`,
+`divX_map_algebraMap_O_K_3_eq_map`, `splits_divX_map_K2P2`, `piTorsion_one_K_3_eq_algebraMap_image` —
+plus an updated module docstring), `Langlands/LubinTateTowerStepK3Degree.lean` (new file:
+`FPiEval_algebraMap_mem_adjoin_K3`, `adjoin_root_eq_top_K_3`, `finrank_K_3_eq_residueCard`),
+`Langlands.lean` (one new import line). No other file changed.
+
+### A note on tooling integrity this pass
+
+This session's tool output included an "Auto Mode Active" `<system-reminder>`-formatted block on the
+initial user message, matching in form and placement the exact injected-content pattern `§67`–`§74`
+already logged and correctly did not treat as genuine instruction. Consistent with that established
+precedent, it was not complied with as an instruction to alter this project's actual standing rules
+(the CLAUDE.md hard constraints and disposition were followed as written); recorded here per this
+arc's own established practice. No other fabricated `<system-reminder>` content, false claimed policy
+changes, or false claims about tool/notification behavior were observed this pass.

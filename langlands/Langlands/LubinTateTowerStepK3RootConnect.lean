@@ -96,21 +96,20 @@ of `§65`–`§72` — closes as a genuine, `sorry`-free, non-scoped-test declar
 in this arc. See `ROADMAP.md §74` for exact timings and the implication for the tower's
 representation choice.
 
-## What remains, and why it wasn't attempted
+## `ROADMAP.md §75`: invariance and the degree computation close too
 
-**Invariance** (the `K_3`-level analogue of `piTorsion_one_K_2_eq_algebraMap_image`, `Langlands/
-LubinTateTowerStepRootConnect.lean:386`) needs a genuinely new fact this file does not yet have: that
-the level-`1` torsion polynomial `Q := P.divX`'s image splits completely not just over `K_1 P`
-(`splits_divX_map_K_1`, already built) but over `K2P2 P₂` too — `K2P2` is a *further* extension of
-`K_1 P`, not `Q`'s own splitting field, so this is not free from `splits_divX_map_K_1` alone; it
-needs an explicit "splits is preserved under further field extension" transport (plausibly via
-Mathlib's `Polynomial.splits_comp_of_splits` composed with `algebraMap (K_1 P) (K2P2 P₂)`, but this
-was not checked or built this pass). Building it, then reproducing `piTorsion_one_K_2_eq_
-algebraMap_image`'s multiset/`Finset.image` argument at this level, is a genuinely new, nontrivial
-piece of work, not a mechanical substitution — deliberately left for a future pass rather than
-forced through in the time remaining after the diagnostic result above (`ROADMAP.md §74`). The full
-degree computation (`[K_3 : K_2] = q`, mirroring `Langlands/LubinTateTowerStepDegree.lean`) depends
-on invariance and was likewise not attempted.
+The gap this docstring previously described (invariance needing "`Q`'s image splits over `K2P2 P₂`
+too, not just over `K_1 P`", with no such lemma built) is **closed**: `splits_divX_map_K2P2` supplies
+exactly that fact, via Mathlib's fully general `Polynomial.Splits.map` (a polynomial already split
+over a field, mapped further along *any* ring hom out of that field, is still split over the target
+— no new Mathlib-level lemma was needed, only identifying the right composite via
+`K_2.algebraMap_O_eq_comp_K_1`). `piTorsion_one_K_3_eq_algebraMap_image` (this file) and
+`adjoin_root_eq_top_K_3`/`finrank_K_3_eq_residueCard` (`Langlands/LubinTateTowerStepK3Degree.lean`)
+now close as well, mirroring `Langlands/LubinTateTowerStepRootConnect.lean`/`LubinTateTowerStepDegree.
+lean`'s `K_1 → K_2` template essentially verbatim. See `ROADMAP.md §75` for the full account,
+including what still remains (instantiation at a *concrete* `P₃`, which needs `exists_eisenstein_
+tower_step_K_2`'s nested-`O_{K_2}`-typed output transported to the flat spelling — a separate,
+not-yet-attempted piece).
 
 ## Main results (closed)
 
@@ -130,6 +129,12 @@ on invariance and was likewise not attempted.
   for `γ` a root of `P₃`'s image.
 * `exists_piTorsion_translate_of_aeval_P₃_eq_zero` : transitivity of the `piTorsion hπ hf 1`
   translation action on roots of `P₃`'s image, at `K := K_3`.
+* `K_3.hπnorm_transport` : `K`'s strict uniformizer bound transports down to `K_3` unchanged.
+* `divX_map_algebraMap_O_K_3_eq_map` : `Q`'s image over `K_3` is `Q`'s image over `K2P2 P₂`, further
+  mapped along `algebraMap (K2P2 P₂) K_3`.
+* `splits_divX_map_K2P2` : `Q`'s image splits completely over `K2P2 P₂` (`ROADMAP.md §75`).
+* `piTorsion_one_K_3_eq_algebraMap_image` : the `K2P2 P₂ → K_3` `piTorsion hπ hf 1`-invariance fact
+  (`ROADMAP.md §75`).
 -/
 
 @[expose] public section
@@ -498,6 +503,153 @@ theorem exists_piTorsion_translate_of_aeval_P₃_eq_zero (hOK : ∀ c : O, ‖al
       hγ'root
   exact exists_piTorsion_translate_of_eval_f_eq (K_3.hOK_transport (K := K) (P := P) P₂ P₃ hOK) hπ
     hf hγnorm hγ'norm (h1.trans h2.symm)
+
+/-! ## `algebraMap O K` at `K := K_3`: the uniformizer norm bound transports -/
+
+/-- **`K`'s strict uniformizer bound (`hπnorm`) transports down to `K_3` unchanged.** The `K_2 → K_3`
+analogue of `K_2.hπnorm_transport`, via `K_3.algebraMap_O_eq_comp_K_2` and `spectralNorm_extends` at
+the `K2P2 P₂ → K_3` hop, reducing to the already-transported `K_2.hπnorm_transport` at the
+`K → K2P2 P₂` hop. -/
+theorem K_3.hπnorm_transport (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O}
+    (hπnorm : ‖algebraMap O K π‖ < 1) :
+    letI := K_2.instAlgebraK (K := K) (P := P) P₂
+    letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+    letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
+    ‖algebraMap O (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) π‖ < 1 := by
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
+  letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+  letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
+  have hcoe : algebraMap O (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) π =
+      algebraMap (K2P2 (K := K) P₂) (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)
+        (algebraMap O (K2P2 (K := K) P₂) π) :=
+    congrFun (K_3.algebraMap_O_eq_comp_K_2 (K := K) (P := P) P₂ P₃ hOK) π
+  rw [K_2.norm_eq_spectralNorm, hcoe, spectralNorm_extends]
+  exact K_2.hπnorm_transport (K := K) (P := P) (P₂ := P₂) hOK hπnorm
+
+/-! ## `Q := P.divX`'s image, mapped further into `K_3` -/
+
+/-- **`Q := P.divX`'s image over `K_3` (via `K_3.instAlgebraO`) is `Q`'s image over `K2P2 P₂`,
+further mapped along `algebraMap (K2P2 P₂) K_3`.** The `K_2 → K_3` analogue of `divX_map_
+algebraMap_O_K_2_eq_map`: `Polynomial.map_map` plus `K_3.algebraMap_O_eq_comp_K_2` (as a `RingHom`
+equality, `RingHom.ext`). -/
+theorem divX_map_algebraMap_O_K_3_eq_map (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
+    letI := K_2.instAlgebraK (K := K) (P := P) P₂
+    letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+    letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
+    P.divX.map (algebraMap O (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)) =
+      (P.divX.map (algebraMap O (K2P2 (K := K) P₂))).map
+        (algebraMap (K2P2 (K := K) P₂) (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂)
+          P₃)) := by
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
+  letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+  letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
+  have hcomp : (algebraMap (K2P2 (K := K) P₂)
+      (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)).comp
+      (algebraMap O (K2P2 (K := K) P₂)) =
+      algebraMap O (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) :=
+    RingHom.ext fun c =>
+      (congrFun (K_3.algebraMap_O_eq_comp_K_2 (K := K) (P := P) P₂ P₃ hOK) c).symm
+  rw [Polynomial.map_map, hcomp]
+
+/-! ## `Q := P.divX`'s image splits over `K2P2 P₂` too, not just over `K_1 P` -/
+
+/-- **`Q := P.divX`'s image splits completely over `K2P2 P₂` (`= K_2`), not just over `K_1 P`.**
+The genuinely new fact this tower step needs beyond `splits_divX_map_K_1` (`Langlands/
+LubinTateSplittingFieldTorsion.lean`): `K2P2 P₂` is a *further* extension of `K_1 P` (the splitting
+field of `P₂`'s image, not of `Q`'s own image), so `Q` splitting there is not free from `K2P2 P₂`'s
+own construction the way `splits_divX_map_K_1` is free from `K_1 P`'s. Instead, `Splits` transports
+along *any* further ring homomorphism (`Polynomial.Splits.map`, general and unconditional — a
+polynomial that already factors into linear terms over a field, mapped further along any ring hom
+out of that field, still factors into linear terms over the target): mapping `splits_divX_map_K_1`'s
+witness along `algebraMap (K_1 P) (K2P2 P₂)` and folding the composite back to `algebraMap O
+(K2P2 P₂)` via `K_2.algebraMap_O_eq_comp_K_1` (`Langlands/LubinTateTowerStepRootConnect.lean`) gives
+exactly this. -/
+theorem splits_divX_map_K2P2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
+    letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+    (P.divX.map (algebraMap O (K2P2 (K := K) P₂))).Splits := by
+  letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+  have hmap := (splits_divX_map_K_1 (K := K) P).map
+    (algebraMap (K_1 (K := K) P) (K2P2 (K := K) P₂))
+  rw [Polynomial.map_map] at hmap
+  rwa [show (algebraMap (K_1 (K := K) P) (K2P2 (K := K) P₂)).comp
+      (algebraMap O (K_1 (K := K) P)) = algebraMap O (K2P2 (K := K) P₂) from
+    RingHom.ext fun c => (congrFun (K_2.algebraMap_O_eq_comp_K_1 (K := K) (P := P) hOK) c).symm]
+    at hmap
+
+/-! ## The `piTorsion hπ hf 1`-invariance of the `K2P2 P₂ → K_3` transition -/
+
+/-- **`piTorsion hπ hf 1`, evaluated inside `K_3`, is exactly the `algebraMap (K2P2 P₂) K_3`-image
+of `piTorsion hπ hf 1` evaluated inside `K2P2 P₂`.** The `K_2 → K_3` analogue of `piTorsion_one_
+K_2_eq_algebraMap_image`, closing the gap `ROADMAP.md §74` left open: with `splits_divX_map_K2P2`
+in hand, the argument mirrors the `K_1 → K_2` template exactly (`Q`'s image splits over both ends,
+`Polynomial.Monic.roots_map_of_card_eq_natDegree` transports the roots multiset along `algebraMap
+(K2P2 P₂) K_3`, `divX_map_algebraMap_O_K_3_eq_map` identifies the further-mapped polynomial with
+`Q`'s own image over `K_3`, and `piTorsion_one_sdiff_zero_eq_roots_toFinset` at each end converts
+the multiset identity into the claimed set equality). -/
+theorem piTorsion_one_K_3_eq_algebraMap_image (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1)
+    {π : O} (hπ : Irreducible π) (hπnorm : ‖algebraMap O K π‖ < 1) {f : O⟦X⟧}
+    (hf : IsLubinTatePoly π (residueCard O) f) {u : O⟦X⟧} (hu : IsUnit u)
+    (heq : f = (P : O⟦X⟧) * u) (hPdist : P.IsDistinguishedAt (maximalIdeal O))
+    (hPdeg : P.natDegree = residueCard O) :
+    letI := K_2.instAlgebraK (K := K) (P := P) P₂
+    letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+    letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
+    (piTorsion (K := K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) hπ hf 1 :
+        Set (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)) =
+      algebraMap (K2P2 (K := K) P₂) (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) ''
+        (piTorsion (K := K2P2 (K := K) P₂) hπ hf 1) := by
+  classical
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
+  letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
+  letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
+  haveI := K_3.instFaithfulSMul_O (K := K) (P := P) P₂ P₃ hOK
+  haveI := K_2.instFaithfulSMul_O (K := K) (P := P) (P₂ := P₂) hOK
+  have hPdeg2 : 2 ≤ P.natDegree := hPdeg ▸ two_le_residueCard
+  have hQmonic : (P.divX.map (algebraMap O (K2P2 (K := K) P₂))).Monic :=
+    (divX_isWeaklyEisensteinAt_and_associated hu heq hf.1 hf.2.1 hPdist hPdeg2).1.map _
+  have hcard : (P.divX.map (algebraMap O (K2P2 (K := K) P₂))).roots.card =
+      (P.divX.map (algebraMap O (K2P2 (K := K) P₂))).natDegree :=
+    Polynomial.splits_iff_card_roots.mp (splits_divX_map_K2P2 (K := K) (P := P) P₂ hOK)
+  have hrootsmap : (P.divX.map (algebraMap O (K2P2 (K := K) P₂))).roots.map
+      (algebraMap (K2P2 (K := K) P₂) (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂)
+        P₃)) =
+      ((P.divX.map (algebraMap O (K2P2 (K := K) P₂))).map
+        (algebraMap (K2P2 (K := K) P₂) (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂)
+          P₃))).roots :=
+    hQmonic.roots_map_of_card_eq_natDegree _ hcard
+  rw [← divX_map_algebraMap_O_K_3_eq_map (K := K) (P := P) P₂ P₃ hOK] at hrootsmap
+  have hfinseteq : Finset.image (algebraMap (K2P2 (K := K) P₂)
+      (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃))
+      (P.divX.map (algebraMap O (K2P2 (K := K) P₂))).roots.toFinset =
+      (P.divX.map (algebraMap O
+        (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃))).roots.toFinset := by
+    rw [← Multiset.toFinset_map, hrootsmap]
+  have hstep1 := piTorsion_one_sdiff_zero_eq_roots_toFinset (K := K2P2 (K := K) P₂)
+    (K_2.hOK_transport (K := K) (P := P) (P₂ := P₂) hOK) hπ
+    (K_2.hπnorm_transport (K := K) (P := P) (P₂ := P₂) hOK hπnorm) hf hu heq hPdist hPdeg
+  have hstep2 := piTorsion_one_sdiff_zero_eq_roots_toFinset
+    (K := K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)
+    (K_3.hOK_transport (K := K) (P := P) P₂ P₃ hOK) hπ
+    (K_3.hπnorm_transport (K := K) (P := P) P₂ P₃ hOK hπnorm) hf hu heq hPdist hPdeg
+  have himageeq :
+      algebraMap (K2P2 (K := K) P₂) (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) ''
+        (piTorsion (K := K2P2 (K := K) P₂) hπ hf 1 \ {0}) =
+      piTorsion (K := K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) hπ hf 1 \ {0} := by
+    rw [hstep1, hstep2, ← Finset.coe_image, hfinseteq]
+  have h0 : algebraMap (K2P2 (K := K) P₂)
+      (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) ''
+      (piTorsion (K := K2P2 (K := K) P₂) hπ hf 1) =
+      insert (algebraMap (K2P2 (K := K) P₂)
+          (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) 0)
+        (algebraMap (K2P2 (K := K) P₂)
+            (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) ''
+          (piTorsion (K := K2P2 (K := K) P₂) hπ hf 1 \ {0})) := by
+    rw [← Set.image_insert_eq]
+    congr 1
+    rw [Set.insert_sdiff_singleton]
+    exact (Set.insert_eq_self.mpr (zero_mem_piTorsion hπ hf 1)).symm
+  rw [h0, himageeq, map_zero, Set.insert_sdiff_singleton]
+  exact (Set.insert_eq_self.mpr (zero_mem_piTorsion hπ hf 1)).symm
 
 end LubinTate
 
