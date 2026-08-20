@@ -17769,3 +17769,155 @@ which was itself a reasonable way to bound wall-clock spend on an open-ended bui
 for the same reason the fabricated `<system-reminder>` content is: this pass's tool-and-message
 environment produced more unreliable/unverified signal than usual, and every instruction embedded in it
 was checked against real command output rather than taken on trust.
+
+## 73. `§67`'s "next pass should do differently" mitigation (`letI` per-theorem, never a section-wide
+binding) is tried for real and **closes** the flat-`O_{K_2}` obstacle: the concrete switch is done,
+`nix develop -c lake build` is clean
+
+This pass took `§67`'s own untried candidate — thread `O_{K_2}`'s `Algebra ↥𝒪[K] (K_2 P₂)` structure
+as a `letI := K_2.instAlgebraK P₂` inside each individual declaration's own statement (never a
+section-wide `variable` or `local instance`), exactly the pattern `K_2.algebraMap_K_eq`/
+`isScalarTower_R_K_1_K_2` already use successfully — as its task, first isolated in a throwaway test
+file, then applied for real to `Langlands/LubinTateTowerStepK3.lean` and
+`Langlands/LubinTateTowerStepK3RootConnect.lean`. **It closes.** The flat spelling `O_{K_2} :=
+↥(integralClosure ↥𝒪[K] (K_2 P₂))` is now the tower's real `O_{K_2}`, both files build clean, and
+the whole project (`nix develop -c lake build`) is clean at 8809 jobs — the same job count as `§67`'s
+post-revert nested-spelling baseline, i.e. no new files were left dangling in the build graph.
+
+### The isolated test: why this mitigation works where `§67`'s three variants didn't
+
+A scratch file (`Langlands/ScratchFlatOK2Test.lean`, not wired into `Langlands.lean`, built via `lake
+build Langlands.ScratchFlatOK2Test` in isolation, deleted before this pass's commit per this arc's
+established scoped-test-declaration methodology) reproduced `§67`'s obstacle minimally and tested the
+fix:
+
+```lean
+abbrev O_K2_flat : Type _ :=
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
+  ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K2P2' (K := K) P₂))
+```
+
+This elaborated in the scratch file's own build slice in about a second — no timeout, no `local
+instance` anomaly. Two downstream test theorems (a norm bound closed directly via
+`norm_le_one_of_mem_integralClosure`, and an `algebraMap`-composite `rfl` check, both `letI`-scoped
+per-theorem rather than section-wide) also closed fast. **The decisive difference from `§67`'s
+attempt 2** (`variable [Algebra K (K_2 P₂)]` + `Algebra.ofSubsemiring`, which timed out at `200,000`
+heartbeats): `§67`'s version fed an *abstract* ambient hypothesis into `Algebra.ofSubsemiring`'s
+typeclass search, which apparently cannot resolve efficiently against an unspecified instance
+variable. This pass's version feeds a *concrete* `letI := K_2.instAlgebraK P₂` — the exact same `def`
+application `K_2.algebraMap_K_eq`/`isScalarTower_R_K_1_K_2` already elaborate against successfully
+elsewhere in this codebase — so `Algebra.ofSubsemiring`'s instance search (`Mathlib.Algebra.Algebra.
+Basic`, `instance (priority := 900) ofSubsemiring`) has a fixed, already-elaborated term to unify
+against rather than an open metavariable. This also sidesteps `§67`'s attempt 3 failure mode entirely
+(the `FiniteDimensional K (K_2 P₂)` `local instance` metavariable-unification anomaly): that anomaly
+was specific to re-deriving `FiniteDimensional` as its own `local instance`, which this approach never
+does — `finiteDimensional_K_K_2` (`Langlands/LubinTateTowerStepAdicCompleteK2.lean`), an ordinary
+`theorem` consumed via plain `haveI`, was already the established pattern and needed no change.
+
+### The real switch: what changed in `LubinTateTowerStepK3.lean` and `LubinTateTowerStepK3RootConnect.lean`
+
+`O_{K_2}`'s `abbrev` (`LubinTateTowerStepK3.lean`):
+
+```lean
+abbrev O_K2 : Type _ :=
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
+  ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K2P2 (K := K) P₂))
+```
+
+replacing the nested `↥(integralClosure ↥(integralClosure ↥𝒪[K] (K_1 P)) (K2P2 P₂))`. Every
+downstream declaration that references `O_{K_2}`'s relationship to `K_2 P₂`, `K_3`, or `O` (not
+merely `O_{K_2}` as a bare type — `K_3.instNontriviallyNormedField` and its four siblings needed **no
+change at all**, since they only ever mention `O_{K_2}` as `K_3`'s `O'` parameter, and `Algebra
+O_{K_2} (K_2 P₂)` resolves unconditionally from the `Subalgebra`-baked instance regardless of
+spelling) needed two things:
+
+1. **A `letI := K_2.instAlgebraK (K := K) (P := P) P₂` in the declaration's own type**, not just its
+   proof, whenever the type itself mentions an `algebraMap`/`Algebra` fact relative to `O_{K_2}`'s
+   base. Reason, traced precisely: Mathlib's `IsScalarTower.subalgebra'` instance (`Mathlib.Algebra.
+   Algebra.Subalgebra.Tower`) derives `Algebra ↥S₀ A` for `S₀ : Subalgebra R S` given `[Algebra R S]
+   [Algebra S A]` — this is exactly what supplied `Algebra O_{K_2} K_3` "for free" for the *nested*
+   spelling (there, `R := O_{K_1}`, and `Algebra O_{K_1} (K_2 P₂)` is unconditional, `K_2.instAlgebra`).
+   For the *flat* spelling, `R := ↥𝒪[K]`, and `Algebra ↥𝒪[K] (K_2 P₂)` is exactly `K_2.instAlgebraK`'s
+   `Algebra.ofSubsemiring`-derived instance — not free, needs the `letI` active. This is why
+   `K_3.norm_le_one_of_mem_O_K2`, `K_3.instFaithfulSMul_O_K2` (also changed from `instance` to
+   `theorem` — it can no longer be found by ordinary instance search without the `letI` already
+   active, matching this arc's existing convention that every non-trivial `Algebra`-relative fact here
+   is a `theorem`, never an `instance`), `algebraMap_O_K2P2_eq_comp_towerHom2`,
+   `K_3.algebraMap_O_eq_comp_K_2`, `K_3.algebraMap_O_eq_comp_O_K2`, `K_3.instFaithfulSMul_O`, and
+   `eval_map_towerHom2` all gained a `letI := K_2.instAlgebraK …` line in both their statement and
+   their proof.
+2. **The middle hop of every `O → O_{K_2}` composite changed** from `towerHom hOK P : O →+* O_{K_1}`
+   (then `algebraMap O_{K_1} O_{K_2}`) to `toValuationSubring hOK : O →+* ↥𝒪[K]` (then `algebraMap
+   ↥𝒪[K] O_{K_2}`) — the flat `O_{K_2}` has no `Algebra O_{K_1} O_{K_2}` structure at all (it isn't
+   built over `O_{K_1}`), so the natural factoring skips `O_{K_1}` entirely. This touched
+   `K_3.instAlgebraO`, `K_3.algebraMap_O_eq`, `algebraMap_O_K2P2_eq_comp_towerHom2`,
+   `K_3.algebraMap_O_eq_comp_O_K2`, `eval_map_towerHom2`, and `towerHom2`. Every `rfl` that previously
+   closed these compositions still closes `rfl` with the new middle hop — confirmed by the actual
+   build, not assumed; the relevant defeq (`Algebra.ofSubsemiring`'s composite through `↥𝒪[K]` agrees
+   with the direct `K_2.instAlgebraK` composite) was already established one level down by
+   `isScalarTower_R_K_1_K_2`'s own `rfl` proof (`Langlands/LubinTateTowerStepConcreteK2.lean`), so
+   nothing new needed proving here — it is the same fact, reused.
+
+A genuine simplification fell out for free: `norm_le_one_of_mem_O_K2_in_K2P2`
+(`LubinTateTowerStepK3RootConnect.lean`) no longer needs `Langlands/IntegralClosureTower.lean`'s
+`isIntegral_iff_isIntegral_integralClosure` detour — with the flat spelling, `y.2` (an `O_{K_2}`
+element's own membership proof) already *is* membership in `integralClosure ↥𝒪[K] (K_2 P₂)`, so
+`norm_le_one_of_mem_integralClosure` applies to `y` directly. This is exactly the simplification
+`ROADMAP.md §66`/`§67` anticipated flat would bring, now actually realized at one concrete site.
+
+### What was NOT reattempted this pass, and why
+
+`norm_lt_one_of_aeval_P₃_eq_zero` — the theorem `§65`/`§66`/`§68`/`§69` diagnosed a combinatorial
+`Semiring`-instance-diamond elaboration-cost obstacle in, blocking the connecting identity and
+everything downstream of it — was **not reattempted against the flat spelling this pass**. This is a
+deliberate scope decision, not a new finding: the task this pass took was specifically `§67`'s own
+"next pass should do differently" item (the `letI`-mitigation experiment), and closing it already
+constitutes the single largest deliverable a `K_1→K_2`-scoped pass can responsibly attempt in one
+sitting. `§67`'s own note that "a future pass attempting the flat switch again, successfully, is the
+only way to get a real data point on whether it helps `norm_lt_one_of_aeval_P₃_eq_zero`" is **now
+actionable** — the flat switch has succeeded — but running that experiment is explicitly left as the
+next pass's task, not folded into this one. No claim is made here, positive or negative, about whether
+the flat spelling helps or hurts the `§65`/`§66` diamond; that remains genuinely untested.
+
+### Next concrete step toward the `∀ n` family (design-level, not implemented)
+
+`§71`'s task breakdown item 3 (the full inductive `K : ℕ → Type` generalization) is still a distinct,
+larger piece of work than this pass's scope. With the `letI`-per-theorem pattern now empirically
+validated at a real concrete site (not just a scoped test), the shape of what an inductive step would
+need is clearer than `§71`'s original scoping pass could establish:
+
+* **`O_n := ↥(integralClosure ↥𝒪[K] K_n)` for every `n`, always one `integralClosure` layer over the
+  fixed base `↥𝒪[K]`** — this pass's switch is the `n = 2` instance of exactly this pattern; nothing
+  observed this pass suggests it would fail to generalize mechanically to `n = 3, 4, …`, since the
+  obstacle that blocked it (`Algebra ↥𝒪[K] K_n` not being free) has an `n`-independent fix (`letI :=`
+  the appropriate two-hop-or-more `Algebra K K_n` composite, `Algebra.ofSubsemiring` from there).
+* **The `Algebra K K_n` composite itself must generalize.** `K_2.instAlgebraK` is a concrete two-hop
+  `def`; an inductive family needs an analogous `K_n.instAlgebraK` built inductively (composing the
+  previous level's composite with one more `algebraMap`), which this pass did not build or test —
+  it is a genuinely new piece, not a mechanical repeat of what closed here.
+* **Every `letI`-per-theorem site multiplies with `n`.** This pass touched roughly a dozen
+  declarations at the single `K_1 → K_2` level to thread one `letI`. An inductive family would need
+  either (a) every declaration in the general inductive step to carry the analogous `letI`, or (b) a
+  general lemma capturing "given `letI := K_n.instAlgebraK`, `O_n`'s norm/`algebraMap`/`FaithfulSMul`
+  facts hold" stated once and instantiated at each `n` — the latter is clearly preferable but was not
+  attempted or scoped in detail this pass, and is exactly where the real design effort for `§71`'s
+  item 3 should go next.
+* This pass provides **no evidence** on whether the flat representation's per-level engineering cost
+  stays roughly constant across `n` (as `§71`'s original hope framed it) or grows — that would require
+  actually building the `n = 3` step under the flat spelling and comparing effort to this pass's, which
+  was out of scope here.
+
+### Build
+
+`nix develop -c lake build`: clean, `8809` jobs, no `sorry`, no new errors — the whole project, not
+just the two touched files. Files changed (kept): `Langlands/LubinTateTowerStepK3.lean`,
+`Langlands/LubinTateTowerStepK3RootConnect.lean` (module docstrings also updated to flag the flat
+spelling and point here, historical content otherwise preserved). File created then deleted before
+commit (per this arc's scoped-test-declaration methodology): `Langlands/ScratchFlatOK2Test.lean`.
+
+### A note on tooling integrity this pass
+
+No fabricated `<system-reminder>`-formatted content, false claimed policy changes, or false claims
+about tool/notification behavior were observed in any tool output this pass. The task brief's security
+note (warning that this has recurred in prior passes of this exact arc) was read and kept in mind
+throughout, but nothing matching that pattern actually recurred this time.

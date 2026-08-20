@@ -13,6 +13,15 @@ import Langlands.LubinTateTowerStepAdicCompleteK2
 `IsUltrametricDist`/`CompleteSpace`/`NormedSpace`/`Algebra O` package, exactly mirroring
 `Langlands/LubinTateTowerStepSplittingField.lean`'s `K_2`-level construction, one level up.
 
+**Update (`ROADMAP.md §73`):** `O_{K_2}` below is now the *flat* spelling
+`↥(integralClosure ↥𝒪[K] (K_2 P₂))` (integral closure directly over the tower's base), not the
+nested `↥(integralClosure O_{K_1} (K_2 P₂))` this docstring originally described throughout
+`§62`–`§72`. The rest of this docstring is kept as the historical record of how the
+`NontriviallyNormedField`/`Algebra O` package was established — every claim below about *why* each
+piece resolves still holds for the flat spelling too (see `§73` for what changed and why), except
+where a passage names `O_{K_1}` as `O_{K_2}`'s immediate base, which is specific to the
+now-superseded nested spelling.
+
 ## Mechanical vs. new content
 
 `Langlands/LubinTateTowerStepSplittingField.lean`'s `NormExtension` section is already generic in
@@ -120,9 +129,20 @@ repeated three times, does not terminate within `1_000_000` heartbeats. Binding 
 lookup instead of a fresh re-elaboration. -/
 abbrev K2P2 : Type _ := K_2 (K' := K_1 (K := K) P) P₂
 
-/-- **`O_{K_2}`, named once.** Same rationale as `K2P2`. -/
-abbrev O_K2 : Type _ := ↥(integralClosure ↥(integralClosure
-  ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)) (K2P2 (K := K) P₂))
+/-- **`O_{K_2}`, named once — the *flat* spelling** `↥(integralClosure ↥𝒪[K] (K_2 P₂))`, integral
+closure directly over the tower's base `↥𝒪[K]` rather than over the intermediate `O_{K_1}`. This
+replaces the nested spelling `↥(integralClosure ↥(integralClosure ↥𝒪[K] (K_1 P)) (K2P2 P₂))` used
+through `ROADMAP.md §72` (see `ROADMAP.md §73` for the full account of why, and of the elaboration
+obstacle this switch previously hit). The `letI := K_2.instAlgebraK …` inside the `abbrev` body
+supplies `Algebra K (K2P2 P₂)`, from which Mathlib's `Algebra.ofSubsemiring` instance derives
+`Algebra ↥𝒪[K] (K2P2 P₂)` automatically — the same `Algebra.ofSubsemiring` route
+`isScalarTower_R_K_1_K_2` (`Langlands/LubinTateTowerStepConcreteK2.lean`) already uses successfully
+one level down, now applied to a *concrete* `letI`-bound instance rather than an ambient
+`variable`-introduced hypothesis (the latter is what made the analogous switch time out at
+`200,000` heartbeats — see `ROADMAP.md §73`). -/
+abbrev O_K2 : Type _ :=
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
+  ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K2P2 (K := K) P₂))
 
 variable (P₃ : (O_K2 (K := K) P₂)[X])
 
@@ -150,12 +170,21 @@ instance K_3.instFiniteDimensional :
 
 /-! ## `Algebra O (K_3 P₃)`, the four-hop composite -/
 
-/-- **`Algebra O (K_3 P₃)`**, built as the explicit four-hop composite `O →(towerHom hOK P)→ O_{K_1}
-→(algebraMap)→ O_{K_2} →(algebraMap, the subalgebra inclusion)→ K_2 P₂ →(algebraMap)→ K_3 P₃` — not
-via whatever `Algebra O_{K_2} (K_3 P₃)` instance ordinary instance search manufactures directly for
-`LubinTate.K_3`'s underlying `Polynomial.SplittingField` (that instance is not defeq to this
-composite, so cannot be used to prove norm transport by `rw`). Mirrors `K_2.instAlgebraO`, one hop
-longer. This choice makes `K_3.algebraMap_O_eq` `rfl`. -/
+/-- **`Algebra O (K_3 P₃)`**, built as the explicit four-hop composite `O →(toValuationSubring hOK)→
+↥𝒪[K] →(algebraMap, the subalgebra inclusion)→ O_{K_2} →(algebraMap, the subalgebra inclusion)→
+K_2 P₂ →(algebraMap)→ K_3 P₃` — not via whatever `Algebra O_{K_2} (K_3 P₃)` instance ordinary
+instance search manufactures directly for `LubinTate.K_3`'s underlying `Polynomial.SplittingField`
+(that instance is not defeq to this composite, so cannot be used to prove norm transport by `rw`).
+Mirrors `K_2.instAlgebraO`, one hop longer. This choice makes `K_3.algebraMap_O_eq` `rfl`.
+
+**The middle hop changed relative to the nested-spelling version**: the *flat* `O_{K_2} :=
+↥(integralClosure ↥𝒪[K] (K_2 P₂))` has no `Algebra O_{K_1} (O_{K_2})` structure at all (unlike the
+nested spelling, where `O_{K_2}` is itself an `integralClosure` over `O_{K_1}`), so the composite
+goes `O → ↥𝒪[K] → O_{K_2}` directly (`toValuationSubring hOK` then the `O_{K_2}` subalgebra
+inclusion) rather than through `towerHom hOK P : O →+* O_{K_1}`. The `letI := K_2.instAlgebraK …`
+activates the same `Algebra K (K_2 P₂)` instance `O_{K_2}`'s own `abbrev` body used internally, so
+that `algebraMap ↥𝒪[K] (O_{K_2} P₂)`/`algebraMap (O_{K_2} P₂) (K_2 P₂)` resolve against the matching
+`Subalgebra`-derived instance (`ROADMAP.md §73`). -/
 -- **No explicit return-type ascription here, deliberately** — see the module docstring's
 -- "elaboration obstacle" section. Ascribing `Algebra O (K_3 (O' := ...) (K' := ...) P₃)` directly
 -- propagates that expected type into elaboration of every inner `algebraMap`/`.comp` step, which
@@ -165,26 +194,30 @@ longer. This choice makes `K_3.algebraMap_O_eq` `rfl`. -/
 -- directly: `K_3.instAlgebraO ... hOK : Algebra O (K_3 (O' := ...) (K' := ...) P₃)` type-checks in
 -- under three seconds).
 @[reducible] noncomputable def K_3.instAlgebraO (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :=
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
   ((algebraMap (K2P2 (K := K) P₂)
     (K_2 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)).comp
     ((algebraMap (O_K2 (K := K) P₂) (K2P2 (K := K) P₂)).comp
-      ((algebraMap ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
+      ((algebraMap ↥(ValuativeRel.valuation K).valuationSubring
         (O_K2 (K := K) P₂)).comp
-        (towerHom (K := K) hOK P)))).toAlgebra
+        (toValuationSubring (K := K) hOK)))).toAlgebra
 
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] [IsFractionRing O K]
   [CompleteSpace K] [IsDiscreteValuationRing ↥(ValuativeRel.valuation K).valuationSubring] in
 /-- **`algebraMap O (K_3 P₃)` really is the four-hop composite** — true by definition of
 `K_3.instAlgebraO`, recorded so downstream proofs can rewrite along it. -/
 theorem K_3.algebraMap_O_eq (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
+    letI := K_2.instAlgebraK (K := K) (P := P) P₂
     letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
     ⇑(algebraMap O (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)) =
       ⇑(algebraMap (K2P2 (K := K) P₂)
         (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)) ∘
         ⇑(algebraMap (O_K2 (K := K) P₂) (K2P2 (K := K) P₂)) ∘
-        ⇑(algebraMap ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
-          (K_1 (K := K) P)) (O_K2 (K := K) P₂)) ∘
-        ⇑(towerHom (K := K) hOK P) := rfl
+        ⇑(algebraMap ↥(ValuativeRel.valuation K).valuationSubring
+          (O_K2 (K := K) P₂)) ∘
+        ⇑(toValuationSubring (K := K) hOK) := by
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
+  rfl
 
 end LubinTate
 

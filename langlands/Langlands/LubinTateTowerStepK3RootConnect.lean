@@ -19,6 +19,17 @@ are **not built in this file**: see "What does not close" below for a precise ac
 elaboration-cost obstacle blocking it, found and diagnosed (not forced through) after sustained
 effort.
 
+**Update (`ROADMAP.md §73`):** `O_{K_2}` is now the *flat* spelling `↥(integralClosure ↥𝒪[K]
+(K_2 P₂))`, not the nested `↥(integralClosure O_{K_1} (K_2 P₂))` this docstring originally described
+(`§62`–`§72`). `norm_le_one_of_mem_O_K2_in_K2P2`'s `Langlands/IntegralClosureTower.lean` detour
+(mentioned below) is consequently **no longer needed** — with the flat spelling, `y.2` already is
+the fact `norm_le_one_of_mem_integralClosure` needs directly. `K_3.instFaithfulSMul_O_K2` also
+changed from `instance` to `theorem` (it now needs a `letI`-activated `Algebra ↥𝒪[K] (K_2 P₂)` to
+even state, so cannot be found by ordinary instance search without that `letI` already active — see
+`§73`). The rest of this docstring, including "What does NOT close", is kept as the historical
+record; `norm_lt_one_of_aeval_P₃_eq_zero` was not reattempted against the flat spelling this pass
+(see `§73`'s "next step" for why).
+
 ## Naming, relative to the `K_1 → K_2` template
 
 `α`/`α'` (the `K_1`-level generator, and its view inside `O_{K_1}`) are replaced by `β`/`β'` (the
@@ -135,30 +146,36 @@ variable {π : O} {f : O⟦X⟧} {P : O[X]} (P₂ : (↥(integralClosure
 
 /-! ## `O_{K_2}`'s elements, viewed in `K_2 P₂`, have norm at most `1` -/
 
-/-- **`O_{K_2}`'s elements, viewed in `K_2 P₂`, have norm at most `1`.** Uses
-`Langlands/IntegralClosureTower.lean`'s `isIntegral_iff_isIntegral_integralClosure` to identify the
-underlying value with an element of `integralClosure ↥𝒪[K] (K_2 P₂)`, then
-`norm_le_one_of_mem_integralClosure` directly at `K' := K` (`K_2.hnorm_K` supplying `hnorm`). -/
+/-- **`O_{K_2}`'s elements, viewed in `K_2 P₂`, have norm at most `1`.** With the *flat* spelling
+`O_{K_2} := ↥(integralClosure ↥𝒪[K] (K_2 P₂))` (`ROADMAP.md §73`), `y.2` **already is** membership in
+`integralClosure ↥𝒪[K] (K_2 P₂)` directly — `norm_le_one_of_mem_integralClosure` applies to `y`
+verbatim, with no `Langlands/IntegralClosureTower.lean` detour needed (unlike the nested spelling,
+where `y.2` was membership in `integralClosure O_{K_1} (K_2 P₂)` and had to be converted first). -/
 theorem norm_le_one_of_mem_O_K2_in_K2P2 (y : O_K2 (K := K) P₂) :
     ‖(y : K_2 (K' := K_1 (K := K) P) P₂)‖ ≤ 1 := by
   letI := K_2.instAlgebraK (K := K) (P := P) P₂
-  haveI := isScalarTower_R_K_1_K_2 (K := K) (P := P) (P₂ := P₂)
   haveI := finiteDimensional_K_K_2 (K := K) (P := P) P₂
-  have hyint' : IsIntegral ↥(ValuativeRel.valuation K).valuationSubring
-      (y : K_2 (K' := K_1 (K := K) P) P₂) :=
-    (isIntegral_iff_isIntegral_integralClosure
-      (R := ↥(ValuativeRel.valuation K).valuationSubring) (L := K_1 (K := K) P)
-      (M := K_2 (K' := K_1 (K := K) P) P₂)).mpr y.2
   exact norm_le_one_of_mem_integralClosure (K' := K) (L := K_2 (K' := K_1 (K := K) P) P₂)
-    (K_2.hnorm_K (K := K) (P := P) P₂) (⟨(y : K_2 (K' := K_1 (K := K) P) P₂), hyint'⟩)
+    (K_2.hnorm_K (K := K) (P := P) P₂) y
 
 variable (P₃ : (O_K2 (K := K) P₂)[X])
 
 /-- **`O_{K_2}`'s elements, viewed in `K_3`, have norm at most `1`.** The `K_2 → K_3` analogue of
 `K_2.norm_le_one_of_mem_O_K1`: chains `spectralNorm_extends` at the `K_2 P₂ → K_3` hop with
-`norm_le_one_of_mem_O_K2_in_K2P2` above. -/
+`norm_le_one_of_mem_O_K2_in_K2P2` above.
+
+**`letI := K_2.instAlgebraK …` is needed in the statement itself**, not just the proof — with the
+flat spelling, `Algebra (O_{K_2}) K_3` (needed just to state `algebraMap _ (K_3 …) c`) is not
+automatically available the way it was for the nested spelling: Mathlib's
+`IsScalarTower.subalgebra'` instance (`Mathlib.Algebra.Algebra.Subalgebra.Tower`) derives
+`Algebra ↥S₀ A` for `S₀ : Subalgebra R S` given `[Algebra R S] [Algebra S A]`; for the *nested*
+spelling `R := O_{K_1}`, `Algebra O_{K_1} (K_2 P₂)` is free (`K_2.instAlgebra`), but for the *flat*
+spelling `R := ↥𝒪[K]`, `Algebra ↥𝒪[K] (K_2 P₂)` is exactly `K_2.instAlgebraK`'s
+`Algebra.ofSubsemiring`-derived instance, which needs the `letI` active (`ROADMAP.md §73`). -/
 theorem K_3.norm_le_one_of_mem_O_K2 (c : O_K2 (K := K) P₂) :
+    letI := K_2.instAlgebraK (K := K) (P := P) P₂
     ‖algebraMap _ (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) c‖ ≤ 1 := by
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
   have heq : algebraMap (O_K2 (K := K) P₂) (K_3 (O' := O_K2 (K := K) P₂)
       (K' := K2P2 (K := K) P₂) P₃) c =
       algebraMap (K2P2 (K := K) P₂) (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)
@@ -174,9 +191,11 @@ built here since nothing downstream needs it" was **wrong**, corrected here: it 
 just not by the pieces built before this one). Built via the `intro a b hab` + separate `have`s
 style (not `rw` immediately followed by a composed `.comp` term), and `RingHom.injective _` (not
 dot notation) for the first hop — the same two fixes that closed `K_3.instFaithfulSMul_O`. -/
-instance K_3.instFaithfulSMul_O_K2 :
+theorem K_3.instFaithfulSMul_O_K2 :
+    letI := K_2.instAlgebraK (K := K) (P := P) P₂
     FaithfulSMul (O_K2 (K := K) P₂)
       (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) := by
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
   rw [faithfulSMul_iff_algebraMap_injective]
   have h1 : Function.Injective
       (algebraMap (K2P2 (K := K) P₂) (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)) :=
@@ -200,29 +219,35 @@ instance K_3.instFaithfulSMul_O_K2 :
 /-! ## `algebraMap O K_3`, `algebraMap O_{K_2} K_3`, and their compatibility -/
 
 /-- **`algebraMap O (K_2 P₂)` [via `K_2.instAlgebraO`] equals `algebraMap O_{K_2} (K_2 P₂) ∘`
-the first three hops of `K_3.instAlgebraO`'s composite** (`O → O_{K_1} → O_{K_2}`). By `rfl`, unlike
-`algebraMap_O_K_1_eq_comp_towerHom` (which needs a genuine proof at the `K → K_1 P` level) — both
-composites from `O_{K_1}` onward already agree definitionally, since `O_{K_2}`'s algebra structure
-over `K_2 P₂` and `K_1 P`'s do too (`Subalgebra`-derived, confirmed `rfl` directly). -/
+the first three hops of `K_3.instAlgebraO`'s composite** (`O → ↥𝒪[K] → O_{K_2}`). By `rfl`, unlike
+`algebraMap_O_K_1_eq_comp_towerHom` (which needs a genuine proof at the `K → K_1 P` level) —
+**relative to the flat `O_{K_2}` spelling** (`ROADMAP.md §73`), the middle hop is `↥𝒪[K] → O_{K_2}`
+(the subalgebra inclusion), not `O_{K_1} → O_{K_2}` as with the nested spelling — `O_{K_2}`'s algebra
+structure over `K_2 P₂` and `K`'s two-hop composite (`K_2.instAlgebraK`) already agree definitionally
+once both are routed through the same `Algebra.ofSubsemiring`-derived instance (`letI`-activated),
+confirmed `rfl` directly. -/
 theorem algebraMap_O_K2P2_eq_comp_towerHom2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
+    letI := K_2.instAlgebraK (K := K) (P := P) P₂
     letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
     ⇑(algebraMap O (K2P2 (K := K) P₂)) =
       ⇑(algebraMap (O_K2 (K := K) P₂) (K2P2 (K := K) P₂)) ∘
-        ⇑(algebraMap ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
-          (K_1 (K := K) P)) (O_K2 (K := K) P₂)) ∘
-        ⇑(towerHom (K := K) hOK P) := by
+        ⇑(algebraMap ↥(ValuativeRel.valuation K).valuationSubring (O_K2 (K := K) P₂)) ∘
+        ⇑(toValuationSubring (K := K) hOK) := by
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
   letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
   rfl
 
 /-- **`K_3.instAlgebraO`'s composite collapses to the ordinary two-hop `algebraMap (K_2 P₂) K_3 ∘
 algebraMap O (K_2 P₂)`.** The `K_2 → K_3` analogue of `K_2.algebraMap_O_eq_comp_K_1`. -/
 theorem K_3.algebraMap_O_eq_comp_K_2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
+    letI := K_2.instAlgebraK (K := K) (P := P) P₂
     letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
     letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
     ⇑(algebraMap O (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)) =
       ⇑(algebraMap (K2P2 (K := K) P₂)
         (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)) ∘
         ⇑(algebraMap O (K2P2 (K := K) P₂)) := by
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
   letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
   letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
   rw [K_3.algebraMap_O_eq (K := K) (P := P) P₂ P₃ hOK,
@@ -233,29 +258,33 @@ composed with the `O → O_{K_2}` structure map** (`O → O_{K_1} → O_{K_2}`, 
 `isLocalHom_comp_towerHom_K_2` proves local). Needed for `eval_map_towerHom2`'s naturality
 hypothesis. -/
 theorem K_3.algebraMap_O_eq_comp_O_K2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
+    letI := K_2.instAlgebraK (K := K) (P := P) P₂
     letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
     ⇑(algebraMap O (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)) =
       ⇑(algebraMap (O_K2 (K := K) P₂) (K_3 (O' := O_K2 (K := K) P₂)
         (K' := K2P2 (K := K) P₂) P₃)) ∘
-      ⇑((algebraMap ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
-          (K_1 (K := K) P)) (O_K2 (K := K) P₂)).comp (towerHom (K := K) hOK P)) := by
+      ⇑((algebraMap ↥(ValuativeRel.valuation K).valuationSubring
+          (O_K2 (K := K) P₂)).comp (toValuationSubring (K := K) hOK)) := by
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
   letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
   funext c
   show algebraMap O (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) c = _
   rw [K_3.algebraMap_O_eq (K := K) (P := P) P₂ P₃ hOK]
   exact (IsScalarTower.algebraMap_apply (O_K2 (K := K) P₂) (K2P2 (K := K) P₂)
     (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)
-    (algebraMap ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
-      (K_1 (K := K) P)) (O_K2 (K := K) P₂) (towerHom (K := K) hOK P c))).symm
+    (algebraMap ↥(ValuativeRel.valuation K).valuationSubring
+      (O_K2 (K := K) P₂) (toValuationSubring (K := K) hOK c))).symm
 
 /-- **`algebraMap O K_3` is injective.** Mirrors `K_2.instFaithfulSMul_O`'s own proof exactly:
 rewrite via `K_3.algebraMap_O_eq_comp_K_2` to the ordinary two-hop composite, then compose two
 injective maps — closed via `RingHom.injective _` (a named lemma application), **not** `(algebraMap
 ...).injective` (dot notation), which hits the elaboration wall described in the module docstring. -/
 theorem K_3.instFaithfulSMul_O (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
+    letI := K_2.instAlgebraK (K := K) (P := P) P₂
     letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
     letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
     FaithfulSMul O (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) := by
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
   letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
   letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
   rw [faithfulSMul_iff_algebraMap_injective]
@@ -274,22 +303,29 @@ sidesteps an elaboration snag when its `hcomp` argument is supplied as a pointwi
 type — see the module docstring. -/
 theorem eval_map_towerHom2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {f : O⟦X⟧}
     (γ : K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) :
+    letI := K_2.instAlgebraK (K := K) (P := P) P₂
     letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
     NonarchimedeanPowerSeriesEval.eval
-      (PowerSeries.map ((algebraMap ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
-        (K_1 (K := K) P)) (O_K2 (K := K) P₂)).comp (towerHom (K := K) hOK P)) f) γ =
+      (PowerSeries.map ((algebraMap ↥(ValuativeRel.valuation K).valuationSubring
+        (O_K2 (K := K) P₂)).comp (toValuationSubring (K := K) hOK)) f) γ =
       NonarchimedeanPowerSeriesEval.eval f γ := by
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
   letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
   unfold NonarchimedeanPowerSeriesEval.eval
   congr 1
 
-/-- **The `O → O_{K_2}` structure map**, the composite `O → O_{K_1} → O_{K_2}` — the moving-base
+/-- **The `O → O_{K_2}` structure map**, the composite `O → ↥𝒪[K] → O_{K_2}` — the moving-base
 structure map `Langlands/LubinTateTowerStep.lean`'s `TowerStep` section needs at `O' := O_{K_2}`.
-Mirrors `towerHom` one level up. -/
+Mirrors `towerHom` one level up. **The middle hop is `↥𝒪[K] → O_{K_2}` (the subalgebra inclusion),
+not `O_{K_1} → O_{K_2}`**, since the flat `O_{K_2}` sits directly over `↥𝒪[K]`, not over `O_{K_1}`
+(`ROADMAP.md §73`) — so this composite uses `toValuationSubring hOK : O →+* ↥𝒪[K]` directly, rather
+than the three-hop `towerHom hOK P : O →+* O_{K_1}`. -/
 def towerHom2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
+    letI := K_2.instAlgebraK (K := K) (P := P) P₂
     O →+* O_K2 (K := K) P₂ :=
-  (algebraMap ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-    (O_K2 (K := K) P₂)).comp (towerHom (K := K) hOK P)
+  letI := K_2.instAlgebraK (K := K) (P := P) P₂
+  (algebraMap ↥(ValuativeRel.valuation K).valuationSubring
+    (O_K2 (K := K) P₂)).comp (toValuationSubring (K := K) hOK)
 
 end LubinTate
 
