@@ -218,6 +218,19 @@ theorem coeff_zero_shifted (f : O⟦X⟧) (ψ : O →+* O') (α' : O')
   rw [map_sub, PowerSeries.coeff_map, hf0, map_zero, PowerSeries.coeff_C]
   simp
 
+omit [IsDomain O] [IsDiscreteValuationRing O] [IsDomain O'] [IsDiscreteValuationRing O'] in
+/-- **`shifted` is natural in the target ring.** Pushing `shifted f ψ α'` forward along a ring
+homomorphism `e : O' →+* O''` gives `shifted f (e.comp ψ) (e α')`: the shift-by-`α'` and the
+base-change-along-`e` operations commute. Immediate from `shifted`'s definition
+(`PowerSeries.map_comp`, `PowerSeries.map_C`). -/
+theorem map_shifted {O'' : Type*} [CommRing O''] (f : O⟦X⟧) (ψ : O →+* O') (α' : O')
+    (e : O' →+* O'') :
+    PowerSeries.map e (shifted f ψ α') = shifted f (e.comp ψ) (e α') := by
+  show PowerSeries.map e (PowerSeries.map ψ f - PowerSeries.C α') =
+      PowerSeries.map (e.comp ψ) f - PowerSeries.C (e α')
+  rw [map_sub, PowerSeries.map_C, PowerSeries.map_comp]
+  rfl
+
 /-- **The shifted series' residue-field image is exactly `X ^ q`**, given `α'` lies in `O'`'s maximal
 ideal and `ψ` is a local ring homomorphism. Pushes `f`'s own congruence `f.map (residue O) = X ^ q`
 forward along the induced residue-field map `IsLocalRing.ResidueField.map ψ`

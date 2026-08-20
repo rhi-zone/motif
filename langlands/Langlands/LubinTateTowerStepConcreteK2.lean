@@ -171,7 +171,19 @@ theorem irreducible_of_isEisensteinAt_K_2 (hOK : ∀ c : O, ‖algebraMap O K c�
 
 `[IsDiscreteValuationRing O_{K_2}]` is taken as an ambient hypothesis rather than derived (see the
 module docstring): the conclusion itself mentions `maximalIdeal O_{K_2}`, which needs this instance
-to elaborate at all, before `K_2.instAlgebraK`'s `letI` (needed to derive it) is available. -/
+to elaborate at all, before `K_2.instAlgebraK`'s `letI` (needed to derive it) is available.
+
+The conclusion also returns the generator `β' := ⟨β, hβint⟩` (the nested-`O_{K_2}`-typed uniformizer
+`irreducible_of_isEisensteinAt_K_2` builds `hβirr` for), `Irreducible β'`, the Weierstrass equation
+`shifted f ψ β' = P₃ * u₃` for `ψ` the three-hop nested structure map `O → O_{K_1} → (nested O_{K_2})`
+this theorem's own proof already builds to call
+`exists_isWeierstrassFactorization_shifted`, and `Associated (P₃.coeff 0) β'` — previously discarded
+via `-` patterns (`ROADMAP.md §76`). This matches `exists_eisenstein_tower_step_K_1`'s own standard
+(see its docstring): downstream root-membership arguments at the `K_2 → K_3` step can rebuild `P₃`'s
+Eisenstein-shape data without re-invoking `exists_isWeierstrassFactorization_shifted` at a possibly
+different existential witness, and — new at this level — without losing `β'`/`heq₃` entirely, which
+the flat-spelling `K_3`-level theorems (`Langlands/LubinTateTowerStepK3RootConnect.lean`) require as
+explicit hypotheses. -/
 theorem exists_eisenstein_tower_step_K_2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O}
     (hπ : Irreducible π) (hπnorm : ‖algebraMap O K π‖ < 1) {f : O⟦X⟧}
     (hf : IsLubinTatePoly π (residueCard O) f) {u : O⟦X⟧} (hu : IsUnit u)
@@ -198,8 +210,19 @@ theorem exists_eisenstein_tower_step_K_2 (hOK : ∀ c : O, ‖algebraMap O K c�
         (K_2 (K' := K_1 (K := K) P) P₂)))[X])
       (u₃ : (↥(integralClosure
         ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-        (K_2 (K' := K_1 (K := K) P) P₂)))⟦X⟧),
-      IsUnit u₃ ∧ P₃.IsDistinguishedAt (maximalIdeal _) ∧ P₃.natDegree = residueCard O := by
+        (K_2 (K' := K_1 (K := K) P) P₂)))⟦X⟧)
+      (β' : ↥(integralClosure
+        ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
+        (K_2 (K' := K_1 (K := K) P) P₂))),
+      IsUnit u₃ ∧ P₃.IsDistinguishedAt (maximalIdeal _) ∧ P₃.natDegree = residueCard O ∧
+        Irreducible β' ∧
+        shifted f ((algebraMap ↥(integralClosure
+          ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
+          ↥(integralClosure
+            ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
+            (K_2 (K' := K_1 (K := K) P) P₂))).comp (towerHom (K := K) hOK P)) β' =
+          (P₃ : _⟦X⟧) * u₃ ∧
+        Associated (P₃.coeff 0) β' := by
   letI := K_2.instAlgebraK (K := K) (P := P) P₂
   haveI := finiteDimensional_K_K_2 (K := K) (P := P) P₂
   haveI := algebraIsSeparable_K_K_2 (K := K) (P := P) P₂
@@ -219,7 +242,7 @@ theorem exists_eisenstein_tower_step_K_2 (hOK : ∀ c : O, ‖algebraMap O K c�
       hassoc hdeg hα'norm hα'coe hirr hβroot hβfin
   haveI := isLocalHom_comp_towerHom_K_2 P₂ hOK hπ hπnorm hf hu heq hPdist hPdeg hu₂ heq₂ hα'irr
     hP₂dist hassoc hdeg hα'norm hα'coe hirr hβroot hβfin
-  obtain ⟨P₃, u₃, hP₃dist, hu₃, -, hdeg₃, -⟩ :=
+  obtain ⟨P₃, u₃, hP₃dist, hu₃, heq₃, hdeg₃, hassoc₃⟩ :=
     exists_isWeierstrassFactorization_shifted (O' := ↥(integralClosure
         ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
         (K_2 (K' := K_1 (K := K) P) P₂))) hf
@@ -229,7 +252,7 @@ theorem exists_eisenstein_tower_step_K_2 (hOK : ∀ c : O, ‖algebraMap O K c�
           ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
           (K_2 (K' := K_1 (K := K) P) P₂))).comp (towerHom (K := K) hOK P))
       hβirr
-  exact ⟨P₃, u₃, hu₃, hP₃dist, hdeg₃⟩
+  exact ⟨P₃, u₃, ⟨β, hβint⟩, hu₃, hP₃dist, hdeg₃, hβirr, heq₃, hassoc₃⟩
 
 end LubinTate
 

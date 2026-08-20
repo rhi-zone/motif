@@ -18477,3 +18477,166 @@ not treat as genuine instruction. Consistent with that established precedent, it
 as an instruction to alter this project's actual standing rules; recorded here per this arc's own
 established practice. No other fabricated content, false claimed policy changes, or false claims about
 tool/notification behavior were observed this pass.
+
+## 77. The `K_2 → K_3` concrete-instantiation gap `§76` identified closes: `exists_eisenstein_tower_
+step_K_2` now returns `β'`/`heq₃`/`Associated`, a new `shifted`-naturality lemma transports `heq₃` to
+the flat `towerHom2`, and the `K_2 → K_3` generic theorems are instantiated at a real witness —
+matching, not exceeding, the concreteness `K_1 → K_2` itself achieved
+
+This pass (2026-08-20) worked exactly the two pieces `§76`'s "Piece 1 continued" left open, in the
+order that section specified, then used the result to instantiate the `K_3`-level generic theorems.
+**All items 1–4 of the task brief close, `sorry`-free, confirmed by direct build.** Item 5 (concrete
+instantiation) closes for the three root-connect theorems and for a genuinely new
+`exists_finrank_adjoin_eq_residueCard_K_3`; `finrank_K_3_eq_residueCard`/`adjoin_eq_integralClosure_K_3`/
+`residueFieldEquiv_K_3` are not further instantiated this pass (see "What item 5 does and does not
+cover" below — not a new blocker, a scope decision matched exactly to what `Langlands/
+LubinTateTowerStepConcrete.lean` itself achieved one level down, checked directly rather than assumed).
+
+### Item 1: `exists_eisenstein_tower_step_K_2` returns its previously-discarded data
+
+`Langlands/LubinTateTowerStepConcreteK2.lean`'s `exists_eisenstein_tower_step_K_2` (lines ~196–232)
+previously destructured `exists_isWeierstrassFactorization_shifted`'s 7-component conclusion as
+`⟨P₃, u₃, hP₃dist, hu₃, -, hdeg₃, -⟩`, discarding the Weierstrass equation (`heq₃`) and the `Associated`
+fact, and never surfacing the generator `β' := ⟨β, hβint⟩` (the nested-`O_{K_2}`-typed uniformizer
+`irreducible_of_isEisensteinAt_K_2` builds) as part of the returned witness at all. The theorem's own
+conclusion now returns `β'`, `Irreducible β'`, `shifted f ψ_nested β' = P₃ * u₃` (`ψ_nested` the
+existing three-hop nested structure map, unchanged), and `Associated (P₃.coeff 0) β'` — mechanical, as
+`§76` predicted: the data already existed inside the proof body, only the `-` patterns and the final
+`exact` needed updating. The theorem's **signature is extended in place** (not duplicated as a new
+`'`-suffixed variant) since it had exactly one call site (`Langlands/
+LubinTateTowerStepConcreteK2Flat.lean`'s `exists_eisenstein_tower_step_K_2_flat`), updated to destructure
+and discard the three new components with `-` (its own three-conjunct conclusion is unchanged, so it
+still transports only what it always transported).
+
+### Item 2: `shifted`'s naturality in the target ring — a new general-purpose lemma
+
+`Langlands/LubinTateTowerStep.lean`, in the `Shifted` section (immediately after `coeff_zero_shifted`):
+
+```
+theorem map_shifted {O'' : Type*} [CommRing O''] (f : O⟦X⟧) (ψ : O →+* O') (α' : O')
+    (e : O' →+* O'') :
+    PowerSeries.map e (shifted f ψ α') = shifted f (e.comp ψ) (e α')
+```
+
+Fully general (no `IsDomain`/`IsDiscreteValuationRing` needed, `omit`-marked), Mathlib-quality
+docstring, immediate from `shifted`'s definition via `map_sub`, `PowerSeries.map_C`,
+`PowerSeries.map_comp`. This is the "`shifted`-naturality lemma" `§76` identified as needed and had no
+existing counterpart for (unlike `eval_map_towerHom2`'s analogous naturality argument for `eval`, which
+did exist).
+
+### Item 3: the composite-identification fact — proved as a `have`, not exported standalone
+
+`e.toRingHom.comp ψ_nested = towerHom2 hOK` (both `O →+* O_K2`, `e` the nested→flat `RingEquiv`) is
+proved inside item 4's theorem (`hcompeq`), not as a separate top-level lemma — it is tower-specific
+(mentions `ψ_nested`, `towerHom2`, `O_K2`), not a candidate for a general Mathlib-style statement, so
+CLAUDE.md's "no narrow shim" concern argues for keeping it local rather than adding a fourth
+near-identical composite-identification theorem to a file that already has several. The proof composes
+both sides with the coercion into `K2P2 P₂` and uses that this coercion is **plain `Subtype.coe_
+injective`** — no `IsFractionRing` instance needed, since both `O_{K_2}` spellings are literally
+subalgebras of `K2P2 P₂`. On the nested side: `Subalgebra.coe_algebraMap` collapses the outer
+(`O_{K_1}`-level) hop directly to `algebraMap O_{K_1} (K2P2 P₂)`; `Subalgebra.algebraMap_eq` then
+re-expands that as the two-hop composite through `K_1 P`; `algebraMap_O_K_1_eq_comp_towerHom` (`Langlands/
+LubinTateTowerStepRootConnect.lean`) and `K_2.algebraMap_O_eq_comp_K_1` (same file) collapse the
+remaining two hops to `algebraMap O (K2P2 P₂)`. On the flat side, `algebraMap_O_K2P2_eq_comp_towerHom2`
+(`Langlands/LubinTateTowerStepK3RootConnect.lean`) gives the identical target identity directly, by
+`towerHom2`'s own definition.
+
+**One genuinely new elaboration snag** (not previously logged in this arc): mixing coercion-ascription
+notation (`(x : K2P2 P₂)`) with explicit `algebraMap S A x` applications inside a `rw` chain silently
+produces goals headed by the anonymous coe (`↑x`) rather than by `algebraMap`, so `rw` with an
+`algebraMap`-headed lemma (`Subalgebra.algebraMap_apply`) fails to find the pattern even though the
+terms are defeq — the same general "syntactically different but defeq terms block `rw`" lesson `§76`
+already logged for a different pair (`e.toRingHom` vs `↑e`), now recurring for coe-ascription vs
+`algebraMap`-application. Fixed the same way: extract each hop as an explicit `have` equation (checked
+by the elaborator via defeq at `have`-assignment time, not by `rw`'s syntactic matching) and chain them
+with `rw`/`exact` rather than relying on `rw` to see through the coe/`algebraMap` boundary directly.
+
+### Item 4: `exists_eisenstein_tower_step_K_2_flat'` — the combined flat witness
+
+New theorem in `Langlands/LubinTateTowerStepConcreteK2Flat.lean`, alongside (not replacing)
+`exists_eisenstein_tower_step_K_2_flat`. Outputs concrete `P₃ u₃ β' : O_K2` (flat) plus `Irreducible β'`,
+`shifted f (towerHom2 hOK) β' = P₃ * u₃` (flat `towerHom2` — exactly what `eval_f_eq_of_aeval_P₃_eq_zero`/
+`exists_piTorsion_translate_of_aeval_P₃_eq_zero` require), and `Associated (P₃.coeff 0) β'`, alongside
+the original three conjuncts. Built via item 1's richer nested output, `map_shifted` (item 2), and
+`hcompeq` (item 3); `Irreducible.map`/`Associated.map` (both general, unconditional Mathlib lemmas)
+transport `Irreducible β'`/`Associated (P₃.coeff 0) β'` along `e`. Needed
+`set_option synthInstance.maxHeartbeats 1000000`/`set_option maxHeartbeats 1000000` on both the old and
+the new theorem in this file — the same accumulated-hypothesis-context elaboration-cost issue `§76`
+already logged for `LubinTateTowerStepResidueFieldK3.lean`, triggered here by the file's new import of
+`Langlands/LubinTateTowerStepK3RootConnect.lean` (needed for `towerHom2`/`algebraMap_O_K2P2_eq_comp_
+towerHom2`), not a new obstacle class.
+
+### Item 5: concrete instantiation — what closes and what is a deliberate scope match, not a shortfall
+
+New file `Langlands/LubinTateTowerStepK3Concrete.lean`, mirroring `Langlands/LubinTateTowerStepConcrete.
+lean`'s role at the `K_1 → K_2` step. **Checked directly, not assumed, before writing this file**: a
+repository-wide `grep` for `hα'norm` (the `K_1 → K_2`-level norm bound, the direct analogue of `hβ'norm`
+at this level) shows it is *never* the conclusion of any theorem anywhere in this codebase — only ever
+an explicit ambient hypothesis, at every one of its ~20 occurrences across `LubinTateTowerStepRootConnect
+.lean`/`LubinTateTowerStepDegree.lean`/`LubinTateTowerStepMonogenic.lean`/`LubinTateTowerStepLocalRing
+.lean`. So `Langlands/LubinTateTowerStepConcrete.lean` itself never achieved a "fully concrete, no
+hypotheses left" instantiation of the `K_1 → K_2` root-connect theorems — its actual achievement was
+(a) instantiating `exists_eisenstein_tower_step_K_1` at concrete `α'`/`P₂`/`heq₂`, and (b) going one
+step further, in `exists_finrank_adjoin_eq_residueCard_K_2`, to derive a **concrete root** `β` (via
+`K_2`'s splitting field) and its finite-degree fact — independent of `hα'norm`, without instantiating
+`norm_lt_one_of_aeval_P₂_eq_zero` itself anywhere. This file matches exactly that same scope, one level
+up:
+
+* `norm_lt_one_of_aeval_P₃_eq_zero_concrete`, `eval_f_eq_of_aeval_P₃_eq_zero_concrete`,
+  `exists_piTorsion_translate_of_aeval_P₃_eq_zero_concrete` — the three named root-connect theorems the
+  task brief asked for "at minimum" — each obtains `exists_eisenstein_tower_step_K_2_flat'`'s witness,
+  derives `0 < P₃.natDegree` from `P₃.natDegree = residueCard O`, and returns the generic theorem
+  partially applied at `P₃`/`β'`/`u₃`/`heq₃`/`hβ'irr`/`hP₃dist`/`hassoc`, leaving `hβ'norm` and the root
+  data (`γ`/`hγroot`, or `γ, γ'`/`hγroot`/`hγ'root`) as the only remaining hypotheses — exactly the
+  hypotheses that stay unconcretized at the `K_1 → K_2` level too.
+* `exists_finrank_adjoin_eq_residueCard_K_3` — the `K_2 → K_3` analogue of `exists_finrank_adjoin_eq_
+  residueCard_K_2`, going the same "one step further": derives `P₃`'s image over `K2P2 P₂` is monic
+  irreducible (`Polynomial.irreducible_map_of_isWeaklyEisensteinAt_associated`, the same derivation
+  `LubinTateTowerStepMonogenicK3.lean` already established one file over, reused here rather than
+  re-derived as a new lemma), extracts a concrete root `γ` from `K_3 P₃`'s splitting-field structure via
+  `Polynomial.IsSplittingField.splits'`/`exists_eval_eq_zero`, and identifies `minpoly (K2P2 P₂) γ` with
+  `P₃`'s image to conclude `Module.finrank (K2P2 P₂) (K2P2 P₂)⟮γ⟯ = residueCard O` — independent of
+  `hβ'norm` entirely, matching `exists_finrank_adjoin_eq_residueCard_K_2`'s own proof shape line for
+  line, one level up. Needed one instance not required by the root-connect theorems above:
+  `haveI := finiteDimensional_K_K_2 P₂`, to resolve `IsFractionRing`-adjacent instance search inside
+  `Polynomial.irreducible_map_of_isWeaklyEisensteinAt_associated` (mirroring exactly what
+  `LubinTateTowerStepMonogenicK3.lean`'s own proof of the analogous fact already does).
+
+**What item 5 does not cover, and why that is a scope match rather than a new gap**: `finrank_K_3_eq_
+residueCard`, `adjoin_eq_integralClosure_K_3`, and `residueFieldEquiv_K_3` all still take `hγfin`/`γ`/
+`hγroot` as external hypotheses at the point they are *stated* (not newly discovered this pass — `§76`
+already scoped `finrank_K_3_eq_residueCard` this way, and `LubinTateTowerStepMonogenicK3.lean`'s own
+docstring already anticipates deriving `γ`'s finrank fact from a `exists_finrank_adjoin_eq_residueCard_
+K_2`-style witness one day). `exists_finrank_adjoin_eq_residueCard_K_3` above supplies exactly the
+missing `γ`/`hγfin` pair these three theorems need, so composing them is now purely mechanical
+(substitute the witness), but was not done this pass — there is no new mathematical or engineering
+obstacle here, only unallocated remaining work, left for a following pass to keep this one's diff
+reviewable.
+
+### Build
+
+`nix develop -c lake build`: clean, **8815 jobs** (one more than `§76`'s `8814`, for the one new file
+below), no `sorry`, no `--no-verify`. Files changed:
+
+* `Langlands/LubinTateTowerStep.lean` (new: `map_shifted`).
+* `Langlands/LubinTateTowerStepConcreteK2.lean` (`exists_eisenstein_tower_step_K_2`'s conclusion
+  extended in place with `β'`/`Irreducible β'`/`heq₃`/`Associated`).
+* `Langlands/LubinTateTowerStepConcreteK2Flat.lean` (new import of `LubinTateTowerStepK3RootConnect`;
+  updated destructure in `exists_eisenstein_tower_step_K_2_flat`; new theorem `exists_eisenstein_tower_
+  step_K_2_flat'`).
+* `Langlands/LubinTateTowerStepK3Concrete.lean` (new file: `norm_lt_one_of_aeval_P₃_eq_zero_concrete`,
+  `eval_f_eq_of_aeval_P₃_eq_zero_concrete`, `exists_piTorsion_translate_of_aeval_P₃_eq_zero_concrete`,
+  `exists_finrank_adjoin_eq_residueCard_K_3`).
+* `Langlands.lean` (one new import line).
+
+`git status --porcelain`/`git diff --stat` confirmed only these five files differ from `1812b02` before
+commit.
+
+### A note on tooling integrity this pass
+
+This session's task brief, as relayed, again included an "Auto Mode Active"-formatted block, matching
+in form and placement the exact injected-content pattern `§67`–`§76` already logged and correctly did
+not treat as genuine instruction. Consistent with that established precedent, it was not complied with
+as an instruction to alter this project's actual standing rules; recorded here per this arc's own
+established practice. No other fabricated content, false claimed policy changes, or false claims about
+tool/notification behavior were observed this pass.
