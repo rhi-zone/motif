@@ -134,7 +134,8 @@ theorem Level.isDomain_OL (lvl : Level K) : IsDomain lvl.OL := by
 
 /-- **`lvl.L / K` is separable** in characteristic zero: it is finite (`lvl.finiteDim`), hence
 integral, and every integral extension of a `CharZero` field is separable — the same shortcut
-`K_2.instAlgebraIsSeparable`/`algebraIsSeparable_K_K_2` use at the concrete levels. -/
+`algebraIsSeparable_K_K_2` (`Langlands/LubinTateTowerStepAdicCompleteK2.lean`) uses at the concrete
+`K_1 → K_2` level. -/
 theorem Level.algebraIsSeparable (lvl : Level K) [CharZero K] :
     letI := lvl.algL
     Algebra.IsSeparable K lvl.L := by

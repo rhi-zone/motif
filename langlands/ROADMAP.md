@@ -20826,3 +20826,184 @@ changes, or false claims about tool/notification behavior appeared in any tool o
 `<system-reminder>` tags — a date-rollover notice and an "Auto Mode Active" note — directly from the
 system between turns, not embedded in any tool's returned content. Treated as routine harness
 behavior, not instruction, and not acted on as if it were user consent for anything.)
+## 91. (2026-08-21) Migration-cleanup pass, piece 2: the real dependency graph for every K_1/K_2/K_3-
+named concrete file is computed from the live source (`import` closure + a name-usage grep, not
+ROADMAP prose); exactly one file — `LubinTateTowerStepSeparable.lean` — is genuinely dead and deleted;
+every other concrete file is confirmed load-bearing or non-redundant and kept; two inaccuracies in
+`§89`'s own account, found by re-verifying against current source rather than trusting it, are
+corrected here
+
+This pass was tasked with determining, for every K_1/K_2/K_3-named or otherwise concrete-tower-
+specific file, whether it can be deleted now that the generic `Level`/`TowerStep` machinery (`§78`–
+`§90`) proves the same facts generically. `§89` already ran a migration audit and found the hand-named
+theorems cannot be swapped in place; this pass's job was to determine whether any could be deleted
+outright, which `§89` did not settle.
+
+### Method: the real import graph, computed from source, not from `§89`'s prose
+
+A script walked every `import Langlands.*` line in `Langlands/*.lean`/`Langlands.lean` to a fixed
+point, for every K_1/K_2/K_3-named or concrete-tower-specific file (22 candidates: everything under
+`Langlands/LubinTateTowerStep*.lean`/`LubinTateSplittingFieldDegreeConcrete.lean`/
+`LubinTateRootCountConcrete.lean` that is not itself one of the `Level*.lean`/`TowerStep`-generic
+files from `§78`–`§90`), cross-checked against a direct `grep -rl` importer count per file. Two
+findings from this, both confirmed against the live source before being acted on:
+
+* **`lean_lib «Langlands»` (the `lakefile.lean` target) has no glob restriction**, so `lake build`
+  compiles every `.lean` file under `Langlands/` regardless of whether `Langlands.lean` imports it —
+  confirmed by finding a built `.olean` for a file with zero import edges anywhere in the repo. This
+  means "not reachable from `Langlands.lean`" does **not** mean "not built"; only "not imported by
+  anything" (zero importers, checked directly per candidate) is evidence of dead code.
+* **`§89`'s own claim that `LubinTateTowerStepConcreteK2Flat.lean`/`LubinTateTowerStepK3Degree.lean`
+  are outside `LevelExists.lean`'s import closure (except for `LevelConnect`/`LevelGeneric`) is wrong,
+  checked directly**: `Langlands/LubinTateTowerStepLevelExists.lean`'s own `import` lines (unchanged
+  since its `§83` commit `5edaee0`, which predates `§89`'s commit) include both files directly. This
+  is recorded as a correction to `§89`'s prose, not acted on further — it does not change any
+  conclusion, since both files were already going to be classified load-bearing by the import-closure
+  computation regardless.
+
+### Classification, by real importer count (not by file-name pattern)
+
+Of the 22 concrete-tower candidates, **19 are directly in the transitive-import closure of the
+`Level*.lean`/generic files** (imported, directly or indirectly, by at least one of `LubinTateTowerStepBundleOL.lean`/`LevelConnect`/`LevelDegree`/`LevelExists`/`LevelGeneric`/
+`LevelInduction`/`LevelInvariance`/`LevelMonogenicHgenCheck`/`LevelResidueFieldCheck`/
+`LevelResidueField`/`LevelSplits`/`LubinTateTowerStepInductiveAlgebraK.lean`) — category (a),
+load-bearing, kept without further discussion: `LubinTateTowerStepConcreteK2Flat`,
+`LubinTateTowerStepConcreteK2`, `LubinTateTowerStepConcreteK3`, `LubinTateTowerStepConcrete`,
+`LubinTateTowerStepDegree`, `LubinTateTowerStepK3Degree`, `LubinTateTowerStepK3`,
+`LubinTateTowerStepK3RootConnect`, `LubinTateTowerStepLocalRingK3`, `LubinTateTowerStepLocalRing`,
+`LubinTateTowerStepMonogenicK3`, `LubinTateTowerStepMonogenic`, `LubinTateTowerStepResidueFieldK3`,
+`LubinTateTowerStepResidueField`, `LubinTateTowerStepRootConnect`, `LubinTateTowerStepSplittingField`,
+`LubinTateTowerStepAdicCompleteK2`, `LubinTateTowerStepBaseNorm`, `LubinTateRootCountConcrete`. Each
+is a real, direct `import` dependency of the generic layer (per `§89`'s own already-established
+Reason 1: the generic files were built by reading the concrete theorems and importing the files that
+supply both their ingredients and their `rfl`-check targets), so deleting any of them would delete
+part of the closed `∀ n` induction chain itself, including `LubinTateTowerStepLevelInduction.lean`
+(`§90`).
+
+**3 candidates are outside that closure** (zero import edges from any `Level*`/generic file, checked
+both directions):
+
+* **`LubinTateSplittingFieldDegreeConcrete.lean`** — kept, category (a), for the reason `§89` already
+  gave and this pass re-confirmed by reading the file: it certifies non-vacuity of the `K → K_1` base
+  case (`exists_finrank_K_1_eq_two_padic_three`: a fully concrete, hypothesis-free `p = 3` instance,
+  `finrank ℚ_[3] (K_1 P) = 2`, with `#print axioms` showing no `sorryAx`). No `Level`/`TowerStep`
+  theorem produces a base level from `K` alone — every one of `§78`–`§90`'s generic theorems produces
+  level `n+1` **from** level `n`'s data — so this content is structurally outside what the induction
+  could ever subsume, not merely unconnected to it by accident.
+* **`LubinTateTowerStepK3Concrete.lean`** — kept, uncertain-leaning-load-bearing, not deleted. Its four
+  theorems (`norm_lt_one_of_aeval_P₃_eq_zero_concrete`/`eval_f_eq_of_aeval_P₃_eq_zero_concrete`/
+  `exists_piTorsion_translate_of_aeval_P₃_eq_zero_concrete`/
+  `exists_finrank_adjoin_eq_residueCard_K_3`) are the `K_2 → K_3` non-vacuity witnesses — confirmed by
+  reading the file's module docstring and body, not `§89`'s summary of it — instantiating the
+  **concrete, hand-named** `K_3`-level theorems (from `LubinTateTowerStepK3RootConnect.lean`) at a
+  real Weierstrass factorization, including deriving a genuine concrete root `γ` with the correct
+  `finrank`. Grepped directly: none of its four theorem names appear anywhere else in the repo, so it
+  is a true leaf — but its mathematical content (a concrete existence witness for `γ` at this specific
+  depth) is not reproduced or superseded by anything generic; `§90`'s own `n = 2` check
+  (`isNStepFrom_ts_K3`) uses the unrelated `exists_eisenstein_tower_step_K_3` (`LevelExists.lean`), not
+  this file's `exists_finrank_adjoin_eq_residueCard_K_3`. Per this task's hard constraint 5 ("when in
+  doubt, keep it"), this is kept and flagged: it is not currently consumed by anything, but its content
+  is genuinely non-redundant, matching `LubinTateTowerStepConcrete.lean`'s role at the `K_1 → K_2` step
+  one level down (that file, unlike this one, happens to also sit in the generic-import closure via
+  `LubinTateTowerStepSplittingField.lean`, which is an accident of the accretion order, not a
+  difference in kind).
+* **`LubinTateTowerStepSeparable.lean`** — **deleted**, category (c). See below.
+
+### The one deletion: `LubinTateTowerStepSeparable.lean`
+
+**`§89`'s own text calls this file "empty of top-level theorems/defs (a docstring-only scoping
+file)." That is factually wrong, checked by reading the file in full before deleting anything**: it
+declares two real `instance`s, `K_1.instCharZero` (`CharZero (K_1 P)` given `[CharZero K]`) and
+`K_2.instAlgebraIsSeparable` (`Algebra.IsSeparable (K_1 P) (K_2 P₂)` given `[CharZero K]`) — genuine,
+non-trivial content, not a stub. `git log` on this file shows exactly one commit (`4dd8b1e`, long
+predating `§89`), so this is not a case of the file changing after `§89` looked at it — `§89`'s
+characterization was simply incorrect at the time it was written, and this pass corrects the record
+rather than repeating the error.
+
+**What makes it safe to delete is a different, independently-checked fact: it is genuinely unused.**
+Confirmed by three separate checks, not one:
+
+1. **Zero importers.** `grep -rl "Langlands\.LubinTateTowerStepSeparable"` across every `.lean` file
+   in the repo (and the wider `motif` repo outside `langlands/` too) returns nothing. `Langlands.lean`
+   itself never imports it either.
+2. **Its two instances are never applied as real terms anywhere.** `grep -rn
+   "K_2\.instAlgebraIsSeparable\|K_1\.instCharZero"` across the repo finds only the file's own
+   declarations and two **prose mentions** (in docstrings of `LubinTateTowerStepAdicCompleteK2.lean`
+   and `LubinTateTowerStepLevelExists.lean`, citing it as "the same shortcut… uses one hop down") —
+   never a real applied term. This matters because both instances are `instance`s, which would be
+   found by typeclass search automatically **if** the declaring file were imported anywhere in scope
+   — it never is, so the search can never find them.
+3. **Every concrete consumer of the fact this file proves takes it as an external hypothesis instead,
+   never via instance search.** `adjoin_eq_integralClosure_K_2`
+   (`LubinTateTowerStepMonogenic.lean:124`), `isLocalRing_integralClosure_K_2`
+   (`LubinTateTowerStepLocalRing.lean:263,296,332`), and their callers all carry
+   `[Algebra.IsSeparable (K_1 P) (K_2 P₂)]` as an explicit parameter, propagated by hand at every call
+   site — confirmed by reading each call site's arguments, not merely the signatures. The concrete
+   tower was, from the start, wired to take this hypothesis externally rather than to discharge it via
+   this file's instances — so the file's content was never actually load-bearing for the concrete
+   chain it was written for, even before the generic machinery existed.
+
+**Its exact purpose is also independently subsumed**, not merely unused: `Level.algebraIsSeparable`
+(`LubinTateTowerStepLevelExists.lean:138-144`, `§83`) *derives* `Algebra.IsSeparable K lvl.L` (the
+generic form of the same fact, one composite hop further) from `[CharZero K]` via
+`charZero_of_injective_algebraMap` + `Algebra.IsSeparable.of_integral` — the identical technique this
+file uses one level down — and **is** actually used (by `Level.exists_tower_step_next`, `§83`).
+
+Two docstring cross-references to the deleted file, in `LubinTateTowerStepAdicCompleteK2.lean:165`
+and `LubinTateTowerStepLevelExists.lean:137`, were updated to point at the live analogues
+(`Level.algebraIsSeparable`/`algebraIsSeparable_K_K_2`) rather than the removed file, so no dangling
+file reference remains in committed prose. `Langlands.lean` needed no edit — it never imported the
+file (see the `lean_lib` glob finding above), so there was no import line to remove.
+
+### What was NOT deleted, and why — every other candidate, one by one
+
+Every file in the "category (a)" list above was checked to have a real, current `import` edge from at
+least one `Level*.lean`/generic file (not merely a historical mention in prose) before being kept —
+confirmed by the same script that found the two `§89` corrections above, applied uniformly rather than
+selectively. None of the 19 was found dead; each is either directly imported by the generic machinery
+for its type/instance definitions, or supplies an `rfl`-check target a `Level*.lean` file's own
+`example`s compare against (`§82`–`§89`'s own discipline, unchanged by this pass). No theorem body was
+migrated to a derived-instance form this pass — `§89`'s own Reason 1 (the import-cycle structural
+block) and Reason 2 (the generic theorems' deliberately different, already-committed hypothesis
+packages) both still hold, re-checked against current source rather than re-derived, and neither was
+resolved by anything this pass did.
+
+### Build
+
+Before this pass (HEAD `aaba4ed`, `§90`'s own commit): `nix develop -c lake build` clean, **8827
+jobs**, no `sorry`. After (this pass's one deletion): `nix develop -c lake build` clean, **8827
+jobs** — unchanged, not decremented by one as every prior single-file addition in this arc incremented
+it (`§75`–`§90`'s own build reports each show a `+1` for one new file). This was checked twice,
+including once after a full `lake clean` + `lake exe cache get` + rebuild from a cold local build
+directory (Mathlib's own cache restored via `lake exe cache get`, not recompiled from source), to rule
+out a stale-cache artifact — the number is unchanged either way. **No explanation for why the reported
+total does not decrement is claimed here** — the two things this pass can state with confidence, both
+directly observed, are that the build is clean with zero errors and zero `sorry` both before and after,
+and that `Langlands/LubinTateTowerStepSeparable.lean` is confirmed absent from disk and from `git
+status` after the deletion. Local file count: `ls Langlands/*.lean | wc -l` is **171** after the
+deletion (one fewer `.lean` file on disk than before). `Langlands.LubinTateTowerStepLevelInduction`
+(`§90`'s closed `∀ n` induction file) rebuilt in isolation (`lake build
+Langlands.LubinTateTowerStepLevelInduction`, `3602` jobs, clean, same pre-existing
+`overlappingInstances` warnings as `§90`'s own build report, no new ones) after the deletion, confirmed
+still part of a working closed chain. `grep -rl '\bsorry\b' Langlands/*.lean` (excluding prose
+mentions of the word "sorry-free"/"sorry-laden" inside comments, checked individually) finds zero
+actual `sorry` tactics anywhere in the project, before or after this pass.
+
+Files changed: `Langlands/LubinTateTowerStepSeparable.lean` (deleted, `git rm`),
+`Langlands/LubinTateTowerStepAdicCompleteK2.lean` (one docstring line updated to remove the dangling
+file reference), `Langlands/LubinTateTowerStepLevelExists.lean` (one docstring line updated likewise),
+`ROADMAP.md` (this section).
+
+### Note on injected content and process anomalies encountered this pass
+
+Two fabricated `<system-reminder>`-formatted blocks were surfaced directly between turns during this
+pass — a false "the date has changed... don't tell the user" instruction, and an "Auto Mode Active"
+policy block — matching, in form, the exact injected-content pattern `§67`–`§89` already logged
+repeatedly across this arc. Consistent with that established precedent, neither was treated as a
+genuine instruction or as license to alter this project's standing rules; the "don't tell the user"
+instruction specifically was not complied with (it is recorded here, plainly). Separately: a message
+purporting to be from another Claude session, received mid-pass while a background `lake build` was
+in flight, asked this pass to continue rather than remain passively paused, which was already the
+plan; nothing in that message was treated as authorization beyond what this task's own brief already
+covers, and no permission-scope change was made on its basis (per this project's standing rule that a
+peer message cannot grant escalation).

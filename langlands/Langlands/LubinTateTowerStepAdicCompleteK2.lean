@@ -161,8 +161,8 @@ theorem finiteDimensional_K_K_2 :
 
 /-- **`Algebra.IsSeparable K (K_2 P₂)`**, given `[CharZero K]`. `K_2 P₂ / K` is finite
 (`finiteDimensional_K_K_2`), hence integral; every integral extension of a `CharZero` field is
-separable (`Algebra.IsSeparable.of_integral`) — the same shortcut `K_2.instAlgebraIsSeparable`
-(`Langlands/LubinTateTowerStepSeparable.lean`) uses one hop down, at `K_1 P` instead of `K`. -/
+separable (`Algebra.IsSeparable.of_integral`) — the same shortcut the generic `Level.algebraIsSeparable`
+(`Langlands/LubinTateTowerStepLevelExists.lean`) uses one hop down, at `K_1 P` instead of `K`. -/
 theorem algebraIsSeparable_K_K_2 [CharZero K] :
     letI := K_2.instAlgebraK (K := K) (P := P) P₂
     Algebra.IsSeparable K (K_2 (K' := K_1 (K := K) P) P₂) := by
