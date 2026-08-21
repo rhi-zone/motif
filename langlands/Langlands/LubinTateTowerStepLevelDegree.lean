@@ -16,15 +16,15 @@ Reading `FPiEval_algebraMap_mem_adjoin` and its `K_2 → K_3` counterpart
 (`FPiEval_algebraMap_mem_adjoin_K3`, `Langlands/LubinTateTowerStepK3Degree.lean`) line by line against
 each other finds the opposite: **every ingredient the two proofs actually use is already
 level-generic**, and the two proofs differ from each other only by the systematic substitution
-`K_1 P ↦ K2P2 P₂`, `nextSplittingField ↦ K_3`, `β ↦ γ`. Specifically:
+`K_1 P ↦ K2P2 P₂`, `baseChangeSplittingField ↦ K_3`, `β ↦ γ`. Specifically:
 
 * `hasSum_FPiEval` (`Langlands/LubinTateFormalGroupEval.lean`) and
   `Submodule.mem_of_hasSum_of_finiteDimensional` (`Langlands/LubinTateSplittingFieldDegree.lean`) are
   each already stated for an arbitrary field/vector space — not level-indexed at all. There is no
   growing convergence radius or level-dependent analytic bound anywhere: both proofs use exactly the
   same open-unit-ball hypotheses (`‖β‖ < 1`, `‖t‖ < 1`) and the same `Φ`.
-* `nextSplittingField.norm_eq_spectralNorm` (`Langlands/LubinTateTowerStepSplittingField.lean:77`) is *already*
-  generic in `LubinTate.nextSplittingField`'s own free parameters `K'`/`P₂` — confirmed by both concrete proofs
+* `baseChangeSplittingField.norm_eq_spectralNorm` (`Langlands/LubinTateTowerStepSplittingField.lean:77`) is *already*
+  generic in `LubinTate.baseChangeSplittingField`'s own free parameters `K'`/`P₂` — confirmed by both concrete proofs
   citing the identical lemma name unchanged (`FPiEval_algebraMap_mem_adjoin` line 75,
   `FPiEval_algebraMap_mem_adjoin_K3` line 87).
 * The two remaining level-specific ingredients — the composite algebra-map identity
@@ -32,7 +32,7 @@ level-generic**, and the two proofs differ from each other only by the systemati
   (`K_2.hOK_transport` vs. `K_3.hOK_transport`) — were *already* generalized before this pass:
   `Level.algebraMap_O_eq_comp_L` and `Level.hOK_transport`, both §83
   (`Langlands/LubinTateTowerStepLevelExists.lean`). What was missing was only the last mile:
-  `Level.algebraMap_O_eq_comp_L` factors `algebraMap O (nextSplittingField (K' := lvl.L) Pn)` through `K` (via
+  `Level.algebraMap_O_eq_comp_L` factors `algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn)` through `K` (via
   `algebraMap K lvl.L`), whereas the concrete proofs need it factored through `lvl.L` directly (via
   `algebraMap O lvl.L`). Bridging those needs exactly `Level.instAlgebraOSelf`/
   `Level.algebraMap_OSelf_eq` — §84's self-composite, built the very next pass after §83 for an
@@ -46,8 +46,8 @@ direct-instantiation checks below, not merely argued.
 
 ## Main result
 
-* `Level.FPiEval_algebraMap_mem_adjoin` : **`F_π(β, algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn) t) ∈
-  lvl.L⟮β⟯`**, for `β : nextSplittingField (K' := lvl.L) Pn` and `t : lvl.L` both in the open unit ball. Recovers
+* `Level.FPiEval_algebraMap_mem_adjoin` : **`F_π(β, algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) t) ∈
+  lvl.L⟮β⟯`**, for `β : baseChangeSplittingField (K' := lvl.L) Pn` and `t : lvl.L` both in the open unit ball. Recovers
   `FPiEval_algebraMap_mem_adjoin` at `level_K_1` **by `rfl`**, and recovers
   `FPiEval_algebraMap_mem_adjoin_K3`'s exact statement when instantiated at `level_K_2` (the first
   time this specific fact is reached at that depth via the generic route, `rfl`-equal to the existing
@@ -84,50 +84,50 @@ variable {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [Valuativ
   [Finite (IsLocalRing.ResidueField ↥(ValuativeRel.valuation K).valuationSubring)]
   [Algebra O K] [IsFractionRing O K]
 
-/-- **`F_π(β, algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn) t) ∈ lvl.L⟮β⟯`**, for `β : nextSplittingField (K' := lvl.L)
+/-- **`F_π(β, algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) t) ∈ lvl.L⟮β⟯`**, for `β : baseChangeSplittingField (K' := lvl.L)
 Pn` and `t : lvl.L` both in the open unit ball. The `Level`-generic form of
 `FPiEval_algebraMap_mem_adjoin`/`FPiEval_algebraMap_mem_adjoin_K3`: each evaluation summand of the
 bivariate `F_π` series is an `lvl.L`-scalar (via `Level.algebraMap_O_eq_comp_L` combined with
-`Level.algebraMap_OSelf_eq` to factor `algebraMap O (nextSplittingField (K' := lvl.L) Pn)` through `lvl.L` directly)
+`Level.algebraMap_OSelf_eq` to factor `algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn)` through `lvl.L` directly)
 times a power of `β`, hence lies in the finite-dimensional `lvl.L`-subspace `lvl.L⟮β⟯` (finite-
-dimensional inside `nextSplittingField (K' := lvl.L) Pn`, via `nextSplittingField.instFiniteDimensional`);
+dimensional inside `baseChangeSplittingField (K' := lvl.L) Pn`, via `baseChangeSplittingField.instFiniteDimensional`);
 `Submodule.mem_of_hasSum_of_finiteDimensional` places the `HasSum` limit back inside it. -/
 theorem Level.FPiEval_algebraMap_mem_adjoin (lvl : Level K) (Pn : lvl.OL[X])
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1)
     (hnormL : letI := lvl.algL; ∀ x : K, ‖algebraMap K lvl.L x‖ = ‖x‖)
     {π : O} (hπ : Irreducible π) {f : O⟦X⟧} (hf : IsLubinTatePoly π (residueCard O) f)
-    {β : nextSplittingField (K' := lvl.L) Pn} (hβ : ‖β‖ < 1) {t : lvl.L} (ht : ‖t‖ < 1) :
+    {β : baseChangeSplittingField (K' := lvl.L) Pn} (hβ : ‖β‖ < 1) {t : lvl.L} (ht : ‖t‖ < 1) :
     letI := lvl.algL
     letI := lvl.instAlgebraO Pn hOK
-    FPiEval hπ hf β (algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn) t) ∈ lvl.L⟮β⟯ := by
+    FPiEval hπ hf β (algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) t) ∈ lvl.L⟮β⟯ := by
   letI := lvl.algL
   letI := lvl.instAlgebraOSelf (O := O)
   letI := lvl.instAlgebraO Pn hOK
-  set t' := algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn) t with ht'def
+  set t' := algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) t with ht'def
   have ht' : ‖t'‖ < 1 := by
-    rw [ht'def, nextSplittingField.norm_eq_spectralNorm, spectralNorm_extends]; exact ht
+    rw [ht'def, baseChangeSplittingField.norm_eq_spectralNorm, spectralNorm_extends]; exact ht
   have hsum := hasSum_FPiEval (lvl.hOK_transport Pn hOK hnormL) hπ hf hβ ht'
   have hmem : ∀ n : Fin 2 →₀ ℕ,
-      evalSummandMv (Phi hπ hf) (![β, t'] : Fin 2 → nextSplittingField (K' := lvl.L) Pn) n ∈
+      evalSummandMv (Phi hπ hf) (![β, t'] : Fin 2 → baseChangeSplittingField (K' := lvl.L) Pn) n ∈
       Subalgebra.toSubmodule
-        ((lvl.L⟮β⟯ : IntermediateField lvl.L (nextSplittingField (K' := lvl.L) Pn)).toSubalgebra) := by
+        ((lvl.L⟮β⟯ : IntermediateField lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)).toSubalgebra) := by
     intro n
     rw [Subalgebra.mem_toSubmodule, IntermediateField.mem_toSubalgebra]
     unfold evalSummandMv
     rw [Fin.prod_univ_two]
-    show algebraMap O (nextSplittingField (K' := lvl.L) Pn) (MvPowerSeries.coeff n (Phi hπ hf)) *
-        ((![β, t'] : Fin 2 → nextSplittingField (K' := lvl.L) Pn) 0 ^ n 0 *
-          (![β, t'] : Fin 2 → nextSplittingField (K' := lvl.L) Pn) 1 ^ n 1) ∈
-      (lvl.L⟮β⟯ : IntermediateField lvl.L (nextSplittingField (K' := lvl.L) Pn))
+    show algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn) (MvPowerSeries.coeff n (Phi hπ hf)) *
+        ((![β, t'] : Fin 2 → baseChangeSplittingField (K' := lvl.L) Pn) 0 ^ n 0 *
+          (![β, t'] : Fin 2 → baseChangeSplittingField (K' := lvl.L) Pn) 1 ^ n 1) ∈
+      (lvl.L⟮β⟯ : IntermediateField lvl.L (baseChangeSplittingField (K' := lvl.L) Pn))
     simp only [Matrix.cons_val_zero, Matrix.cons_val_one]
-    -- `algebraMap O (nextSplittingField Pn)` factors through `lvl.L` directly, combining `Level.
+    -- `algebraMap O (baseChangeSplittingField Pn)` factors through `lvl.L` directly, combining `Level.
     -- algebraMap_O_eq_comp_L` (which factors through `K`) with `Level.algebraMap_OSelf_eq`
     -- (which identifies `algebraMap O lvl.L` with that same `K`-route, via `instAlgebraOSelf`).
     have hOL : algebraMap O lvl.L (MvPowerSeries.coeff n (Phi hπ hf)) =
         algebraMap K lvl.L (algebraMap O K (MvPowerSeries.coeff n (Phi hπ hf))) :=
       congrFun (congrArg DFunLike.coe (lvl.algebraMap_OSelf_eq (O := O))) _
-    have hOK2 : algebraMap O (nextSplittingField (K' := lvl.L) Pn) (MvPowerSeries.coeff n (Phi hπ hf)) =
-        algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn)
+    have hOK2 : algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn) (MvPowerSeries.coeff n (Phi hπ hf)) =
+        algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)
           (algebraMap O lvl.L (MvPowerSeries.coeff n (Phi hπ hf))) := by
       rw [hOL]; exact congrFun (lvl.algebraMap_O_eq_comp_L Pn hOK) _
     rw [hOK2, ht'def, ← map_pow]
@@ -136,7 +136,7 @@ theorem Level.FPiEval_algebraMap_mem_adjoin (lvl : Level K) (Pn : lvl.OL[X])
         (IntermediateField.algebraMap_mem _ _))
   have hres := Submodule.mem_of_hasSum_of_finiteDimensional
     (Subalgebra.toSubmodule
-      ((lvl.L⟮β⟯ : IntermediateField lvl.L (nextSplittingField (K' := lvl.L) Pn)).toSubalgebra))
+      ((lvl.L⟮β⟯ : IntermediateField lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)).toSubalgebra))
     hsum hmem
   rwa [Subalgebra.mem_toSubmodule, IntermediateField.mem_toSubalgebra] at hres
 
@@ -149,7 +149,7 @@ example {P : O[X]}
     (P₂ : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)))[X])
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O} (hπ : Irreducible π) {f : O⟦X⟧}
     (hf : IsLubinTatePoly π (residueCard O) f)
-    {β : nextSplittingField (K' := K_1 (K := K) P) P₂} (hβ : ‖β‖ < 1) {t : K_1 (K := K) P} (ht : ‖t‖ < 1) :
+    {β : baseChangeSplittingField (K' := K_1 (K := K) P) P₂} (hβ : ‖β‖ < 1) {t : K_1 (K := K) P} (ht : ‖t‖ < 1) :
     Level.FPiEval_algebraMap_mem_adjoin (level_K_1 (K := K) (P := P)) P₂ hOK
         (hnorm_K_K_1 (K := K) (P := P)) hπ hf hβ ht =
       FPiEval_algebraMap_mem_adjoin hOK hπ hf hβ ht := rfl

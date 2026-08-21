@@ -79,24 +79,24 @@ def residueFieldEquiv_K_2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : 
     (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc : Associated (P₂.coeff 0) α') (hdeg : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    (hα'norm : ‖algebraMap _ (baseChangeSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
     {α : K_1 (K := K) P} (hα'coe : (α' : K_1 (K := K) P) = α)
     (hirr : Irreducible (P₂.map (algebraMap _ (K_1 (K := K) P))))
-    {β : nextSplittingField (K' := K_1 (K := K) P) P₂}
+    {β : baseChangeSplittingField (K' := K_1 (K := K) P) P₂}
     (hβroot : Polynomial.aeval β (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0)
     (hβfin : Module.finrank (K_1 (K := K) P) (K_1 (K := K) P)⟮β⟯ = residueCard O)
-    [Algebra.IsSeparable (K_1 (K := K) P) (nextSplittingField (K' := K_1 (K := K) P) P₂)]
+    [Algebra.IsSeparable (K_1 (K := K) P) (baseChangeSplittingField (K' := K_1 (K := K) P) P₂)]
     [IsLocalRing ↥(integralClosure
       ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-      (nextSplittingField (K' := K_1 (K := K) P) P₂))]
+      (baseChangeSplittingField (K' := K_1 (K := K) P) P₂))]
     [IsLocalHom (algebraMap ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
       (K_1 (K := K) P)) ↥(integralClosure
         ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-        (nextSplittingField (K' := K_1 (K := K) P) P₂)))] :
+        (baseChangeSplittingField (K' := K_1 (K := K) P) P₂)))] :
     ResidueField ↥(ValuativeRel.valuation K).valuationSubring ≃+*
       ResidueField (↥(integralClosure
         ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-        (nextSplittingField (K' := K_1 (K := K) P) P₂))) := by
+        (baseChangeSplittingField (K' := K_1 (K := K) P) P₂))) := by
   have hβint : IsIntegral ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
       (K_1 (K := K) P)) β := by
     refine ⟨P₂, hP₂dist.monic, ?_⟩
@@ -105,17 +105,17 @@ def residueFieldEquiv_K_2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : 
         (K_1 (K := K) P)) P₂) = 0 := hβroot
     rwa [Polynomial.aeval_map_algebraMap] at h1
   have hadjL : Algebra.adjoin ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
-      (K_1 (K := K) P)) ({β} : Set (nextSplittingField (K' := K_1 (K := K) P) P₂)) =
+      (K_1 (K := K) P)) ({β} : Set (baseChangeSplittingField (K' := K_1 (K := K) P) P₂)) =
       integralClosure ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
-        (K_1 (K := K) P)) (nextSplittingField (K' := K_1 (K := K) P) P₂) :=
+        (K_1 (K := K) P)) (baseChangeSplittingField (K' := K_1 (K := K) P) P₂) :=
     adjoin_eq_integralClosure_K_2 hOK hπ hπnorm hf hu heq hPdist hPdeg hu₂ heq₂ hα'irr hP₂dist
       hassoc hdeg hα'norm hα'coe hirr hβroot hβfin
   have hadjS : Algebra.adjoin ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
       (K_1 (K := K) P)) ({(⟨β, hβint⟩ : ↥(integralClosure
         ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-        (nextSplittingField (K' := K_1 (K := K) P) P₂)))} : Set (↥(integralClosure
+        (baseChangeSplittingField (K' := K_1 (K := K) P) P₂)))} : Set (↥(integralClosure
         ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-        (nextSplittingField (K' := K_1 (K := K) P) P₂)))) = ⊤ :=
+        (baseChangeSplittingField (K' := K_1 (K := K) P) P₂)))) = ⊤ :=
     Algebra.adjoin_singleton_eq_top_of_adjoin_eq_integralClosure hβint hadjL
   have hβroot' : Polynomial.aeval β P₂ = 0 := by
     have h1 : Polynomial.aeval β (Polynomial.map (algebraMap
@@ -124,7 +124,7 @@ def residueFieldEquiv_K_2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : 
     rwa [Polynomial.aeval_map_algebraMap] at h1
   have hβmem := mem_maximalIdeal_of_isDistinguishedAt_root
     (R := ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)))
-    (L := nextSplittingField (K' := K_1 (K := K) P) P₂) hP₂dist hβint hβroot'
+    (L := baseChangeSplittingField (K' := K_1 (K := K) P) P₂) hP₂dist hβint hβroot'
   exact (residueFieldEquiv_K_1 hOK hπ hπnorm hf hu heq hPdist hPdeg hϖ hϖnorm).trans
     (IsLocalRing.residueFieldEquivOfAdjoinSingleton hβmem hadjS)
 

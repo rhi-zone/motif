@@ -15,15 +15,15 @@ level's composite with one more `algebraMap`), which [was] not built or tested [
 genuinely new piece, not a mechanical repeat of what closed."
 
 This file builds exactly that piece, generically. `Langlands/LubinTateTowerStepSplittingField.lean`'s
-`NormExtension` section already establishes that `LubinTate.nextSplittingField`'s `NontriviallyNormedField`/
+`NormExtension` section already establishes that `LubinTate.baseChangeSplittingField`'s `NontriviallyNormedField`/
 `IsUltrametricDist`/`CompleteSpace`/`NormedSpace` package is `n`-independent by construction (generic
-in `nextSplittingField`'s own two free parameters `O'`/`K'` — confirmed directly by that file's own docstring and
+in `baseChangeSplittingField`'s own two free parameters `O'`/`K'` — confirmed directly by that file's own docstring and
 body, re-confirmed here by reading it before writing this file). What was *not* yet generic is the
 `Algebra K K_n` composite (`K_2.instAlgebraK`, `Langlands/LubinTateTowerStepBaseNorm.lean`) and its
 norm-preservation corollary (`K_2.hnorm_K`) — both hardcoded to the concrete intermediate field
 `K_1 P`. This file replaces that hardcoding with an abstract intermediate field `L`, so the exact same
 lemma applies at every tower depth: first at `L := K_1 P` (recovering `K_2.instAlgebraK`/`K_2.hnorm_K`
-verbatim, checked below), then at `L := nextSplittingField P₂` (deriving the analogous `K_3`-level composite and
+verbatim, checked below), then at `L := baseChangeSplittingField P₂` (deriving the analogous `K_3`-level composite and
 norm fact *for free*, with no new per-level file, checked below), and so on for any further level —
 the proof never uses anything specific to which level `L` sits at, only that `[Algebra K L]` holds
 and that `K`'s norm already extends exactly to `L` (`hnormL`, itself the previous level's own output).
@@ -53,12 +53,12 @@ a separate, larger piece of work not attempted this pass.
 
 ## Main results
 
-* `instAlgebraK_of_algebraL` : `Algebra K (nextSplittingField (K' := L) P₂)`, the two-hop composite `K → L →
-  nextSplittingField (K' := L) P₂`, generic in the intermediate field `L`. Specializes to `K_2.instAlgebraK` at
-  `L := K_1 P` and to an analogous `K_3`-level composite at `L := nextSplittingField (K' := K_1 P) P₂` — checked
+* `instAlgebraK_of_algebraL` : `Algebra K (baseChangeSplittingField (K' := L) P₂)`, the two-hop composite `K → L →
+  baseChangeSplittingField (K' := L) P₂`, generic in the intermediate field `L`. Specializes to `K_2.instAlgebraK` at
+  `L := K_1 P` and to an analogous `K_3`-level composite at `L := baseChangeSplittingField (K' := K_1 P) P₂` — checked
   directly below, not merely claimed.
-* `algebraMap_K_eq_of_algebraL` : `algebraMap K (nextSplittingField (K' := L) P₂)` really is that composite, `rfl`.
-* `hnorm_K_of_algebraL` : **`∀ x : K, ‖algebraMap K (nextSplittingField (K' := L) P₂) x‖ = ‖x‖`**, given `hnormL`
+* `algebraMap_K_eq_of_algebraL` : `algebraMap K (baseChangeSplittingField (K' := L) P₂)` really is that composite, `rfl`.
+* `hnorm_K_of_algebraL` : **`∀ x : K, ‖algebraMap K (baseChangeSplittingField (K' := L) P₂) x‖ = ‖x‖`**, given `hnormL`
   (the same fact one level down) — the genuine inductive step: this lemma, fed its own conclusion at
   the previous level, produces the next level's conclusion, at any depth.
 * `hnorm_K_K_1` : the base case, `L := K_1 P` — `K`'s norm extends exactly to `K_1 P` (immediate from
@@ -68,7 +68,7 @@ a separate, larger piece of work not attempted this pass.
   carries the same `algebraMap` function as `K_2.instAlgebraK` (`rfl`, at the `RingHom` level).
 * `hnorm_K_K_2` : instantiating `hnorm_K_of_algebraL` at `L := K_1 P` with `hnorm_K_K_1` as the base
   case recovers `K_2.hnorm_K`'s statement.
-* `hnorm_K_K_3` : instantiating the generic lemma a *second* time, at `L := nextSplittingField (K' := K_1 P) P₂`,
+* `hnorm_K_K_3` : instantiating the generic lemma a *second* time, at `L := baseChangeSplittingField (K' := K_1 P) P₂`,
   derives the `K_3`-level norm-preservation fact — with **no new per-level file**, the deliverable
   `§73` scoped and did not build.
 -/
@@ -88,7 +88,7 @@ variable {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [Valuativ
   [IsDiscreteValuationRing ↥(ValuativeRel.valuation K).valuationSubring]
   [Algebra O K] [IsFractionRing O K]
 
-/-! ## The generic inductive step: `Algebra K (nextSplittingField (K' := L) P₂)`, for any intermediate field `L` -/
+/-! ## The generic inductive step: `Algebra K (baseChangeSplittingField (K' := L) P₂)`, for any intermediate field `L` -/
 
 section Generic
 
@@ -97,43 +97,43 @@ variable {L : Type*} [NontriviallyNormedField L] [IsUltrametricDist L] [Complete
   [Algebra O' L] [Algebra K L]
 variable (P₂ : O'[X])
 
-/-- **`Algebra K (nextSplittingField (K' := L) P₂)`, the two-hop composite `K → L → K_2 P₂`, generic in the
+/-- **`Algebra K (baseChangeSplittingField (K' := L) P₂)`, the two-hop composite `K → L → K_2 P₂`, generic in the
 intermediate field `L`.** Built as an explicit `RingHom.comp`/`.toAlgebra` term — no typeclass search
 of the `Algebra.ofSubsemiring` kind is involved, so genericity over an abstract `[Algebra K L]` costs
 nothing here (unlike the flat ring-of-integers construction, which genuinely does need a concrete
 term, per `§73`/this file's module docstring). Mirrors `K_2.instAlgebraK`, with `L` in place of the
 hardcoded `K_1 P`. -/
-@[reducible] def instAlgebraK_of_algebraL : Algebra K (nextSplittingField (K' := L) P₂) :=
-  ((algebraMap L (nextSplittingField (K' := L) P₂)).comp (algebraMap K L)).toAlgebra
+@[reducible] def instAlgebraK_of_algebraL : Algebra K (baseChangeSplittingField (K' := L) P₂) :=
+  ((algebraMap L (baseChangeSplittingField (K' := L) P₂)).comp (algebraMap K L)).toAlgebra
 
 omit [IsUltrametricDist K] [ValuativeRel K] [(NormedField.valuation (K := K)).Compatible]
   [CompleteSpace K] [IsDiscreteValuationRing ↥(ValuativeRel.valuation K).valuationSubring]
   [IsUltrametricDist L] [CompleteSpace L] in
-/-- **`algebraMap K (nextSplittingField (K' := L) P₂)` really is the two-hop composite** — true by definition of
+/-- **`algebraMap K (baseChangeSplittingField (K' := L) P₂)` really is the two-hop composite** — true by definition of
 `instAlgebraK_of_algebraL`. -/
 theorem algebraMap_K_eq_of_algebraL :
     letI := instAlgebraK_of_algebraL (K := K) (O' := O') (L := L) P₂
-    ⇑(algebraMap K (nextSplittingField (K' := L) P₂)) =
-      ⇑(algebraMap L (nextSplittingField (K' := L) P₂)) ∘ ⇑(algebraMap K L) := rfl
+    ⇑(algebraMap K (baseChangeSplittingField (K' := L) P₂)) =
+      ⇑(algebraMap L (baseChangeSplittingField (K' := L) P₂)) ∘ ⇑(algebraMap K L) := rfl
 
 omit [IsUltrametricDist K] [ValuativeRel K] [(NormedField.valuation (K := K)).Compatible]
   [CompleteSpace K] [IsDiscreteValuationRing ↥(ValuativeRel.valuation K).valuationSubring] in
-/-- **The inductive step itself**: `K`'s norm extends exactly to `nextSplittingField (K' := L) P₂`, given that it
+/-- **The inductive step itself**: `K`'s norm extends exactly to `baseChangeSplittingField (K' := L) P₂`, given that it
 already extends exactly to `L` (`hnormL`). Two applications of `spectralNorm_extends`, chained
 through `algebraMap_K_eq_of_algebraL` — the *same* proof shape `K_2.hnorm_K` uses for the concrete
 `L := K_1 P` case, now stated once for any `L` and applicable at every tower depth by feeding in the
 previous level's own output as `hnormL`. -/
 theorem hnorm_K_of_algebraL (hnormL : ∀ x : K, ‖algebraMap K L x‖ = ‖x‖) :
     letI := instAlgebraK_of_algebraL (K := K) (O' := O') (L := L) P₂
-    ∀ x : K, ‖algebraMap K (nextSplittingField (K' := L) P₂) x‖ = ‖x‖ := by
+    ∀ x : K, ‖algebraMap K (baseChangeSplittingField (K' := L) P₂) x‖ = ‖x‖ := by
   letI := instAlgebraK_of_algebraL (K := K) (O' := O') (L := L) P₂
   intro x
-  have hcoe : algebraMap K (nextSplittingField (K' := L) P₂) x =
-      algebraMap L (nextSplittingField (K' := L) P₂) (algebraMap K L x) :=
+  have hcoe : algebraMap K (baseChangeSplittingField (K' := L) P₂) x =
+      algebraMap L (baseChangeSplittingField (K' := L) P₂) (algebraMap K L x) :=
     congrFun (algebraMap_K_eq_of_algebraL (K := K) (O' := O') (L := L) P₂) x
-  rw [nextSplittingField.norm_eq_spectralNorm, hcoe, spectralNorm_extends, hnormL]
+  rw [baseChangeSplittingField.norm_eq_spectralNorm, hcoe, spectralNorm_extends, hnormL]
 
-/-! ### Extending a norm bound / injectivity fact one hop further, into `nextSplittingField (K' := L) P₂`
+/-! ### Extending a norm bound / injectivity fact one hop further, into `baseChangeSplittingField (K' := L) P₂`
 
 `ROADMAP.md` §79's second generalized piece. `K_2.norm_le_one_of_mem_O_K1`/`norm_le_one_of_mem_
 O_K2_in_K2P2`+`K_3.norm_le_one_of_mem_O_K2` and `K_2.instFaithfulSMul_O_K1`/`K_3.instFaithfulSMul_
@@ -141,7 +141,7 @@ O_K2` each split into two genuinely different pieces: (1) "`O_L`'s elements have
 in `L` itself"/"the subring inclusion `O_L → L` is injective" — already fully general, no new
 lemma needed (`norm_le_one_of_mem_integralClosure`, `Subtype.coe_injective`, applied at `K' := K`);
 (2) "a bound/injectivity fact already established in `L` extends one hop further, into
-`nextSplittingField (K' := L) P₂`" — genuinely repeated by hand at every level, generalized here.
+`baseChangeSplittingField (K' := L) P₂`" — genuinely repeated by hand at every level, generalized here.
 
 **A first attempt at (2) generalized the *type* `O_L` itself** (taking `[Algebra ↥𝒪[K] L]` as an
 explicit ambient hypothesis, distinct from the `[Algebra K L]` this file's `Generic` section
@@ -160,33 +160,33 @@ explicit hypothesis, and extends it — the concrete `O_L`-membership step is le
 using the existing, already-general `norm_le_one_of_mem_integralClosure` directly (its own
 `Algebra ↥𝒪[K] L` instance never has to be named or compared against another one). -/
 
-/-- **A norm bound already established in `L` extends unchanged into `nextSplittingField (K' := L) P₂`** — the
+/-- **A norm bound already established in `L` extends unchanged into `baseChangeSplittingField (K' := L) P₂`** — the
 generic form of the "one hop further" half of `K_2.norm_le_one_of_mem_O_K1`/`K_3.norm_le_one_of_
-mem_O_K2`. Immediate from `nextSplittingField.norm_eq_spectralNorm`/`spectralNorm_extends` (the `L → K_2 P₂` hop
+mem_O_K2`. Immediate from `baseChangeSplittingField.norm_eq_spectralNorm`/`spectralNorm_extends` (the `L → K_2 P₂` hop
 is norm-preserving unconditionally, needing no hypothesis on `L` beyond `[Algebra K L]`/
 `[NontriviallyNormedField L]`/`[CompleteSpace L]`, already in scope). Composing this with
 `norm_le_one_of_mem_integralClosure hnormL c` (applied directly by the caller, at whichever
 concrete `Algebra ↥𝒪[K] L` instance is active there) recovers `K_2.norm_le_one_of_mem_O_K1`/
 `K_3.norm_le_one_of_mem_O_K2` exactly — checked below, not merely claimed. -/
 theorem norm_le_one_of_algebraMap_le_one_of_algebraL {y : L} (hy : ‖y‖ ≤ 1) :
-    ‖algebraMap L (nextSplittingField (K' := L) P₂) y‖ ≤ 1 := by
-  rw [nextSplittingField.norm_eq_spectralNorm, spectralNorm_extends]
+    ‖algebraMap L (baseChangeSplittingField (K' := L) P₂) y‖ ≤ 1 := by
+  rw [baseChangeSplittingField.norm_eq_spectralNorm, spectralNorm_extends]
   exact hy
 
 omit [IsUltrametricDist K] [ValuativeRel K] [(NormedField.valuation (K := K)).Compatible]
   [CompleteSpace K] [IsDiscreteValuationRing ↥(ValuativeRel.valuation K).valuationSubring]
   [IsUltrametricDist L] [CompleteSpace L] [Algebra K L] in
-/-- **Injectivity into `L` extends unchanged into `nextSplittingField (K' := L) P₂`** — the generic form of the
+/-- **Injectivity into `L` extends unchanged into `baseChangeSplittingField (K' := L) P₂`** — the generic form of the
 "one hop further" half of `K_2.instFaithfulSMul_O_K1`/`K_3.instFaithfulSMul_O_K2`: any injective
-map into `L`, composed with `algebraMap L (nextSplittingField (K' := L) P₂)` (injective, `RingHom.injective`,
+map into `L`, composed with `algebraMap L (baseChangeSplittingField (K' := L) P₂)` (injective, `RingHom.injective`,
 automatic for a field source and nontrivial target via the ambient `IsSimpleRing L` instance),
 stays injective. Composing this with `Subtype.coe_injective` (applied directly by the caller, at
 whichever concrete `O_L → L` subring inclusion is active there) recovers `K_2.instFaithfulSMul_
 O_K1`/`K_3.instFaithfulSMul_O_K2` exactly — checked below, not merely claimed. -/
 theorem injective_algebraMap_comp_of_algebraL {A : Type*} {f : A → L}
     (hf : Function.Injective f) :
-    Function.Injective (fun a => algebraMap L (nextSplittingField (K' := L) P₂) (f a)) :=
-  (algebraMap L (nextSplittingField (K' := L) P₂)).injective.comp hf
+    Function.Injective (fun a => algebraMap L (baseChangeSplittingField (K' := L) P₂) (f a)) :=
+  (algebraMap L (baseChangeSplittingField (K' := L) P₂)).injective.comp hf
 
 end Generic
 
@@ -219,11 +219,11 @@ ring hom directly sidesteps that walk entirely). This is the operative sense in 
 constructions "agree": every downstream use only ever inspects `algebraMap`, never the raw `Algebra`
 term. -/
 example :
-    @algebraMap K (nextSplittingField (K' := K_1 (K := K) P) P₂) _ _
+    @algebraMap K (baseChangeSplittingField (K' := K_1 (K := K) P) P₂) _ _
       (instAlgebraK_of_algebraL (K := K)
         (O' := ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)))
         (L := K_1 (K := K) P) P₂) =
-    @algebraMap K (nextSplittingField (K' := K_1 (K := K) P) P₂) _ _
+    @algebraMap K (baseChangeSplittingField (K' := K_1 (K := K) P) P₂) _ _
       (K_2.instAlgebraK (K := K) (P := P) P₂) := rfl
 
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (IsLocalRing.ResidueField O)]
@@ -235,34 +235,34 @@ statement rather than a further theorem, but recorded to make the base-case inst
 and reusable). -/
 theorem hnorm_K_K_2 :
     letI := K_2.instAlgebraK (K := K) (P := P) P₂
-    ∀ x : K, ‖algebraMap K (nextSplittingField (K' := K_1 (K := K) P) P₂) x‖ = ‖x‖ :=
+    ∀ x : K, ‖algebraMap K (baseChangeSplittingField (K' := K_1 (K := K) P) P₂) x‖ = ‖x‖ :=
   hnorm_K_of_algebraL (K := K)
     (O' := ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)))
     (L := K_1 (K := K) P) P₂ hnorm_K_K_1
 
-/-! ## The genuine second step: `L := nextSplittingField (K' := K_1 P) P₂`, deriving the `K_3`-level fact for free -/
+/-! ## The genuine second step: `L := baseChangeSplittingField (K' := K_1 P) P₂`, deriving the `K_3`-level fact for free -/
 
-variable {P₃O : Type*} [CommRing P₃O] [Algebra P₃O (nextSplittingField (K' := K_1 (K := K) P) P₂)]
+variable {P₃O : Type*} [CommRing P₃O] [Algebra P₃O (baseChangeSplittingField (K' := K_1 (K := K) P) P₂)]
   (P₃ : P₃O[X])
 
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (IsLocalRing.ResidueField O)]
   [(NormedField.valuation (K := K)).Compatible]
   [IsDiscreteValuationRing ↥(ValuativeRel.valuation K).valuationSubring] [IsFractionRing O K] in
-/-- **`K`'s norm extends exactly to `K_3`-shaped `nextSplittingField (K' := nextSplittingField (K' := K_1 P) P₂) P₃`** — derived by
-applying `hnorm_K_of_algebraL` a *second* time, at `L := nextSplittingField (K' := K_1 P) P₂`, fed `hnorm_K_K_2` as
+/-- **`K`'s norm extends exactly to `K_3`-shaped `baseChangeSplittingField (K' := baseChangeSplittingField (K' := K_1 P) P₂) P₃`** — derived by
+applying `hnorm_K_of_algebraL` a *second* time, at `L := baseChangeSplittingField (K' := K_1 P) P₂`, fed `hnorm_K_K_2` as
 its `hnormL`. **No new per-level file was needed for this** — the exact deliverable `§73`'s "next
 concrete step" flagged as missing (`K_n.instAlgebraK`/its norm fact, built inductively rather than
 hand-copied) is realized here, for real, at the concrete `n = 1 → 2 → 3` depth this arc has data for.
-Nothing in this proof or `hnorm_K_of_algebraL`'s own proof refers to `L` being `K_1`- or `nextSplittingField`-shaped
+Nothing in this proof or `hnorm_K_of_algebraL`'s own proof refers to `L` being `K_1`- or `baseChangeSplittingField`-shaped
 specifically — the same call would produce the `K_4`-level fact from this theorem's own conclusion,
 and so on indefinitely. -/
 theorem hnorm_K_K_3 :
     letI := K_2.instAlgebraK (K := K) (P := P) P₂
     letI := instAlgebraK_of_algebraL (K := K) (O' := P₃O)
-      (L := nextSplittingField (K' := K_1 (K := K) P) P₂) P₃
-    ∀ x : K, ‖algebraMap K (nextSplittingField (K' := nextSplittingField (K' := K_1 (K := K) P) P₂) P₃) x‖ = ‖x‖ := by
+      (L := baseChangeSplittingField (K' := K_1 (K := K) P) P₂) P₃
+    ∀ x : K, ‖algebraMap K (baseChangeSplittingField (K' := baseChangeSplittingField (K' := K_1 (K := K) P) P₂) P₃) x‖ = ‖x‖ := by
   letI := K_2.instAlgebraK (K := K) (P := P) P₂
-  exact hnorm_K_of_algebraL (K := K) (O' := P₃O) (L := nextSplittingField (K' := K_1 (K := K) P) P₂) P₃
+  exact hnorm_K_of_algebraL (K := K) (O' := P₃O) (L := baseChangeSplittingField (K' := K_1 (K := K) P) P₂) P₃
     (hnorm_K_K_2 (K := K) (P := P) P₂)
 
 end LubinTate

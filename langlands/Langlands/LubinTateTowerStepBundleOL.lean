@@ -52,7 +52,7 @@ typeclass search for `Algebra lvl.OL lvl.L` (needed by the combined bound below,
 
 **Not tested**: whether this pattern scales past one level of bundling (e.g. a `Level` whose `L`
 field is itself built from a previous `Level`, recursively) — every concrete check below builds `L`
-directly from the existing concrete tower constructions (`K_1 P`, `nextSplittingField (K' := K_1 P) P₂`), not from a
+directly from the existing concrete tower constructions (`K_1 P`, `baseChangeSplittingField (K' := K_1 P) P₂`), not from a
 chain of `Level` values. **Not claimed**: that this closes any part of `§79`'s "what remains" list
 (the connecting-identity/transitivity/degree/monogenicity chain) — only the norm-bound piece `§79`
 itself already generalized (in two composed pieces) is re-derived here in one bundled step, checked
@@ -69,11 +69,11 @@ against the same two concrete depths `§79` used.
   bound from `K` — direct application of `norm_le_one_of_mem_integralClosure` to `lvl.OL`'s elements,
   the exact thing `§79` found could not be stated generically against an independent `O_L` hypothesis.
 * `Level.norm_le_one_of_mem_algebraMap_OL` : the combined bound, `O_L`-membership directly to a norm
-  bound in `nextSplittingField (K' := lvl.L) P₂` (one hop further) — folds `§79`'s two separately-composed pieces
+  bound in `baseChangeSplittingField (K' := lvl.L) P₂` (one hop further) — folds `§79`'s two separately-composed pieces
   (`norm_le_one_of_mem_integralClosure` + `norm_le_one_of_algebraMap_le_one_of_algebraL`) into one
   lemma taking `O_L`-membership as its hypothesis, not requiring the caller to invoke the first piece
   themselves.
-* Two `example`s (`level_K_1`/`level_K_2`, `L := K_1 P` and `L := nextSplittingField (K' := K_1 P) P₂`): the bundled
+* Two `example`s (`level_K_1`/`level_K_2`, `L := K_1 P` and `L := baseChangeSplittingField (K' := K_1 P) P₂`): the bundled
   combined lemma, instantiated at each, is checked by `funext`+`rfl` to be *literally*
   `K_2.norm_le_one_of_mem_O_K1` / `K_3.norm_le_one_of_mem_O_K2` — not merely an equivalent
   restatement, the same discipline `§79` used for its own non-vacuity checks.
@@ -133,27 +133,27 @@ theorem Level.norm_le_one_of_mem_OL :
 
 variable {O' : Type*} [CommRing O']
 
-/-- **The combined bound**: `O_L`-membership directly to a norm bound in `nextSplittingField (K' := lvl.L) P₂`
+/-- **The combined bound**: `O_L`-membership directly to a norm bound in `baseChangeSplittingField (K' := lvl.L) P₂`
 (one hop further), generic in `lvl : Level K`. Folds `§79`'s two separately-composed pieces
 (`norm_le_one_of_mem_integralClosure` + `norm_le_one_of_algebraMap_le_one_of_algebraL`) into one
 lemma taking `O_L`-membership as its hypothesis. -/
 theorem Level.norm_le_one_of_mem_algebraMap_OL [Algebra O' lvl.L] (P₂ : O'[X]) :
     letI := lvl.algL
-    letI algOL : Algebra lvl.OL (nextSplittingField (K' := lvl.L) P₂) :=
-      ((algebraMap lvl.L (nextSplittingField (K' := lvl.L) P₂)).comp
+    letI algOL : Algebra lvl.OL (baseChangeSplittingField (K' := lvl.L) P₂) :=
+      ((algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) P₂)).comp
         (algebraMap lvl.OL lvl.L)).toAlgebra
     ∀ (hnormL : ∀ x : K, ‖algebraMap K lvl.L x‖ = ‖x‖) (c : lvl.OL),
-      ‖algebraMap lvl.OL (nextSplittingField (K' := lvl.L) P₂) c‖ ≤ 1 := by
+      ‖algebraMap lvl.OL (baseChangeSplittingField (K' := lvl.L) P₂) c‖ ≤ 1 := by
   letI := lvl.algL
   letI := lvl.finiteDim
-  letI algOL : Algebra lvl.OL (nextSplittingField (K' := lvl.L) P₂) :=
-    ((algebraMap lvl.L (nextSplittingField (K' := lvl.L) P₂)).comp
+  letI algOL : Algebra lvl.OL (baseChangeSplittingField (K' := lvl.L) P₂) :=
+    ((algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) P₂)).comp
       (algebraMap lvl.OL lvl.L)).toAlgebra
   intro hnormL c
   have hc : ‖(c : lvl.L)‖ ≤ 1 := norm_le_one_of_mem_integralClosure hnormL c
-  have heq : algebraMap lvl.OL (nextSplittingField (K' := lvl.L) P₂) c =
-      algebraMap lvl.L (nextSplittingField (K' := lvl.L) P₂) (algebraMap lvl.OL lvl.L c) := rfl
-  rw [nextSplittingField.norm_eq_spectralNorm, heq, spectralNorm_extends]
+  have heq : algebraMap lvl.OL (baseChangeSplittingField (K' := lvl.L) P₂) c =
+      algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) P₂) (algebraMap lvl.OL lvl.L c) := rfl
+  rw [baseChangeSplittingField.norm_eq_spectralNorm, heq, spectralNorm_extends]
   exact hc
 
 /-! ## Concrete check 1: `L := K_1 P` recovers `K_2.norm_le_one_of_mem_O_K1` exactly -/
@@ -187,12 +187,12 @@ example :
   funext c
   rfl
 
-/-! ## Concrete check 2: `L := nextSplittingField (K' := K_1 P) P₂` recovers `K_3.norm_le_one_of_mem_O_K2` exactly -/
+/-! ## Concrete check 2: `L := baseChangeSplittingField (K' := K_1 P) P₂` recovers `K_3.norm_le_one_of_mem_O_K2` exactly -/
 
-/-- The concrete `Level` at `L := nextSplittingField (K' := K_1 P) P₂`, from `§78`'s own composite
+/-- The concrete `Level` at `L := baseChangeSplittingField (K' := K_1 P) P₂`, from `§78`'s own composite
 `K_2.instAlgebraK`/`finiteDimensional_K_K_2` — again never an independently-supplied hypothesis. -/
 @[reducible] def level_K_2 : Level K where
-  L := nextSplittingField (K' := K_1 (K := K) P) P₂
+  L := baseChangeSplittingField (K' := K_1 (K := K) P) P₂
   algL := K_2.instAlgebraK (K := K) (P := P) P₂
   finiteDim := finiteDimensional_K_K_2 (K := K) (P := P) P₂
 
@@ -201,7 +201,7 @@ example :
     letI := (level_K_2 (K := K) (P := P) P₂).algL
     (level_K_2 (K := K) (P := P) P₂).OL =
     ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
-      (nextSplittingField (K' := K_1 (K := K) P) P₂)) := by
+      (baseChangeSplittingField (K' := K_1 (K := K) P) P₂)) := by
   letI := (level_K_2 (K := K) (P := P) P₂).algL
   rfl
 

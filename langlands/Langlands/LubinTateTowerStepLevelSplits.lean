@@ -37,15 +37,15 @@ definitional coincidence, not a theorem.
 ## The composite identity one level up
 
 `Level.algebraMap_OSelf_next_eq` proves `algebraMap O (lvl.next Pn).L` (via the *next* level's own
-self-composite) agrees, as a `RingHom`, with `algebraMap O (nextSplittingField (K' := lvl.L) Pn)` (via
+self-composite) agrees, as a `RingHom`, with `algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn)` (via
 `lvl.instAlgebraO Pn hOK`, `§82`'s *next*-level-from-`lvl` composite) — the generalization of
 `algebraMap_O_K_1_eq_comp_towerHom`/`K_2.algebraMap_O_eq_comp_K_1`
 (`Langlands/LubinTateTowerStepRootConnect.lean`). Built entirely from two already-proved pieces, no
 new elaboration-cost investigation needed: `(lvl.next Pn).algebraMap_OSelf_eq` (this file, `rfl`) and
 `algebraMap_K_eq_of_Level`/`Level.algebraMap_O_eq_comp_L` (`§81`/`§83`, already committed). This
-sidesteps entirely the diamond risk a naive proof via `IsScalarTower lvl.OL lvl.L (nextSplittingField (K' :=
+sidesteps entirely the diamond risk a naive proof via `IsScalarTower lvl.OL lvl.L (baseChangeSplittingField (K' :=
 lvl.L) Pn)` would run into: that instance is not registered anywhere for an abstract `lvl` (the
-`nextSplittingField` combinator's own `[Algebra O' K']` hypothesis, instantiated at `O' := lvl.OL`, would need to
+`baseChangeSplittingField` combinator's own `[Algebra O' K']` hypothesis, instantiated at `O' := lvl.OL`, would need to
 be found by the same `Algebra.ofSubsemiring`-style search `§73`/`§79` already documented as
 expensive/diamond-prone against an abstract ambient level); this proof never needs that instance,
 only raw function composition through already-known composite facts.
@@ -53,7 +53,7 @@ only raw function composition through already-known composite facts.
 ## The `Splits` transport
 
 `Level.splits_next` transports `(Q.map (algebraMap O lvl.L)).Splits` (self-composite) to
-`(Q.map (algebraMap O (nextSplittingField (K' := lvl.L) Pn))).Splits` (next-level composite), by
+`(Q.map (algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn))).Splits` (next-level composite), by
 `Polynomial.Splits.map` plus `Polynomial.map_map` plus the composite identity above — the direct
 generalization of `splits_divX_map_K2P2` (`§75`), whose own proof used exactly this shape one level
 down (`(splits_divX_map_K_1 P).map … ` then `Polynomial.map_map` then `K_2.algebraMap_O_eq_comp_K_1`).
@@ -145,7 +145,7 @@ omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (IsLocalRing.ResidueField 
 next level's own self-composite.** Generalizes `algebraMap_O_K_1_eq_comp_towerHom`/
 `K_2.algebraMap_O_eq_comp_K_1` (`Langlands/LubinTateTowerStepRootConnect.lean`); built purely from
 already-committed pieces (`Level.algebraMap_OSelf_eq`, `algebraMap_K_eq_of_Level` `§81`,
-`Level.algebraMap_O_eq_comp_L` `§83`), never from an `IsScalarTower lvl.OL lvl.L (nextSplittingField (K' :=
+`Level.algebraMap_O_eq_comp_L` `§83`), never from an `IsScalarTower lvl.OL lvl.L (baseChangeSplittingField (K' :=
 lvl.L) Pn)` instance search — see the module docstring for why that route is avoided. -/
 theorem Level.algebraMap_OSelf_next_eq (lvl : Level K) (Pn : lvl.OL[X])
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
@@ -153,7 +153,7 @@ theorem Level.algebraMap_OSelf_next_eq (lvl : Level K) (Pn : lvl.OL[X])
     letI := (lvl.next Pn).instAlgebraOSelf (O := O)
     letI := lvl.instAlgebraO Pn hOK
     (algebraMap O (lvl.next Pn).L : O →+* (lvl.next Pn).L) =
-      algebraMap O (nextSplittingField (K' := lvl.L) Pn) := by
+      algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn) := by
   letI := lvl.algL
   letI := (lvl.next Pn).instAlgebraOSelf (O := O)
   letI := lvl.instAlgebraO Pn hOK
@@ -161,7 +161,7 @@ theorem Level.algebraMap_OSelf_next_eq (lvl : Level K) (Pn : lvl.OL[X])
   have h1 := (lvl.next Pn).algebraMap_OSelf_eq (O := O)
   apply RingHom.ext
   intro c
-  show algebraMap O (lvl.next Pn).L c = algebraMap O (nextSplittingField (K' := lvl.L) Pn) c
+  show algebraMap O (lvl.next Pn).L c = algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn) c
   rw [show algebraMap O (lvl.next Pn).L c =
       (algebraMap K (lvl.next Pn).L) (algebraMap O K c) from congrFun (congrArg _ h1) c]
 
@@ -176,7 +176,7 @@ example {P : O[X]}
     letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
     (algebraMap O (level_K_2 (K := K) (P := P) P₂).L :
         O →+* (level_K_2 (K := K) (P := P) P₂).L) =
-      algebraMap O (nextSplittingField (K' := K_1 (K := K) P) P₂) :=
+      algebraMap O (baseChangeSplittingField (K' := K_1 (K := K) P) P₂) :=
   Level.algebraMap_OSelf_next_eq (level_K_1 (K := K) (P := P)) P₂ hOK
 
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (IsLocalRing.ResidueField O)]
@@ -189,14 +189,14 @@ theorem Level.splits_next (lvl : Level K) (Pn : lvl.OL[X])
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {Q : O[X]}
     (hSplits : letI := lvl.instAlgebraOSelf (O := O); (Q.map (algebraMap O lvl.L)).Splits) :
     letI := lvl.instAlgebraO Pn hOK
-    (Q.map (algebraMap O (nextSplittingField (K' := lvl.L) Pn))).Splits := by
+    (Q.map (algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn))).Splits := by
   letI := lvl.algL
   letI := lvl.instAlgebraOSelf (O := O)
   letI := lvl.instAlgebraO Pn hOK
-  have hmap := hSplits.map (algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn))
+  have hmap := hSplits.map (algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn))
   rw [Polynomial.map_map] at hmap
-  rwa [show (algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn)).comp (algebraMap O lvl.L) =
-      algebraMap O (nextSplittingField (K' := lvl.L) Pn) from
+  rwa [show (algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)).comp (algebraMap O lvl.L) =
+      algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn) from
     (Level.algebraMap_OSelf_next_eq lvl Pn hOK)] at hmap
 
 omit [Finite (IsLocalRing.ResidueField ↥(ValuativeRel.valuation K).valuationSubring)] in

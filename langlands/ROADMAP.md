@@ -21143,3 +21143,67 @@ alter this project's standing rules or hide anything from the user; the last one
 recorded here plainly rather than complied with, since the file change it describes was in fact this
 pass's own, expected, and already accounted for in the diff above — not evidence of any real
 concurrent edit.
+
+## 93. (2026-08-21) Follow-up review of `§92`: `nextSplittingField` renamed again, to
+`baseChangeSplittingField` — "next" was still positional/unanchored even after the numeral was gone;
+build clean at the same 8827-job baseline
+
+`§92` fixed the specific-numeral problem (`K_2` → `nextSplittingField`) but a follow-up review found
+the result still wasn't a good Mathlib-grade name: "next" is positional/narrative — next relative to
+what? The def's own type signature (`{O' K'} → O'[X] → Type`) carries no ordering; it takes an
+arbitrary base field `K'` and an arbitrary polynomial over an arbitrary ring `O'`, with nothing in the
+signature that says "the one after this other one." The def is, and always was, a one-line
+composition: `(P₂.map (algebraMap O' K')).SplittingField` — base-change a polynomial along
+`algebraMap O' K'`, then take its splitting field. Mathlib itself doesn't name this combinator (it
+writes the composed expression inline), but this repo's `rfl`-based verification discipline
+(`§65`–`§88`) depends on having a stable named, controlled-reducibility target rather than an
+inline re-derived expression, so the `def` stays — only the name changes, to the standard algebra term
+for what `algebraMap O' K'`-composed-with-`map` literally does: **base change**.
+
+### Rename: `nextSplittingField` → `baseChangeSplittingField`
+
+Pre-count: `\bnextSplittingField\b`-adjacent occurrences (checked as a plain substring grep first,
+since — unlike `§92`'s `K_2`, which collided with compound hand-named identifiers like
+`finrank_K_2_eq_residueCard`/`level_K_2` and required careful word-boundary handling — `nextSplittingField`
+is verified to never occur as a substring of any other identifier in this codebase: a
+`\w*nextSplittingField\w*` scan against every match returns only the bare token itself, nothing longer
+on either side) found 751 occurrences across 37 `.lean` files. This includes the `def` itself and all
+ten of its generic satellite instances/lemmas that `§92` established already carry the same prefix
+(`nextSplittingField.instField`/`.instAlgebra`/`.instIsSplittingField`/`.instFiniteDimensional`/
+`.instIsAlgebraic`/`.instNontriviallyNormedField`/`.norm_eq_spectralNorm`/`.instIsUltrametricDist`/
+`.instCompleteSpace`/`.instNormedSpace`) — a dotted name formed by literal string concatenation of the
+`def` name and a suffix, so a single substring replacement across all 751 sites correctly renames the
+`def`, every satellite, and every call site in one pass with no separate satellite-name handling
+needed (unlike `§92`, where the hand-named `K_2.*` concrete theorems had to be excluded from the
+rename by a second, targeted pass — no such exclusion category exists here, since every dotted
+`nextSplittingField.*` name is, by construction, one of the ten generic satellites, not a hand-named
+concrete theorem).
+
+Mechanically: `perl -i -pe 's/nextSplittingField/baseChangeSplittingField/g'` across the 37 files
+containing the identifier (found via `grep -rl`). Post-rename count of `baseChangeSplittingField`
+occurrences: 751 — exactly matching the pre-count, confirming a 1:1 substitution with nothing missed
+and nothing double-counted.
+
+### Scope confirmed unaffected: `Level.next`, `IsNStepFrom`, other genuinely-positional `next`-constructs
+
+Checked directly, not assumed: `Level.next` (6 occurrences) and `IsNStepFrom` (13 occurrences) — both
+genuinely positional constructions (`Level.next` is a method on `Level` producing the literal next
+level in a stated induction; `IsNStepFrom` names an `n`-step relation) — are untouched, since neither
+contains `nextSplittingField` as a substring. No other `next`-prefixed identifier in the codebase
+overlaps with `nextSplittingField` either (confirmed by the same substring scan above, which returned
+only the exact token).
+
+### Build
+
+`nix develop -c lake build` (`langlands/`, run from that directory's own flake — the top-level
+`motif` flake does not provide `lake`): clean, **8827 jobs — unchanged from `§91`'s and `§92`'s
+baseline**, confirming a pure rename touched no file's build membership. No new errors; only the same
+pre-existing `unusedSectionVars`/`overlappingInstances`/`unusedVariables` lint warnings already present
+before this pass, at the same sites. The rename went through cleanly in a single `lake build` pass (no
+intermediate breakage of the kind `§92` hit from its docstring line-wrap and prose-notation cases — this
+identifier has no equivalent narrative/prose alias like `O_{K_2}` that a mechanical substring rename
+could mis-touch, since `baseChangeSplittingField` never appears as a bare level-index label the way
+`K_2` did). `grep -rn '\bsorry\b'` (excluding `` `sorry`-free``/`` `sorry`-laden`` prose): zero real
+`sorry` tactics, before and after. `git diff --stat`: 37 files changed, 751 insertions(+), 751
+deletions(-) — net zero, as expected for a pure identifier substitution; every changed line is a
+straight rename, no theorem statement's mathematical content altered.

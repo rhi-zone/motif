@@ -21,15 +21,15 @@ always integral over `R` (`integralClosure.AlgebraIsIntegral`), so `isIntegral_t
 gives the "if" direction.
 
 This file exists to check, precisely, the caveat flagged for the Lubin-Tate tower: whether
-`O_{K_2} := integralClosure O_{K_1} nextSplittingField` (integral closure over the *intermediate* ring) coincides
-with `integralClosure O nextSplittingField` (integral closure over the *base*). The answer is yes, as sets, always
+`O_{K_2} := integralClosure O_{K_1} baseChangeSplittingField` (integral closure over the *intermediate* ring) coincides
+with `integralClosure O baseChangeSplittingField` (integral closure over the *base*). The answer is yes, as sets, always
 — the two spellings denote the same ring (`toSubring_integralClosure_eq`).
 
 ## What this closes
 
 `toSubring_integralClosure_eq` and `isIntegral_iff_isIntegral_integralClosure` are complete,
 general, `sorry`-free facts: the caveat itself is resolved — the two `O_{K_2}` spellings are
-genuinely the same subring of `nextSplittingField`, unconditionally. `isDomain_integralClosure_integralClosure`
+genuinely the same subring of `baseChangeSplittingField`, unconditionally. `isDomain_integralClosure_integralClosure`
 and `isLocalRing_integralClosure_integralClosure` transport those two specific instances across the
 two spellings (`↥S` and `↥S.toSubring` are defeq, so a bare instance ascription suffices once the
 `Subring`-level equality is rewritten). `isPrincipalIdealRing_integralClosure_integralClosure`

@@ -46,7 +46,7 @@ With invariance generic, `adjoin_root_eq_top_K_2`/`_K_3`'s proof generalizes ver
 (`Level.adjoin_root_eq_top`), since every other ingredient was already generic:
 `Level.norm_lt_one_of_root` and `Level.exists_piTorsion_translate_of_root` (`§82`/`§83`),
 `Level.FPiEval_algebraMap_mem_adjoin` (`§85`), and `Polynomial.IsSplittingField.adjoin_rootSet`,
-which applies to `nextSplittingField (K' := lvl.L) Pn` by that combinator's own construction at every level.
+which applies to `baseChangeSplittingField (K' := lvl.L) Pn` by that combinator's own construction at every level.
 
 `hgen` — the hypothesis `Level.exists_tower_step_next`/`Level.adjoin_eq_integralClosure_next` have
 taken externally since `§83` — is then **derivable, not assumed**: `Level.natDegree_minpoly_eq_finrank`
@@ -81,16 +81,16 @@ derived `hgen`), `Algebra.adjoin_singleton_eq_top_of_adjoin_eq_integralClosure`,
 `IsLocalRing.residueFieldEquivOfAdjoinSingleton` to the *real* `hβmem`/`hadjS` terms over an
 abstract `lvl` exceeds the default `maxHeartbeats` in `whnf`. Measured with `set_option diagnostics
 true`: 90565 `Membership.mem`, 89736 `Set`, 50194 `integralClosure`, 46028 `SetLike.coe`, 44525
-`Set.Mem` unfoldings, dragging 751 `nextSplittingField`/`SplittingField` and the `Ideal.Quotient`/`RingCon`
+`Set.Mem` unfoldings, dragging 751 `baseChangeSplittingField`/`SplittingField` and the `Ideal.Quotient`/`RingCon`
 quotient internals underneath them. Two things were checked and ruled out, rather than assumed: the
 same application with *opaque* hypotheses of the same shape elaborates in seconds, and an explicit
 type ascription on `hβmem` does not help — so this is the `§72`-class structural `whnf` walk over
-`↥(integralClosure lvl.OL (nextSplittingField (K' := lvl.L) Pn))`'s set-membership unfolding, not an instance
+`↥(integralClosure lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn))`'s set-membership unfolding, not an instance
 search and not a two-committed-instances diamond. Per this project's no-shim rule no
 `maxHeartbeats` override was added; the piece is left open with this measurement on the record.
 
 A smaller, genuinely diagnosed instance issue *was* root-caused and is recorded because it is the
-same family: `Algebra lvl.OL ↥(integralClosure lvl.OL (nextSplittingField (K' := lvl.L) Pn))` — the plain
+same family: `Algebra lvl.OL ↥(integralClosure lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn))` — the plain
 `Subalgebra.algebra` instance — is not reached by instance search inside the default
 `synthInstance.maxHeartbeats` over an abstract `lvl`, though it *is* reached with a larger budget,
 and the instance search then finds is `rfl`-equal to `Subalgebra.algebra _` (checked by a real
@@ -156,20 +156,20 @@ theorem Level.faithfulSMul_OSelf (lvl : Level K) :
   intro a b hab
   exact IsFractionRing.injective O K ((algebraMap K lvl.L).injective hab)
 
-/-- **`algebraMap O (nextSplittingField (K' := lvl.L) Pn)` is injective** — the `Level`-generic
+/-- **`algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn)` is injective** — the `Level`-generic
 `K_2.instFaithfulSMul_O`/`K_3.instFaithfulSMul_O`. The same composition one hop longer, reading the
 three factors off `Level.algebraMap_O_eq_comp_L` (`§83`). -/
 theorem Level.faithfulSMul_O_next (lvl : Level K) (Pn : lvl.OL[X])
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
     letI := lvl.instAlgebraO Pn hOK
-    FaithfulSMul O (nextSplittingField (K' := lvl.L) Pn) := by
+    FaithfulSMul O (baseChangeSplittingField (K' := lvl.L) Pn) := by
   letI := lvl.algL
   letI := lvl.instAlgebraO Pn hOK
   rw [faithfulSMul_iff_algebraMap_injective, lvl.algebraMap_O_eq_comp_L Pn hOK]
-  exact ((algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn)).injective.comp
+  exact ((algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)).injective.comp
     (algebraMap K lvl.L).injective).comp (IsFractionRing.injective O K)
 
-/-- **`algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn) ∘ algebraMap O lvl.L = algebraMap O (nextSplittingField (K' :=
+/-- **`algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) ∘ algebraMap O lvl.L = algebraMap O (baseChangeSplittingField (K' :=
 lvl.L) Pn)`**, as a `RingHom` equality. Bridges `Level.algebraMap_O_eq_comp_L` (`§83`, which factors
 the next-level composite through `K`) with `Level.algebraMap_OSelf_eq` (`§84`, which identifies
 `algebraMap O lvl.L` with that same `K`-route) — the same combination `§85` performed inline inside
@@ -179,8 +179,8 @@ theorem Level.algebraMap_OSelf_comp_next (lvl : Level K) (Pn : lvl.OL[X])
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
     letI := lvl.instAlgebraOSelf (O := O)
     letI := lvl.instAlgebraO Pn hOK
-    (algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn)).comp (algebraMap O lvl.L) =
-      algebraMap O (nextSplittingField (K' := lvl.L) Pn) := by
+    (algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)).comp (algebraMap O lvl.L) =
+      algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn) := by
   letI := lvl.algL
   letI := lvl.instAlgebraOSelf (O := O)
   letI := lvl.instAlgebraO Pn hOK
@@ -189,7 +189,7 @@ theorem Level.algebraMap_OSelf_comp_next (lvl : Level K) (Pn : lvl.OL[X])
     congrFun (congrArg DFunLike.coe (lvl.algebraMap_OSelf_eq (O := O))) c]
   rfl
 
-/-- **Any `Q : O[X]`'s image over `nextSplittingField (K' := lvl.L) Pn` is its image over `lvl.L`, mapped
+/-- **Any `Q : O[X]`'s image over `baseChangeSplittingField (K' := lvl.L) Pn` is its image over `lvl.L`, mapped
 further.** The `Level`-generic `divX_map_algebraMap_O_K_2_eq_map`
 (`Langlands/LubinTateTowerStepRootConnect.lean`) / `divX_map_algebraMap_O_K_3_eq_map`
 (`Langlands/LubinTateTowerStepK3RootConnect.lean`): `Polynomial.map_map` plus
@@ -199,15 +199,15 @@ theorem Level.map_algebraMap_O_next_eq_map (lvl : Level K) (Pn : lvl.OL[X])
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (Q : O[X]) :
     letI := lvl.instAlgebraOSelf (O := O)
     letI := lvl.instAlgebraO Pn hOK
-    Q.map (algebraMap O (nextSplittingField (K' := lvl.L) Pn)) =
-      (Q.map (algebraMap O lvl.L)).map (algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn)) := by
+    Q.map (algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn)) =
+      (Q.map (algebraMap O lvl.L)).map (algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)) := by
   letI := lvl.algL
   letI := lvl.instAlgebraOSelf (O := O)
   letI := lvl.instAlgebraO Pn hOK
   rw [Polynomial.map_map, lvl.algebraMap_OSelf_comp_next Pn hOK]
 
-/-- **`piTorsion hπ hf 1`, evaluated inside `nextSplittingField (K' := lvl.L) Pn`, is exactly the
-`algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn)`-image of `piTorsion hπ hf 1` evaluated inside `lvl.L`** —
+/-- **`piTorsion hπ hf 1`, evaluated inside `baseChangeSplittingField (K' := lvl.L) Pn`, is exactly the
+`algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)`-image of `piTorsion hπ hf 1` evaluated inside `lvl.L`** —
 the level-`1` `π`-torsion does not grow going up one tower step, generically in `lvl : Level K`.
 The `Level`-generic `piTorsion_one_K_2_eq_algebraMap_image`
 (`Langlands/LubinTateTowerStepRootConnect.lean`) / `piTorsion_one_K_3_eq_algebraMap_image`
@@ -218,11 +218,11 @@ under a systematic substitution, with nothing `n`-specific in it.
 derivable from `Level`: it is free at the base from `K_1 P`'s own construction
 (`splits_divX_map_K_1`) and propagates upward by `Level.splits_next` (`§84`).
 
-Proof: at each of `lvl.L` and `nextSplittingField (K' := lvl.L) Pn`, `piTorsion hπ hf 1 \ {0}` is the root set of
+Proof: at each of `lvl.L` and `baseChangeSplittingField (K' := lvl.L) Pn`, `piTorsion hπ hf 1 \ {0}` is the root set of
 `Q`'s image (`piTorsion_one_sdiff_zero_eq_roots_toFinset`, already generic in its own field
 parameter); `hSplits` plus `Polynomial.splits_iff_card_roots` gives `roots.card = natDegree`, so
 `Polynomial.Monic.roots_map_of_card_eq_natDegree` transports the roots multiset along
-`algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn)` onto the roots of the further-mapped polynomial, which
+`algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)` onto the roots of the further-mapped polynomial, which
 `Level.map_algebraMap_O_next_eq_map` identifies with `Q`'s own image over the next level.
 `Multiset.toFinset_map` converts to `Finset.image`, and `{0}` is reassembled at both ends. -/
 theorem Level.piTorsion_one_next_eq_algebraMap_image (lvl : Level K) (Pn : lvl.OL[X])
@@ -236,8 +236,8 @@ theorem Level.piTorsion_one_next_eq_algebraMap_image (lvl : Level K) (Pn : lvl.O
       (P.divX.map (algebraMap O lvl.L)).Splits) :
     letI := lvl.instAlgebraOSelf (O := O)
     letI := lvl.instAlgebraO Pn hOK
-    (piTorsion (K := nextSplittingField (K' := lvl.L) Pn) hπ hf 1 : Set (nextSplittingField (K' := lvl.L) Pn)) =
-      algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn) '' (piTorsion (K := lvl.L) hπ hf 1) := by
+    (piTorsion (K := baseChangeSplittingField (K' := lvl.L) Pn) hπ hf 1 : Set (baseChangeSplittingField (K' := lvl.L) Pn)) =
+      algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) '' (piTorsion (K := lvl.L) hπ hf 1) := by
   classical
   letI := lvl.algL
   letI := lvl.instAlgebraOSelf (O := O)
@@ -255,27 +255,27 @@ theorem Level.piTorsion_one_next_eq_algebraMap_image (lvl : Level K) (Pn : lvl.O
       (P.divX.map (algebraMap O lvl.L)).natDegree :=
     Polynomial.splits_iff_card_roots.mp hSplits
   have hrootsmap : (P.divX.map (algebraMap O lvl.L)).roots.map
-      (algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn)) =
+      (algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)) =
       ((P.divX.map (algebraMap O lvl.L)).map
-        (algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn))).roots :=
+        (algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn))).roots :=
     hQmonic.roots_map_of_card_eq_natDegree _ hcard
   rw [← lvl.map_algebraMap_O_next_eq_map Pn hOK P.divX] at hrootsmap
-  have hfinseteq : Finset.image (algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn))
+  have hfinseteq : Finset.image (algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn))
       (P.divX.map (algebraMap O lvl.L)).roots.toFinset =
-      (P.divX.map (algebraMap O (nextSplittingField (K' := lvl.L) Pn))).roots.toFinset := by
+      (P.divX.map (algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn))).roots.toFinset := by
     rw [← Multiset.toFinset_map, hrootsmap]
   have hstep1 := piTorsion_one_sdiff_zero_eq_roots_toFinset (K := lvl.L)
     hOKL hπ hπnormL hf hu heq hPdist hPdeg
-  have hstep2 := piTorsion_one_sdiff_zero_eq_roots_toFinset (K := nextSplittingField (K' := lvl.L) Pn)
+  have hstep2 := piTorsion_one_sdiff_zero_eq_roots_toFinset (K := baseChangeSplittingField (K' := lvl.L) Pn)
     (lvl.hOK_transport Pn hOK hnormL) hπ (lvl.hπnorm_transport Pn hOK hnormL hπnorm)
     hf hu heq hPdist hPdeg
   have himageeq :
-      algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn) '' (piTorsion (K := lvl.L) hπ hf 1 \ {0}) =
-      piTorsion (K := nextSplittingField (K' := lvl.L) Pn) hπ hf 1 \ {0} := by
+      algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) '' (piTorsion (K := lvl.L) hπ hf 1 \ {0}) =
+      piTorsion (K := baseChangeSplittingField (K' := lvl.L) Pn) hπ hf 1 \ {0} := by
     rw [hstep1, hstep2, ← Finset.coe_image, hfinseteq]
-  have h0 : algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn) '' (piTorsion (K := lvl.L) hπ hf 1) =
-      insert (algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn) 0)
-        (algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn) ''
+  have h0 : algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) '' (piTorsion (K := lvl.L) hπ hf 1) =
+      insert (algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) 0)
+        (algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) ''
           (piTorsion (K := lvl.L) hπ hf 1 \ {0})) := by
     rw [← Set.image_insert_eq]
     congr 1
@@ -288,10 +288,10 @@ section Degree
 
 variable (lvl : Level K) [IsDomain lvl.OL] [IsDiscreteValuationRing lvl.OL]
 
-/-- **`lvl.L⟮β⟯ = ⊤`, for `β` any root of `Pn`'s image in `nextSplittingField (K' := lvl.L) Pn`** — the
+/-- **`lvl.L⟮β⟯ = ⊤`, for `β` any root of `Pn`'s image in `baseChangeSplittingField (K' := lvl.L) Pn`** — the
 `Level`-generic `adjoin_root_eq_top_K_2`/`adjoin_root_eq_top_K_3`.
 
-`nextSplittingField (K' := lvl.L) Pn` is by construction the splitting field of `Pn`'s image over `lvl.L`, hence
+`baseChangeSplittingField (K' := lvl.L) Pn` is by construction the splitting field of `Pn`'s image over `lvl.L`, hence
 generated by its roots (`Polynomial.IsSplittingField.adjoin_rootSet`). Every root `β'` differs from
 `β` by a `piTorsion hπ hf 1`-translate (`Level.exists_piTorsion_translate_of_root`, `§83`), and by
 `Level.piTorsion_one_next_eq_algebraMap_image` (above) that translate is the `algebraMap`-image of
@@ -310,19 +310,19 @@ theorem Level.adjoin_root_eq_top (Pn : lvl.OL[X])
     (heqn : shifted f (lvl.towerHom hOK) α' = (Pn : lvl.OL⟦X⟧) * v)
     (hα'irr : Irreducible α') (hPndist : Pn.IsDistinguishedAt (maximalIdeal lvl.OL))
     (hassoc : Associated (Pn.coeff 0) α') (hdeg : 0 < Pn.natDegree)
-    (hα'norm : ‖algebraMap lvl.OL (nextSplittingField (K' := lvl.L) Pn) α'‖ < 1)
-    {β : nextSplittingField (K' := lvl.L) Pn}
+    (hα'norm : ‖algebraMap lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn) α'‖ < 1)
+    {β : baseChangeSplittingField (K' := lvl.L) Pn}
     (hβroot : Polynomial.aeval β (Pn.map (algebraMap lvl.OL lvl.L)) = 0) :
     letI := lvl.instAlgebraO Pn hOK
-    (lvl.L⟮β⟯ : IntermediateField lvl.L (nextSplittingField (K' := lvl.L) Pn)) = ⊤ := by
+    (lvl.L⟮β⟯ : IntermediateField lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)) = ⊤ := by
   letI := lvl.algL
   letI := lvl.instAlgebraOSelf (O := O)
   letI := lvl.instAlgebraO Pn hOK
   have hβnorm : ‖β‖ < 1 :=
     lvl.norm_lt_one_of_root Pn hnormL hα'irr hPndist hassoc hdeg hα'norm hβroot
-  have hroots : ((Pn.map (algebraMap lvl.OL lvl.L)).rootSet (nextSplittingField (K' := lvl.L) Pn)) ⊆
-      ((lvl.L⟮β⟯ : IntermediateField lvl.L (nextSplittingField (K' := lvl.L) Pn)).toSubalgebra :
-        Set (nextSplittingField (K' := lvl.L) Pn)) := by
+  have hroots : ((Pn.map (algebraMap lvl.OL lvl.L)).rootSet (baseChangeSplittingField (K' := lvl.L) Pn)) ⊆
+      ((lvl.L⟮β⟯ : IntermediateField lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)).toSubalgebra :
+        Set (baseChangeSplittingField (K' := lvl.L) Pn)) := by
     intro β' hβ'
     obtain ⟨-, hβ'root⟩ := Polynomial.mem_rootSet'.mp hβ'
     obtain ⟨t', ht'mem, ht'eq⟩ :=
@@ -333,23 +333,23 @@ theorem Level.adjoin_root_eq_top (Pn : lvl.OL[X])
     obtain ⟨t, htmem, htmem'⟩ := ht'mem
     rw [SetLike.mem_coe, IntermediateField.mem_toSubalgebra, ht'eq, ← htmem']
     exact lvl.FPiEval_algebraMap_mem_adjoin Pn hOK hnormL hπ hf hβnorm htmem.1
-  have hle : (⊤ : Subalgebra lvl.L (nextSplittingField (K' := lvl.L) Pn)) ≤
-      (lvl.L⟮β⟯ : IntermediateField lvl.L (nextSplittingField (K' := lvl.L) Pn)).toSubalgebra := by
-    rw [← Polynomial.IsSplittingField.adjoin_rootSet (nextSplittingField (K' := lvl.L) Pn)
+  have hle : (⊤ : Subalgebra lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)) ≤
+      (lvl.L⟮β⟯ : IntermediateField lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)).toSubalgebra := by
+    rw [← Polynomial.IsSplittingField.adjoin_rootSet (baseChangeSplittingField (K' := lvl.L) Pn)
       (Pn.map (algebraMap lvl.OL lvl.L))]
     exact Algebra.adjoin_le hroots
   refine eq_top_iff.mpr fun x _ ↦ ?_
   exact (IntermediateField.mem_toSubalgebra _ x).mp (hle Algebra.mem_top)
 
 /-- **`hgen`, derived rather than assumed**: `(minpoly lvl.L β).natDegree = Module.finrank lvl.L
-(nextSplittingField (K' := lvl.L) Pn)` — the chosen root really does generate the next field.
+(baseChangeSplittingField (K' := lvl.L) Pn)` — the chosen root really does generate the next field.
 
 This hypothesis has been carried externally by `Level.irreducible_root_next`,
 `Level.exists_tower_step_next` and `Level.adjoin_eq_integralClosure_next` since `§83`, which is
 where `§83`/`§84` both located the remaining obstacle to a self-contained `∀ n` step. It follows
 from `Level.adjoin_root_eq_top` by `IntermediateField.finrank_top'` and
 `IntermediateField.adjoin.finrank`; `β`'s integrality over `lvl.L` is free from
-`Algebra.IsIntegral.of_finite`, `nextSplittingField (K' := lvl.L) Pn` being finite over `lvl.L`. -/
+`Algebra.IsIntegral.of_finite`, `baseChangeSplittingField (K' := lvl.L) Pn` being finite over `lvl.L`. -/
 theorem Level.natDegree_minpoly_eq_finrank (Pn : lvl.OL[X])
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1)
     (hnormL : letI := lvl.algL; ∀ x : K, ‖algebraMap K lvl.L x‖ = ‖x‖)
@@ -363,19 +363,19 @@ theorem Level.natDegree_minpoly_eq_finrank (Pn : lvl.OL[X])
     (heqn : shifted f (lvl.towerHom hOK) α' = (Pn : lvl.OL⟦X⟧) * v)
     (hα'irr : Irreducible α') (hPndist : Pn.IsDistinguishedAt (maximalIdeal lvl.OL))
     (hassoc : Associated (Pn.coeff 0) α') (hdeg : 0 < Pn.natDegree)
-    (hα'norm : ‖algebraMap lvl.OL (nextSplittingField (K' := lvl.L) Pn) α'‖ < 1)
-    {β : nextSplittingField (K' := lvl.L) Pn}
+    (hα'norm : ‖algebraMap lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn) α'‖ < 1)
+    {β : baseChangeSplittingField (K' := lvl.L) Pn}
     (hβroot : Polynomial.aeval β (Pn.map (algebraMap lvl.OL lvl.L)) = 0) :
-    (minpoly lvl.L β).natDegree = Module.finrank lvl.L (nextSplittingField (K' := lvl.L) Pn) := by
+    (minpoly lvl.L β).natDegree = Module.finrank lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) := by
   letI := lvl.algL
-  haveI : Algebra.IsIntegral lvl.L (nextSplittingField (K' := lvl.L) Pn) := Algebra.IsIntegral.of_finite _ _
+  haveI : Algebra.IsIntegral lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) := Algebra.IsIntegral.of_finite _ _
   have hβint : IsIntegral lvl.L β := Algebra.IsIntegral.isIntegral β
   have htop := lvl.adjoin_root_eq_top Pn hOK hnormL hπ hπnorm hf hu heq hPdist hPdeg hSplits
     hv heqn hα'irr hPndist hassoc hdeg hα'norm hβroot
-  rw [← IntermediateField.finrank_top' (F := lvl.L) (E := nextSplittingField (K' := lvl.L) Pn), ← htop,
+  rw [← IntermediateField.finrank_top' (F := lvl.L) (E := baseChangeSplittingField (K' := lvl.L) Pn), ← htop,
     IntermediateField.adjoin.finrank hβint]
 
-/-- **`Module.finrank lvl.L (nextSplittingField (K' := lvl.L) Pn) = residueCard O`** — `[K_{n+1} : K_n] = q`,
+/-- **`Module.finrank lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) = residueCard O`** — `[K_{n+1} : K_n] = q`,
 generically in `lvl : Level K`. The `Level`-generic `finrank_K_2_eq_residueCard`
 (`Langlands/LubinTateTowerStepDegree.lean`) / `finrank_K_3_eq_residueCard`
 (`Langlands/LubinTateTowerStepK3Degree.lean`), and the theorem the whole degree/splitting half of
@@ -398,16 +398,16 @@ theorem Level.finrank_next_eq_residueCard (Pn : lvl.OL[X])
     (heqn : shifted f (lvl.towerHom hOK) α' = (Pn : lvl.OL⟦X⟧) * v)
     (hα'irr : Irreducible α') (hPndist : Pn.IsDistinguishedAt (maximalIdeal lvl.OL))
     (hassoc : Associated (Pn.coeff 0) α') (hdeg : 0 < Pn.natDegree)
-    (hα'norm : ‖algebraMap lvl.OL (nextSplittingField (K' := lvl.L) Pn) α'‖ < 1)
-    {β : nextSplittingField (K' := lvl.L) Pn}
+    (hα'norm : ‖algebraMap lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn) α'‖ < 1)
+    {β : baseChangeSplittingField (K' := lvl.L) Pn}
     (hβroot : Polynomial.aeval β (Pn.map (algebraMap lvl.OL lvl.L)) = 0)
     (hβfin : letI := lvl.algL; Module.finrank lvl.L lvl.L⟮β⟯ = residueCard O) :
     letI := lvl.algL
-    Module.finrank lvl.L (nextSplittingField (K' := lvl.L) Pn) = residueCard O := by
+    Module.finrank lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) = residueCard O := by
   letI := lvl.algL
   have htop := lvl.adjoin_root_eq_top Pn hOK hnormL hπ hπnorm hf hu heq hPdist hPdeg hSplits
     hv heqn hα'irr hPndist hassoc hdeg hα'norm hβroot
-  rw [← IntermediateField.finrank_top' (F := lvl.L) (E := nextSplittingField (K' := lvl.L) Pn), ← htop]
+  rw [← IntermediateField.finrank_top' (F := lvl.L) (E := baseChangeSplittingField (K' := lvl.L) Pn), ← htop]
   exact hβfin
 
 end Degree
@@ -467,9 +467,9 @@ example {P : O[X]}
         (K_1 (K := K) P)))⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc : Associated (P₂.coeff 0) α') (hdeg : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    (hα'norm : ‖algebraMap _ (baseChangeSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
     {α : K_1 (K := K) P} (hα'coe : (α' : K_1 (K := K) P) = α)
-    {β : nextSplittingField (K' := K_1 (K := K) P) P₂}
+    {β : baseChangeSplittingField (K' := K_1 (K := K) P) P₂}
     (hβroot : Polynomial.aeval β (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0)
     (hβfin : Module.finrank (K_1 (K := K) P) (K_1 (K := K) P)⟮β⟯ = residueCard O) :
     Level.finrank_next_eq_residueCard (level_K_1 (K := K) (P := P)) P₂ hOK

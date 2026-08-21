@@ -12,7 +12,7 @@ import Mathlib.RingTheory.Adjoin.Basic
 # An integral extension of a local ring is local once its "residual" quotient is
 
 `ROADMAP.md` `§57` records residue-field preservation for the second Lubin-Tate tower step
-(`O_{K_2} / O_{K_1}`) as blocked on `[IsLocalRing (integralClosure O_{K_1} (nextSplittingField P₂))]`, an instance
+(`O_{K_2} / O_{K_1}`) as blocked on `[IsLocalRing (integralClosure O_{K_1} (baseChangeSplittingField P₂))]`, an instance
 `IsLocalRing.residueFieldEquivOfAdjoinSingleton` bakes directly into its hypotheses. Monogenicity of
 `O_{K_2}` over `O_{K_1}` (`Langlands/LubinTateTowerStepMonogenic.lean`) does not by itself supply
 `IsLocalRing`, and at this level `IsLocalRing` cannot be obtained the way it was at the `K → K_1`

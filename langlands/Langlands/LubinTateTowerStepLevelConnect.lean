@@ -25,14 +25,14 @@ norm bound for `‖root‖ < 1` and the level's own "`O_L`-elements have norm `�
 their coefficient hypotheses), then a naturality lemma for `eval` under `ψ` to land on `eval f root`.
 
 They differ in exactly one place, re-derived here by reading both proofs in full rather than taken on
-report: the `K_1 → K_2` version's conclusion is stated at the **field** level, `algebraMap (K_1 P) nextSplittingField
+report: the `K_1 → K_2` version's conclusion is stated at the **field** level, `algebraMap (K_1 P) baseChangeSplittingField
 α`, reached from the ring-of-integers-valued statement by one extra `IsScalarTower.algebraMap_apply`
 rewrite along an extra hypothesis `hα'coe : (α' : K_1 P) = α`; the `K_2 → K_3` version's conclusion is
 `algebraMap O_{K_2} K_3 β'` directly, its own docstring calling it *"Simpler in one respect than that
 template: since `β'` is already an `O_{K_2}` element (not a field-level `α` reached via a separate
 `hα'coe` witness), the conclusion is stated directly as `algebraMap O_{K_2} K_3 β'`, with no
 intermediate field-level identification needed."* The generic theorem here is stated in the
-`K_2 → K_3` shape (conclusion `algebraMap lvl.OL (nextSplittingField (K' := lvl.L) Pn) gen`); `hα'coe` re-enters only
+`K_2 → K_3` shape (conclusion `algebraMap lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn) gen`); `hα'coe` re-enters only
 at the `level_K_1` instantiation below, as the one extra rewrite it always was.
 
 ## What is genuinely new here, and one non-defeq pair found along the way
@@ -47,14 +47,14 @@ term** as their `Level`-generic counterparts, not merely equivalent — confirme
 
 **A non-defeq pair found, and worked around by restating rather than bridging**: `§80`'s
 `Level.norm_le_one_of_mem_algebraMap_OL` states its bound against an `Algebra lvl.OL
-(nextSplittingField (K' := lvl.L) P₂)` instance it introduces *itself*, by `letI`, as the explicit composite
-`((algebraMap lvl.L (nextSplittingField …)).comp (algebraMap lvl.OL lvl.L)).toAlgebra`. Feeding it to
+(baseChangeSplittingField (K' := lvl.L) P₂)` instance it introduces *itself*, by `letI`, as the explicit composite
+`((algebraMap lvl.L (baseChangeSplittingField …)).comp (algebraMap lvl.OL lvl.L)).toAlgebra`. Feeding it to
 `norm_coeff_map_of_isWeaklyEisensteinAt_associated` (which takes that class by ordinary instance
 search) fails, with Lean reporting directly:
 
 > synthesized type class instance is not definitionally equal to expression inferred by typing rules,
 > synthesized `(integralClosure (↥(ValuativeRel.valuation K).valuationSubring) lvl.L).toAlgebra`,
-> inferred `((algebraMap lvl.L (nextSplittingField Pn)).comp (algebraMap lvl.OL lvl.L)).toAlgebra`
+> inferred `((algebraMap lvl.L (baseChangeSplittingField Pn)).comp (algebraMap lvl.OL lvl.L)).toAlgebra`
 
 These two *are* defeq at both concrete depths — that is exactly what `§80`'s own `funext`+`rfl`
 checks against `K_2.norm_le_one_of_mem_O_K1`/`K_3.norm_le_one_of_mem_O_K2` establish — but not
@@ -91,7 +91,7 @@ site.
 
 * `Level.towerHom` : the generic structure map `O →+* lvl.OL`; `rfl`-equal to `towerHom hOK P` at
   `level_K_1` and to `towerHom2 P₂ hOK` at `level_K_2`.
-* `Level.instAlgebraO` : the generic three-hop `Algebra O (nextSplittingField (K' := lvl.L) Pn)`; `rfl`-equal to
+* `Level.instAlgebraO` : the generic three-hop `Algebra O (baseChangeSplittingField (K' := lvl.L) Pn)`; `rfl`-equal to
   `K_2.instAlgebraO` and `K_3.instAlgebraO` at those two depths.
 * `Level.eval_map_towerHom` : naturality of `eval` under `Level.towerHom`. Unlike `eval_map_towerHom2`
   (which had to repeat `NonarchimedeanPowerSeriesEval.eval_map`'s proof to sidestep an elaboration
@@ -157,8 +157,8 @@ def Level.towerHom (lvl : Level K) (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 
   (algebraMap ↥(ValuativeRel.valuation K).valuationSubring lvl.OL).comp
     (toValuationSubring (K := K) hOK)
 
-/-- **The generic `Algebra O (nextSplittingField (K' := lvl.L) Pn)`**, the explicit three-hop composite
-`O →(Level.towerHom hOK)→ lvl.OL →(subalgebra inclusion)→ lvl.L →(algebraMap)→ nextSplittingField (K' := lvl.L) Pn`.
+/-- **The generic `Algebra O (baseChangeSplittingField (K' := lvl.L) Pn)`**, the explicit three-hop composite
+`O →(Level.towerHom hOK)→ lvl.OL →(subalgebra inclusion)→ lvl.L →(algebraMap)→ baseChangeSplittingField (K' := lvl.L) Pn`.
 Generalizes `K_2.instAlgebraO`'s three-hop and `K_3.instAlgebraO`'s four-hop composites (the latter's
 extra hop is `Level.towerHom`'s own middle hop, so the two are the same composite once
 `Level.towerHom` is named); `rfl`-equal to each at the corresponding concrete `Level`, checked below.
@@ -166,9 +166,9 @@ As with those, choosing the composite rather than a search-found instance is wha
 `algebraMap`-unfolding facts hold by `rfl`. -/
 @[reducible] def Level.instAlgebraO (lvl : Level K) (Pn : lvl.OL[X])
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
-    Algebra O (nextSplittingField (K' := lvl.L) Pn) :=
+    Algebra O (baseChangeSplittingField (K' := lvl.L) Pn) :=
   letI := lvl.algL
-  ((algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn)).comp
+  ((algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)).comp
     ((algebraMap lvl.OL lvl.L).comp (lvl.towerHom hOK))).toAlgebra
 
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (IsLocalRing.ResidueField O)]
@@ -181,7 +181,7 @@ which is possible here (unlike at `eval_map_towerHom2`'s doubly-nested concrete 
 exact form hit the elaboration snag `Langlands/LubinTateTowerStepK3RootConnect.lean`'s module
 docstring records and the proof had to repeat `eval_map`'s own body instead). -/
 theorem Level.eval_map_towerHom (lvl : Level K) (Pn : lvl.OL[X])
-    (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {f : O⟦X⟧} (x : nextSplittingField (K' := lvl.L) Pn) :
+    (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {f : O⟦X⟧} (x : baseChangeSplittingField (K' := lvl.L) Pn) :
     letI := lvl.instAlgebraO Pn hOK
     NonarchimedeanPowerSeriesEval.eval (PowerSeries.map (lvl.towerHom hOK) f) x =
       NonarchimedeanPowerSeriesEval.eval f x := by
@@ -194,7 +194,7 @@ theorem Level.eval_map_towerHom (lvl : Level K) (Pn : lvl.OL[X])
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (IsLocalRing.ResidueField O)]
   [Finite (IsLocalRing.ResidueField ↥(ValuativeRel.valuation K).valuationSubring)]
   [Algebra O K] [IsFractionRing O K] in
-/-- **`algebraMap lvl.OL (nextSplittingField (K' := lvl.L) Pn)` is injective**, generic in `lvl` — the `Level`-level
+/-- **`algebraMap lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn)` is injective**, generic in `lvl` — the `Level`-level
 `K_2.instFaithfulSMul_O_K1`/`K_3.instFaithfulSMul_O_K2`, which `§81` recorded as deliberately left
 unbuilt (*"recovering `K_2.instFaithfulSMul_O_K1`/`K_3.instFaithfulSMul_O_K2` concretely needs an
 extra `faithfulSMul_iff_algebraMap_injective` unwrapping layer"*) and which
@@ -203,21 +203,21 @@ extra `faithfulSMul_iff_algebraMap_injective` unwrapping layer"*) and which
 notation, per that file's elaboration finding), `Subtype.coe_injective` for the subalgebra inclusion,
 composed pointwise through `IsScalarTower.algebraMap_apply`. -/
 theorem Level.faithfulSMul_OL (lvl : Level K) (Pn : lvl.OL[X]) :
-    FaithfulSMul lvl.OL (nextSplittingField (K' := lvl.L) Pn) := by
+    FaithfulSMul lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn) := by
   rw [faithfulSMul_iff_algebraMap_injective]
-  have h1 : Function.Injective (algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn)) := RingHom.injective _
+  have h1 : Function.Injective (algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)) := RingHom.injective _
   have h2 : Function.Injective (algebraMap lvl.OL lvl.L) := Subtype.coe_injective
   intro a b hab
-  have ha := IsScalarTower.algebraMap_apply lvl.OL lvl.L (nextSplittingField (K' := lvl.L) Pn) a
-  have hb := IsScalarTower.algebraMap_apply lvl.OL lvl.L (nextSplittingField (K' := lvl.L) Pn) b
+  have ha := IsScalarTower.algebraMap_apply lvl.OL lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) a
+  have hb := IsScalarTower.algebraMap_apply lvl.OL lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) b
   rw [ha, hb] at hab
   exact h2 (h1 hab)
 
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (IsLocalRing.ResidueField O)]
   [Finite (IsLocalRing.ResidueField ↥(ValuativeRel.valuation K).valuationSubring)]
   [Algebra O K] [IsFractionRing O K] in
-/-- **`lvl.OL`'s elements, algebra-mapped into `nextSplittingField (K' := lvl.L) Pn`, have norm at most `1`** —
-generic in `lvl`, and stated against the `Algebra lvl.OL (nextSplittingField …)` instance **ordinary instance search
+/-- **`lvl.OL`'s elements, algebra-mapped into `baseChangeSplittingField (K' := lvl.L) Pn`, have norm at most `1`** —
+generic in `lvl`, and stated against the `Algebra lvl.OL (baseChangeSplittingField …)` instance **ordinary instance search
 finds**, which is what `norm_coeff_map_of_isWeaklyEisensteinAt_associated` and both concrete
 templates' statements use.
 
@@ -230,13 +230,13 @@ see this file's module docstring for Lean's own report of the mismatch. Proved e
 `norm_le_one_of_mem_integralClosure` for the integral-closure hop. -/
 theorem Level.norm_le_one_of_mem_OL_next (lvl : Level K) (Pn : lvl.OL[X])
     (hnormL : letI := lvl.algL; ∀ x : K, ‖algebraMap K lvl.L x‖ = ‖x‖) (c : lvl.OL) :
-    ‖algebraMap lvl.OL (nextSplittingField (K' := lvl.L) Pn) c‖ ≤ 1 := by
+    ‖algebraMap lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn) c‖ ≤ 1 := by
   letI := lvl.algL
   letI := lvl.finiteDim
-  have heq : algebraMap lvl.OL (nextSplittingField (K' := lvl.L) Pn) c =
-      algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn) (algebraMap lvl.OL lvl.L c) :=
+  have heq : algebraMap lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn) c =
+      algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) (algebraMap lvl.OL lvl.L c) :=
     IsScalarTower.algebraMap_apply _ _ _ c
-  rw [nextSplittingField.norm_eq_spectralNorm, heq, spectralNorm_extends]
+  rw [baseChangeSplittingField.norm_eq_spectralNorm, heq, spectralNorm_extends]
   exact norm_le_one_of_mem_integralClosure hnormL c
 
 /-! ## A root of `Pn`'s image lies in the open unit ball -/
@@ -245,7 +245,7 @@ omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (IsLocalRing.ResidueField 
   [Finite (IsLocalRing.ResidueField ↥(ValuativeRel.valuation K).valuationSubring)]
   [Algebra O K] [IsFractionRing O K] in
 /-- **A root of `Pn`'s image (via the `lvl.L` polynomial route) lies in the open unit ball of
-`nextSplittingField (K' := lvl.L) Pn`** — the `Level`-generic `norm_lt_one_of_aeval_P₂_eq_zero`/
+`baseChangeSplittingField (K' := lvl.L) Pn`** — the `Level`-generic `norm_lt_one_of_aeval_P₂_eq_zero`/
 `norm_lt_one_of_aeval_P₃_eq_zero`, with the same argument both use: `Langlands.EisensteinRootNorm`'s
 ultrametric-only Eisenstein-polygon computation (no irreducibility over a base field needed), fed the
 norm data `norm_coeff_map_of_isWeaklyEisensteinAt_associated` produces from `Pn`'s `lvl.OL`-level
@@ -257,8 +257,8 @@ theorem Level.norm_lt_one_of_root (lvl : Level K) [IsDomain lvl.OL]
     {α' : lvl.OL} (hα'irr : Irreducible α')
     (hPdist : Pn.IsDistinguishedAt (maximalIdeal lvl.OL))
     (hassoc : Associated (Pn.coeff 0) α') (hdeg : 0 < Pn.natDegree)
-    (hα'norm : ‖algebraMap lvl.OL (nextSplittingField (K' := lvl.L) Pn) α'‖ < 1)
-    {x : nextSplittingField (K' := lvl.L) Pn}
+    (hα'norm : ‖algebraMap lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn) α'‖ < 1)
+    {x : baseChangeSplittingField (K' := lvl.L) Pn}
     (hroot : Polynomial.aeval x (Pn.map (algebraMap lvl.OL lvl.L)) = 0) : ‖x‖ < 1 := by
   letI := lvl.algL
   haveI := lvl.faithfulSMul_OL Pn
@@ -266,7 +266,7 @@ theorem Level.norm_lt_one_of_root (lvl : Level K) [IsDomain lvl.OL]
     rw [aeval_map_eq_eval_coe] at hroot
     rwa [eval_coe_eq_aeval] at hroot
   obtain ⟨hmonic, hdegeq, hc0, -, hweak⟩ :=
-    norm_coeff_map_of_isWeaklyEisensteinAt_associated (K := nextSplittingField (K' := lvl.L) Pn)
+    norm_coeff_map_of_isWeaklyEisensteinAt_associated (K := baseChangeSplittingField (K' := lvl.L) Pn)
       (lvl.norm_le_one_of_mem_OL_next Pn hnormL) hα'irr
       hPdist.monic hPdist.toIsWeaklyEisensteinAt hassoc
   exact Polynomial.norm_lt_one_of_isEisensteinShape_of_root hmonic (by rw [hdegeq]; exact hdeg)
@@ -279,7 +279,7 @@ omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (IsLocalRing.ResidueField 
   [Finite (IsLocalRing.ResidueField ↥(ValuativeRel.valuation K).valuationSubring)]
   [IsFractionRing O K] in
 /-- **The connecting identity, generic in `lvl : Level K`**: for `x` a root of `Pn`'s image,
-`eval f x` equals the level's generator `α'`, algebra-mapped into `nextSplittingField (K' := lvl.L) Pn` — an equation
+`eval f x` equals the level's generator `α'`, algebra-mapped into `baseChangeSplittingField (K' := lvl.L) Pn` — an equation
 about the power-series `eval`, taken directly against the original base `O` (via `Level.instAlgebraO`).
 
 Stated in the `K_2 → K_3` template's shape (conclusion in terms of the ring-of-integers-valued
@@ -299,11 +299,11 @@ theorem Level.eval_f_eq_of_root (lvl : Level K) [IsDomain lvl.OL]
     (heq : shifted f (lvl.towerHom hOK) α' = (Pn : lvl.OL⟦X⟧) * u)
     (hα'irr : Irreducible α') (hPdist : Pn.IsDistinguishedAt (maximalIdeal lvl.OL))
     (hassoc : Associated (Pn.coeff 0) α') (hdeg : 0 < Pn.natDegree)
-    (hα'norm : ‖algebraMap lvl.OL (nextSplittingField (K' := lvl.L) Pn) α'‖ < 1)
-    {x : nextSplittingField (K' := lvl.L) Pn}
+    (hα'norm : ‖algebraMap lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn) α'‖ < 1)
+    {x : baseChangeSplittingField (K' := lvl.L) Pn}
     (hroot : Polynomial.aeval x (Pn.map (algebraMap lvl.OL lvl.L)) = 0) :
     letI := lvl.instAlgebraO Pn hOK
-    NonarchimedeanPowerSeriesEval.eval f x = algebraMap lvl.OL (nextSplittingField (K' := lvl.L) Pn) α' := by
+    NonarchimedeanPowerSeriesEval.eval f x = algebraMap lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn) α' := by
   letI := lvl.algL
   letI := lvl.instAlgebraO Pn hOK
   have hxnorm : ‖x‖ < 1 :=
@@ -311,7 +311,7 @@ theorem Level.eval_f_eq_of_root (lvl : Level K) [IsDomain lvl.OL]
   have hstep0 : NonarchimedeanPowerSeriesEval.eval (↑Pn : PowerSeries lvl.OL) x = 0 := by
     rw [← aeval_map_eq_eval_coe (K' := lvl.L)]; exact hroot
   have hb : ∀ (g : PowerSeries lvl.OL) (n : ℕ),
-      ‖algebraMap lvl.OL (nextSplittingField (K' := lvl.L) Pn) (PowerSeries.coeff n g)‖ ≤ 1 :=
+      ‖algebraMap lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn) (PowerSeries.coeff n g)‖ ≤ 1 :=
     fun _ _ => lvl.norm_le_one_of_mem_OL_next Pn hnormL _
   have hshifted0 :
       NonarchimedeanPowerSeriesEval.eval (shifted f (lvl.towerHom hOK) α') x = 0 := by
@@ -326,24 +326,24 @@ theorem Level.eval_f_eq_of_root (lvl : Level K) [IsDomain lvl.OL]
 
 /-! ## The next `Level`, one hop up -/
 
-/-- **The next `Level`**: `L := nextSplittingField (K' := lvl.L) Pn`, with `§81`'s `instAlgebraK_of_Level` as its
+/-- **The next `Level`**: `L := baseChangeSplittingField (K' := lvl.L) Pn`, with `§81`'s `instAlgebraK_of_Level` as its
 stored `algL` and finite-dimensionality over `K` by `FiniteDimensional.trans` through `lvl.L` (the
-`IsScalarTower K lvl.L (nextSplittingField …)` it needs is exactly `§81`'s `algebraMap_K_eq_of_Level`, fed to
+`IsScalarTower K lvl.L (baseChangeSplittingField …)` it needs is exactly `§81`'s `algebraMap_K_eq_of_Level`, fed to
 `IsScalarTower.of_algebraMap_eq`).
 
 `(level_K_1).next P₂ = level_K_2 P₂` holds **by `rfl`** (checked below): the concrete depth-2 `Level`
 value `§80` built by hand is literally this generic successor of the depth-1 one, not merely an
 equivalent restatement. -/
 @[reducible] def Level.next (lvl : Level K) (Pn : lvl.OL[X]) : Level K where
-  L := nextSplittingField (K' := lvl.L) Pn
+  L := baseChangeSplittingField (K' := lvl.L) Pn
   algL := instAlgebraK_of_Level lvl Pn
   finiteDim := by
     letI := lvl.algL
     letI := lvl.finiteDim
     letI := instAlgebraK_of_Level lvl Pn
-    haveI : IsScalarTower K lvl.L (nextSplittingField (K' := lvl.L) Pn) :=
+    haveI : IsScalarTower K lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) :=
       IsScalarTower.of_algebraMap_eq (fun x => congrFun (algebraMap_K_eq_of_Level lvl Pn) x)
-    exact FiniteDimensional.trans K lvl.L (nextSplittingField (K' := lvl.L) Pn)
+    exact FiniteDimensional.trans K lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)
 
 /-! ## Bundled step data -/
 
@@ -381,7 +381,7 @@ structure TowerStep (f : O⟦X⟧) (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 
   /-- The Weierstrass factorization of the shifted Lubin-Tate series. -/
   weierstrass : shifted f (lvl.towerHom hOK) gen = (nextPoly : lvl.OL⟦X⟧) * unit
   /-- The generator lies in the next field's open unit ball. -/
-  genNormLt : ‖algebraMap lvl.OL (nextSplittingField (K' := lvl.L) nextPoly) gen‖ < 1
+  genNormLt : ‖algebraMap lvl.OL (baseChangeSplittingField (K' := lvl.L) nextPoly) gen‖ < 1
 
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (IsLocalRing.ResidueField O)]
   [Finite (IsLocalRing.ResidueField ↥(ValuativeRel.valuation K).valuationSubring)]
@@ -389,11 +389,11 @@ omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (IsLocalRing.ResidueField 
 /-- **The connecting identity against the bundled step data** — `Level.eval_f_eq_of_root` with every
 hypothesis read off `st`'s fields. -/
 theorem TowerStep.eval_f_eq_of_root {f : O⟦X⟧} {hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1}
-    (st : TowerStep f hOK) {x : nextSplittingField (K' := st.lvl.L) st.nextPoly}
+    (st : TowerStep f hOK) {x : baseChangeSplittingField (K' := st.lvl.L) st.nextPoly}
     (hroot : Polynomial.aeval x (st.nextPoly.map (algebraMap st.lvl.OL st.lvl.L)) = 0) :
     letI := st.lvl.instAlgebraO st.nextPoly hOK
     NonarchimedeanPowerSeriesEval.eval f x =
-      algebraMap st.lvl.OL (nextSplittingField (K' := st.lvl.L) st.nextPoly) st.gen := by
+      algebraMap st.lvl.OL (baseChangeSplittingField (K' := st.lvl.L) st.nextPoly) st.gen := by
   letI := st.instDomain
   letI := st.instDVR
   exact st.lvl.eval_f_eq_of_root st.nextPoly hOK st.hnormL st.unitIsUnit st.weierstrass st.genIrr
@@ -443,13 +443,13 @@ theorem eval_f_eq_of_aeval_P₂_eq_zero_of_TowerStep (hOK : ∀ c : O, ‖algebr
     (_hu₂ : IsUnit u₂) (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc : Associated (P₂.coeff 0) α') (hdeg : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    (hα'norm : ‖algebraMap _ (baseChangeSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
     {α : K_1 (K := K) P} (hα'coe : (α' : K_1 (K := K) P) = α)
-    {β : nextSplittingField (K' := K_1 (K := K) P) P₂}
+    {β : baseChangeSplittingField (K' := K_1 (K := K) P) P₂}
     (hβroot : Polynomial.aeval β (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0) :
     letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
     NonarchimedeanPowerSeriesEval.eval f β =
-      algebraMap (K_1 (K := K) P) (nextSplittingField (K' := K_1 (K := K) P) P₂) α := by
+      algebraMap (K_1 (K := K) P) (baseChangeSplittingField (K' := K_1 (K := K) P) P₂) α := by
   letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
   have h := TowerStep.eval_f_eq_of_root (f := f) (hOK := hOK)
     { lvl := level_K_1 (K := K) (P := P), hnormL := hnorm_K_K_1 (K := K) (P := P), gen := α',
@@ -468,9 +468,9 @@ example (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {f : O⟦X⟧}
     (_hu₂ : IsUnit u₂) (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc : Associated (P₂.coeff 0) α') (hdeg : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    (hα'norm : ‖algebraMap _ (baseChangeSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
     {α : K_1 (K := K) P} (hα'coe : (α' : K_1 (K := K) P) = α)
-    {β : nextSplittingField (K' := K_1 (K := K) P) P₂}
+    {β : baseChangeSplittingField (K' := K_1 (K := K) P) P₂}
     (hβroot : Polynomial.aeval β (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0) :
     eval_f_eq_of_aeval_P₂_eq_zero_of_TowerStep (K := K) (P := P) P₂ hOK _hu₂ heq₂ hα'irr hP₂dist
         hassoc hdeg hα'norm hα'coe hβroot =

@@ -22,7 +22,7 @@ needed before transitivity generalizes. This file does both.
 general `n`-step engine: it takes an arbitrary complete DVR `O'`, an arbitrary local
 `ψ : O →+* O'`, and an arbitrary irreducible `α' : O'`, and produces the next Eisenstein polynomial.
 Read against it, `exists_eisenstein_tower_step_K_2` (`Langlands/LubinTateTowerStepConcreteK2.lean`)
-adds exactly four `nextSplittingField`-specific things, and nothing else:
+adds exactly four `baseChangeSplittingField`-specific things, and nothing else:
 
 1. the *uniformizer* `α'` at the next level (`irreducible_of_isEisensteinAt_K_2`);
 2. the `IsAdicComplete` instance for the next level's ring of integers;
@@ -91,7 +91,7 @@ Nothing here removes those ambient hypotheses from the existing concrete files.
 **Not generalized**: the degree/splitting/residue-field chain (`§75`–`§77`'s
 `finrank_K_n_eq_residueCard`, `adjoin_root_eq_top_K_n`, `piTorsion_one_K_n_eq_algebraMap_image`,
 `splits_divX_map_*`, `residueFieldEquiv_K_n`). `Level.exists_tower_step_next` therefore takes
-`hgen : (minpoly lvl.L β).natDegree = Module.finrank lvl.L (nextSplittingField (K' := lvl.L) Pn)` — "the chosen root
+`hgen : (minpoly lvl.L β).natDegree = Module.finrank lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)` — "the chosen root
 generates the next field" — as an explicit hypothesis, exactly as the concrete theorems take `hβfin`/
 `hγfin`. Generalizing that chain needs two things `Level`/`TowerStep` do not currently carry: an
 `Algebra O lvl.L` composite (the generic `K_2.instAlgebraO` one level *down*, needed to even state
@@ -146,7 +146,7 @@ theorem Level.algebraIsSeparable (lvl : Level K) [CharZero K] :
 
 /-- **`lvl.OL` is `(maximalIdeal)`-adically complete**, generically — the generic form of the
 `hAdicbase` step in `exists_eisenstein_tower_step_K_2`'s own proof, which instantiates
-`NormedField.isAdicComplete_integralClosure_of_finiteDimensional` at the concrete `nextSplittingField P₂`. -/
+`NormedField.isAdicComplete_integralClosure_of_finiteDimensional` at the concrete `baseChangeSplittingField P₂`. -/
 theorem Level.isAdicComplete_OL (lvl : Level K) [CharZero K]
     (hnormL : letI := lvl.algL; ∀ x : K, ‖algebraMap K lvl.L x‖ = ‖x‖) :
     letI := lvl.isDiscreteValuationRing_OL
@@ -183,38 +183,38 @@ theorem Level.algebraMap_OL_towerHom (lvl : Level K) (hOK : ∀ c : O, ‖algebr
       (toValuationSubring (K := K) hOK c) = algebraMap O K c from
     coe_toValuationSubring (K := K) hOK c]
 
-/-- `algebraMap O (nextSplittingField (K' := lvl.L) Pn)` collapses to the ordinary map through `K` and `lvl.L`. -/
+/-- `algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn)` collapses to the ordinary map through `K` and `lvl.L`. -/
 theorem Level.algebraMap_O_eq_comp_L (lvl : Level K) (Pn : lvl.OL[X])
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
     letI := lvl.algL
     letI := lvl.instAlgebraO Pn hOK
-    ⇑(algebraMap O (nextSplittingField (K' := lvl.L) Pn)) =
-      ⇑(algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn)) ∘ ⇑(algebraMap K lvl.L) ∘ ⇑(algebraMap O K) := by
+    ⇑(algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn)) =
+      ⇑(algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)) ∘ ⇑(algebraMap K lvl.L) ∘ ⇑(algebraMap O K) := by
   letI := lvl.algL
   letI := lvl.instAlgebraO Pn hOK
   funext c
-  show algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn) (algebraMap lvl.OL lvl.L (lvl.towerHom hOK c)) = _
+  show algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) (algebraMap lvl.OL lvl.L (lvl.towerHom hOK c)) = _
   rw [lvl.algebraMap_OL_towerHom hOK c]
   rfl
 
-/-- `algebraMap O (nextSplittingField (K' := lvl.L) Pn)` also collapses through `lvl.OL`. -/
+/-- `algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn)` also collapses through `lvl.OL`. -/
 theorem Level.algebraMap_O_eq_comp_OL (lvl : Level K) (Pn : lvl.OL[X])
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
     letI := lvl.instAlgebraO Pn hOK
-    ⇑(algebraMap O (nextSplittingField (K' := lvl.L) Pn)) =
-      ⇑(algebraMap lvl.OL (nextSplittingField (K' := lvl.L) Pn)) ∘ ⇑(lvl.towerHom hOK) := by
+    ⇑(algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn)) =
+      ⇑(algebraMap lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn)) ∘ ⇑(lvl.towerHom hOK) := by
   letI := lvl.algL
   letI := lvl.instAlgebraO Pn hOK
   funext c
-  show algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn) (algebraMap lvl.OL lvl.L (lvl.towerHom hOK c)) = _
-  exact (IsScalarTower.algebraMap_apply lvl.OL lvl.L (nextSplittingField (K' := lvl.L) Pn) _).symm
+  show algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) (algebraMap lvl.OL lvl.L (lvl.towerHom hOK c)) = _
+  exact (IsScalarTower.algebraMap_apply lvl.OL lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) _).symm
 
 /-- **`hOK` transports one level up**, generically. -/
 theorem Level.hOK_transport (lvl : Level K) (Pn : lvl.OL[X])
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1)
     (hnormL : letI := lvl.algL; ∀ x : K, ‖algebraMap K lvl.L x‖ = ‖x‖) :
     letI := lvl.instAlgebraO Pn hOK
-    ∀ c : O, ‖algebraMap O (nextSplittingField (K' := lvl.L) Pn) c‖ ≤ 1 := by
+    ∀ c : O, ‖algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn) c‖ ≤ 1 := by
   letI := lvl.algL
   letI := lvl.instAlgebraO Pn hOK
   intro c
@@ -227,12 +227,12 @@ theorem Level.hπnorm_transport (lvl : Level K) (Pn : lvl.OL[X])
     (hnormL : letI := lvl.algL; ∀ x : K, ‖algebraMap K lvl.L x‖ = ‖x‖)
     {π : O} (hπnorm : ‖algebraMap O K π‖ < 1) :
     letI := lvl.instAlgebraO Pn hOK
-    ‖algebraMap O (nextSplittingField (K' := lvl.L) Pn) π‖ < 1 := by
+    ‖algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn) π‖ < 1 := by
   letI := lvl.algL
   letI := lvl.instAlgebraO Pn hOK
   rw [congrFun (lvl.algebraMap_O_eq_comp_L Pn hOK) π]
-  show ‖algebraMap lvl.L (nextSplittingField (K' := lvl.L) Pn) (algebraMap K lvl.L (algebraMap O K π))‖ < 1
-  rw [nextSplittingField.norm_eq_spectralNorm, spectralNorm_extends, hnormL]
+  show ‖algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) (algebraMap K lvl.L (algebraMap O K π))‖ < 1
+  rw [baseChangeSplittingField.norm_eq_spectralNorm, spectralNorm_extends, hnormL]
   exact hπnorm
 
 section Exists
@@ -245,9 +245,9 @@ theorem Level.irreducible_root_next [CharZero K] (Pn : lvl.OL[X])
     (hPdist : Pn.IsDistinguishedAt (maximalIdeal lvl.OL))
     (hassoc : Associated (Pn.coeff 0) α')
     (hirr : Irreducible (Pn.map (algebraMap lvl.OL lvl.L)))
-    {β : nextSplittingField (K' := lvl.L) Pn}
+    {β : baseChangeSplittingField (K' := lvl.L) Pn}
     (hβroot : Polynomial.aeval β (Pn.map (algebraMap lvl.OL lvl.L)) = 0)
-    (hgen : (minpoly lvl.L β).natDegree = Module.finrank lvl.L (nextSplittingField (K' := lvl.L) Pn)) :
+    (hgen : (minpoly lvl.L β).natDegree = Module.finrank lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)) :
     letI := (lvl.next Pn).algL
     ∃ hβint : IsIntegral ↥(ValuativeRel.valuation K).valuationSubring β,
       Irreducible (⟨β, hβint⟩ : (lvl.next Pn).OL) := by
@@ -255,18 +255,18 @@ theorem Level.irreducible_root_next [CharZero K] (Pn : lvl.OL[X])
   letI := lvl.finiteDim
   letI := (lvl.next Pn).algL
   haveI : CharZero lvl.L := charZero_of_injective_algebraMap (algebraMap K lvl.L).injective
-  haveI : Algebra.IsIntegral lvl.L (nextSplittingField (K' := lvl.L) Pn) := Algebra.IsIntegral.of_finite _ _
-  haveI : Algebra.IsSeparable lvl.L (nextSplittingField (K' := lvl.L) Pn) := Algebra.IsSeparable.of_integral _ _
+  haveI : Algebra.IsIntegral lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) := Algebra.IsIntegral.of_finite _ _
+  haveI : Algebra.IsSeparable lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) := Algebra.IsSeparable.of_integral _ _
   haveI htower : IsScalarTower ↥(ValuativeRel.valuation K).valuationSubring lvl.L
-      (nextSplittingField (K' := lvl.L) Pn) := IsScalarTower.of_algebraMap_eq fun x => rfl
+      (baseChangeSplittingField (K' := lvl.L) Pn) := IsScalarTower.of_algebraMap_eq fun x => rfl
   haveI := (lvl.next Pn).isDomain_OL
   haveI := (lvl.next Pn).isDiscreteValuationRing_OL
-  haveI : IsDomain ↥(integralClosure lvl.OL (nextSplittingField (K' := lvl.L) Pn)) :=
+  haveI : IsDomain ↥(integralClosure lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn)) :=
     isDomain_integralClosure_integralClosure
-      (R := ↥(ValuativeRel.valuation K).valuationSubring) (L := lvl.L) (M := nextSplittingField (K' := lvl.L) Pn)
-  haveI : IsDiscreteValuationRing ↥(integralClosure lvl.OL (nextSplittingField (K' := lvl.L) Pn)) :=
+      (R := ↥(ValuativeRel.valuation K).valuationSubring) (L := lvl.L) (M := baseChangeSplittingField (K' := lvl.L) Pn)
+  haveI : IsDiscreteValuationRing ↥(integralClosure lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn)) :=
     isDiscreteValuationRing_integralClosure_integralClosure
-      (R := ↥(ValuativeRel.valuation K).valuationSubring) (L := lvl.L) (M := nextSplittingField (K' := lvl.L) Pn)
+      (R := ↥(ValuativeRel.valuation K).valuationSubring) (L := lvl.L) (M := baseChangeSplittingField (K' := lvl.L) Pn)
   -- `β` is integral over `lvl.OL`, witnessed by `Pn` itself.
   have hβint : IsIntegral lvl.OL β := by
     refine ⟨Pn, hPdist.monic, ?_⟩
@@ -275,7 +275,7 @@ theorem Level.irreducible_root_next [CharZero K] (Pn : lvl.OL[X])
   have hβint' : IsIntegral ↥(ValuativeRel.valuation K).valuationSubring β :=
     (isIntegral_iff_isIntegral_integralClosure
       (R := ↥(ValuativeRel.valuation K).valuationSubring) (L := lvl.L)
-      (M := nextSplittingField (K' := lvl.L) Pn)).mpr hβint
+      (M := baseChangeSplittingField (K' := lvl.L) Pn)).mpr hβint
   refine ⟨hβint', ?_⟩
   -- `minpoly lvl.OL β = Pn`, on the nose.
   have hminK : minpoly lvl.L β = Pn.map (algebraMap lvl.OL lvl.L) :=
@@ -294,12 +294,12 @@ theorem Level.irreducible_root_next [CharZero K] (Pn : lvl.OL[X])
   have hEis : (minpoly lvl.OL β).IsEisensteinAt (maximalIdeal lvl.OL) := by
     rw [hminR]; exact hEisPn
   have hnested : Irreducible
-      (⟨β, hβint⟩ : ↥(integralClosure lvl.OL (nextSplittingField (K' := lvl.L) Pn))) :=
-    irreducible_of_isEisensteinAt (R := lvl.OL) (K := lvl.L) (L := nextSplittingField (K' := lvl.L) Pn)
+      (⟨β, hβint⟩ : ↥(integralClosure lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn))) :=
+    irreducible_of_isEisensteinAt (R := lvl.OL) (K := lvl.L) (L := baseChangeSplittingField (K' := lvl.L) Pn)
       hα'irr hβint hEis hgen
   have hmap := hnested.map
     (integralClosureRingEquiv (R := ↥(ValuativeRel.valuation K).valuationSubring)
-      (L := lvl.L) (M := nextSplittingField (K' := lvl.L) Pn)).symm
+      (L := lvl.L) (M := baseChangeSplittingField (K' := lvl.L) Pn)).symm
   exact hmap
 
 /-- **The generic existence step.** -/
@@ -311,18 +311,18 @@ theorem Level.exists_tower_step_next [CharZero K] (Pn : lvl.OL[X])
     {α' : lvl.OL} (hα'irr : Irreducible α')
     (hPdist : Pn.IsDistinguishedAt (maximalIdeal lvl.OL))
     (hassoc : Associated (Pn.coeff 0) α') (hdeg : 0 < Pn.natDegree)
-    (hα'norm : ‖algebraMap lvl.OL (nextSplittingField (K' := lvl.L) Pn) α'‖ < 1)
+    (hα'norm : ‖algebraMap lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn) α'‖ < 1)
     (hirr : Irreducible (Pn.map (algebraMap lvl.OL lvl.L)))
-    {β : nextSplittingField (K' := lvl.L) Pn}
+    {β : baseChangeSplittingField (K' := lvl.L) Pn}
     (hβroot : Polynomial.aeval β (Pn.map (algebraMap lvl.OL lvl.L)) = 0)
-    (hgen : (minpoly lvl.L β).natDegree = Module.finrank lvl.L (nextSplittingField (K' := lvl.L) Pn)) :
+    (hgen : (minpoly lvl.L β).natDegree = Module.finrank lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)) :
     letI := (lvl.next Pn).isDiscreteValuationRing_OL
     ∃ (Pnext : (lvl.next Pn).OL[X]) (unext : (lvl.next Pn).OL⟦X⟧) (gen : (lvl.next Pn).OL),
       IsUnit unext ∧ Pnext.IsDistinguishedAt (maximalIdeal (lvl.next Pn).OL) ∧
         Pnext.natDegree = residueCard O ∧ Irreducible gen ∧
         shifted f ((lvl.next Pn).towerHom hOK) gen = (Pnext : _⟦X⟧) * unext ∧
         Associated (Pnext.coeff 0) gen ∧
-        ‖algebraMap (lvl.next Pn).OL (nextSplittingField (K' := (lvl.next Pn).L) Pnext) gen‖ < 1 := by
+        ‖algebraMap (lvl.next Pn).OL (baseChangeSplittingField (K' := (lvl.next Pn).L) Pnext) gen‖ < 1 := by
   letI := lvl.algL
   letI := lvl.finiteDim
   letI := (lvl.next Pn).algL
@@ -336,11 +336,11 @@ theorem Level.exists_tower_step_next [CharZero K] (Pn : lvl.OL[X])
     exists_isWeierstrassFactorization_shifted (O' := (lvl.next Pn).OL) hf
       ((lvl.next Pn).towerHom hOK) hβirr
   refine ⟨Pnext, unext, ⟨β, hβint⟩, hunit, hdist, hdegW, hβirr, heqW, hassocW, ?_⟩
-  have hcoe : algebraMap (lvl.next Pn).OL (nextSplittingField (K' := (lvl.next Pn).L) Pnext)
+  have hcoe : algebraMap (lvl.next Pn).OL (baseChangeSplittingField (K' := (lvl.next Pn).L) Pnext)
       (⟨β, hβint⟩ : (lvl.next Pn).OL) =
-      algebraMap (lvl.next Pn).L (nextSplittingField (K' := (lvl.next Pn).L) Pnext) β :=
+      algebraMap (lvl.next Pn).L (baseChangeSplittingField (K' := (lvl.next Pn).L) Pnext) β :=
     IsScalarTower.algebraMap_apply _ (lvl.next Pn).L _ _
-  rw [hcoe, nextSplittingField.norm_eq_spectralNorm, spectralNorm_extends]
+  rw [hcoe, baseChangeSplittingField.norm_eq_spectralNorm, spectralNorm_extends]
   exact lvl.norm_lt_one_of_root Pn hnormL hα'irr hPdist hassoc hdeg hα'norm hβroot
 
 /-- **Transitivity of the `piTorsion` translation action on roots**, generically. -/
@@ -352,12 +352,12 @@ theorem Level.exists_piTorsion_translate_of_root (Pn : lvl.OL[X])
     (heq : shifted f (lvl.towerHom hOK) α' = (Pn : lvl.OL⟦X⟧) * v)
     (hα'irr : Irreducible α') (hPdist : Pn.IsDistinguishedAt (maximalIdeal lvl.OL))
     (hassoc : Associated (Pn.coeff 0) α') (hdeg : 0 < Pn.natDegree)
-    (hα'norm : ‖algebraMap lvl.OL (nextSplittingField (K' := lvl.L) Pn) α'‖ < 1)
-    {x x' : nextSplittingField (K' := lvl.L) Pn}
+    (hα'norm : ‖algebraMap lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn) α'‖ < 1)
+    {x x' : baseChangeSplittingField (K' := lvl.L) Pn}
     (hroot : Polynomial.aeval x (Pn.map (algebraMap lvl.OL lvl.L)) = 0)
     (hroot' : Polynomial.aeval x' (Pn.map (algebraMap lvl.OL lvl.L)) = 0) :
     letI := lvl.instAlgebraO Pn hOK
-    ∃ t' ∈ piTorsion (K := nextSplittingField (K' := lvl.L) Pn) hπ hf 1, x' = FPiEval hπ hf x t' := by
+    ∃ t' ∈ piTorsion (K := baseChangeSplittingField (K' := lvl.L) Pn) hπ hf 1, x' = FPiEval hπ hf x t' := by
   letI := lvl.algL
   letI := lvl.instAlgebraO Pn hOK
   have h1 := lvl.eval_f_eq_of_root Pn hOK hnormL hv heq hα'irr hPdist hassoc hdeg hα'norm hroot
@@ -375,16 +375,16 @@ theorem Level.adjoin_eq_integralClosure_next [CharZero K] (Pn : lvl.OL[X])
     (hPdist : Pn.IsDistinguishedAt (maximalIdeal lvl.OL))
     (hassoc : Associated (Pn.coeff 0) α')
     (hirr : Irreducible (Pn.map (algebraMap lvl.OL lvl.L)))
-    {β : nextSplittingField (K' := lvl.L) Pn}
+    {β : baseChangeSplittingField (K' := lvl.L) Pn}
     (hβroot : Polynomial.aeval β (Pn.map (algebraMap lvl.OL lvl.L)) = 0)
-    (hgen : (minpoly lvl.L β).natDegree = Module.finrank lvl.L (nextSplittingField (K' := lvl.L) Pn)) :
-    Algebra.adjoin lvl.OL ({β} : Set (nextSplittingField (K' := lvl.L) Pn)) =
-      integralClosure lvl.OL (nextSplittingField (K' := lvl.L) Pn) := by
+    (hgen : (minpoly lvl.L β).natDegree = Module.finrank lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)) :
+    Algebra.adjoin lvl.OL ({β} : Set (baseChangeSplittingField (K' := lvl.L) Pn)) =
+      integralClosure lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn) := by
   letI := lvl.algL
   letI := lvl.finiteDim
   haveI : CharZero lvl.L := charZero_of_injective_algebraMap (algebraMap K lvl.L).injective
-  haveI : Algebra.IsIntegral lvl.L (nextSplittingField (K' := lvl.L) Pn) := Algebra.IsIntegral.of_finite _ _
-  haveI : Algebra.IsSeparable lvl.L (nextSplittingField (K' := lvl.L) Pn) := Algebra.IsSeparable.of_integral _ _
+  haveI : Algebra.IsIntegral lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) := Algebra.IsIntegral.of_finite _ _
+  haveI : Algebra.IsSeparable lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) := Algebra.IsSeparable.of_integral _ _
   have hβint : IsIntegral lvl.OL β := by
     refine ⟨Pn, hPdist.monic, ?_⟩
     have h1 : Polynomial.aeval β (Polynomial.map (algebraMap lvl.OL lvl.L) Pn) = 0 := hβroot
@@ -415,10 +415,10 @@ theorem TowerStep.exists_next {f : O⟦X⟧} {hOK : ∀ c : O, ‖algebraMap O K
     {π : O} (hπ : Irreducible π) (hπnorm : ‖algebraMap O K π‖ < 1)
     (hf : IsLubinTatePoly π (residueCard O) f)
     (hirr : Irreducible (ts.nextPoly.map (algebraMap ts.lvl.OL ts.lvl.L)))
-    {β : nextSplittingField (K' := ts.lvl.L) ts.nextPoly}
+    {β : baseChangeSplittingField (K' := ts.lvl.L) ts.nextPoly}
     (hβroot : Polynomial.aeval β (ts.nextPoly.map (algebraMap ts.lvl.OL ts.lvl.L)) = 0)
     (hgen : (minpoly ts.lvl.L β).natDegree =
-      Module.finrank ts.lvl.L (nextSplittingField (K' := ts.lvl.L) ts.nextPoly)) :
+      Module.finrank ts.lvl.L (baseChangeSplittingField (K' := ts.lvl.L) ts.nextPoly)) :
     ∃ st : TowerStep f hOK, st.lvl = ts.lvl.next ts.nextPoly := by
   letI := ts.instDomain
   letI := ts.instDVR
@@ -453,16 +453,16 @@ theorem exists_eisenstein_tower_step_K_2_flat'_of_Level (hOK : ∀ c : O, ‖alg
     (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc : Associated (P₂.coeff 0) α') (hdeg : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    (hα'norm : ‖algebraMap _ (baseChangeSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
     {α : K_1 (K := K) P} (hα'coe : (α' : K_1 (K := K) P) = α)
     (hirr : Irreducible (P₂.map (algebraMap _ (K_1 (K := K) P))))
-    {β : nextSplittingField (K' := K_1 (K := K) P) P₂}
+    {β : baseChangeSplittingField (K' := K_1 (K := K) P) P₂}
     (hβroot : Polynomial.aeval β (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0)
     (hβfin : Module.finrank (K_1 (K := K) P) (K_1 (K := K) P)⟮β⟯ = residueCard O)
-    [Algebra.IsSeparable (K_1 (K := K) P) (nextSplittingField (K' := K_1 (K := K) P) P₂)] [CharZero K]
+    [Algebra.IsSeparable (K_1 (K := K) P) (baseChangeSplittingField (K' := K_1 (K := K) P) P₂)] [CharZero K]
     [IsDiscreteValuationRing ↥(integralClosure
       ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-      (nextSplittingField (K' := K_1 (K := K) P) P₂))]
+      (baseChangeSplittingField (K' := K_1 (K := K) P) P₂))]
     [IsLocalRing (O_K2 (K := K) P₂)] [IsDiscreteValuationRing (O_K2 (K := K) P₂)] :
     ∃ (P₃ : (O_K2 (K := K) P₂)[X]) (u₃ : (O_K2 (K := K) P₂)⟦X⟧) (β' : O_K2 (K := K) P₂),
       IsUnit u₃ ∧ P₃.IsDistinguishedAt (maximalIdeal _) ∧ P₃.natDegree = residueCard O ∧
@@ -473,7 +473,7 @@ theorem exists_eisenstein_tower_step_K_2_flat'_of_Level (hOK : ∀ c : O, ‖alg
   have hxK : IsIntegral (K_1 (K := K) P) β := by
     refine ⟨P₂.map (algebraMap _ (K_1 (K := K) P)), hP₂dist.monic.map _, hβroot⟩
   have hgen : (minpoly (K_1 (K := K) P) β).natDegree =
-      Module.finrank (K_1 (K := K) P) (nextSplittingField (K' := K_1 (K := K) P) P₂) :=
+      Module.finrank (K_1 (K := K) P) (baseChangeSplittingField (K' := K_1 (K := K) P) P₂) :=
     (IntermediateField.adjoin.finrank hxK).symm.trans (hβfin.trans
       (finrank_K_2_eq_residueCard (K := K) (P := P) (P₂ := P₂) hOK hπ hπnorm hf hu heq hPdist
         hPdeg hu₂ heq₂ hα'irr hP₂dist hassoc hdeg hα'norm hα'coe hβroot hβfin).symm)
@@ -494,16 +494,16 @@ example (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1)
     (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc : Associated (P₂.coeff 0) α') (hdeg : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    (hα'norm : ‖algebraMap _ (baseChangeSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
     {α : K_1 (K := K) P} (hα'coe : (α' : K_1 (K := K) P) = α)
     (hirr : Irreducible (P₂.map (algebraMap _ (K_1 (K := K) P))))
-    {β : nextSplittingField (K' := K_1 (K := K) P) P₂}
+    {β : baseChangeSplittingField (K' := K_1 (K := K) P) P₂}
     (hβroot : Polynomial.aeval β (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0)
     (hβfin : Module.finrank (K_1 (K := K) P) (K_1 (K := K) P)⟮β⟯ = residueCard O)
-    [Algebra.IsSeparable (K_1 (K := K) P) (nextSplittingField (K' := K_1 (K := K) P) P₂)] [CharZero K]
+    [Algebra.IsSeparable (K_1 (K := K) P) (baseChangeSplittingField (K' := K_1 (K := K) P) P₂)] [CharZero K]
     [IsDiscreteValuationRing ↥(integralClosure
       ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-      (nextSplittingField (K' := K_1 (K := K) P) P₂))]
+      (baseChangeSplittingField (K' := K_1 (K := K) P) P₂))]
     [IsLocalRing (O_K2 (K := K) P₂)] [IsDiscreteValuationRing (O_K2 (K := K) P₂)] :
     exists_eisenstein_tower_step_K_2_flat'_of_Level (K := K) (P := P) P₂ hOK hπ hπnorm hf hu heq
         hPdist hPdeg hu₂ heq₂ hα'irr hP₂dist hassoc hdeg hα'norm hα'coe hirr hβroot hβfin =
@@ -518,13 +518,13 @@ theorem exists_piTorsion_translate_of_aeval_P₂_eq_zero_of_Level
     (_hu₂ : IsUnit u₂) (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc : Associated (P₂.coeff 0) α') (hdeg : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    (hα'norm : ‖algebraMap _ (baseChangeSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
     {α : K_1 (K := K) P} (_hα'coe : (α' : K_1 (K := K) P) = α)
-    {β β' : nextSplittingField (K' := K_1 (K := K) P) P₂}
+    {β β' : baseChangeSplittingField (K' := K_1 (K := K) P) P₂}
     (hβroot : Polynomial.aeval β (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0)
     (hβ'root : Polynomial.aeval β' (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0) :
     letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
-    ∃ t' ∈ piTorsion (K := nextSplittingField (K' := K_1 (K := K) P) P₂) hπ hf 1,
+    ∃ t' ∈ piTorsion (K := baseChangeSplittingField (K' := K_1 (K := K) P) P₂) hπ hf 1,
       β' = FPiEval hπ hf β t' :=
   Level.exists_piTorsion_translate_of_root (level_K_1 (K := K) (P := P)) P₂ hOK
     (hnorm_K_K_1 (K := K) (P := P)) hπ hf _hu₂ heq₂ hα'irr hP₂dist hassoc hdeg hα'norm hβroot
@@ -539,9 +539,9 @@ example (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1)
     (_hu₂ : IsUnit u₂) (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc : Associated (P₂.coeff 0) α') (hdeg : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    (hα'norm : ‖algebraMap _ (baseChangeSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
     {α : K_1 (K := K) P} (hα'coe : (α' : K_1 (K := K) P) = α)
-    {β β' : nextSplittingField (K' := K_1 (K := K) P) P₂}
+    {β β' : baseChangeSplittingField (K' := K_1 (K := K) P) P₂}
     (hβroot : Polynomial.aeval β (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0)
     (hβ'root : Polynomial.aeval β' (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0) :
     exists_piTorsion_translate_of_aeval_P₂_eq_zero_of_Level (K := K) (P := P) P₂ hOK hπ hf _hu₂
@@ -560,21 +560,21 @@ theorem adjoin_eq_integralClosure_K_2_of_Level (hOK : ∀ c : O, ‖algebraMap O
     (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc : Associated (P₂.coeff 0) α') (hdeg : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    (hα'norm : ‖algebraMap _ (baseChangeSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
     {α : K_1 (K := K) P} (hα'coe : (α' : K_1 (K := K) P) = α)
     (hirr : Irreducible (P₂.map (algebraMap _ (K_1 (K := K) P))))
-    {β : nextSplittingField (K' := K_1 (K := K) P) P₂}
+    {β : baseChangeSplittingField (K' := K_1 (K := K) P) P₂}
     (hβroot : Polynomial.aeval β (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0)
     (hβfin : Module.finrank (K_1 (K := K) P) (K_1 (K := K) P)⟮β⟯ = residueCard O)
-    [Algebra.IsSeparable (K_1 (K := K) P) (nextSplittingField (K' := K_1 (K := K) P) P₂)] [CharZero K] :
+    [Algebra.IsSeparable (K_1 (K := K) P) (baseChangeSplittingField (K' := K_1 (K := K) P) P₂)] [CharZero K] :
     Algebra.adjoin ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-        ({β} : Set (nextSplittingField (K' := K_1 (K := K) P) P₂)) =
+        ({β} : Set (baseChangeSplittingField (K' := K_1 (K := K) P) P₂)) =
       integralClosure ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
-        (K_1 (K := K) P)) (nextSplittingField (K' := K_1 (K := K) P) P₂) := by
+        (K_1 (K := K) P)) (baseChangeSplittingField (K' := K_1 (K := K) P) P₂) := by
   have hxK : IsIntegral (K_1 (K := K) P) β :=
     ⟨P₂.map (algebraMap _ (K_1 (K := K) P)), hP₂dist.monic.map _, hβroot⟩
   have hgen : (minpoly (K_1 (K := K) P) β).natDegree =
-      Module.finrank (K_1 (K := K) P) (nextSplittingField (K' := K_1 (K := K) P) P₂) :=
+      Module.finrank (K_1 (K := K) P) (baseChangeSplittingField (K' := K_1 (K := K) P) P₂) :=
     (IntermediateField.adjoin.finrank hxK).symm.trans (hβfin.trans
       (finrank_K_2_eq_residueCard (K := K) (P := P) (P₂ := P₂) hOK hπ hπnorm hf hu heq hPdist
         hPdeg hu₂ heq₂ hα'irr hP₂dist hassoc hdeg hα'norm hα'coe hβroot hβfin).symm)
@@ -594,13 +594,13 @@ example (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O}
     (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc : Associated (P₂.coeff 0) α') (hdeg : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    (hα'norm : ‖algebraMap _ (baseChangeSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
     {α : K_1 (K := K) P} (hα'coe : (α' : K_1 (K := K) P) = α)
     (hirr : Irreducible (P₂.map (algebraMap _ (K_1 (K := K) P))))
-    {β : nextSplittingField (K' := K_1 (K := K) P) P₂}
+    {β : baseChangeSplittingField (K' := K_1 (K := K) P) P₂}
     (hβroot : Polynomial.aeval β (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0)
     (hβfin : Module.finrank (K_1 (K := K) P) (K_1 (K := K) P)⟮β⟯ = residueCard O)
-    [Algebra.IsSeparable (K_1 (K := K) P) (nextSplittingField (K' := K_1 (K := K) P) P₂)] [CharZero K] :
+    [Algebra.IsSeparable (K_1 (K := K) P) (baseChangeSplittingField (K' := K_1 (K := K) P) P₂)] [CharZero K] :
     adjoin_eq_integralClosure_K_2_of_Level (K := K) (P := P) P₂ hOK hπ hπnorm hf hu heq hPdist
         hPdeg hu₂ heq₂ hα'irr hP₂dist hassoc hdeg hα'norm hα'coe hirr hβroot hβfin =
       adjoin_eq_integralClosure_K_2 (K := K) (P := P) (P₂ := P₂) hOK hπ hπnorm hf hu heq hPdist
@@ -647,7 +647,7 @@ theorem exists_eisenstein_tower_step_K_3 (hOK : ∀ c : O, ‖algebraMap O K c�
           (P₄ : _⟦X⟧) * u₄ ∧
         Associated (P₄.coeff 0) gen ∧
         ‖algebraMap ((level_K_2 (K := K) (P := P) P₂).next P₃).OL
-          (nextSplittingField (K' := ((level_K_2 (K := K) (P := P) P₂).next P₃).L) P₄) gen‖ < 1 := by
+          (baseChangeSplittingField (K' := ((level_K_2 (K := K) (P := P) P₂).next P₃).L) P₄) gen‖ < 1 := by
   letI := K_2.instAlgebraK (K := K) (P := P) P₂
   haveI := finiteDimensional_K_K_2 (K := K) (P := P) P₂
   have hirr : Irreducible (P₃.map (algebraMap (O_K2 (K := K) P₂) (K2P2 (K := K) P₂))) :=

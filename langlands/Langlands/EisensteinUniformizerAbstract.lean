@@ -21,7 +21,7 @@ inside the integral closure, is itself irreducible there (a uniformizer) — rep
 This is exactly the tool the `K_1 → K_2` tower step needs and the `K_1` level did not: at `K_1`,
 the generator's Eisenstein-ness and total ramification were both derived from a `hram` condition
 stated in terms of `K`'s norm (available because `K` carries `ValuativeRel`/`NormedField`
-structure). At `nextSplittingField`, the "base field" one level up is `K_1 P`, and
+structure). At `baseChangeSplittingField`, the "base field" one level up is `K_1 P`, and
 `Langlands/LubinTateTowerStepMonogenic.lean`'s docstring records — and this file's own probing
 confirms — that `K_1 P` deliberately carries **no** `ValuativeRel`/`NormedField` instance (giving
 it one reproduces a non-defeq diamond against the existing `spectralNorm`-based
