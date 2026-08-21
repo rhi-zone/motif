@@ -6,13 +6,13 @@ import Langlands.LubinTateTowerStepK3RootConnect
 import Langlands.LubinTateSplittingFieldDegree
 
 /-!
-# `K2P2⟮γ⟯ = K_3` and `[K_3 : K_2] = q`
+# `K2P2⟮γ⟯ = K_3` and `[K_3 : nextSplittingField] = q`
 
 The `K_2 → K_3` analogue of `Langlands/LubinTateTowerStepDegree.lean`: reassembling
 `exists_piTorsion_translate_of_aeval_P₃_eq_zero` (transitivity) and `piTorsion_one_K_3_eq_
 algebraMap_image` (the `K2P2 P₂ → K_3` `piTorsion`-invariance fact, `Langlands/
 LubinTateTowerStepK3RootConnect.lean`) into the headline structural statement, mirroring
-`Langlands.LubinTateTowerStepDegree`'s `K_1⟮β⟯ = K_2`/`[K_2 : K_1] = q` argument one level up.
+`Langlands.LubinTateTowerStepDegree`'s `K_1⟮β⟯ = nextSplittingField`/`[nextSplittingField : K_1] = q` argument one level up.
 
 ## Scope, relative to the `K_1 → K_2` template
 
@@ -34,7 +34,7 @@ work, out of scope here.
   `FPiEval_algebraMap_mem_adjoin`.
 * `adjoin_root_eq_top_K_3` : **`(K2P2 P₂)⟮γ⟯ = ⊤`**, for `γ` any root of `P₃`'s image in `K_3`.
 * `finrank_K_3_eq_residueCard` : **`Module.finrank (K2P2 P₂) (K_3 P₃) = residueCard O`** —
-  `[K_3 : K_2] = q`, given `hγfin : Module.finrank (K2P2 P₂) (K2P2 P₂)⟮γ⟯ = residueCard O` for the
+  `[K_3 : nextSplittingField] = q`, given `hγfin : Module.finrank (K2P2 P₂) (K2P2 P₂)⟮γ⟯ = residueCard O` for the
   same `γ`.
 -/
 
@@ -84,7 +84,7 @@ theorem FPiEval_algebraMap_mem_adjoin_K3 (hOK : ∀ c : O, ‖algebraMap O K c�
   set t' := algebraMap (K2P2 (K := K) P₂)
       (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) t with ht'def
   have ht' : ‖t'‖ < 1 := by
-    rw [ht'def, K_2.norm_eq_spectralNorm, spectralNorm_extends]; exact ht
+    rw [ht'def, nextSplittingField.norm_eq_spectralNorm, spectralNorm_extends]; exact ht
   have hsum := hasSum_FPiEval (K_3.hOK_transport (K := K) (P := P) P₂ P₃ hOK) hπ hf hγ ht'
   have hmem : ∀ n : Fin 2 →₀ ℕ,
       evalSummandMv (Phi hπ hf)
@@ -179,9 +179,9 @@ theorem adjoin_root_eq_top_K_3 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {
   refine eq_top_iff.mpr fun x _ ↦ ?_
   exact (IntermediateField.mem_toSubalgebra _ x).mp (hle Algebra.mem_top)
 
-/-! ## `[K_3 : K_2] = q` -/
+/-! ## `[K_3 : nextSplittingField] = q` -/
 
-/-- **`Module.finrank (K2P2 P₂) (K_3 P₃) = residueCard O`** — `[K_3 : K_2] = q`, the third genuine
+/-- **`Module.finrank (K2P2 P₂) (K_3 P₃) = residueCard O`** — `[K_3 : nextSplittingField] = q`, the third genuine
 tower-step degree computation of the Lubin-Tate arc. Takes `hγfin : Module.finrank (K2P2 P₂)
 (K2P2 P₂)⟮γ⟯ = residueCard O` as an external hypothesis (see the module docstring for why — the
 existence of such a `γ` at a *concrete* `P₃` needs `exists_eisenstein_tower_step_K_2`'s output

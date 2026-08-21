@@ -19,7 +19,7 @@ LubinTateTowerStepConcrete.lean` plays at the `K_1 → K_2` step.
 ## Scope, matched precisely against the `K_1 → K_2` precedent
 
 `Langlands/LubinTateTowerStepConcrete.lean` itself never concretely discharges the norm bound
-`hα'norm : ‖algebraMap _ (K_2 P₂) (α' : _)‖ < 1` — every downstream theorem in this arc
+`hα'norm : ‖algebraMap _ (nextSplittingField P₂) (α' : _)‖ < 1` — every downstream theorem in this arc
 (`Langlands/LubinTateTowerStepRootConnect.lean`, `LubinTateTowerStepDegree.lean`,
 `LubinTateTowerStepMonogenic.lean`, `LubinTateTowerStepLocalRing.lean`) keeps taking it as an
 explicit ambient hypothesis; a repository-wide search confirms `hα'norm` is *never* the conclusion of
@@ -82,16 +82,16 @@ theorem norm_lt_one_of_aeval_P₃_eq_zero_concrete (hOK : ∀ c : O, ‖algebraM
     (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc₂ : Associated (P₂.coeff 0) α') (hdeg₂ : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (K_2 (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
     {α : K_1 (K := K) P} (hα'coe : (α' : K_1 (K := K) P) = α)
     (hirr₂ : Irreducible (P₂.map (algebraMap _ (K_1 (K := K) P))))
-    {β : K_2 (K' := K_1 (K := K) P) P₂}
+    {β : nextSplittingField (K' := K_1 (K := K) P) P₂}
     (hβroot : Polynomial.aeval β (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0)
     (hβfin : Module.finrank (K_1 (K := K) P) (K_1 (K := K) P)⟮β⟯ = residueCard O)
-    [Algebra.IsSeparable (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂)] [CharZero K]
+    [Algebra.IsSeparable (K_1 (K := K) P) (nextSplittingField (K' := K_1 (K := K) P) P₂)] [CharZero K]
     [IsDiscreteValuationRing ↥(integralClosure
       ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-      (K_2 (K' := K_1 (K := K) P) P₂))] :
+      (nextSplittingField (K' := K_1 (K := K) P) P₂))] :
     ∃ (P₃ : (O_K2 (K := K) P₂)[X]) (β' : O_K2 (K := K) P₂),
       ∀ (hβ'norm : letI := K_2.instAlgebraK (K := K) (P := P) P₂
         ‖algebraMap _ (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) (β' : _)‖ < 1)
@@ -122,16 +122,16 @@ theorem eval_f_eq_of_aeval_P₃_eq_zero_concrete (hOK : ∀ c : O, ‖algebraMap
     (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc₂ : Associated (P₂.coeff 0) α') (hdeg₂ : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (K_2 (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
     {α : K_1 (K := K) P} (hα'coe : (α' : K_1 (K := K) P) = α)
     (hirr₂ : Irreducible (P₂.map (algebraMap _ (K_1 (K := K) P))))
-    {β : K_2 (K' := K_1 (K := K) P) P₂}
+    {β : nextSplittingField (K' := K_1 (K := K) P) P₂}
     (hβroot : Polynomial.aeval β (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0)
     (hβfin : Module.finrank (K_1 (K := K) P) (K_1 (K := K) P)⟮β⟯ = residueCard O)
-    [Algebra.IsSeparable (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂)] [CharZero K]
+    [Algebra.IsSeparable (K_1 (K := K) P) (nextSplittingField (K' := K_1 (K := K) P) P₂)] [CharZero K]
     [IsDiscreteValuationRing ↥(integralClosure
       ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-      (K_2 (K' := K_1 (K := K) P) P₂))] :
+      (nextSplittingField (K' := K_1 (K := K) P) P₂))] :
     ∃ (P₃ : (O_K2 (K := K) P₂)[X]) (β' : O_K2 (K := K) P₂),
       ∀ (hβ'norm : letI := K_2.instAlgebraK (K := K) (P := P) P₂
         ‖algebraMap _ (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) (β' : _)‖ < 1)
@@ -166,16 +166,16 @@ theorem exists_piTorsion_translate_of_aeval_P₃_eq_zero_concrete (hOK : ∀ c :
     (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc₂ : Associated (P₂.coeff 0) α') (hdeg₂ : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (K_2 (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
     {α : K_1 (K := K) P} (hα'coe : (α' : K_1 (K := K) P) = α)
     (hirr₂ : Irreducible (P₂.map (algebraMap _ (K_1 (K := K) P))))
-    {β : K_2 (K' := K_1 (K := K) P) P₂}
+    {β : nextSplittingField (K' := K_1 (K := K) P) P₂}
     (hβroot : Polynomial.aeval β (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0)
     (hβfin : Module.finrank (K_1 (K := K) P) (K_1 (K := K) P)⟮β⟯ = residueCard O)
-    [Algebra.IsSeparable (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂)] [CharZero K]
+    [Algebra.IsSeparable (K_1 (K := K) P) (nextSplittingField (K' := K_1 (K := K) P) P₂)] [CharZero K]
     [IsDiscreteValuationRing ↥(integralClosure
       ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-      (K_2 (K' := K_1 (K := K) P) P₂))] :
+      (nextSplittingField (K' := K_1 (K := K) P) P₂))] :
     ∃ (P₃ : (O_K2 (K := K) P₂)[X]) (β' : O_K2 (K := K) P₂),
       ∀ (hβ'norm : letI := K_2.instAlgebraK (K := K) (P := P) P₂
         ‖algebraMap _ (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) (β' : _)‖ < 1)
@@ -215,16 +215,16 @@ theorem exists_finrank_adjoin_eq_residueCard_K_3 (hOK : ∀ c : O, ‖algebraMap
     (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc₂ : Associated (P₂.coeff 0) α') (hdeg₂ : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (K_2 (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
     {α : K_1 (K := K) P} (hα'coe : (α' : K_1 (K := K) P) = α)
     (hirr₂ : Irreducible (P₂.map (algebraMap _ (K_1 (K := K) P))))
-    {β : K_2 (K' := K_1 (K := K) P) P₂}
+    {β : nextSplittingField (K' := K_1 (K := K) P) P₂}
     (hβroot : Polynomial.aeval β (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0)
     (hβfin : Module.finrank (K_1 (K := K) P) (K_1 (K := K) P)⟮β⟯ = residueCard O)
-    [Algebra.IsSeparable (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂)] [CharZero K]
+    [Algebra.IsSeparable (K_1 (K := K) P) (nextSplittingField (K' := K_1 (K := K) P) P₂)] [CharZero K]
     [IsDiscreteValuationRing ↥(integralClosure
       ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-      (K_2 (K' := K_1 (K := K) P) P₂))] :
+      (nextSplittingField (K' := K_1 (K := K) P) P₂))] :
     ∃ (P₃ : (O_K2 (K := K) P₂)[X]),
       P₃.natDegree = residueCard O ∧
       ∃ γ : K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃,

@@ -141,9 +141,9 @@ theorem TowerStep.exists_isNStepFrom {f : O⟦X⟧} {hOK : ∀ c : O, ‖algebra
     (hf : IsLubinTatePoly π (residueCard O) f)
     (hstep : ∀ ts : TowerStep.{v, _, _} f hOK,
       ∃ (hirr : Irreducible (ts.nextPoly.map (algebraMap ts.lvl.OL ts.lvl.L)))
-        (β : K_2 (K' := ts.lvl.L) ts.nextPoly)
+        (β : nextSplittingField (K' := ts.lvl.L) ts.nextPoly)
         (hβroot : Polynomial.aeval β (ts.nextPoly.map (algebraMap ts.lvl.OL ts.lvl.L)) = 0),
-        (minpoly ts.lvl.L β).natDegree = Module.finrank ts.lvl.L (K_2 (K' := ts.lvl.L) ts.nextPoly))
+        (minpoly ts.lvl.L β).natDegree = Module.finrank ts.lvl.L (nextSplittingField (K' := ts.lvl.L) ts.nextPoly))
     (ts₀ : TowerStep.{v, _, _} f hOK) :
     ∀ n : ℕ, ∃ st : TowerStep.{v, _, _} f hOK, TowerStep.IsNStepFrom ts₀ st n := by
   intro n
@@ -173,7 +173,7 @@ def ts_K1 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {f : O⟦X⟧}
     (hu₂ : IsUnit u₂) (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc₂ : Associated (P₂.coeff 0) α') (hdeg₂ : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (K_2 (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1) :
+    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1) :
     TowerStep f hOK :=
   { lvl := level_K_1 (K := K) (P := P), hnormL := hnorm_K_K_1 (K := K) (P := P), gen := α',
     genIrr := hα'irr, nextPoly := P₂, nextDist := hP₂dist, nextAssoc := hassoc₂,
@@ -206,7 +206,7 @@ theorem isNStepFrom_ts_K2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {f : O
     (hu₂ : IsUnit u₂) (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc₂ : Associated (P₂.coeff 0) α') (hdeg₂ : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (K_2 (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
     (β' : O_K2 (K := K) P₂) {u₃ : (O_K2 (K := K) P₂)⟦X⟧} (hu₃ : IsUnit u₃)
     (heq₃ : letI := K_2.instAlgebraK (K := K) (P := P) P₂
       shifted f (towerHom2 (K := K) (P := P) P₂ hOK) β' = (P₃ : _⟦X⟧) * u₃)
@@ -239,7 +239,7 @@ theorem isNStepFrom_ts_K3 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1)
     (hu₂ : IsUnit u₂) (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc₂ : Associated (P₂.coeff 0) α') (hdeg₂ : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (K_2 (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
     (β' : O_K2 (K := K) P₂) {u₃ : (O_K2 (K := K) P₂)⟦X⟧} (hu₃ : IsUnit u₃)
     (heq₃ : letI := K_2.instAlgebraK (K := K) (P := P) P₂
       shifted f (towerHom2 (K := K) (P := P) P₂ hOK) β' = (P₃ : _⟦X⟧) * u₃)

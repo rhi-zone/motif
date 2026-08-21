@@ -151,7 +151,7 @@ the integral closure of a DVR in a `spectralNorm`-normed finite extension) and a
 integral-closure machinery only inside the `ValuativeRel`/`ValuationSubring` formalism, not the
 `spectralNorm`/`NormedField` one `K_1 := Q.SplittingField` (`Langlands.LubinTateSplittingField`)
 actually uses). This residue-field-preservation gap, not `IsAdicComplete`, is now the genuine
-remaining blocker for turning this file's per-step Eisenstein fact into an actual `K_2`
+remaining blocker for turning this file's per-step Eisenstein fact into an actual `nextSplittingField`
 instantiation — see `ROADMAP.md` for the precise scope handed to whoever continues this.
 -/
 

@@ -12,7 +12,7 @@ import Langlands.IntegralExtensionLocalRing
 (`Algebra.adjoin_singleton_eq_top_of_adjoin_eq_integralClosure`,
 `isLocalRing_integralClosure_of_isDistinguishedAt_root`,
 `mem_maximalIdeal_of_isDistinguishedAt_root`) are stated **fully abstractly** — `R`/`L` arbitrary type
-variables, no reference to the Lubin-Tate tower's concrete `K_1`/`K_2` types. This file instantiates
+variables, no reference to the Lubin-Tate tower's concrete `K_1`/`nextSplittingField` types. This file instantiates
 them one level up, at `R := O_{K_2}` (flat spelling), `L := K_3 P₃`, exactly mirroring
 `Langlands/LubinTateTowerStepLocalRing.lean`'s own `K_1 → K_2` instantiation — **no new general
 infrastructure was needed**: the abstract engines transfer mechanically, since they never depended on

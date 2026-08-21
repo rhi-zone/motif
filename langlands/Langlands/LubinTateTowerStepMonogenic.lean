@@ -13,9 +13,9 @@ import Mathlib.FieldTheory.Minpoly.IsIntegrallyClosed
 `_of_valuationSubring` engine cannot be reused for the `K_1 → K_2` hop, because its `letI` chain
 rebuilds a *second, non-defeq* `NontriviallyNormedField (K_1 P)` instance (via `Valued.mk'`), distinct
 from the one already registered (`K_1.instNontriviallyNormedField`, the `spectralNorm` route
-`K_2`'s own construction is built against). This file sidesteps that formalism entirely, applying
+`nextSplittingField`'s own construction is built against). This file sidesteps that formalism entirely, applying
 `Langlands/EisensteinMonogenicAbstract.lean`'s bare-Eisenstein monogenicity theorem directly at
-`R := O_{K_1}`, `K := K_1 P`, `L := K_2 P₂` — no `ValuativeRel`/`NormedField` structure on `K_1 P` is
+`R := O_{K_1}`, `K := K_1 P`, `L := nextSplittingField P₂` — no `ValuativeRel`/`NormedField` structure on `K_1 P` is
 built or required.
 
 **Checked directly (not assumed) that this level does *not* reproduce the `O → K_2` instance
@@ -23,8 +23,8 @@ diamond** `Langlands/LubinTateTowerStepSplittingField.lean`'s `K_2.instAlgebraO`
 about: `O_{K_1} := ↥(integralClosure ↥𝒪[K] (K_1 P))` is, unlike the base `O`, syntactically a
 `Subalgebra ↥𝒪[K] (K_1 P)`-coerced type, so Mathlib's generic `Subalgebra.instSMulSubtypeMem` (`the
 action by a subalgebra is the action by the underlying algebra`) already supplies `Algebra O_{K_1}
-(K_2 P₂)` and `IsScalarTower O_{K_1} (K_1 P) (K_2 P₂)` via ordinary instance search, *and* this
-instance agrees with the honest composite `algebraMap (K_1 P) (K_2 P₂) ∘ algebraMap O_{K_1} (K_1 P)`
+(nextSplittingField P₂)` and `IsScalarTower O_{K_1} (K_1 P) (nextSplittingField P₂)` via ordinary instance search, *and* this
+instance agrees with the honest composite `algebraMap (K_1 P) (nextSplittingField P₂) ∘ algebraMap O_{K_1} (K_1 P)`
 by `rfl` — confirmed by direct `rfl`/`infer_instance` test before relying on it. (The `O → K_2` case
 needed a hand-built `K_2.instAlgebraO` precisely because `O` is *not* itself a subalgebra of `K_1 P`
 — it reaches `K_1 P` via a longer, unrelated path through `K` — so no such generic instance applies
@@ -33,7 +33,7 @@ there.) No custom `Algebra`/`IsScalarTower` instance is built in this file as a 
 ## The generator `β`, its minimal polynomial, and its Eisenstein-ness
 
 `Langlands/LubinTateTowerStepDegree.lean`'s `adjoin_root_eq_top_K_2` already supplies a root `β` of
-`P₂`'s image generating `K_2` over `K_1 P` (`(K_1 P)⟮β⟯ = ⊤`). This file identifies
+`P₂`'s image generating `nextSplittingField` over `K_1 P` (`(K_1 P)⟮β⟯ = ⊤`). This file identifies
 `minpoly O_{K_1} β = P₂` *exactly* (not merely up to associates): `minpoly.isIntegrallyClosed_eq_
 field_fractions'` identifies `minpoly (K_1 P) β` with the base change of `minpoly O_{K_1} β`, and
 `minpoly.eq_of_irreducible_of_monic` identifies `minpoly (K_1 P) β` with `P₂`'s own image (`P₂` monic,
@@ -46,14 +46,14 @@ argument needed. `P₂` being Eisenstein at `𝔪_{O_{K_1}}` then transports dir
 
 ## Main result
 
-* `adjoin_eq_integralClosure_K_2` : **`Algebra.adjoin O_{K_1} {β} = integralClosure O_{K_1} (K_2 P₂)`**
+* `adjoin_eq_integralClosure_K_2` : **`Algebra.adjoin O_{K_1} {β} = integralClosure O_{K_1} (nextSplittingField P₂)`**
   — monogenicity of `O_{K_2}` over `O_{K_1}`. This is a complete, unconditional (given the ambient
   hypothesis package) result, obtained with no `ValuativeRel (K_1 P)` instance anywhere.
 
 ## What does not close here: `IsLocalRing O_{K_2}`
 
 Residue-field preservation needs `IsLocalRing.residueFieldEquivOfAdjoinSingleton`, which requires
-`[IsLocalRing B]` for `B := integralClosure O_{K_1} (K_2 P₂)` — a hypothesis `IsLocalRing.residueField_
+`[IsLocalRing B]` for `B := integralClosure O_{K_1} (nextSplittingField P₂)` — a hypothesis `IsLocalRing.residueField_
 map_surjective_of_adjoin_singleton`'s signature bakes in (`ResidueField B` is not even well-typed
 without it). At the `K → K_1` level this instance came for free from `IsDiscreteValuationRing`
 (`Langlands/MonogenicIntegralClosure.lean`'s `isDiscreteValuationRing_integralClosure`), itself built
@@ -84,16 +84,16 @@ variable {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [Valuativ
 variable {P : O[X]}
   {P₂ : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)))[X]}
 
-/-- **`Algebra.adjoin O_{K_1} {β} = integralClosure O_{K_1} (K_2 P₂)`** — monogenicity of `O_{K_2}`
-over `O_{K_1}`, for `β` any root of `P₂`'s image generating `K_2` over `K_1 P`
+/-- **`Algebra.adjoin O_{K_1} {β} = integralClosure O_{K_1} (nextSplittingField P₂)`** — monogenicity of `O_{K_2}`
+over `O_{K_1}`, for `β` any root of `P₂`'s image generating `nextSplittingField` over `K_1 P`
 (`adjoin_root_eq_top_K_2`'s hypothesis package, reused verbatim, plus `hβfin` matching
 `finrank_K_2_eq_residueCard`'s own extra hypothesis and `hirr` naming `exists_eisenstein_tower_step_K_1`'s
 already-established irreducibility of `P₂`'s image). No `ValuativeRel (K_1 P)` instance is built or
-needed — `Algebra O_{K_1} (K_2 P₂)` and `IsScalarTower O_{K_1} (K_1 P) (K_2 P₂)` resolve by ordinary
+needed — `Algebra O_{K_1} (nextSplittingField P₂)` and `IsScalarTower O_{K_1} (K_1 P) (nextSplittingField P₂)` resolve by ordinary
 instance search (`Subalgebra.instSMulSubtypeMem`), confirmed to agree with the honest composite.
 
 Proof: `IsIntegral O_{K_1} β` is witnessed directly by `P₂` itself (`hβroot` transported along
-`Polynomial.aeval_map_algebraMap`, valid since `IsScalarTower O_{K_1} (K_1 P) (K_2 P₂)` holds).
+`Polynomial.aeval_map_algebraMap`, valid since `IsScalarTower O_{K_1} (K_1 P) (nextSplittingField P₂)` holds).
 `minpoly (K_1 P) β = P₂.map (algebraMap O_{K_1} (K_1 P))` by `minpoly.eq_of_irreducible_of_monic`
 (using `hirr`, `hβroot`, `hP₂dist.monic`); combined with `minpoly.isIntegrallyClosed_eq_field_
 fractions'` (`minpoly (K_1 P) β = (minpoly O_{K_1} β).map (algebraMap O_{K_1} (K_1 P))`) and
@@ -101,7 +101,7 @@ injectivity of `Polynomial.map` along the injective `algebraMap O_{K_1} (K_1 P)`
 this forces `minpoly O_{K_1} β = P₂` on the nose. `P₂`'s Eisenstein-ness at `𝔪_{O_{K_1}}` (from
 `hP₂dist`/`hassoc`/`hα'irr`, the same assembly `Langlands/LubinTateTowerStep.lean`'s
 `isEisensteinAt_shifted` uses) transports along this equality onto `minpoly O_{K_1} β`, and `hgen`
-(`(minpoly (K_1 P) β).natDegree = Module.finrank (K_1 P) (K_2 P₂)`) from `IntermediateField.adjoin.
+(`(minpoly (K_1 P) β).natDegree = Module.finrank (K_1 P) (nextSplittingField P₂)`) from `IntermediateField.adjoin.
 finrank`, `hβfin`, and `finrank_K_2_eq_residueCard`. `EisensteinMonogenicAbstract`'s
 `adjoin_eq_integralClosure_of_isEisensteinAt` closes the rest. -/
 theorem adjoin_eq_integralClosure_K_2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O}
@@ -115,17 +115,17 @@ theorem adjoin_eq_integralClosure_K_2 (hOK : ∀ c : O, ‖algebraMap O K c‖ �
     (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc : Associated (P₂.coeff 0) α') (hdeg : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (K_2 (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
     {α : K_1 (K := K) P} (hα'coe : (α' : K_1 (K := K) P) = α)
     (hirr : Irreducible (P₂.map (algebraMap _ (K_1 (K := K) P))))
-    {β : K_2 (K' := K_1 (K := K) P) P₂}
+    {β : nextSplittingField (K' := K_1 (K := K) P) P₂}
     (hβroot : Polynomial.aeval β (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0)
     (hβfin : Module.finrank (K_1 (K := K) P) (K_1 (K := K) P)⟮β⟯ = residueCard O)
-    [Algebra.IsSeparable (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂)] :
+    [Algebra.IsSeparable (K_1 (K := K) P) (nextSplittingField (K' := K_1 (K := K) P) P₂)] :
     Algebra.adjoin ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-        ({β} : Set (K_2 (K' := K_1 (K := K) P) P₂)) =
+        ({β} : Set (nextSplittingField (K' := K_1 (K := K) P) P₂)) =
       integralClosure ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
-        (K_1 (K := K) P)) (K_2 (K' := K_1 (K := K) P) P₂) := by
+        (K_1 (K := K) P)) (nextSplittingField (K' := K_1 (K := K) P) P₂) := by
   -- `IsIntegral O_{K_1} β`, witnessed directly by `P₂`.
   have hβint : IsIntegral ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
       (K_1 (K := K) P)) β := by
@@ -179,7 +179,7 @@ theorem adjoin_eq_integralClosure_K_2 (hOK : ∀ c : O, ‖algebraMap O K c‖ �
   -- `hgen`.
   have hxK : IsIntegral (K_1 (K := K) P) β := hβint.tower_top
   have hgen : (minpoly (K_1 (K := K) P) β).natDegree =
-      Module.finrank (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂) :=
+      Module.finrank (K_1 (K := K) P) (nextSplittingField (K' := K_1 (K := K) P) P₂) :=
     (IntermediateField.adjoin.finrank hxK).symm.trans (hβfin.trans
       (finrank_K_2_eq_residueCard (K := K) (P := P) (P₂ := P₂) hOK hπ hπnorm hf hu heq hPdist
         hPdeg hu₂ heq₂ hα'irr hP₂dist hassoc hdeg hα'norm hα'coe hβroot hβfin).symm)

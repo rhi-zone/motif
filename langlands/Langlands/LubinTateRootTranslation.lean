@@ -4,7 +4,7 @@ import Langlands.LubinTateFormalGroupEvalAssoc
 /-!
 # `f` is an `F_π`-endomorphism, and roots of `f(X) = α` differ by `π`-torsion translation
 
-`ROADMAP.md` §50's Target 1 (`K_1⟮β⟯ = K_2`) needs, per the classical argument: if `β, β'` both
+`ROADMAP.md` §50's Target 1 (`K_1⟮β⟯ = nextSplittingField`) needs, per the classical argument: if `β, β'` both
 solve `f(X) = α` for a fixed `α`, then `β` and `β'` differ by an `F_π`-translation by a `π`-torsion
 point, i.e. `β' = F_π(β, t)` for some `t ∈ piTorsion hπ hf 1` (the kernel of `eval f` itself, since
 `iter f 1 = f`). This file supplies that fact, plus the two ingredients it rests on:

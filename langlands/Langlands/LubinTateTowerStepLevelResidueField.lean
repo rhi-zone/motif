@@ -43,10 +43,10 @@ not solely an intrinsic property of unifying the doubly-nested `Subalgebra` type
 ## Main result
 
 * `Level.residueFieldEquiv_next` : **`ResidueField lvl.OL ≃+* ResidueField ↥(integralClosure lvl.OL
-  (K_2 (K' := lvl.L) Pn))`**, generic in `lvl : Level K` — the one-hop residue-field-preservation
-  step, the last piece of the `∀ n` induction. Takes `[IsLocalRing ↥(integralClosure lvl.OL (K_2 Pn))]`
-  / `[IsLocalHom (algebraMap lvl.OL ↥(integralClosure lvl.OL (K_2 Pn)))]` as explicit hypotheses, for
-  the same reason `residueFieldEquiv_K_2`/`_K_3` do: `ResidueField ↥(integralClosure lvl.OL (K_2 Pn))`
+  (nextSplittingField (K' := lvl.L) Pn))`**, generic in `lvl : Level K` — the one-hop residue-field-preservation
+  step, the last piece of the `∀ n` induction. Takes `[IsLocalRing ↥(integralClosure lvl.OL (nextSplittingField Pn))]`
+  / `[IsLocalHom (algebraMap lvl.OL ↥(integralClosure lvl.OL (nextSplittingField Pn)))]` as explicit hypotheses, for
+  the same reason `residueFieldEquiv_K_2`/`_K_3` do: `ResidueField ↥(integralClosure lvl.OL (nextSplittingField Pn))`
   needs the instance already to *state* the theorem's conclusion, so instance resolution cannot see
   past the `:= by` to anything derived inside the proof.
 -/
@@ -88,19 +88,19 @@ def Level.residueFieldEquiv_next (Pn : lvl.OL[X])
     (heqn : shifted f (lvl.towerHom hOK) α' = (Pn : lvl.OL⟦X⟧) * v)
     (hα'irr : Irreducible α') (hPndist : Pn.IsDistinguishedAt (maximalIdeal lvl.OL))
     (hassoc : Associated (Pn.coeff 0) α') (hdeg : 0 < Pn.natDegree)
-    (hα'norm : ‖algebraMap lvl.OL (K_2 (K' := lvl.L) Pn) α'‖ < 1)
+    (hα'norm : ‖algebraMap lvl.OL (nextSplittingField (K' := lvl.L) Pn) α'‖ < 1)
     (hirr : Irreducible (Pn.map (algebraMap lvl.OL lvl.L)))
-    {β : K_2 (K' := lvl.L) Pn}
+    {β : nextSplittingField (K' := lvl.L) Pn}
     (hβroot : Polynomial.aeval β (Pn.map (algebraMap lvl.OL lvl.L)) = 0)
     [CharZero K]
-    [IsLocalRing ↥(integralClosure lvl.OL (K_2 (K' := lvl.L) Pn))]
-    [IsLocalHom (algebraMap lvl.OL ↥(integralClosure lvl.OL (K_2 (K' := lvl.L) Pn)))] :
+    [IsLocalRing ↥(integralClosure lvl.OL (nextSplittingField (K' := lvl.L) Pn))]
+    [IsLocalHom (algebraMap lvl.OL ↥(integralClosure lvl.OL (nextSplittingField (K' := lvl.L) Pn)))] :
     letI := lvl.instAlgebraO Pn hOK
-    ResidueField lvl.OL ≃+* ResidueField ↥(integralClosure lvl.OL (K_2 (K' := lvl.L) Pn)) := by
+    ResidueField lvl.OL ≃+* ResidueField ↥(integralClosure lvl.OL (nextSplittingField (K' := lvl.L) Pn)) := by
   letI := lvl.algL
   letI := lvl.finiteDim
   letI := lvl.instAlgebraO Pn hOK
-  have hgen : (minpoly lvl.L β).natDegree = Module.finrank lvl.L (K_2 (K' := lvl.L) Pn) :=
+  have hgen : (minpoly lvl.L β).natDegree = Module.finrank lvl.L (nextSplittingField (K' := lvl.L) Pn) :=
     lvl.natDegree_minpoly_eq_finrank Pn hOK hnormL hπ hπnorm hf hu heq hPdist hPdeg hSplits hv heqn
       hα'irr hPndist hassoc hdeg hα'norm hβroot
   have hadjL := lvl.adjoin_eq_integralClosure_next Pn hα'irr hPndist hassoc hirr hβroot hgen
@@ -110,7 +110,7 @@ def Level.residueFieldEquiv_next (Pn : lvl.OL[X])
   have hβint : IsIntegral lvl.OL β := ⟨Pn, hPndist.monic, hβroot'⟩
   have hadjS := Algebra.adjoin_singleton_eq_top_of_adjoin_eq_integralClosure hβint hadjL
   have hβmem := mem_maximalIdeal_of_isDistinguishedAt_root
-    (R := lvl.OL) (L := K_2 (K' := lvl.L) Pn) hPndist hβint hβroot'
+    (R := lvl.OL) (L := nextSplittingField (K' := lvl.L) Pn) hPndist hβint hβroot'
   exact IsLocalRing.residueFieldEquivOfAdjoinSingleton hβmem hadjS
 
 end LubinTate

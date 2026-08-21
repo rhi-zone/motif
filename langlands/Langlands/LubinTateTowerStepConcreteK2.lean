@@ -17,24 +17,24 @@ actually running `Langlands/LubinTateTowerStep.lean`'s `TowerStep` machinery at 
 1. **The missing `Algebra`/`IsScalarTower` composite** at `R := 𝒪[K]` (`isScalarTower_R_K_1_K_2`
    below). This turns out to be free: Mathlib's `Algebra.ofSubsemiring` (`R` a subring of `K`,
    `[Algebra K M]` in scope) and `Tower.subsemiring` (the accompanying `IsScalarTower R K M`)
-   already supply `Algebra R (K_2 P₂)` and `IsScalarTower R K (K_2 P₂)` automatically, once
-   `K_2.instAlgebraK` is activated via `letI`; the remaining `IsScalarTower R (K_1 P) (K_2 P₂)`
-   (not `R K (K_2 P₂)`) follows by `rfl`, since `K_2.algebraMap_K_eq`'s two-hop composite and
+   already supply `Algebra R (nextSplittingField P₂)` and `IsScalarTower R K (nextSplittingField P₂)` automatically, once
+   `K_2.instAlgebraK` is activated via `letI`; the remaining `IsScalarTower R (K_1 P) (nextSplittingField P₂)`
+   (not `R K (nextSplittingField P₂)`) follows by `rfl`, since `K_2.algebraMap_K_eq`'s two-hop composite and
    `Algebra.ofSubsemiring`'s composite agree definitionally.
-2. **The `K_2`-level uniformizer.** `Langlands/EisensteinUniformizerAbstract.lean` provides the
+2. **The `nextSplittingField`-level uniformizer.** `Langlands/EisensteinUniformizerAbstract.lean` provides the
    bare-Eisenstein analogue of `exists_irreducible_uniformizer_K_1`'s machinery, avoiding the
    `ValuativeRel (K_1 P)` diamond. `irreducible_of_isEisensteinAt_K_2` below applies it: the
    generator `β` (already supplied by `Langlands/LubinTateTowerStepDegree.lean`'s
    `exists_finrank_adjoin_eq_residueCard_K_2`) has Eisenstein minimal polynomial over `O_{K_1}`
    (`minpoly O_{K_1} β = P₂` on the nose — the same identification `Langlands/
    LubinTateTowerStepMonogenic.lean`'s `adjoin_eq_integralClosure_K_2` makes, reproduced here
-   because it is not itself exported as a standalone lemma) and generates `K_2 P₂` over `K_1 P`
+   because it is not itself exported as a standalone lemma) and generates `nextSplittingField P₂` over `K_1 P`
    (`hgen`, from `finrank_K_2_eq_residueCard`), so it is irreducible in `O_{K_2}`.
 
 With both closed, `exists_eisenstein_tower_step_K_2` runs `TowerStep`'s
 `exists_isWeierstrassFactorization_shifted` at `O' := O_{K_2}` (the `O_{K_1}`-relative spelling),
 `ψ := ` the three-hop composite `O → O_{K_1} → O_{K_2}` (`isLocalHom_comp_towerHom_K_2`, already
-built), `α' := ` the `K_2`-uniformizer above — **producing a monic degree-`q` polynomial `P₃` over
+built), `α' := ` the `nextSplittingField`-uniformizer above — **producing a monic degree-`q` polynomial `P₃` over
 `O_{K_2}`, Weierstrass factor of `f(X) - β'`, Eisenstein at `𝔪_{O_{K_2}}`. This is `K_3`'s
 Eisenstein polynomial.**
 
@@ -43,7 +43,7 @@ Eisenstein polynomial.**
 Its own conclusion mentions `maximalIdeal O_{K_2}` (via `IsDistinguishedAt`), so — as `§62`'s
 Obstacle 2 diagnosed — `[IsDiscreteValuationRing O_{K_2}]` must be an ambient hypothesis of the
 *statement itself*, not something derivable purely inside the proof: `O_{K_2}`'s `Algebra K
-(K_2 P₂)` structure needed to state that instance is only available once `K_2.instAlgebraK` is
+(nextSplittingField P₂)` structure needed to state that instance is only available once `K_2.instAlgebraK` is
 `letI`-activated, which cannot happen before the theorem's own return type is elaborated. In
 return, this instance genuinely *is* available at every call site that has already done the same
 `letI`/`haveI` staging this file's own proof does (`isAdicComplete_integralClosure_integralClosure`
@@ -55,7 +55,7 @@ fact) — it is bookkeeping, not a new mathematical gap.
 Both gaps recorded in `§62`'s "Next step" are closed by this file plus
 `Langlands/EisensteinUniformizerAbstract.lean`: `K_3`'s Eisenstein polynomial is produced. See
 `ROADMAP.md` for the full account of what this establishes about the tower's iterability past
-`K_2`.
+`nextSplittingField`.
 -/
 
 noncomputable section
@@ -75,8 +75,8 @@ variable {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [Valuativ
 variable {P : O[X]}
   {P₂ : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)))[X]}
 
-/-- **`IsScalarTower R (K_1 P) (K_2 P₂)`, `R := 𝒪[K]`** — `§62`'s Obstacle 3, closed. `Algebra R
-(K_1 P)` and `Algebra R (K_2 P₂)` both resolve automatically via Mathlib's `Algebra.ofSubsemiring`
+/-- **`IsScalarTower R (K_1 P) (nextSplittingField P₂)`, `R := 𝒪[K]`** — `§62`'s Obstacle 3, closed. `Algebra R
+(K_1 P)` and `Algebra R (nextSplittingField P₂)` both resolve automatically via Mathlib's `Algebra.ofSubsemiring`
 (`R` a `Subring K`) once `K_2.instAlgebraK` is active; the two composites `R → K → K_1 P → K_2 P₂`
 and `R → K_1 P → K_2 P₂` agree on the nose (`Algebra.ofSubsemiring`'s composite unfolds through
 `K_2.algebraMap_K_eq`'s own two-hop composite by `rfl`), so `IsScalarTower.of_algebraMap_eq` closes
@@ -84,14 +84,14 @@ with the trivial witness. -/
 theorem isScalarTower_R_K_1_K_2 :
     letI := K_2.instAlgebraK (K := K) (P := P) P₂
     IsScalarTower ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)
-      (K_2 (K' := K_1 (K := K) P) P₂) := by
+      (nextSplittingField (K' := K_1 (K := K) P) P₂) := by
   letI := K_2.instAlgebraK (K := K) (P := P) P₂
   apply IsScalarTower.of_algebraMap_eq
   intro x
   rfl
 
 /-- **The level-2 generator `β`, viewed in `O_{K_2}`, is irreducible there** — a uniformizer of
-`O_{K_2}`, the `K_2`-level analogue of `exists_irreducible_uniformizer_K_1`. Reproduces `Langlands/
+`O_{K_2}`, the `nextSplittingField`-level analogue of `exists_irreducible_uniformizer_K_1`. Reproduces `Langlands/
 LubinTateTowerStepMonogenic.lean`'s `adjoin_eq_integralClosure_K_2` proof up through `hminR`/`hgen`
 (not exported there as standalone lemmas) and finishes with `Langlands/
 EisensteinUniformizerAbstract.lean`'s `irreducible_of_isEisensteinAt` instead of `Langlands/
@@ -108,21 +108,21 @@ theorem irreducible_of_isEisensteinAt_K_2 (hOK : ∀ c : O, ‖algebraMap O K c�
     (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc : Associated (P₂.coeff 0) α') (hdeg : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (K_2 (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
     {α : K_1 (K := K) P} (hα'coe : (α' : K_1 (K := K) P) = α)
     (hirr : Irreducible (P₂.map (algebraMap _ (K_1 (K := K) P))))
-    {β : K_2 (K' := K_1 (K := K) P) P₂}
+    {β : nextSplittingField (K' := K_1 (K := K) P) P₂}
     (hβroot : Polynomial.aeval β (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0)
     (hβfin : Module.finrank (K_1 (K := K) P) (K_1 (K := K) P)⟮β⟯ = residueCard O)
-    [Algebra.IsSeparable (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂)]
+    [Algebra.IsSeparable (K_1 (K := K) P) (nextSplittingField (K' := K_1 (K := K) P) P₂)]
     [IsDiscreteValuationRing ↥(integralClosure
       ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-      (K_2 (K' := K_1 (K := K) P) P₂))] :
+      (nextSplittingField (K' := K_1 (K := K) P) P₂))] :
     ∃ hβint : IsIntegral ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
         (K_1 (K := K) P)) β,
       Irreducible (⟨β, hβint⟩ : ↥(integralClosure
         ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-        (K_2 (K' := K_1 (K := K) P) P₂))) := by
+        (nextSplittingField (K' := K_1 (K := K) P) P₂))) := by
   have hβint : IsIntegral ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
       (K_1 (K := K) P)) β := by
     refine ⟨P₂, hP₂dist.monic, ?_⟩
@@ -157,7 +157,7 @@ theorem irreducible_of_isEisensteinAt_K_2 (hOK : ∀ c : O, ‖algebraMap O K c�
       (not_mem_sq_maximalIdeal_of_associated hα'irr hassoc)
   have hxK : IsIntegral (K_1 (K := K) P) β := hβint.tower_top
   have hgen : (minpoly (K_1 (K := K) P) β).natDegree =
-      Module.finrank (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂) :=
+      Module.finrank (K_1 (K := K) P) (nextSplittingField (K' := K_1 (K := K) P) P₂) :=
     (IntermediateField.adjoin.finrank hxK).symm.trans (hβfin.trans
       (finrank_K_2_eq_residueCard (K := K) (P := P) (P₂ := P₂) hOK hπ hπnorm hf hu heq hPdist
         hPdeg hu₂ heq₂ hα'irr hP₂dist hassoc hdeg hα'norm hα'coe hβroot hβfin).symm)
@@ -195,32 +195,32 @@ theorem exists_eisenstein_tower_step_K_2 (hOK : ∀ c : O, ‖algebraMap O K c�
     (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc : Associated (P₂.coeff 0) α') (hdeg : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (K_2 (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
     {α : K_1 (K := K) P} (hα'coe : (α' : K_1 (K := K) P) = α)
     (hirr : Irreducible (P₂.map (algebraMap _ (K_1 (K := K) P))))
-    {β : K_2 (K' := K_1 (K := K) P) P₂}
+    {β : nextSplittingField (K' := K_1 (K := K) P) P₂}
     (hβroot : Polynomial.aeval β (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0)
     (hβfin : Module.finrank (K_1 (K := K) P) (K_1 (K := K) P)⟮β⟯ = residueCard O)
-    [Algebra.IsSeparable (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂)] [CharZero K]
+    [Algebra.IsSeparable (K_1 (K := K) P) (nextSplittingField (K' := K_1 (K := K) P) P₂)] [CharZero K]
     [IsDiscreteValuationRing ↥(integralClosure
       ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-      (K_2 (K' := K_1 (K := K) P) P₂))] :
+      (nextSplittingField (K' := K_1 (K := K) P) P₂))] :
     ∃ (P₃ : (↥(integralClosure
         ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-        (K_2 (K' := K_1 (K := K) P) P₂)))[X])
+        (nextSplittingField (K' := K_1 (K := K) P) P₂)))[X])
       (u₃ : (↥(integralClosure
         ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-        (K_2 (K' := K_1 (K := K) P) P₂)))⟦X⟧)
+        (nextSplittingField (K' := K_1 (K := K) P) P₂)))⟦X⟧)
       (β' : ↥(integralClosure
         ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-        (K_2 (K' := K_1 (K := K) P) P₂))),
+        (nextSplittingField (K' := K_1 (K := K) P) P₂))),
       IsUnit u₃ ∧ P₃.IsDistinguishedAt (maximalIdeal _) ∧ P₃.natDegree = residueCard O ∧
         Irreducible β' ∧
         shifted f ((algebraMap ↥(integralClosure
           ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
           ↥(integralClosure
             ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-            (K_2 (K' := K_1 (K := K) P) P₂))).comp (towerHom (K := K) hOK P)) β' =
+            (nextSplittingField (K' := K_1 (K := K) P) P₂))).comp (towerHom (K := K) hOK P)) β' =
           (P₃ : _⟦X⟧) * u₃ ∧
         Associated (P₃.coeff 0) β' := by
   letI := K_2.instAlgebraK (K := K) (P := P) P₂
@@ -229,14 +229,14 @@ theorem exists_eisenstein_tower_step_K_2 (hOK : ∀ c : O, ‖algebraMap O K c�
   haveI := isScalarTower_R_K_1_K_2 (K := K) (P := P) (P₂ := P₂)
   haveI hAdicbase : IsAdicComplete
       (maximalIdeal ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
-        (K_2 (K' := K_1 (K := K) P) P₂)))
+        (nextSplittingField (K' := K_1 (K := K) P) P₂)))
       ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
-        (K_2 (K' := K_1 (K := K) P) P₂)) :=
+        (nextSplittingField (K' := K_1 (K := K) P) P₂)) :=
     NormedField.isAdicComplete_integralClosure_of_finiteDimensional
-      (K := K) (L := K_2 (K' := K_1 (K := K) P) P₂) (K_2.hnorm_K (K := K) (P := P) P₂)
+      (K := K) (L := nextSplittingField (K' := K_1 (K := K) P) P₂) (K_2.hnorm_K (K := K) (P := P) P₂)
   haveI hAdictop := isAdicComplete_integralClosure_integralClosure
     (R := ↥(ValuativeRel.valuation K).valuationSubring) (L := K_1 (K := K) P)
-    (M := K_2 (K' := K_1 (K := K) P) P₂)
+    (M := nextSplittingField (K' := K_1 (K := K) P) P₂)
   obtain ⟨hβint, hβirr⟩ :=
     irreducible_of_isEisensteinAt_K_2 hOK hπ hπnorm hf hu heq hPdist hPdeg hu₂ heq₂ hα'irr hP₂dist
       hassoc hdeg hα'norm hα'coe hirr hβroot hβfin
@@ -245,12 +245,12 @@ theorem exists_eisenstein_tower_step_K_2 (hOK : ∀ c : O, ‖algebraMap O K c�
   obtain ⟨P₃, u₃, hP₃dist, hu₃, heq₃, hdeg₃, hassoc₃⟩ :=
     exists_isWeierstrassFactorization_shifted (O' := ↥(integralClosure
         ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-        (K_2 (K' := K_1 (K := K) P) P₂))) hf
+        (nextSplittingField (K' := K_1 (K := K) P) P₂))) hf
       ((algebraMap ↥(integralClosure
         ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
         ↥(integralClosure
           ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-          (K_2 (K' := K_1 (K := K) P) P₂))).comp (towerHom (K := K) hOK P))
+          (nextSplittingField (K' := K_1 (K := K) P) P₂))).comp (towerHom (K := K) hOK P))
       hβirr
   exact ⟨P₃, u₃, ⟨β, hβint⟩, hu₃, hP₃dist, hdeg₃, hβirr, heq₃, hassoc₃⟩
 

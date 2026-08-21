@@ -39,8 +39,8 @@ instances (`Langlands/MonogenicIntegralClosure.lean`), all of which resolve by `
 * `LubinTate.exists_eisenstein_tower_step_K_1` : **the tower step, instantiated.** There is a monic
   degree-`q` polynomial `P₂` over `O_{K_1}`, Eisenstein at `𝔪_{O_{K_1}}`, with
   `shifted f ψ α = P₂ * u₂`, whose image over `K_1 P` is irreducible.
-* `LubinTate.K_2` : the splitting field of that image — the level-2 Lubin-Tate extension.
-* `LubinTate.finrank_adjoin_root_K_2_eq_residueCard` : a root `β` of `P₂`'s image in `K_2` generates
+* `LubinTate.nextSplittingField` : the splitting field of that image — the level-2 Lubin-Tate extension.
+* `LubinTate.finrank_adjoin_root_K_2_eq_residueCard` : a root `β` of `P₂`'s image in `nextSplittingField` generates
   a degree-`q` extension of `K_1 P`, `Module.finrank (K_1 P) (K_1 P)⟮β⟯ = residueCard O`.
 -/
 
@@ -284,30 +284,38 @@ theorem exists_eisenstein_tower_step_K_1
     Polynomial.irreducible_map_of_isWeaklyEisensteinAt_associated hα'irr hP₂dist.monic
       hP₂dist.toIsWeaklyEisensteinAt hpos hassoc₂, hP₂dist, hassoc₂⟩
 
-/-- **`K_2`, the level-2 Lubin-Tate extension**: the splitting field over `K_1 P` of the image of
-the level-2 Eisenstein polynomial `P₂` produced by `exists_eisenstein_tower_step_K_1`. Mirrors
-`LubinTate.K_1`'s own definition (`Langlands/LubinTateSplittingField.lean`), one level up and with
-no `divX` peel — `0` is not a root of `f(X) - α'`, so `P₂` itself, not `P₂.divX`, is the Eisenstein
-polynomial. -/
-def K_2 {O' : Type*} [CommRing O'] {K' : Type*} [Field K'] [Algebra O' K'] (P₂ : O'[X]) : Type _ :=
+/-- **`nextSplittingField`, the generic one-step splitting-field combinator.** Given a base ring
+`O'`, a field `K'` with `[Algebra O' K']`, and a polynomial `P₂ : O'[X]`, this is the splitting
+field of `P₂`'s image over `K'` — genuinely generic in `O'`/`K'`, not specific to any one tower
+level. It is applied throughout this codebase at every tower step: at the literal second level
+(`nextSplittingField (K' := K_1 P) P₂`, producing the level-2 Lubin-Tate extension over `K_1 P`'s
+image of the level-2 Eisenstein polynomial `P₂` from `exists_eisenstein_tower_step_K_1`), to build
+`K_3` (`Langlands/LubinTateTowerStepConcreteK3.lean`, `K' := K_2 P₂`), and inside the fully generic
+`Level.next` (`Langlands/LubinTateTowerStepLevelGeneric.lean`) at an arbitrary prior level's field.
+Renamed from `K_2` (`ROADMAP.md` §92) once its genuinely generic role — not "the second level"
+specifically — was recognized. Mirrors `LubinTate.K_1`'s own definition
+(`Langlands/LubinTateSplittingField.lean`) at the concrete `K' := K` instantiation, with no `divX`
+peel: `0` is not a root of `f(X) - α'`, so `P₂` itself, not `P₂.divX`, is the Eisenstein
+polynomial there. -/
+def nextSplittingField {O' : Type*} [CommRing O'] {K' : Type*} [Field K'] [Algebra O' K'] (P₂ : O'[X]) : Type _ :=
   (P₂.map (algebraMap O' K')).SplittingField
 
-instance K_2.instField {O' : Type*} [CommRing O'] {K' : Type*} [Field K'] [Algebra O' K']
-    (P₂ : O'[X]) : Field (K_2 (K' := K') P₂) :=
+instance nextSplittingField.instField {O' : Type*} [CommRing O'] {K' : Type*} [Field K'] [Algebra O' K']
+    (P₂ : O'[X]) : Field (nextSplittingField (K' := K') P₂) :=
   inferInstanceAs (Field (P₂.map (algebraMap O' K')).SplittingField)
 
-instance K_2.instAlgebra {O' : Type*} [CommRing O'] {K' : Type*} [Field K'] [Algebra O' K']
-    (P₂ : O'[X]) : Algebra K' (K_2 (K' := K') P₂) :=
+instance nextSplittingField.instAlgebra {O' : Type*} [CommRing O'] {K' : Type*} [Field K'] [Algebra O' K']
+    (P₂ : O'[X]) : Algebra K' (nextSplittingField (K' := K') P₂) :=
   inferInstanceAs (Algebra K' (P₂.map (algebraMap O' K')).SplittingField)
 
-instance K_2.instIsSplittingField {O' : Type*} [CommRing O'] {K' : Type*} [Field K']
+instance nextSplittingField.instIsSplittingField {O' : Type*} [CommRing O'] {K' : Type*} [Field K']
     [Algebra O' K'] (P₂ : O'[X]) :
-    Polynomial.IsSplittingField K' (K_2 (K' := K') P₂) (P₂.map (algebraMap O' K')) :=
+    Polynomial.IsSplittingField K' (nextSplittingField (K' := K') P₂) (P₂.map (algebraMap O' K')) :=
   inferInstanceAs (Polynomial.IsSplittingField K' (P₂.map (algebraMap O' K')).SplittingField
     (P₂.map (algebraMap O' K')))
 
 /-- **The level-2 extension has degree exactly `q = residueCard O` over `K_1 P`** — the first
-genuine tower step past the base level. A root `β` of `P₂`'s image exists in `K_2` (the image
+genuine tower step past the base level. A root `β` of `P₂`'s image exists in `nextSplittingField` (the image
 splits there and has positive degree), and that image is monic and irreducible, hence is `β`'s
 minimal polynomial, so `Module.finrank (K_1 P) (K_1 P)⟮β⟯ = P₂.natDegree = residueCard O`. -/
 theorem exists_finrank_adjoin_eq_residueCard_K_2
@@ -323,7 +331,7 @@ theorem exists_finrank_adjoin_eq_residueCard_K_2
     ∃ (P₂ : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
         (K_1 (K := K) P)))[X]),
       P₂.natDegree = residueCard O ∧
-      ∃ β : K_2 (K' := K_1 (K := K) P) P₂,
+      ∃ β : nextSplittingField (K' := K_1 (K := K) P) P₂,
         Module.finrank (K_1 (K := K) P) (K_1 (K := K) P)⟮β⟯ = residueCard O := by
   obtain ⟨α', P₂, u₂, -, -, -, hmonic, hdeg, hirr, -, -⟩ :=
     exists_eisenstein_tower_step_K_1 hOK hπ hπnorm hf hu heq hPdist hPdeg hϖ hϖnorm hα
@@ -332,13 +340,13 @@ theorem exists_finrank_adjoin_eq_residueCard_K_2
   have hP₂kmonic : P₂k.Monic := hmonic.map _
   have hP₂kdeg : P₂k.natDegree = residueCard O := by rw [hP₂k, hmonic.natDegree_map, hdeg]
   have hdegne : (P₂k.map (algebraMap (K_1 (K := K) P)
-      (K_2 (K' := K_1 (K := K) P) P₂))).degree ≠ 0 := by
+      (nextSplittingField (K' := K_1 (K := K) P) P₂))).degree ≠ 0 := by
     refine (Polynomial.natDegree_pos_iff_degree_pos.mp ?_).ne'
     rw [hP₂kmonic.natDegree_map, hP₂kdeg]
     exact lt_of_lt_of_le (by norm_num) two_le_residueCard
   obtain ⟨β, hβ⟩ :=
     (Polynomial.IsSplittingField.splits' (K := K_1 (K := K) P)
-      (L := K_2 (K' := K_1 (K := K) P) P₂) (f := P₂k)).exists_eval_eq_zero hdegne
+      (L := nextSplittingField (K' := K_1 (K := K) P) P₂) (f := P₂k)).exists_eval_eq_zero hdegne
   rw [Polynomial.eval_map, ← Polynomial.aeval_def] at hβ
   have hβroot : Polynomial.aeval β P₂k = 0 := hβ
   have hβint : IsIntegral (K_1 (K := K) P) β := ⟨P₂k, hP₂kmonic, hβroot⟩

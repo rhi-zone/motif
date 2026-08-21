@@ -236,7 +236,7 @@ omit [IsUltrametricDist K] [CompleteSpace K] in
 the uniformizer `π ≠ 0` (`divX_isWeaklyEisensteinAt_and_associated`), and `algebraMap O K` is
 injective, so `Q`'s image has nonzero constant term, hence `0` is not among its roots. Generalizes
 `LubinTateSplittingFieldDegree.ne_zero_of_aeval_divX_map_eq_zero` (which fixes `K := K_1 P`) to an
-arbitrary field, needed to run the same root-nonvanishing argument at `K := K_2` as well. -/
+arbitrary field, needed to run the same root-nonvanishing argument at `K := nextSplittingField` as well. -/
 theorem ne_zero_of_root_of_aeval_divX_map_eq_zero {π : O} (hπ : Irreducible π) {f : O⟦X⟧}
     (hf : IsLubinTatePoly π (residueCard O) f) {P : O[X]} {u : O⟦X⟧} (hu : IsUnit u)
     (heq : f = (P : O⟦X⟧) * u) (hPdist : P.IsDistinguishedAt (maximalIdeal O))

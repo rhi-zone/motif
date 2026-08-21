@@ -10,7 +10,7 @@ import Mathlib.FieldTheory.Minpoly.IsIntegrallyClosed
 # Monogenicity of `O_{K_3}` over `O_{K_2}` (flat spelling)
 
 The `K_2 → K_3` analogue of `Langlands/LubinTateTowerStepMonogenic.lean`'s `adjoin_eq_integralClosure_
-K_2`, one level up, against the *flat* `O_{K_2}` spelling (`ROADMAP.md §73`). Applies
+nextSplittingField`, one level up, against the *flat* `O_{K_2}` spelling (`ROADMAP.md §73`). Applies
 `Langlands/EisensteinMonogenicAbstract.lean`'s `adjoin_eq_integralClosure_of_isEisensteinAt` directly
 at `R := O_{K_2}`, `K := K2P2 P₂`, `L := K_3 P₃` — no `ValuativeRel (K2P2 P₂)` structure is built or
 needed, continuing `LubinTateTowerStepMonogenic.lean`'s bare-Eisenstein route one level up.

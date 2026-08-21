@@ -19,40 +19,40 @@ how it closed" below. The connecting identity (`eval_f_eq_of_aeval_P₃_eq_zero`
 (`exists_piTorsion_translate_of_aeval_P₃_eq_zero`) close as well, built directly on top of it,
 mirroring `Langlands/LubinTateTowerStepRootConnect.lean`'s own structure at the `K_1 → K_2` step.
 **Invariance** (`piTorsion_one_K_3_eq_algebraMap_image`'s analogue) and the full degree computation
-(`[K_3 : K_2] = q`) are **not built in this file** — see "What remains, and why it wasn't attempted"
+(`[K_3 : nextSplittingField] = q`) are **not built in this file** — see "What remains, and why it wasn't attempted"
 below.
 
 **Update (`ROADMAP.md §73`):** `O_{K_2}` is now the *flat* spelling `↥(integralClosure ↥𝒪[K]
-(K_2 P₂))`, not the nested `↥(integralClosure O_{K_1} (K_2 P₂))` this docstring originally described
+(nextSplittingField P₂))`, not the nested `↥(integralClosure O_{K_1} (nextSplittingField P₂))` this docstring originally described
 (`§62`–`§72`). `norm_le_one_of_mem_O_K2_in_K2P2`'s `Langlands/IntegralClosureTower.lean` detour
 (mentioned below) is consequently **no longer needed** — with the flat spelling, `y.2` already is
 the fact `norm_le_one_of_mem_integralClosure` needs directly. `K_3.instFaithfulSMul_O_K2` also
-changed from `instance` to `theorem` (it now needs a `letI`-activated `Algebra ↥𝒪[K] (K_2 P₂)` to
+changed from `instance` to `theorem` (it now needs a `letI`-activated `Algebra ↥𝒪[K] (nextSplittingField P₂)` to
 even state, so cannot be found by ordinary instance search without that `letI` already active — see
 `§73`).
 
 ## Naming, relative to the `K_1 → K_2` template
 
 `α`/`α'` (the `K_1`-level generator, and its view inside `O_{K_1}`) are replaced by `β`/`β'` (the
-`K_2`-level generator `Langlands/LubinTateTowerStepDegree.lean` produces, and its view inside
-`O_{K_2}`); `β` (the `K_2`-level generator, root of `P₂`'s image, playing "`α`'s role" one level up)
+`nextSplittingField`-level generator `Langlands/LubinTateTowerStepDegree.lean` produces, and its view inside
+`O_{K_2}`); `β` (the `nextSplittingField`-level generator, root of `P₂`'s image, playing "`α`'s role" one level up)
 is replaced by `γ` (the `K_3`-level generator, root of `P₃`'s image).
-`O_{K_1}`/`K_1 P` become `O_{K_2}`/`K_2 P₂`; `K_2` becomes `K_3`.
+`O_{K_1}`/`K_1 P` become `O_{K_2}`/`nextSplittingField P₂`; `nextSplittingField` becomes `K_3`.
 
 ## What closes here, and what is genuinely new relative to a mechanical substitution
 
-* **`O_{K_2}`'s elements, viewed in `K_2 P₂`, do not have norm `≤ 1` "for free"** the way `O_{K_1}`'s
-  did in `K_2`: `K_2.norm_le_one_of_mem_O_K1` applies `norm_le_one_of_mem_integralClosure` directly,
+* **`O_{K_2}`'s elements, viewed in `nextSplittingField P₂`, do not have norm `≤ 1` "for free"** the way `O_{K_1}`'s
+  did in `nextSplittingField`: `K_2.norm_le_one_of_mem_O_K1` applies `norm_le_one_of_mem_integralClosure` directly,
   because `O_{K_1} := integralClosure ↥𝒪[K] (K_1 P)` is *literally* of the shape that theorem needs.
-  `O_{K_2} := integralClosure O_{K_1} (K_2 P₂)` is integral closure over the *intermediate* ring
+  `O_{K_2} := integralClosure O_{K_1} (nextSplittingField P₂)` is integral closure over the *intermediate* ring
   `O_{K_1}`, not `↥𝒪[K]` directly. Closed via `Langlands/IntegralClosureTower.lean`'s
   `isIntegral_iff_isIntegral_integralClosure` (`R ⊆ L ⊆ M`: integral over `R` iff integral over
   `↥(integralClosure R L)`), identifying an `O_{K_2}`-element's underlying value as integral over
-  `↥𝒪[K]` directly, landing it in `integralClosure ↥𝒪[K] (K_2 P₂)` — applicable with `K' := K`
+  `↥𝒪[K]` directly, landing it in `integralClosure ↥𝒪[K] (nextSplittingField P₂)` — applicable with `K' := K`
   (`K_2.hnorm_K` supplying `hnorm`, the same base-relative shortcut `Langlands/
   LubinTateTowerStepAdicCompleteK2.lean` already uses for `IsAdicComplete`).
 * **An elaboration-cost lesson that closed several pieces**: `FaithfulSMul`/injectivity goals
-  mentioning the doubly-`K_2`-nested `K_3` type, closed via an explicit `(algebraMap ...).injective`
+  mentioning the doubly-`nextSplittingField`-nested `K_3` type, closed via an explicit `(algebraMap ...).injective`
   *dot-notation* term, do not terminate within several million heartbeats — the *same* fact, closed
   via the named lemma application `RingHom.injective _` instead of dot notation, elaborates in a few
   seconds. This closed `K_3.instFaithfulSMul_O_K2`/`K_3.instFaithfulSMul_O` (both needed — an earlier
@@ -118,7 +118,7 @@ not-yet-attempted piece).
 * `K_3.instFaithfulSMul_O_K2` / `K_3.instFaithfulSMul_O` : `algebraMap O_{K_2} K_3` and `algebraMap O
   K_3` are both injective.
 * `K_3.algebraMap_O_eq_comp_K_2` / `K_3.algebraMap_O_eq_comp_O_K2` : `K_3.instAlgebraO`'s four-hop
-  composite collapses to the ordinary two-hop composites through `K_2 P₂` and through `O_{K_2}`
+  composite collapses to the ordinary two-hop composites through `nextSplittingField P₂` and through `O_{K_2}`
   respectively.
 * `eval_map_towerHom2` : naturality of `eval` under the four-hop-derived `O → O_{K_2}` structure map.
 * `towerHom2` : the `O → O_{K_2}` structure map itself.
@@ -158,24 +158,24 @@ variable {π : O} {f : O⟦X⟧} {P : O[X]} (P₂ : (↥(integralClosure
     ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)))[X])
   [IsLocalRing (O_K2 (K := K) P₂)] [IsDiscreteValuationRing (O_K2 (K := K) P₂)]
 
-/-! ## `O_{K_2}`'s elements, viewed in `K_2 P₂`, have norm at most `1` -/
+/-! ## `O_{K_2}`'s elements, viewed in `nextSplittingField P₂`, have norm at most `1` -/
 
-/-- **`O_{K_2}`'s elements, viewed in `K_2 P₂`, have norm at most `1`.** With the *flat* spelling
-`O_{K_2} := ↥(integralClosure ↥𝒪[K] (K_2 P₂))` (`ROADMAP.md §73`), `y.2` **already is** membership in
-`integralClosure ↥𝒪[K] (K_2 P₂)` directly — `norm_le_one_of_mem_integralClosure` applies to `y`
+/-- **`O_{K_2}`'s elements, viewed in `nextSplittingField P₂`, have norm at most `1`.** With the *flat* spelling
+`O_{K_2} := ↥(integralClosure ↥𝒪[K] (nextSplittingField P₂))` (`ROADMAP.md §73`), `y.2` **already is** membership in
+`integralClosure ↥𝒪[K] (nextSplittingField P₂)` directly — `norm_le_one_of_mem_integralClosure` applies to `y`
 verbatim, with no `Langlands/IntegralClosureTower.lean` detour needed (unlike the nested spelling,
-where `y.2` was membership in `integralClosure O_{K_1} (K_2 P₂)` and had to be converted first). -/
+where `y.2` was membership in `integralClosure O_{K_1} (nextSplittingField P₂)` and had to be converted first). -/
 theorem norm_le_one_of_mem_O_K2_in_K2P2 (y : O_K2 (K := K) P₂) :
-    ‖(y : K_2 (K' := K_1 (K := K) P) P₂)‖ ≤ 1 := by
+    ‖(y : nextSplittingField (K' := K_1 (K := K) P) P₂)‖ ≤ 1 := by
   letI := K_2.instAlgebraK (K := K) (P := P) P₂
   haveI := finiteDimensional_K_K_2 (K := K) (P := P) P₂
-  exact norm_le_one_of_mem_integralClosure (K' := K) (L := K_2 (K' := K_1 (K := K) P) P₂)
+  exact norm_le_one_of_mem_integralClosure (K' := K) (L := nextSplittingField (K' := K_1 (K := K) P) P₂)
     (K_2.hnorm_K (K := K) (P := P) P₂) y
 
 variable (P₃ : (O_K2 (K := K) P₂)[X])
 
 /-- **`O_{K_2}`'s elements, viewed in `K_3`, have norm at most `1`.** The `K_2 → K_3` analogue of
-`K_2.norm_le_one_of_mem_O_K1`: chains `spectralNorm_extends` at the `K_2 P₂ → K_3` hop with
+`K_2.norm_le_one_of_mem_O_K1`: chains `spectralNorm_extends` at the `nextSplittingField P₂ → K_3` hop with
 `norm_le_one_of_mem_O_K2_in_K2P2` above.
 
 **`letI := K_2.instAlgebraK …` is needed in the statement itself**, not just the proof — with the
@@ -183,8 +183,8 @@ flat spelling, `Algebra (O_{K_2}) K_3` (needed just to state `algebraMap _ (K_3 
 automatically available the way it was for the nested spelling: Mathlib's
 `IsScalarTower.subalgebra'` instance (`Mathlib.Algebra.Algebra.Subalgebra.Tower`) derives
 `Algebra ↥S₀ A` for `S₀ : Subalgebra R S` given `[Algebra R S] [Algebra S A]`; for the *nested*
-spelling `R := O_{K_1}`, `Algebra O_{K_1} (K_2 P₂)` is free (`K_2.instAlgebra`), but for the *flat*
-spelling `R := ↥𝒪[K]`, `Algebra ↥𝒪[K] (K_2 P₂)` is exactly `K_2.instAlgebraK`'s
+spelling `R := O_{K_1}`, `Algebra O_{K_1} (nextSplittingField P₂)` is free (`nextSplittingField.instAlgebra`), but for the *flat*
+spelling `R := ↥𝒪[K]`, `Algebra ↥𝒪[K] (nextSplittingField P₂)` is exactly `K_2.instAlgebraK`'s
 `Algebra.ofSubsemiring`-derived instance, which needs the `letI` active (`ROADMAP.md §73`). -/
 theorem K_3.norm_le_one_of_mem_O_K2 (c : O_K2 (K := K) P₂) :
     letI := K_2.instAlgebraK (K := K) (P := P) P₂
@@ -195,7 +195,7 @@ theorem K_3.norm_le_one_of_mem_O_K2 (c : O_K2 (K := K) P₂) :
       algebraMap (K2P2 (K := K) P₂) (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)
         (algebraMap (O_K2 (K := K) P₂) (K2P2 (K := K) P₂) c) :=
     IsScalarTower.algebraMap_apply _ _ _ c
-  rw [K_2.norm_eq_spectralNorm, heq, spectralNorm_extends]
+  rw [nextSplittingField.norm_eq_spectralNorm, heq, spectralNorm_extends]
   exact norm_le_one_of_mem_O_K2_in_K2P2 (K := K) (P := P) P₂ c
 
 /-- **`algebraMap O_{K_2} K_3` is injective.** Needed by `norm_coeff_map_of_isWeaklyEisensteinAt_
@@ -232,12 +232,12 @@ theorem K_3.instFaithfulSMul_O_K2 :
 
 /-! ## `algebraMap O K_3`, `algebraMap O_{K_2} K_3`, and their compatibility -/
 
-/-- **`algebraMap O (K_2 P₂)` [via `K_2.instAlgebraO`] equals `algebraMap O_{K_2} (K_2 P₂) ∘`
+/-- **`algebraMap O (nextSplittingField P₂)` [via `K_2.instAlgebraO`] equals `algebraMap O_{K_2} (nextSplittingField P₂) ∘`
 the first three hops of `K_3.instAlgebraO`'s composite** (`O → ↥𝒪[K] → O_{K_2}`). By `rfl`, unlike
 `algebraMap_O_K_1_eq_comp_towerHom` (which needs a genuine proof at the `K → K_1 P` level) —
 **relative to the flat `O_{K_2}` spelling** (`ROADMAP.md §73`), the middle hop is `↥𝒪[K] → O_{K_2}`
 (the subalgebra inclusion), not `O_{K_1} → O_{K_2}` as with the nested spelling — `O_{K_2}`'s algebra
-structure over `K_2 P₂` and `K`'s two-hop composite (`K_2.instAlgebraK`) already agree definitionally
+structure over `nextSplittingField P₂` and `K`'s two-hop composite (`K_2.instAlgebraK`) already agree definitionally
 once both are routed through the same `Algebra.ofSubsemiring`-derived instance (`letI`-activated),
 confirmed `rfl` directly. -/
 theorem algebraMap_O_K2P2_eq_comp_towerHom2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
@@ -251,8 +251,8 @@ theorem algebraMap_O_K2P2_eq_comp_towerHom2 (hOK : ∀ c : O, ‖algebraMap O K 
   letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
   rfl
 
-/-- **`K_3.instAlgebraO`'s composite collapses to the ordinary two-hop `algebraMap (K_2 P₂) K_3 ∘
-algebraMap O (K_2 P₂)`.** The `K_2 → K_3` analogue of `K_2.algebraMap_O_eq_comp_K_1`. -/
+/-- **`K_3.instAlgebraO`'s composite collapses to the ordinary two-hop `algebraMap (nextSplittingField P₂) K_3 ∘
+algebraMap O (nextSplittingField P₂)`.** The `K_2 → K_3` analogue of `K_2.algebraMap_O_eq_comp_K_1`. -/
 theorem K_3.algebraMap_O_eq_comp_K_2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
     letI := K_2.instAlgebraK (K := K) (P := P) P₂
     letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
@@ -523,7 +523,7 @@ theorem K_3.hπnorm_transport (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {�
       algebraMap (K2P2 (K := K) P₂) (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃)
         (algebraMap O (K2P2 (K := K) P₂) π) :=
     congrFun (K_3.algebraMap_O_eq_comp_K_2 (K := K) (P := P) P₂ P₃ hOK) π
-  rw [K_2.norm_eq_spectralNorm, hcoe, spectralNorm_extends]
+  rw [nextSplittingField.norm_eq_spectralNorm, hcoe, spectralNorm_extends]
   exact K_2.hπnorm_transport (K := K) (P := P) (P₂ := P₂) hOK hπnorm
 
 /-! ## `Q := P.divX`'s image, mapped further into `K_3` -/
@@ -553,7 +553,7 @@ theorem divX_map_algebraMap_O_K_3_eq_map (hOK : ∀ c : O, ‖algebraMap O K c�
 
 /-! ## `Q := P.divX`'s image splits over `K2P2 P₂` too, not just over `K_1 P` -/
 
-/-- **`Q := P.divX`'s image splits completely over `K2P2 P₂` (`= K_2`), not just over `K_1 P`.**
+/-- **`Q := P.divX`'s image splits completely over `K2P2 P₂` (`= nextSplittingField`), not just over `K_1 P`.**
 The genuinely new fact this tower step needs beyond `splits_divX_map_K_1` (`Langlands/
 LubinTateSplittingFieldTorsion.lean`): `K2P2 P₂` is a *further* extension of `K_1 P` (the splitting
 field of `P₂`'s image, not of `Q`'s own image), so `Q` splitting there is not free from `K2P2 P₂`'s

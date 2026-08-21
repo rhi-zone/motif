@@ -38,7 +38,7 @@ confirmed by the concrete checks below actually closing at default heartbeats.
 * `norm_le_one_of_algebraMap_le_one_of_Level`, `injective_algebraMap_comp_of_Level` : the
   `Level`-parametrized restatements of `§79`'s two generic pieces.
 * Two families of concrete checks, mirroring `§78`/`§79`'s own `funext`+`rfl` discipline exactly, at
-  both `level_K_1` (`L := K_1 P`) and `level_K_2` (`L := K_2 (K' := K_1 P) P₂`, the `§78`-established
+  both `level_K_1` (`L := K_1 P`) and `level_K_2` (`L := nextSplittingField (K' := K_1 P) P₂`, the `§78`-established
   next depth): `instAlgebraK_of_Level`/`hnorm_K_of_Level` recover `K_2.instAlgebraK`/`K_2.hnorm_K`
   exactly at `level_K_1`, and `hnorm_K_K_3`'s statement (the `K_3`-depth fact `§78` derived — there is
   no dedicated `K_3.instAlgebraK`/`K_3.hnorm_K` declaration anywhere in this repo, confirmed by grep
@@ -77,49 +77,49 @@ variable {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [Valuativ
 
 variable (lvl : Level K) {O' : Type*} [CommRing O'] [Algebra O' lvl.L] (P₂ : O'[X])
 
-/-- **`Algebra K (K_2 (K' := lvl.L) P₂)`, generic in `lvl : Level K`** — the `Level`-parametrized
+/-- **`Algebra K (nextSplittingField (K' := lvl.L) P₂)`, generic in `lvl : Level K`** — the `Level`-parametrized
 restatement of `instAlgebraK_of_algebraL`, activating `lvl`'s own stored `algL` field via `letI`
 rather than taking `[Algebra K L]` as a free ambient hypothesis. -/
-@[reducible] def instAlgebraK_of_Level : Algebra K (K_2 (K' := lvl.L) P₂) :=
+@[reducible] def instAlgebraK_of_Level : Algebra K (nextSplittingField (K' := lvl.L) P₂) :=
   letI := lvl.algL
   instAlgebraK_of_algebraL (K := K) (O' := O') (L := lvl.L) P₂
 
-/-- **`algebraMap K (K_2 (K' := lvl.L) P₂)` really is the two-hop composite through `lvl.L`** —
+/-- **`algebraMap K (nextSplittingField (K' := lvl.L) P₂)` really is the two-hop composite through `lvl.L`** —
 the `Level`-parametrized restatement of `algebraMap_K_eq_of_algebraL`. -/
 theorem algebraMap_K_eq_of_Level :
     letI := lvl.algL
     letI := instAlgebraK_of_Level lvl P₂
-    ⇑(algebraMap K (K_2 (K' := lvl.L) P₂)) =
-      ⇑(algebraMap lvl.L (K_2 (K' := lvl.L) P₂)) ∘ ⇑(algebraMap K lvl.L) := by
+    ⇑(algebraMap K (nextSplittingField (K' := lvl.L) P₂)) =
+      ⇑(algebraMap lvl.L (nextSplittingField (K' := lvl.L) P₂)) ∘ ⇑(algebraMap K lvl.L) := by
   letI := lvl.algL
   exact algebraMap_K_eq_of_algebraL (K := K) (O' := O') (L := lvl.L) P₂
 
 /-- **The inductive step, `Level`-parametrized**: `K`'s norm extends exactly to
-`K_2 (K' := lvl.L) P₂`, given that it already extends exactly to `lvl.L` (`hnormL`) — the
+`nextSplittingField (K' := lvl.L) P₂`, given that it already extends exactly to `lvl.L` (`hnormL`) — the
 `Level`-parametrized restatement of `hnorm_K_of_algebraL`. -/
 theorem hnorm_K_of_Level (hnormL : letI := lvl.algL; ∀ x : K, ‖algebraMap K lvl.L x‖ = ‖x‖) :
     letI := lvl.algL
     letI := instAlgebraK_of_Level lvl P₂
-    ∀ x : K, ‖algebraMap K (K_2 (K' := lvl.L) P₂) x‖ = ‖x‖ := by
+    ∀ x : K, ‖algebraMap K (nextSplittingField (K' := lvl.L) P₂) x‖ = ‖x‖ := by
   letI := lvl.algL
   exact hnorm_K_of_algebraL (K := K) (O' := O') (L := lvl.L) P₂ hnormL
 
 /-- **A norm bound already established in `lvl.L` extends unchanged into
-`K_2 (K' := lvl.L) P₂`**, `Level`-parametrized — the restatement of
+`nextSplittingField (K' := lvl.L) P₂`**, `Level`-parametrized — the restatement of
 `norm_le_one_of_algebraMap_le_one_of_algebraL`. Needs no `lvl.algL` activation: identical to its
 `algebraL` counterpart, this fact never depends on `[Algebra K L]`. -/
 theorem norm_le_one_of_algebraMap_le_one_of_Level {y : lvl.L} (hy : ‖y‖ ≤ 1) :
-    ‖algebraMap lvl.L (K_2 (K' := lvl.L) P₂) y‖ ≤ 1 :=
+    ‖algebraMap lvl.L (nextSplittingField (K' := lvl.L) P₂) y‖ ≤ 1 :=
   norm_le_one_of_algebraMap_le_one_of_algebraL (O' := O') (L := lvl.L) P₂ hy
 
-/-- **Injectivity into `lvl.L` extends unchanged into `K_2 (K' := lvl.L) P₂`**, `Level`-parametrized
+/-- **Injectivity into `lvl.L` extends unchanged into `nextSplittingField (K' := lvl.L) P₂`**, `Level`-parametrized
 — the restatement of `injective_algebraMap_comp_of_algebraL`. -/
 theorem injective_algebraMap_comp_of_Level {A : Type*} {f : A → lvl.L}
     (hf : Function.Injective f) :
-    Function.Injective (fun a => algebraMap lvl.L (K_2 (K' := lvl.L) P₂) (f a)) :=
+    Function.Injective (fun a => algebraMap lvl.L (nextSplittingField (K' := lvl.L) P₂) (f a)) :=
   injective_algebraMap_comp_of_algebraL (O' := O') (L := lvl.L) P₂ hf
 
-/-! ## Concrete check 1: `level_K_1` (`L := K_1 P`) recovers the real `K_2`-level facts exactly -/
+/-! ## Concrete check 1: `level_K_1` (`L := K_1 P`) recovers the real `nextSplittingField`-level facts exactly -/
 
 variable {P : O[X]}
 
@@ -129,9 +129,9 @@ variable (P₂' : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSu
 /-- `instAlgebraK_of_Level`, instantiated at `level_K_1`, carries the same `algebraMap` function as
 `K_2.instAlgebraK`. -/
 example :
-    @algebraMap K (K_2 (K' := K_1 (K := K) P) P₂') _ _
+    @algebraMap K (nextSplittingField (K' := K_1 (K := K) P) P₂') _ _
       (instAlgebraK_of_Level (K := K) (level_K_1 (K := K) (P := P)) P₂') =
-    @algebraMap K (K_2 (K' := K_1 (K := K) P) P₂') _ _
+    @algebraMap K (nextSplittingField (K' := K_1 (K := K) P) P₂') _ _
       (K_2.instAlgebraK (K := K) (P := P) P₂') := rfl
 
 /-- `hnorm_K_of_Level`, instantiated at `level_K_1` with `hnorm_K_K_1` as the base case, agrees with
@@ -140,7 +140,7 @@ explicit and reusable" discipline). -/
 theorem hnorm_K_of_level_K_1 :
     letI := (level_K_1 (K := K) (P := P)).algL
     letI := instAlgebraK_of_Level (level_K_1 (K := K) (P := P)) P₂'
-    ∀ x : K, ‖algebraMap K (K_2 (K' := K_1 (K := K) P) P₂') x‖ = ‖x‖ :=
+    ∀ x : K, ‖algebraMap K (nextSplittingField (K' := K_1 (K := K) P) P₂') x‖ = ‖x‖ :=
   hnorm_K_of_Level (level_K_1 (K := K) (P := P)) P₂' (hnorm_K_K_1 (K := K) (P := P))
 
 /-- `norm_le_one_of_algebraMap_le_one_of_Level`, composed with `norm_le_one_of_mem_integralClosure`
@@ -162,7 +162,7 @@ exactly (same `[Algebra K L]`-independent shape, per the module docstring above)
 rather than risked here; the definition itself is restated against `Level` above, matching this
 file's actual task. -/
 
-/-! ## Concrete check 2: `level_K_2` (`L := K_2 (K' := K_1 P) P₂`) recovers the real `K_3`-level
+/-! ## Concrete check 2: `level_K_2` (`L := nextSplittingField (K' := K_1 P) P₂`) recovers the real `K_3`-level
 facts exactly -/
 
 variable (P₂ : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
@@ -175,7 +175,7 @@ free `L` variable. -/
 theorem hnorm_K_of_level_K_2 :
     letI := (level_K_2 (K := K) (P := P) P₂).algL
     letI := instAlgebraK_of_Level (level_K_2 (K := K) (P := P) P₂) P₃
-    ∀ x : K, ‖algebraMap K (K_2 (K' := K_2 (K' := K_1 (K := K) P) P₂) P₃) x‖ = ‖x‖ :=
+    ∀ x : K, ‖algebraMap K (nextSplittingField (K' := nextSplittingField (K' := K_1 (K := K) P) P₂) P₃) x‖ = ‖x‖ :=
   hnorm_K_of_Level (level_K_2 (K := K) (P := P) P₂) P₃ (hnorm_K_K_2 (K := K) (P := P) P₂)
 
 variable [IsLocalRing (O_K2 (K := K) P₂)] [IsDiscreteValuationRing (O_K2 (K := K) P₂)]

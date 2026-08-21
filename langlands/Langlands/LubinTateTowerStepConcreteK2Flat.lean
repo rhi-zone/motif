@@ -10,15 +10,15 @@ import Langlands.LubinTateTowerStepK3RootConnect
 
 `exists_eisenstein_tower_step_K_2` (`Langlands/LubinTateTowerStepConcreteK2.lean`) produces `P₃`/`u₃`
 typed against the **nested** `O_{K_2}` spelling `↥(integralClosure (↥(integralClosure ↥𝒪[K] (K_1 P)))
-(K_2 P₂))` — the spelling `Langlands/LubinTateTowerStepConcreteK2.lean` has used since it was written
+(nextSplittingField P₂))` — the spelling `Langlands/LubinTateTowerStepConcreteK2.lean` has used since it was written
 and was not touched by `ROADMAP.md §73`'s switch to the *flat* spelling `O_K2 := ↥(integralClosure
-↥𝒪[K] (K_2 P₂))` (`Langlands/LubinTateTowerStepK3.lean`). Every `K_3`-level theorem built in
+↥𝒪[K] (nextSplittingField P₂))` (`Langlands/LubinTateTowerStepK3.lean`). Every `K_3`-level theorem built in
 `ROADMAP.md §74`–`§75` (`Langlands/LubinTateTowerStepK3RootConnect.lean`,
 `Langlands/LubinTateTowerStepK3Degree.lean`) is stated against the flat spelling, so using
 `exists_eisenstein_tower_step_K_2`'s concrete witnesses there needs a transport.
 
 This file provides it, via `Langlands/IntegralClosureTower.lean`'s `integralClosureRingEquiv`
-(specialized at `R := ↥𝒪[K]`, `L := K_1 P`, `M := K_2 P₂`, which is exactly the nested/flat pair here)
+(specialized at `R := ↥𝒪[K]`, `L := K_1 P`, `M := nextSplittingField P₂`, which is exactly the nested/flat pair here)
 run backwards (`.symm`, nested → flat): `Polynomial.map`/`PowerSeries.map` along the underlying ring
 homomorphism carry `P₃`/`u₃` across, and `IsUnit`/`IsDistinguishedAt`/`natDegree` transport along with
 them.
@@ -92,16 +92,16 @@ theorem exists_eisenstein_tower_step_K_2_flat (hOK : ∀ c : O, ‖algebraMap O 
     (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc : Associated (P₂.coeff 0) α') (hdeg : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (K_2 (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
     {α : K_1 (K := K) P} (hα'coe : (α' : K_1 (K := K) P) = α)
     (hirr : Irreducible (P₂.map (algebraMap _ (K_1 (K := K) P))))
-    {β : K_2 (K' := K_1 (K := K) P) P₂}
+    {β : nextSplittingField (K' := K_1 (K := K) P) P₂}
     (hβroot : Polynomial.aeval β (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0)
     (hβfin : Module.finrank (K_1 (K := K) P) (K_1 (K := K) P)⟮β⟯ = residueCard O)
-    [Algebra.IsSeparable (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂)] [CharZero K]
+    [Algebra.IsSeparable (K_1 (K := K) P) (nextSplittingField (K' := K_1 (K := K) P) P₂)] [CharZero K]
     [IsDiscreteValuationRing ↥(integralClosure
       ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-      (K_2 (K' := K_1 (K := K) P) P₂))]
+      (nextSplittingField (K' := K_1 (K := K) P) P₂))]
     [IsLocalRing (O_K2 (K := K) P₂)] [IsDiscreteValuationRing (O_K2 (K := K) P₂)] :
     ∃ (P₃ : (O_K2 (K := K) P₂)[X]) (u₃ : (O_K2 (K := K) P₂)⟦X⟧),
       IsUnit u₃ ∧ P₃.IsDistinguishedAt (maximalIdeal _) ∧ P₃.natDegree = residueCard O := by
@@ -171,16 +171,16 @@ theorem exists_eisenstein_tower_step_K_2_flat' (hOK : ∀ c : O, ‖algebraMap O
     (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
     (hα'irr : Irreducible α') (hP₂dist : P₂.IsDistinguishedAt (maximalIdeal _))
     (hassoc : Associated (P₂.coeff 0) α') (hdeg : 0 < P₂.natDegree)
-    (hα'norm : ‖algebraMap _ (K_2 (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
+    (hα'norm : ‖algebraMap _ (nextSplittingField (K' := K_1 (K := K) P) P₂) (α' : _)‖ < 1)
     {α : K_1 (K := K) P} (hα'coe : (α' : K_1 (K := K) P) = α)
     (hirr : Irreducible (P₂.map (algebraMap _ (K_1 (K := K) P))))
-    {β : K_2 (K' := K_1 (K := K) P) P₂}
+    {β : nextSplittingField (K' := K_1 (K := K) P) P₂}
     (hβroot : Polynomial.aeval β (P₂.map (algebraMap _ (K_1 (K := K) P))) = 0)
     (hβfin : Module.finrank (K_1 (K := K) P) (K_1 (K := K) P)⟮β⟯ = residueCard O)
-    [Algebra.IsSeparable (K_1 (K := K) P) (K_2 (K' := K_1 (K := K) P) P₂)] [CharZero K]
+    [Algebra.IsSeparable (K_1 (K := K) P) (nextSplittingField (K' := K_1 (K := K) P) P₂)] [CharZero K]
     [IsDiscreteValuationRing ↥(integralClosure
       ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))
-      (K_2 (K' := K_1 (K := K) P) P₂))]
+      (nextSplittingField (K' := K_1 (K := K) P) P₂))]
     [IsLocalRing (O_K2 (K := K) P₂)] [IsDiscreteValuationRing (O_K2 (K := K) P₂)] :
     ∃ (P₃ : (O_K2 (K := K) P₂)[X]) (u₃ : (O_K2 (K := K) P₂)⟦X⟧) (β' : O_K2 (K := K) P₂),
       IsUnit u₃ ∧ P₃.IsDistinguishedAt (maximalIdeal _) ∧ P₃.natDegree = residueCard O ∧
