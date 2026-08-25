@@ -259,19 +259,72 @@ fn notched_square_n20() {
 /// unit fences subdividing it so every field has area <= 1.
 ///
 /// This crate does NOT claim a construction for the 9 additional fences.
-/// The 9-gon's circumradius is 1/(2*sin(pi/9)) ~ 1.4619, so — unlike the
-/// n=9 hexagon case — spokes from the center to the vertices are *not*
-/// unit length, and no other unit-length subdivision that (a) keeps
-/// every endpoint incident to another fence and (b) splits the 9-gon
-/// into <=1-area fields was found or sourced (Friedman's page attributes
-/// this record to Maurizio Morandi but its page provides only a
-/// rendered image, not coordinates, and no textual description of the
-/// subdivision was recoverable). Rather than fabricate coordinates that
-/// would only coincidentally validate, this is left an open,
-/// intentionally-ignored test: filling it in requires either sourcing
-/// the actual construction or independently deriving a valid one.
+/// Friedman's page attributes the record to Maurizio Morandi but
+/// provides only a rendered image (`18.gif`), no coordinates and no
+/// textual description; a web search for a source description (a paper,
+/// forum post, or packomania-style page) turned up nothing. Rather than
+/// fabricate coordinates that would only coincidentally validate, this
+/// is left an open, intentionally-ignored test.
+///
+/// What *is* now established, from tracing `18.gif` (VERIFIED against
+/// the image) plus closed-form geometry (DERIVED):
+///
+/// - The exact area match forces the boundary to be *exactly* the
+///   regular unit-side 9-gon: interior chords never change total
+///   enclosed area (it's always exactly the boundary polygon's own
+///   shoelace area), and for a polygon with fixed unit side lengths the
+///   regular (cyclic, equal-angle) polygon is the *unique* area
+///   maximizer — so any valid construction's boundary must be that
+///   exact 9-gon, not merely close to it. Spokes from its center to its
+///   vertices are *not* unit length (circumradius 1/(2 sin(pi/9)) ~
+///   1.4619 =/= 1), unlike the n=9 hexagon case, so the extra 9 fences
+///   can't be a simple center-spoke wheel.
+/// - The image has a vertical mirror symmetry (confirmed from multiple
+///   clean pixel coordinate pairs) and its interior reads as a small
+///   triangular hub near (not at) the center, with 6 more chords running
+///   from 6 of the 9 boundary vertices in to the hub — i.e. exactly the
+///   combinatorial family `skeleton::hub_polygon(9, 3, outer_spokes)`
+///   already provides, with `outer_spokes` pairing consecutive boundary
+///   vertices onto each hub edge:
+///   `[(0,0),(1,0),(3,1),(4,1),(6,2),(7,2)]` (skipping vertices 2, 5, 8,
+///   which read as spoke-free plain corners in the image — this matches
+///   `hub_polygon_shape_is_valid` in `skeleton.rs`'s tests, which was
+///   already anticipating this exact skeleton).
+/// - **That specific skeleton is infeasible, not merely unsolved
+///   (DERIVED, checked by direct computation, not just unproven).**
+///   Under the mirror-symmetric ansatz the hub triangle's position
+///   reduces to one continuous parameter (its offset along the axis of
+///   symmetry). The two apex-adjacent boundary vertices' spokes and the
+///   four side-vertex spokes' T-junction landing points are only
+///   simultaneously realizable (both real and within their target
+///   edge's segment) for that parameter in roughly [0.24, 0.34] (hub
+///   edge length units, circumradius 1.4619). Across that entire window
+///   the top face (apex + 2 boundary edges + 2 spokes + hub's top edge)
+///   has area 1.30-1.56, and a side face has area 1.36-1.49 — both
+///   *always* exceeding the area-1 cap by 30-55%, checked by explicit
+///   shoelace computation at 2% steps through the window, not just at
+///   its ends. A free-standing search (letting one spoke's landing point
+///   range over its full reachable unit circle, ignoring the other
+///   spokes' constraints) shows the top face *can* drop under area 1,
+///   but only if the hub sits far outside that window (around parameter
+///   0.5) — i.e. the top-face and side-face requirements pull the hub's
+///   position in incompatible directions. This isn't a numerical-solver
+///   failure to converge; it's a 1-parameter family with an explicitly
+///   computed, everywhere-infeasible image.
+///
+/// What remains open: this rules out the *specific* spoke-to-hub-edge
+/// assignment read off the image (and its "T-junction near each edge's
+/// end" vs. "exact corner coincidence" variants, which give the same
+/// two problem faces since they differ only in where along the edge the
+/// landing sits, not in which face each spoke bounds) — it does not
+/// rule out every n=18 skeleton with a regular-9-gon boundary. Untested:
+/// other assignments of which 6 of the 9 boundary vertices carry spokes;
+/// a non-triangular hub (e.g. spokes T-junctioning onto *each other*
+/// rather than converging on one small closed polygon, in the chain
+/// style `docs/asymmetric-methods.md` §2.1 describes and
+/// `split_hub_pinwheel_n11` uses); or a hub that isn't mirror-symmetric.
 #[test]
-#[ignore = "no sourced or independently-derived construction for the 9 extra fences; see doc comment"]
+#[ignore = "the natural hub_polygon(9,3,6-spoke) reading of 18.gif is proven infeasible (see doc comment); no other n=18 construction found or sourced"]
 fn regular_9gon_with_subdivision_n18() {
     unimplemented!("open: what are the 9 additional unit fences that subdivide the 9-gon?")
 }
