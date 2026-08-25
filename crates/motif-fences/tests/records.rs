@@ -2,7 +2,8 @@
 //! checked against Erich Friedman's table
 //! (<https://erich-friedman.github.io/packing/fence/>).
 
-use motif_fences::{Configuration, Tolerance};
+use motif_fences::skeleton::Skeleton;
+use motif_fences::{Configuration, Point, Tolerance};
 use std::f64::consts::PI;
 
 fn assert_area(config: &Configuration, expected_area: f64, expected_fields: usize) {
@@ -134,6 +135,94 @@ fn hexagon_with_spokes_n9() {
     let config = Configuration::from_coords(&segments);
     assert_eq!(config.fence_count(), 9);
     assert_area(&config, 3.0 * 3f64.sqrt() / 2.0, 3);
+}
+
+/// n=11: the "split hub" asymmetric pinwheel, reproducing the published
+/// record (Teodor Tohanean, area 3.53721+) to the precision recovered by
+/// a numeric solve (SLSQP from a traced initial guess; see
+/// `docs/asymmetric-methods.md` for the derivation and open questions).
+///
+/// Skeleton: a unit-edge heptagon B-E-G-R-S1-S2-D-B (7 boundary fences,
+/// ordinary corners throughout) plus 4 interior unit chords, each one
+/// endpoint at a boundary vertex and the other landing by T-junction:
+/// C-H1 (C T-junctions onto D-B), Q1-H2 (Q1 T-junctions onto S2-D),
+/// Q2-H2 (Q2 T-junctions onto S1-R), F-H2 (F T-junctions onto G-E). H2 is
+/// a genuine 3-way endpoint coincidence (Q1, Q2, F chords share it as an
+/// ordinary corner, no extra T-junction bookkeeping needed per
+/// `skeleton.rs`'s dimension-neutral-corner rule). H1 is an ordinary
+/// T-junction: it is C's chord's only endpoint, and it T-junctions onto
+/// the *interior* of Q1's chord (fence Q1-H2), not onto the boundary.
+///
+/// 13 vertices, 11 fences, 4 bounded faces: one quadrilateral
+/// (C-H1-Q1-D) and three others, three of which sit exactly at the
+/// area-1 cap at the optimum (the fourth, the quadrilateral, is the
+/// residual 0.5372...).
+#[test]
+fn split_hub_pinwheel_n11() {
+    // Vertex order: B, E, G, R, S1, S2, D, C, Q1, Q2, F, H1, H2.
+    const B: usize = 0;
+    const E: usize = 1;
+    const G: usize = 2;
+    const R: usize = 3;
+    const S1: usize = 4;
+    const S2: usize = 5;
+    const D: usize = 6;
+    const C: usize = 7;
+    const Q1: usize = 8;
+    const Q2: usize = 9;
+    const F: usize = 10;
+    const H1: usize = 11;
+    const H2: usize = 12;
+
+    let coords_raw: [(f64, f64); 13] = [
+        (0.0, 0.0),                                 // B
+        (1.0, 0.0),                                 // E
+        (1.823186950926246, 0.5677704147142139),    // G
+        (1.5451976715140148, 1.5283545914170518),   // R
+        (0.8079995672096562, 2.2040312559616106),   // S1
+        (-0.07392359713025984, 1.7326380737870366), // S2
+        (-0.534630666826967, 0.845085824096082),    // D
+        (-0.2368227699437535, 0.3743435947856081),  // C
+        (-0.20976669066959178, 1.4709363305184016), // Q1
+        (1.3210722790920153, 1.7337760333703467),   // Q2
+        (1.250166787118965, 0.17254561714132796),   // F
+        (0.45144652866934915, 1.0997988812000283),  // H1
+        (0.662256483448314, 0.9814717416038052),    // H2
+    ];
+    let coords: Vec<Point> = coords_raw.iter().map(|&(x, y)| Point::new(x, y)).collect();
+
+    let fences = vec![
+        (B, E),   // 0: boundary
+        (E, G),   // 1: boundary; F T-junctions onto this
+        (G, R),   // 2: boundary
+        (R, S1),  // 3: boundary; Q2 T-junctions onto this
+        (S1, S2), // 4: boundary
+        (S2, D),  // 5: boundary; Q1 T-junctions onto this
+        (D, B),   // 6: boundary; C T-junctions onto this
+        (C, H1),  // 7: interior chord
+        (Q1, H2), // 8: interior chord; H1 T-junctions onto this
+        (Q2, H2), // 9: interior chord, shares H2 endpoint with fence 8
+        (F, H2),  // 10: interior chord, shares H2 endpoint with fences 8, 9
+    ];
+
+    let t_junctions = vec![
+        (C, 6),  // C's chord endpoint lands on D-B
+        (Q1, 5), // Q1's chord endpoint lands on S2-D
+        (Q2, 3), // Q2's chord endpoint lands on R-S1
+        (F, 1),  // F's chord endpoint lands on E-G
+        (H1, 8), // H1 lands on the interior of Q1-H2
+    ];
+
+    let skeleton = Skeleton {
+        vertex_count: 13,
+        fences,
+        t_junctions,
+    };
+    skeleton.validate_shape().unwrap();
+    assert_eq!(skeleton.n(), 11);
+
+    let config = skeleton.to_configuration(&coords);
+    assert_area(&config, 3.5372167764, 4);
 }
 
 /// n=18: a regular unit-side 9-gon (area 9*cot(pi/9)/4, matching the

@@ -69,18 +69,54 @@ for a given skeleton is an isolated point of that space, or lies on a positive-
 dimensional locus of tied optima, depends on how many of the "field area ≤ 1"
 constraints are *active* (exactly 1) at the optimum — see §1.4.
 
-### 1.3 Hub coincidences: the over-determination that forces symmetry (DERIVED)
+### 1.3 Hub coincidences: an m-way point cuts m-2 moduli dimensions, it does not forbid the hub (DERIVED, VERIFIED against n=11)
 
 Contrast with a "wheel" skeleton where m spoke-fences all meet at one common
 interior hub point. Requiring m unit-length points `P_1, ..., P_m` (the spokes' inner
 endpoints) to all equal one location costs `2(m-1)` equations (pairwise-equal-to-P_1),
 but discharges only `m` incidence requirements (each spoke's inner endpoint lies on
 "another fence" — trivially true once it coincides with any other spoke's endpoint).
-For m ≥ 3 this is over-determined by `2(m-1) - m = m - 2` equations relative to the
-generic budget. A single-point m-spoke hub is **not** a generic realization; it
-exists only where the excess equations become dependent, which happens exactly when
-a symmetry ansatz (e.g. m-fold rotation) makes them consequences of each other rather
-than independent cuts.
+For m ≥ 3 this is over-determined relative to the naive generic budget by
+`2(m-1) - m = m - 2` equations.
+
+**This does not mean an m-way point hub is infeasible.** An earlier version of this
+document read the excess as forcing a symmetry ansatz (only realizable at special
+(n, m) pairs). That overstated the case. The measured rule, checked by numerical
+Jacobian rank on both variants of the n=11 skeleton (`docs/`-adjacent
+`tests/records.rs::split_hub_pinwheel_n11`, plus an unmerged point-hub sibling
+solved alongside it):
+
+```
+dim(moduli) = n - 3 - (m - 2)
+```
+
+i.e. an m-way point coincidence is realizable at a *generic* (asymmetric) skeleton
+too — it just costs `m - 2` moduli dimensions relative to the all-T-junction
+baseline of §1.1, the same way any other extra coincidence would. It is not a
+special stratum requiring a symmetric ansatz; it is a strictly worse budget
+allocation.
+
+**VERIFIED, n=11.** Two skeletons were solved for the same unit-edge-heptagon
+boundary (B-E-G-R-S1-S2-D) with 4 interior chords (C-H1, Q1-*, Q2-*, F-*):
+
+- **Split hub**: three of the four chords (Q1, Q2, F) share one 3-way endpoint
+  coincidence H2 (m=3); the fourth chord (C) lands by ordinary T-junction on the
+  *interior* of Q1's chord at a distinct point H1. 22 raw coordinates, 15
+  independent constraint equations by numerical Jacobian rank → 7 moduli
+  (`n - 3 = 8`, minus 1 for the one 3-way coincidence's `m - 2 = 1` excess — matches).
+  Total area **3.5372167764**, matching the published record (Teodor Tohanean,
+  3.53721+) to the precision of the numeric solve.
+- **Point hub**: all four chords forced through the same single point (m=4). 20 raw
+  coordinates, 14 independent equations → 6 moduli (`8 - (4-2) = 6` — matches).
+  **Feasible** — total area **3.5017721551** — but strictly worse than the split
+  hub by giving up 2 moduli dimensions (`m - 2 = 2`) instead of 1.
+
+So the record's construction is best read as spending its incidence budget the
+moduli-maximizing way: prefer several small coincidences (or none) over one large
+one, because each unit of `m - 2` is a unit of lost optimization freedom, and here
+that freedom converts directly into area (three of the split hub's four bounded
+faces sit exactly at the area-1 cap at the optimum; the point hub's does too, but
+starting from one fewer free dimension it cannot push its residual face as large).
 
 **Worked check (VERIFIED against the record table).** For a *regular* unit-side
 m-gon with unit-length spokes from every vertex to one common center, the center
@@ -261,14 +297,22 @@ unresolved. **CONJECTURED, unresolved:** no example was constructed either way.
 
 **DERIVED, from §1.3 and §2.1 jointly, not a vibe:**
 
-1. Symmetric skeletons (wheels, m-fold rotational or dihedral arrangements) require
-   hub or rim coincidences that are algebraically over-determined in the generic
-   moduli space (§1.3: excess = m - 2 equations for an m-fold point-hub). They
-   become realizable only when a discrete symmetry ansatz collapses the excess
-   equations into dependent ones — which happens only for special (n, m) pairs (the
-   hexagon m=6 exact case; the 9-gon/21-gon cases where the "hub" backs off to a
-   small sub-polygon rather than a point, itself only working for the specific rim
-   size chosen). This is a **sparse, special set of n**, not a dense one.
+1. Fully symmetric wheel skeletons (m-fold rotational or dihedral arrangements,
+   *every* spoke drawn from *every* rim vertex to one common center) are a
+   different, stronger claim than an isolated m-way hub coincidence (§1.3 revised):
+   a full rotational ansatz ties every vertex position to every other by the
+   symmetry group, not just the m spoke feet to each other, so it is realizable
+   only where the resulting exact geometric constraint holds — the hexagon m=6
+   case (`sin(π/m) = 1/2`) being the only exact point-hub-to-every-vertex instance.
+   An isolated m-way hub coincidence *within* an otherwise asymmetric skeleton is
+   not similarly restricted — §1.3 (VERIFIED, n=11) shows it costs `m - 2` moduli
+   dimensions and is realizable at generic n, no symmetry ansatz required; it is
+   simply a worse budget allocation than spreading the same incidences across
+   several smaller coincidences (or none). What remains true and sparse is the
+   *fully symmetric wheel* family specifically (hexagon m=6 exact case; the
+   9-gon/21-gon cases where the "hub" backs off to a small sub-polygon rather than
+   a point, itself only working for the specific rim size chosen) — a **sparse,
+   special set of n**, not a dense one.
 2. Polyomino skeletons are a different special stratum: they need every interior
    face to be *exactly* a unit square (area exactly 1, saturating the cap) with
    axis-aligned right-angle corners — realizable exactly at n = (edge count of some
@@ -302,24 +346,55 @@ document has not independently re-verified).
 |---|---|---|
 | DOF formula `n - 3` | DERIVED |
 | Corner vertices dimension-neutral | DERIVED |
-| Hub over-determination, excess = m-2 | DERIVED |
-| Point-hub realizable only at m=6 (hexagon) | DERIVED, VERIFIED against n=9 area and n=18/21 image re-read |
-| Optimum is isolated (finite active-constraint count = n-3) | CONJECTURED (KKT-shaped argument, no per-face numeric check) |
-| Boundary + T-junction-chain skeleton family | CONJECTURED, qualitatively matches 11/14/19 images |
+| An m-way hub coincidence costs `m - 2` moduli, `dim = n - 3 - (m - 2)`; realizable at generic n, no symmetry ansatz needed | DERIVED, VERIFIED against n=11 split-hub (7 moduli, area 3.5372167764) and point-hub (6 moduli, area 3.5017721551, feasible but worse) |
+| Full point-hub-to-every-vertex wheel realizable only at m=6 (hexagon) | DERIVED, VERIFIED against n=9 area and n=18/21 image re-read |
+| n=11 split-hub skeleton reproduces the published record exactly | VERIFIED — `tests/records.rs::split_hub_pinwheel_n11`, area matches Tohanean's 3.53721+ record to 3.5372167764 |
+| n=11 split-hub is the *global* optimum for its skeleton | OPEN — single SLSQP run from one traced initial guess, no multi-start |
+| Other n=11 skeletons (not this boundary-plus-chain shape) | UNTESTED |
+| Which of the 4 chords is the "odd one out" landing at H1 (vs. H2's 3-way point) | picked from pixel/image evidence only; the other 3 assignments (C, Q2, or F as the odd one out instead of... i.e. permuting which chord gets the ordinary T-junction and which three share the point) UNTESTED |
+| Optimum is isolated (finite active-constraint count = n-3) | CONJECTURED (KKT-shaped argument, no per-face numeric check) — partially supported by n=11: 3 of 4 area constraints active at the optimum, matching 7 moduli minus... see note below |
+| Boundary + T-junction-chain skeleton family | CONJECTURED, qualitatively matches 11/14/19 images; n=11 instance now VERIFIED as one concrete member (§1.3) |
 | Spiral/arm-count family, grid-defect family, alternating-cell family | CONJECTURED, unchecked, listed in decreasing confidence order |
 | M1/M2/M3 move ratios | DERIVED |
 | Square cells dominate triangle cells for regular-tile moves | DERIVED |
 | Ratio > 1/2 achievable sustainably (M4 repeated) | OPEN — neither constructed nor ruled out |
 | Symmetric families cover only sparse n; asymmetric is the only n-complete candidate | DERIVED (coverage claim only, not an optimality proof) |
 
+Note on n=11 and §1.4's active-constraint conjecture: the split-hub skeleton has
+7 moduli dimensions and, at the numeric optimum found, 3 of its 4 bounded-face
+area constraints sit at the cap (area = 1) with the 4th strictly below (0.5372...).
+Three active constraints against 7 moduli does not by itself pin an isolated point
+under the naive KKT count in §1.4 — the optimum found may sit on a positive-
+dimensional tied-optimum locus, or the remaining directions may be constrained by
+something §1.4 didn't enumerate (e.g. non-crossing / combinatorial-validity
+boundaries rather than area caps). This was not resolved; flagged as part of the
+same open "is this the global optimum" question above, not answered by it.
+
 ## 6. What would actually close group (d)
 
-To turn §2.1 from a plausible shape into a real generating method: pick one open n
-(e.g. 11, since it has the fewest fences and smallest search space), enumerate
-boundary-plus-chain skeletons with k + j = 11 for small k, and numerically solve the
-`n - 3 = 8`-dimensional coordinate system for each skeleton (maximize area subject to
-per-face ≤ 1), then compare against the recorded area 3.53721. Matching that number
-to the precision available would upgrade §2.1 from CONJECTURED to VERIFIED for that
-n, and give real (not gif-estimated) coordinates to check the M4 ratio question in
-§3 against. That numeric solve was out of scope here (no coordinate data was
-extracted from the images) and is the natural next step.
+**n=11 done, VERIFIED**: the plan below (originally written before any numeric
+solve existed) was carried out for n=11 — the "split hub" boundary-plus-chain
+skeleton of §1.3, solved numerically (SLSQP from a traced initial guess) and
+checked against `Configuration::validate()` in
+`tests/records.rs::split_hub_pinwheel_n11`. It reproduces the published record
+(3.53721+, Teodor Tohanean) exactly, to 3.5372167764. This upgrades §2.1 from
+CONJECTURED to VERIFIED *for this one n and this one skeleton choice* — it does
+not by itself establish the family for n=14, n=19, or rule out other n=11
+skeletons; see the open items in §5's table (global optimality unverified,
+other n=11 skeletons untested, the H1/H2 chord-assignment choice untested against
+its 3 alternatives).
+
+Remaining to actually close group (d): repeat this for n=14 and n=19 (the other
+two group-(d) members), and — independent of n — either multi-start the n=11
+solve to gain confidence in global optimality or find an argument that rules out
+better skeletons for that n, since a single successful local solve doesn't
+distinguish "this skeleton is optimal" from "this skeleton is merely valid and
+happens to match the recorded digits by construction of the search target."
+
+The original plan, for reference: pick one open n (e.g. 11, fewest fences,
+smallest search space), enumerate boundary-plus-chain skeletons with k + j = 11
+for small k, and numerically solve the `n - 3 = 8`-dimensional coordinate system
+for each skeleton (maximize area subject to per-face ≤ 1), then compare against
+the recorded area. That numeric solve was out of scope when this section was
+first written (no coordinate data had been extracted from the images); it has
+since been done for n=11 only.
