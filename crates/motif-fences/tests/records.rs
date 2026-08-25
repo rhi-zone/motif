@@ -421,8 +421,9 @@ fn kinked_hexagon_n8() {
 /// configuration itself is real and reproducible, and because the *reason*
 /// it falls short is a method finding worth keeping: it was solved under
 /// an imposed exact-mirror-symmetry ansatz, which left effectively zero
-/// free moduli against this skeleton's true moduli dimension of
-/// `n - 3 = 10`. See `docs/asymmetric-methods.md` §7 for the full write-up
+/// free moduli against this skeleton's true moduli dimension of **5**
+/// (`n - 3` corrected by §1.3's coincidence rule). See
+/// `docs/asymmetric-methods.md` §7 for the write-up and §8 for the count,
 /// and the rule it generalizes to.
 ///
 /// Skeleton: an octagonal boundary TL-TM-TR-P-BR-BM-BL-LM-TL (8 fences).

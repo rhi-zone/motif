@@ -419,7 +419,9 @@ The resulting solve is real and passes `Configuration::validate()` — total are
 4.07361+ (Bram Cohen), so it is short by **0.0090 (0.22%)**.
 
 **Why.** Count the dimensions. The skeleton's unconstrained moduli dimension is
-`n - 3 = 10` (§1.1). After imposing the mirror ansatz, gauge-fixing, and the
+**5** — `n - 3` corrected by the coincidence rule of §1.3, `Σ(m_i - 2) = 5` across
+its four coincidence vertices; see §8 for the count. After imposing the mirror
+ansatz, gauge-fixing, and the
 active area-cap constraint, the solve had effectively **0** free moduli left —
 it was not optimizing over a space, it was evaluating a single determined point.
 A determined point is not an optimum; it is whichever point the ansatz happened
@@ -449,3 +451,74 @@ test at n=11 let the *coincidence structure* emerge rather than assuming it.
 dropped (all vertices free, gauge-fixed only), multistarting off perturbations
 of the symmetric point — the symmetric point may well be a saddle in the larger
 space, so a local solve started exactly there can sit still.
+
+## 8. Second independent confirmation of dim = n − 3 − Σ(mᵢ − 2), on n=13 (VERIFIED)
+
+§1.3 derived the coincidence-corrected moduli formula
+
+```
+dim = n - 3 - Σ_i (m_i - 2)
+```
+
+summed over vertices where `m_i >= 3` fence-endpoints coincide, and verified it on
+the n=11 skeleton it was derived from (a 3-way coincidence costing 1, a 4-way
+point hub costing 2). The n=13 skeleton (`tests/records.rs::grid_wedge_n13`)
+provides a second confirmation, on a skeleton the rule was *not* derived from,
+and at a larger total correction than n=11 exercised.
+
+**The count.** Endpoint degrees, read off the committed fence list rather than
+hand-transcribed:
+
+| vertex | endpoint degree m | cost (m − 2) |
+|---|---|---|
+| C (centre, both dividers cross) | 4 | 2 |
+| TM, LM, BM (boundary midpoints where a divider lands) | 3 each | 1 each |
+| TL, TR, P, BR, BL (ordinary corners) | 2 each | 0 each |
+| RM, UT, LT (T-junctions, sole endpoint of their fence) | 1 each | 0 each |
+
+`Σ(m_i - 2) = 2 + 1 + 1 + 1 = 5`, so `dim = 13 - 3 - 5 = 5`.
+
+**Cross-check by raw count**, independent of the formula: 12 vertices give 24 raw
+coordinates; the constraints are 13 unit-length equations plus 3 T-junction
+collinearity equations = 16; subtracting the 3 rigid motions gives
+`24 - 16 - 3 = 5`. The two routes agree.
+
+**Cross-check against measurement**: a numerical Jacobian rank computation at the
+solved point returned dimension 5, full rank with no degeneracy at the symmetric
+point. Three independent routes, same answer.
+
+A bookkeeping note, since the intermediate numbers differ between routes: the
+Jacobian computation reported 20 free coordinates against 15 independent
+constraints (= 5), where the raw count above gives 21 against 16 (= 5). The
+discrepancy is one coordinate and one constraint on each side and cancels
+exactly — consistent with the numerical setup having eliminated one T-junction by
+direct parametrization (building RM in as a point of the UT-LT chord rather than
+carrying it as a free point plus a collinearity equation). The *net* dimension,
+which is the quantity the rule predicts, agrees on all three routes.
+
+**Correction to an earlier statement.** §7 of this document, and the n=13 commit
+message, quote the skeleton's moduli dimension as `n - 3 = 10`. That is the
+*uncorrected* generic count of §1.1 and is wrong for this skeleton: it ignores
+the four coincidence vertices. The correct dimension is 5. This does not change
+§7's conclusion or its magnitude — the mirror-symmetry ansatz still left
+effectively 0 free moduli, and the point of §7 is that 0 is not enough to
+optimize over. It changes only what the ansatz was being compared against: the
+collapse was 5 → 0, not 10 → 0. The lesson stands and the arithmetic behind it
+is now right.
+
+**The n=8 skeleton** (`tests/records.rs::kinked_hexagon_n8`) has exactly one
+coincidence vertex, BA, at degree 3 (fences BL-BA, BA-BR, BA-M), so
+`Σ(m_i - 2) = 1` and the rule predicts `dim = 8 - 3 - 1 = 4`. The raw count
+agrees: 18 coordinates, 8 lengths + 3 collinearities = 11 constraints, minus 3
+rigid motions, = 4.
+
+Its mirror-symmetric stratum, by hand count, has dimension 1: 9 free parameters
+under the reflection (Apex, BA, M contribute their y only; SL, BL, PL contribute
+both coordinates and determine SR, BR, PR), less 1 residual gauge freedom, against
+5 independent lengths and 2 independent collinearities under the symmetry — `8 - 7
+= 1`. **This is why n=8's symmetry ansatz succeeded where n=13's failed.** n=8's
+ansatz left a live modulus to optimize over and the solve found a genuine interior
+critical point on it; n=13's left none, so its solve could only evaluate the single
+point the ansatz determined. The distinction is not that one problem was symmetric
+and the other was not — it is entirely a question of what dimension survives the
+ansatz, which is precisely the check §7 prescribes.
