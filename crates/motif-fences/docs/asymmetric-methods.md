@@ -398,3 +398,54 @@ for each skeleton (maximize area subject to per-face ≤ 1), then compare agains
 the recorded area. That numeric solve was out of scope when this section was
 first written (no coordinate data had been extracted from the images); it has
 since been done for n=11 only.
+
+## 7. A symmetry ansatz can collapse the moduli space to a point (DERIVED, measured on n=13)
+
+The n=11 and n=8 solves both worked by tracing a record image, reading off a
+skeleton, and solving. A third attempt — n=13 — reached a *valid* configuration
+that nonetheless fell short of the published record, and the reason is worth
+recording as a method rule rather than as an n=13 footnote.
+
+**What happened.** `13.gif` looks mirror-symmetric about a horizontal axis. The
+trace measured the two mirror-midpoint landmarks at y = 70.0 and y = 72.0 in a
+160 x 140 image — a 2px discrepancy, read at the time as tracing noise. Exact
+mirror symmetry was therefore imposed as a solve *ansatz*: paired vertices
+constrained to be literal reflections of each other, axis-vertices pinned to the
+axis.
+
+The resulting solve is real and passes `Configuration::validate()` — total area
+**4.0645952819** across 5 bounded faces (2 pentagons exactly at the area-1 cap,
+2 quads at 0.9876, a tip triangle at 0.0893). But the published record is
+4.07361+ (Bram Cohen), so it is short by **0.0090 (0.22%)**.
+
+**Why.** Count the dimensions. The skeleton's unconstrained moduli dimension is
+`n - 3 = 10` (§1.1). After imposing the mirror ansatz, gauge-fixing, and the
+active area-cap constraint, the solve had effectively **0** free moduli left —
+it was not optimizing over a space, it was evaluating a single determined point.
+A determined point is not an optimum; it is whichever point the ansatz happened
+to select. The 0.22% is the price of the ansatz, not a property of the skeleton.
+
+**The rule.** *A symmetry that holds to within a pixel in a low-resolution trace
+is not evidence of exact symmetry.* Two landmarks agreeing to 2px in a 160px
+image constrain the true configuration to roughly 1% — nowhere near enough to
+justify collapsing a 10-dimensional moduli space onto its symmetric stratum.
+Before imposing any symmetry ansatz, compare the moduli dimension it leaves
+against the number of active constraints expected at the optimum (§1.4): if the
+remainder is 0 or negative, the ansatz is doing the optimizer's job for it and
+the result should be read as a *feasible point*, not a maximum.
+
+Note the asymmetry between the two failure directions. Solving in the full
+moduli space and *discovering* a symmetric optimum costs only solver time and
+loses nothing. Solving inside an assumed-symmetric stratum and being wrong is
+silent: the solve converges, validates, and reports a plausible number with no
+signal that a better configuration was excluded by construction. Prefer the
+full-moduli solve and let symmetry emerge, exactly as §1.3's split-vs-point-hub
+test at n=11 let the *coincidence structure* emerge rather than assuming it.
+
+**Status of n=13 in this crate.** The symmetric construction is encoded in
+`tests/records.rs::grid_wedge_n13` as a verified-valid configuration at
+4.0645952819, explicitly *not* claimed to be the record. Closing the remaining
+0.0090 requires re-solving the same skeleton with the symmetry constraints
+dropped (all vertices free, gauge-fixed only), multistarting off perturbations
+of the symmetric point — the symmetric point may well be a saddle in the larger
+space, so a local solve started exactly there can sit still.

@@ -411,3 +411,114 @@ fn kinked_hexagon_n8() {
     let config = skeleton.to_configuration(&coords);
     assert_area(&config, 2.0893244027, 3);
 }
+
+/// n=13: the "grid wedge" — a 2x2 arrangement of fields whose right side
+/// closes to a wedge/arrowhead instead of a flat edge.
+///
+/// This is a verified-valid configuration at total area 4.0645952819. It
+/// is **not** the published record (Bram Cohen, 4.07361+), which it falls
+/// short of by 0.0090 (0.22%). It is encoded here because the
+/// configuration itself is real and reproducible, and because the *reason*
+/// it falls short is a method finding worth keeping: it was solved under
+/// an imposed exact-mirror-symmetry ansatz, which left effectively zero
+/// free moduli against this skeleton's true moduli dimension of
+/// `n - 3 = 10`. See `docs/asymmetric-methods.md` §7 for the full write-up
+/// and the rule it generalizes to.
+///
+/// Skeleton: an octagonal boundary TL-TM-TR-P-BR-BM-BL-LM-TL (8 fences).
+/// The top, bottom, and left "edges" each look like a single straight
+/// 2-unit run in the record image, but a fence is exactly unit length, so
+/// each is really two collinear (or, on the left, slightly bent) unit
+/// fences meeting at a midpoint vertex — TM, BM, LM respectively. Those
+/// midpoint vertices are ordinary shared corners, not T-junctions. Two
+/// interior dividers cross at the center C: the horizontal LM-C, C-RM and
+/// the vertical TM-C, C-BM. The 13th fence is the chord UT-LT spanning
+/// the wedge; the horizontal divider's right end RM lands by T-junction on
+/// that chord's interior (at its midpoint, by symmetry).
+///
+/// The fence budget forces this: 8 boundary, plus 2 horizontal-divider
+/// halves, plus 2 vertical-divider halves, is 12 — leaving exactly one. A
+/// point-hub reading of the right-side cluster — RM as an ordinary 3-way
+/// vertex with separate unit spokes RM-UT and RM-LT — needs a 14th fence and
+/// so is not available at n=13 at all. This is a stronger conclusion than
+/// n=11's split-beats-hub comparison: here the hub variant is infeasible
+/// on budget, not merely worse.
+///
+/// 13 vertices, 13 fences, 5 bounded faces (the visual read of "4 fields"
+/// misses the small triangle at the wedge tip). Active area caps at the
+/// optimum: the two pentagons, exactly at 1. The two quads (0.9876) and
+/// the tip triangle (0.0893) have slack.
+#[test]
+fn grid_wedge_n13() {
+    const TL: usize = 0;
+    const TM: usize = 1;
+    const TR: usize = 2;
+    const P: usize = 3;
+    const BR: usize = 4;
+    const BM: usize = 5;
+    const BL: usize = 6;
+    const LM: usize = 7;
+    const C: usize = 8;
+    const RM: usize = 9;
+    const UT: usize = 10;
+    const LT: usize = 11;
+
+    let coords_raw: [(f64, f64); 12] = [
+        (-1.1567560360, 0.9876373551),  // TL
+        (-0.1567560360, 0.9876373551),  // TM
+        (0.8421883010, 0.9417003158),   // TR
+        (1.1786411435, 0.0),            // P (wedge tip)
+        (0.8421883010, -0.9417003158),  // BR
+        (-0.1567560360, -0.9876373551), // BM
+        (-1.1567560360, -0.9876373551), // BL
+        (-1.0, 0.0),                    // LM
+        (0.0, 0.0),                     // C
+        (1.0, 0.0),                     // RM
+        (1.0, 0.5),                     // UT
+        (1.0, -0.5),                    // LT
+    ];
+    let coords: Vec<Point> = coords_raw.iter().map(|&(x, y)| Point::new(x, y)).collect();
+
+    let fences = vec![
+        (TL, TM), // 0: boundary
+        (TM, TR), // 1: boundary
+        (TR, P),  // 2: boundary; UT T-junctions onto this
+        (P, BR),  // 3: boundary; LT T-junctions onto this
+        (BR, BM), // 4: boundary
+        (BM, BL), // 5: boundary
+        (BL, LM), // 6: boundary
+        (LM, TL), // 7: boundary
+        (LM, C),  // 8: horizontal divider, left half
+        (C, RM),  // 9: horizontal divider, right half
+        (TM, C),  // 10: vertical divider, top half
+        (C, BM),  // 11: vertical divider, bottom half
+        (UT, LT), // 12: the wedge chord; RM T-junctions onto this
+    ];
+
+    let t_junctions = vec![
+        (RM, 12), // RM lands on the interior of the UT-LT chord
+        (UT, 2),  // UT lands on the interior of TR-P
+        (LT, 3),  // LT lands on the interior of P-BR
+    ];
+
+    let skeleton = Skeleton {
+        vertex_count: 12,
+        fences,
+        t_junctions,
+    };
+    skeleton.validate_shape().unwrap();
+    assert_eq!(skeleton.n(), 13);
+
+    let config = skeleton.to_configuration(&coords);
+    assert_area(&config, 4.0645952819, 5);
+
+    // Explicitly record the gap: this is a valid configuration, not the
+    // published record.
+    let published_record = 4.07361;
+    let report = config.validate(Tolerance::default()).unwrap();
+    assert!(
+        report.total_area < published_record,
+        "if this ever exceeds the published record, the record table or this \
+         construction changed — investigate, do not silently update"
+    );
+}
