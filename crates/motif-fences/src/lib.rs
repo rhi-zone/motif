@@ -59,9 +59,13 @@
 //! endpoint-on-segment checks in [`arrangement::build_arrangement`],
 //! not just generic line/line intersection.
 
+pub mod anneal;
 pub mod arrangement;
 pub mod configuration;
 pub mod geometry;
+pub mod rng;
+pub mod search;
+pub mod skeleton;
 
 pub use arrangement::{build_arrangement, Arrangement, Face};
 pub use configuration::{Configuration, Endpoint, Report, SegmentCoords, Tolerance, Violation};

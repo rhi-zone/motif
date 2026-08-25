@@ -5,3 +5,5 @@ edition = "2021"
 description = "Evaluator for Erich Friedman's 'fences' packing problem: place n unit-length fences so every endpoint lies on some other fence, and maximize enclosed area subject to a per-field area bound."
 
 [dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
