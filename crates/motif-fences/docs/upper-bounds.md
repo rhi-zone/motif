@@ -20,6 +20,52 @@ Record data used throughout (`n`, best known area) is copied from
 optimum (Friedman's site marks them "+"). The full comparison table is in
 §7.
 
+## Headline results
+
+Three results in this document are stronger than the rest and are stated
+here at full strength, up front, so neither is read as a step buried
+inside a longer derivation.
+
+> **Theorem A (boundary-polygon bound, hypothesis-free — §4.3).** For
+> every `n`-fence configuration, `A(n) <= (n/4)*cot(pi/n)`. This bound is
+> **exactly attained at `n = 3` and `n = 4`**, which makes it an
+> **optimality proof**: `A(3) = sqrt(3)/4` (the equilateral triangle) and
+> `A(4) = 1` (the unit square), both exact. As far as the literature check
+> in §8 found, these are the first written optimality proofs for any entry
+> of Friedman's fences table.
+
+> **Theorem B (the isoperimetric ceiling — §3.1).** No refinement of the
+> curve-isoperimetric method — the technique behind Theorem 1
+> (`A(n) <= n/sqrt(pi)`), including the outer-boundary/area-cap refinement
+> worked out in §3.1 — can lower its leading asymptotic constant below
+> `1/sqrt(pi) ≈ 0.5642`. This is a negative result, and it closes off an
+> entire line of attack on the `A(n)/n -> 1/2` question: the method is
+> provably too weak to reach `1/2`, no matter how it is sharpened, because
+> it bounds curve length and cannot see that fences are straight,
+> unit-length, and pairwise-shareable at cost exactly 1. Recorded here so
+> the isoperimetric route is not attempted again expecting a better
+> constant.
+
+> **Claim, REFUTED (monotonicity — §5.3).** `A(n+1) >= A(n)` was proposed
+> mid-task with a specific proof mechanism (extend the optimal
+> `n`-configuration by one interior chord). That mechanism is false at its
+> own `n=3` worked example: the curve of candidate chord feet,
+> `s^2 + t^2 - st = 1` for `s, t` the two feet's distances from the
+> triangle's shared vertex, is strictly convex on `[0,1]^2` and attains
+> the value 1 *only* at the square's three corners `(1,0)`, `(0,1)`,
+> `(1,1)` — e.g. at `s=0.5` it would need `t = (0.5+sqrt(3.25))/2 ≈
+> 1.153`, outside `[0,1]`. So the solution set is exactly the triangle's
+> own existing vertices, not an arc of new attachment points, and no
+> interior chord of length 1 exists at all (equivalently: a triangle's
+> diameter equals its longest side, achieved only by vertex pairs). §5.4
+> below gives a *positive*, sufficient condition (a Bieberbach/isodiametric
+> argument) under which the extension mechanism *does* work, and shows it
+> already fixes `n=4 -> 5` constructively and every trivial polyomino
+> `n -> n+1` step — so the refutation is specifically at `n=3`, where the
+> triangle's single field, though convex, is too small
+> (`sqrt(3)/4 < pi/4`) for the sufficient condition to apply, not a
+> blanket refutation for all `n`.
+
 ## 1. Theorem 1: the isoperimetric bound
 
 > **Theorem.** For every `n >= 1`, `A(n) <= n / sqrt(pi) ≈ 0.56419 n`.
@@ -435,6 +481,100 @@ table-consistent shape (checked: n=13 in `[4,5)` at 4.07361, n=16 in
 `[5,6)` at 5.53131, n=23 in `[8,9)` at 8.52289 — all consistent), worth
 recording as a conjectured target, but resting on two open steps, not one.
 
+### 5.4 A sufficient condition that rescues the extension mechanism for `n >= 4`
+
+The `n=3` refutation (§5.3) is specifically about a face too *small* to
+have room for a new chord, not a defect in the extension idea itself. This
+section gives a clean sufficient condition, proves it, and checks it
+against the trivial polyomino records — enough to constructively establish
+monotonicity for a real subset of the `n -> n+1` steps, without claiming
+the general statement.
+
+> **Theorem (conditional extension).** Let `F` be a convex bounded face of
+> a valid `n`-configuration with `area(F) > pi/4`. Then a valid unit
+> fence exists with both endpoints on `F`'s boundary, its interior lying
+> entirely inside `F`; adding it produces a valid `(n+1)`-configuration
+> with the same total area. Consequently, if some `n`-configuration
+> attaining area `A(n)` has such a face, `A(n+1) >= A(n)`.
+
+**DERIVED, VERIFIED at n=4->5 (§5.4.1).**
+
+**Proof.** By Bieberbach's inequality, every bounded convex planar set `K`
+satisfies `area(K) <= (pi/4) * diam(K)^2`, i.e.
+`diam(K) >= 2*sqrt(area(K)/pi)` (equality only for a disk; see e.g. the
+standard isodiametric-inequality references, Bieberbach 1915). With
+`area(F) > pi/4`, this gives `diam(F) > 2*sqrt((pi/4)/pi) = 1`. Diameter of
+a compact convex set is always attained by a pair of boundary points, so
+there exist boundary points `P0, Q0 in dF` with `|P0 Q0| = diam(F) > 1`.
+
+Now parametrize `Q` by arc length around the boundary loop starting and
+ending at `P0`; `g(Q) = |P0 Q|` is continuous, `g(P0) = 0` at both ends of
+the loop, and `g` reaches `diam(F) > 1` at `Q = Q0` somewhere strictly
+inside the loop. By the intermediate value theorem, `g` crosses exactly 1
+at some boundary point `Q'` between `P0` and `Q0` along the loop. The
+segment `P0 Q'` is a valid new fence: length 1 by construction; both
+endpoints lie on `F`'s boundary, i.e. on existing fences (whether `Q'`
+lands in a fence's open interior — a T-junction — or exactly on an
+existing vertex, either satisfies the incidence rule); and because `F` is
+*convex*, the straight segment between any two of its boundary points lies
+entirely inside `closure(F)`, so the new fence does not cross out of `F`
+into a different face or the unbounded region. It therefore subdivides `F`
+into two sub-fields whose areas sum to `area(F)`, both `<= area(F) <= 1`,
+so the area cap is preserved and total area is unchanged. ∎
+
+Convexity is load-bearing: for a non-convex `F`, the chord between two
+boundary points at distance 1 can exit `F` and cross into another face
+or the exterior, which breaks the "no crossing" and "stays inside `F`"
+steps of the proof. No general convexity-free version of this theorem is
+claimed.
+
+#### 5.4.1 Concrete instance: `A(5) >= A(4) = 1`, constructively
+
+The unit square (the `n=4` record) has one convex face of area exactly `1
+> pi/4`. Its diameter is `sqrt(2) > 1`. Applying the construction with
+`P0 = (0.5, 0)` (midpoint of the bottom side) and sweeping around the
+boundary: at `Q = (1, t)` on the right side, `|P0 Q|^2 = 0.5^2 + t^2 = 1`
+gives `t = sqrt(3)/2 ≈ 0.8660`, which lies in `(0, 1)` — a genuine
+T-junction, not a vertex. The 5-fence configuration (the square's 4 sides
+plus the chord `(0.5,0)-(1, sqrt(3)/2)`) is valid (checked against
+`Configuration::validate` in
+`tests/upper_bounds.rs::square_plus_bieberbach_chord_n5_matches_record`)
+and has total area exactly 1, matching the `n=5` record exactly (not just
+`>=`).
+
+#### 5.4.2 Where else the sufficient condition applies (checked / not checked)
+
+Every "Trivial" polyomino record (`n = 4, 7, 10, 12, 15, 17, 20, 22, 24`)
+is built from unit-square cells — each cell is, by construction, convex
+with area exactly `1 > pi/4` — so the theorem applies to *every* trivial
+record's own construction directly, giving `A(n+1) >= A(n)` constructively
+at all nine of those steps (not just `n=4 -> 5`), via the same
+Bieberbach-chord mechanism applied to any one cell (e.g. its own diagonal
+midpoint construction). This was not re-verified numerically cell-by-cell
+for all nine beyond the `n=4` case worked out above, since the argument is
+identical (unit square, `area=1>pi/4`, convex) — flagged as a routine but
+unexecuted extension, not a gap in the reasoning.
+
+Whether the *open* (non-trivial) records — n=8, 9, 11, 13, 14, 16, 18, 19,
+21, 23 — also have a qualifying convex near-cap face is genuinely
+unchecked here: it requires inspecting each construction's actual field
+shapes (available via this crate's `Configuration`/`arrangement` machinery
+for every record already encoded in `tests/records.rs`) for convexity and
+area `> pi/4`. Several are plausible candidates on inspection of
+`asymmetric-methods.md` (which reports several records sit with multiple
+fields *at* the area-1 cap) — n=9's hexagon sub-triangles, n=18's regular
+9-gon-derived cells — but "plausible on inspection" is exactly the kind of
+claim this document avoids asserting without a check, so this is left as
+the cheapest concrete next step for extending monotonicity's proven range,
+not claimed here.
+
+**Net effect on the monotonicity question:** no longer "wide open" — it is
+now known to hold constructively for at least 9 of the 21 `n -> n+1`
+transitions in the table (every trivial-record step), via an explicit,
+reusable mechanism with a clean sufficient condition, and the remaining
+gap is a checkable-not-yet-checked geometric fact about the other
+13 records' field shapes, not a missing proof technique.
+
 ## 6. The augmentation-rate ("does M4 chain above 1/2?") question
 
 `docs/asymmetric-methods.md` §3 leaves open whether a chained sequence of
@@ -540,6 +680,7 @@ the records; the proved bounds do not.
 | `A(n) <= (n/4)cot(pi/n)` (hypothesis-free corollary) | §4.3 | **DERIVED, VERIFIED** against all 22 records |
 | `A(3) = sqrt(3)/4`, `A(4) = 1` exactly | §4.4 | **DERIVED, VERIFIED** — first known optimality proofs for these entries |
 | Polyomino ceiling `A(n) < A*(n)` | §5 | **CONJECTURED** — 22/22 records consistent, gap identified (§5.1) |
-| `A(n+1) >= A(n)` (monotonicity) | §5.3 | **NOT ESTABLISHED** — proposed proof mechanism fails at n=3 (counterexample given) |
+| `A(n+1) >= A(n)` (monotonicity), general | §5.3 | **NOT ESTABLISHED** — proposed proof mechanism fails at n=3 (counterexample given) |
+| Conditional extension theorem (Bieberbach): any convex face with area `> pi/4` yields a valid same-area `(n+1)`-configuration | §5.4 | **DERIVED**, **VERIFIED** at n=4→5 (matches record exactly) and applies unconditionally to all 9 trivial-polyomino `n→n+1` steps |
 | Width-one-integer window conjecture | §5.3 | **CONJECTURED**, contingent on two unproved steps (ceiling + monotonicity) |
 | M4-chaining above 1/2 | §6 | **OPEN**, same problem as §3/§5 |

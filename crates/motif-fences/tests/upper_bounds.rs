@@ -10,6 +10,7 @@
 use motif_fences::bounds::{
     boundary_polygon_bound, combined_bound, isoperimetric_bound, polyomino_ceiling,
 };
+use motif_fences::{Configuration, Tolerance};
 
 /// (n, best known area). Decimal-only entries (no closed form published)
 /// use the digits from Friedman's table, which are lower bounds on the
@@ -119,4 +120,45 @@ fn print_bound_table() {
             polyomino_ceiling(n)
         );
     }
+}
+
+/// docs/upper-bounds.md §5.4.1: the unit square (area 1 > pi/4, convex,
+/// diameter sqrt(2) > 1) admits a Bieberbach chord — a unit-length
+/// interior fence with both endpoints on its boundary — constructed by
+/// the intermediate-value argument of §5.4's theorem. Concretely: from
+/// P0 = (0.5, 0) (the bottom side's midpoint), sweeping to Q = (1, t) on
+/// the right side, |P0 Q|^2 = 0.25 + t^2 = 1 gives t = sqrt(3)/2, a
+/// genuine T-junction (0 < t < 1), not a vertex. Adding this chord to the
+/// square yields a valid 5-fence configuration with the same total area
+/// (interior chords only subdivide, per §4.1) — a constructive proof that
+/// A(5) >= A(4) = 1, and it happens to match the n=5 record (also 1)
+/// exactly, not just bound it from below.
+#[test]
+fn square_plus_bieberbach_chord_n5_matches_record() {
+    let p = |x: f64, y: f64| (x, y);
+    let t = 3f64.sqrt() / 2.0;
+    let segments = [
+        (p(0.0, 0.0), p(1.0, 0.0)),
+        (p(1.0, 0.0), p(1.0, 1.0)),
+        (p(1.0, 1.0), p(0.0, 1.0)),
+        (p(0.0, 1.0), p(0.0, 0.0)),
+        (p(0.5, 0.0), p(1.0, t)), // the Bieberbach chord
+    ];
+    let config = Configuration::from_coords(&segments);
+    let report = config
+        .validate(Tolerance::default())
+        .unwrap_or_else(|violations| {
+            panic!("expected a valid configuration, got violations: {violations:?}")
+        });
+    assert_eq!(report.fence_count, 5);
+    assert_eq!(
+        report.field_areas.len(),
+        2,
+        "chord should split the square in two"
+    );
+    assert!(
+        (report.total_area - 1.0).abs() < 1e-9,
+        "total_area = {}, expected 1.0 (n=5 record)",
+        report.total_area
+    );
 }
