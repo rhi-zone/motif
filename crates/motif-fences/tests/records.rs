@@ -330,9 +330,8 @@ fn regular_9gon_with_subdivision_n18() {
 }
 
 /// n=8: the "kinked hexagon" construction, reproducing the published
-/// record (Daniel Mathias, 2.08932+) to the precision recovered by a
-/// numeric solve (SLSQP from a traced initial guess, then verified
-/// through `Configuration::validate`).
+/// record (Daniel Mathias, 2.08932+) at total area 2.0893244080014,
+/// verified through `Configuration::validate`.
 ///
 /// Skeleton: a hexagonal boundary Apex-SL-BL-BA-BR-SR-Apex (6 fences,
 /// ordinary corners throughout) plus 2 interior chords. The horizontal
@@ -347,16 +346,41 @@ fn regular_9gon_with_subdivision_n18() {
 /// That distinction is load-bearing, not cosmetic: tying the chord
 /// directly to the shoulder vertices instead makes the skeleton rigid
 /// (finitely many real solutions, best total area 1.860038), well short
-/// of the record. The T-junction version has one genuine continuous
-/// modulus, and its critical point is the record.
+/// of the record.
+///
+/// Moduli dimension 4, measured: the constraint Jacobian (8 unit-length
+/// plus 3 collinearity equations against 18 raw coordinates) has clean
+/// rank 11 — smallest singular value 0.648, no near-zero tail — and
+/// 18 - 11 - 3 rigid motions = 4. That confirms `docs/asymmetric-methods.md`
+/// §1.3's `n - 3 - sum(m_i - 2)` rule, which predicts 8 - 3 - 1 = 4 from the
+/// single degree-3 coincidence at BA. Rank is 11 at 40 random points of the
+/// constraint variety too, so the count is structural rather than an artifact
+/// of the symmetric point.
+///
+/// The mirror symmetry here is **emergent, not imposed**. It was originally
+/// found under a symmetry ansatz, which is the failure mode that cost n=13
+/// (see §7) — but unlike n=13, that ansatz left a live modulus (the symmetric
+/// stratum is 1-dimensional inside the 4-dimensional space, matching the
+/// tangent space's 1-symmetric + 3-antisymmetric decomposition). It was then
+/// checked without the ansatz: 480 symmetry-breaking multistarts over all 18
+/// free coordinates, 362 feasible convergences, **all 362** returning to this
+/// configuration and **none** exceeding it. Because the objective and
+/// constraints are symmetric, a symmetric point is automatically critical in
+/// every antisymmetric direction, so criticality alone would prove nothing;
+/// the reduced Hessian settles it, with eigenvalues -1.398 (symmetric) and
+/// -0.869, -0.508, -0.016 (antisymmetric) — negative definite, a strict local
+/// maximum rather than a saddle.
 ///
 /// 9 vertices, 8 fences, 3 bounded faces. Unusually for these records,
 /// **no** area-cap constraint is active at the optimum: the two
-/// pentagons sit at 0.99969 (close to, but strictly under, 1) and the
-/// top triangle at 0.08995. The optimum is a smooth critical point on
-/// the 1-parameter equality manifold, not a boundary point — re-solving
-/// with the area caps dropped entirely reproduces the same solution, and
-/// forcing a pentagon to exactly 1 gives a strictly lower total.
+/// pentagons sit at 0.99969 (slack 3.1e-4) and the top triangle at
+/// 0.08995. The optimum is a smooth interior critical point, not a
+/// boundary point — re-solving with the area caps dropped entirely
+/// reproduces the same solution, and forcing a pentagon to exactly 1
+/// gives a strictly lower total.
+///
+/// Scope: this is a strict local maximum *on this skeleton*. It says
+/// nothing about other n=8 skeletons.
 #[test]
 fn kinked_hexagon_n8() {
     // Vertex order: Apex, SL, SR, BL, BR, BA, PL, PR, M.
@@ -371,15 +395,15 @@ fn kinked_hexagon_n8() {
     const M: usize = 8;
 
     let coords_raw: [(f64, f64); 9] = [
-        (0.0, 1.1799004013071016),                   // Apex
-        (-0.9409471268040679, 0.8413468650542507),   // SL
-        (0.9409471268040679, 0.8413468650542507),    // SR
-        (-0.9875080549728485, -0.15756858139242782), // BL
-        (0.9875080549728485, -0.15756858139242782),  // BR
-        (0.0, 0.0),                                  // BA
-        (-0.5, 1.0),                                 // PL
-        (0.5, 1.0),                                  // PR
-        (0.0, 1.0),                                  // M
+        (0.0, 1.1799003888196817),                  // Apex
+        (-0.940947139421975, 0.8413468763381202),   // SL
+        (0.940947139421975, 0.8413468763381202),    // SR
+        (-0.9875080474158787, -0.1575685764639594), // BL
+        (0.9875080474158787, -0.1575685764639594),  // BR
+        (0.0, 0.0),                                 // BA
+        (-0.5, 1.0),                                // PL
+        (0.5, 1.0),                                 // PR
+        (0.0, 1.0),                                 // M
     ];
     let coords: Vec<Point> = coords_raw.iter().map(|&(x, y)| Point::new(x, y)).collect();
 
@@ -409,7 +433,7 @@ fn kinked_hexagon_n8() {
     assert_eq!(skeleton.n(), 8);
 
     let config = skeleton.to_configuration(&coords);
-    assert_area(&config, 2.0893244027, 3);
+    assert_area(&config, 2.0893244080014, 3);
 }
 
 /// n=13: the "grid wedge" — a 2x2 arrangement of fields whose right side

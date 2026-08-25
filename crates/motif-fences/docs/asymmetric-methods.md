@@ -522,3 +522,70 @@ critical point on it; n=13's left none, so its solve could only evaluate the sin
 point the ansatz determined. The distinction is not that one problem was symmetric
 and the other was not — it is entirely a question of what dimension survives the
 ansatz, which is precisely the check §7 prescribes.
+
+### 8.1 n=8: the rule confirmed by Jacobian rank, and the ansatz discharged (VERIFIED)
+
+§8 predicted `dim = 4` for the n=8 skeleton from the coincidence rule (one
+degree-3 vertex, BA). Measured, at the solved point, by complex-step
+differentiation of the 11 constraints (8 unit-length + 3 collinearity) against
+all 18 raw coordinates:
+
+```
+singular values: 3.490 3.397 2.985 2.942 2.851 2.706 2.159 1.958 1.295 1.084 0.648
+rank = 11   ->   dim = 18 - 11 - 3 = 4
+```
+
+The rank cut is clean, not a judgement call: the smallest singular value is
+0.648, i.e. 0.186 x the largest, with no near-zero tail anywhere. Rank is 11 at
+40 random points of the constraint variety as well, so the count is structural,
+not a property of the symmetric point. **Prediction confirmed.** Together with
+§8's n=13 result this is the rule checked on three skeletons (n=11 derived,
+n=13 and n=8 predicted-then-measured).
+
+The 4-dimensional tangent space decomposes under the mirror involution as
+**1 symmetric + 3 antisymmetric**, independently reproducing §8's hand-count of
+a 1-dimensional symmetric stratum.
+
+**Discharging the ansatz.** n=8's optimum was originally found under an imposed
+mirror-symmetry ansatz — the same move that cost n=13 0.22% (§7). Re-solved
+without it (all 18 coordinates free, gauge-fixed only, 480 symmetry-breaking
+multistarts across noise scales 1e-3 to fully random): 362 feasible
+convergences, **all 362** returning to the same configuration, **none**
+exceeding it. Max feasible total found 2.0893244080014.
+
+The perturbations genuinely left the symmetric stratum — recovered solutions'
+residual asymmetry is 2.6e-10 median, so the runs came *back* to symmetry rather
+than never leaving. This matters because criticality proves nothing here: the
+objective and constraints are both symmetric, so the gradient at a symmetric
+point vanishes in every antisymmetric direction automatically, and a saddle
+would look identical to a maximum by that test. The reduced Hessian (Lagrangian
+Hessian projected onto the tangent space) settles it:
+
+```
+-1.3982714  (symmetric)
+-0.8686548  (antisymmetric)
+-0.5075700  (antisymmetric)
+-0.0160071  (antisymmetric)
+```
+
+Negative definite — a strict local maximum, with strictly negative curvature in
+all three symmetry-breaking directions. So n=8's symmetry is **emergent, not
+imposed**, and the record stands on the full moduli space rather than on a
+stratum chosen in advance.
+
+**The general point, stated once.** §7's rule is *not* "never use a symmetry
+ansatz." n=8 and n=13 used the same ansatz to opposite effect. The difference is
+entirely what dimension survives it: n=8 kept 1 of 4 and found a genuine
+interior critical point on it; n=13 kept 0 of 5 and could only evaluate the
+point the ansatz determined. An ansatz leaving positive dimension is a
+legitimate search shortcut that still needs discharging afterwards, exactly as
+done here. An ansatz leaving 0 is not a search at all.
+
+**Numerical note.** The polished optimum is 2.0893244080014, against the
+2.0893244027 first recorded here. The difference (5.3e-9) is convergence, not a
+better configuration: the originally-stored coordinates satisfied the
+constraints only to ~1.6e-8 residual, and re-polishing to ~1e-16 moves the area
+by that order. Same critical point. `tests/records.rs::kinked_hexagon_n8` now
+stores the polished coordinates, symmetrized so paired vertices are exact
+negations and axis vertices sit exactly on x=0 (unit-length residuals 2.2e-16).
+Flagged explicitly so the change isn't later mistaken for an improved record.
