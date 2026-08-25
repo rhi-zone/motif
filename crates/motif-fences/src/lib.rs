@@ -61,6 +61,7 @@
 
 pub mod anneal;
 pub mod arrangement;
+pub mod boundary_subdivision;
 pub mod bounds;
 pub mod configuration;
 pub mod geometry;
