@@ -312,21 +312,176 @@ fn notched_square_n20() {
 ///   failure to converge; it's a 1-parameter family with an explicitly
 ///   computed, everywhere-infeasible image.
 ///
-/// What remains open: this rules out the *specific* spoke-to-hub-edge
-/// assignment read off the image (and its "T-junction near each edge's
-/// end" vs. "exact corner coincidence" variants, which give the same
-/// two problem faces since they differ only in where along the edge the
-/// landing sits, not in which face each spoke bounds) — it does not
-/// rule out every n=18 skeleton with a regular-9-gon boundary. Untested:
-/// other assignments of which 6 of the 9 boundary vertices carry spokes;
-/// a non-triangular hub (e.g. spokes T-junctioning onto *each other*
-/// rather than converging on one small closed polygon, in the chain
-/// style `docs/asymmetric-methods.md` §2.1 describes and
-/// `split_hub_pinwheel_n11` uses); or a hub that isn't mirror-symmetric.
+/// What remained open at that point: the trace above (a small triangular
+/// hub with 6 spokes) turned out to be a **misread of the image**, not
+/// the true construction — see `regular_9gon_split_diagonal_hub_n18`
+/// below for the corrected trace, which matches the record exactly.
+/// This proven-infeasible variant is kept as a documented negative
+/// result (it rules out that one specific spoke-to-hub-edge assignment,
+/// still a useful fact) but no longer represents the crate's best
+/// understanding of `18.gif`.
 #[test]
-#[ignore = "the natural hub_polygon(9,3,6-spoke) reading of 18.gif is proven infeasible (see doc comment); no other n=18 construction found or sourced"]
+#[ignore = "superseded: this specific hub_polygon(9,3,6-spoke) reading of 18.gif is proven infeasible (see doc comment) and was also a misread of the image — see regular_9gon_split_diagonal_hub_n18 for the corrected trace, which matches the record"]
 fn regular_9gon_with_subdivision_n18() {
-    unimplemented!("open: what are the 9 additional unit fences that subdivide the 9-gon?")
+    unimplemented!("superseded, see regular_9gon_split_diagonal_hub_n18")
+}
+
+/// n=18: the corrected trace of `18.gif`, matching the published record
+/// (Maurizio Morandi, 6.18182+ = `9*cot(pi/9)/4`) exactly.
+///
+/// The boundary is the regular unit-side 9-gon forced by the exact area
+/// match (see `regular_9gon_with_subdivision_n18`'s doc comment for that
+/// derivation, unchanged). The interior is **not** a small hub polygon
+/// with spokes converging on it (that reading was traced from the image
+/// but proven infeasible, and — independently — was a misread: a
+/// careful re-trace at 10-25x pixel zoom, following the repo's tracing
+/// protocol, shows no small closed hub at all). The actual interior
+/// structure, mirror-symmetric about the vertical axis through the apex
+/// `v0` and the midpoint of the opposite edge `v4-v5`:
+///
+/// - Three boundary edges per side carry a T-junction each (6 total,
+///   mirror pairs): on `v0-v1`/`v0-v8` (near the apex), on `v2-v3`/`v6-v7`,
+///   and on `v3-v4`/`v5-v6`. Each spawns one interior fence.
+/// - `h_end_l`-`h_end_r`: a single **horizontal, on-axis-centered**
+///   interior fence (`H`), an ordinary corner at each end (not a
+///   T-junction) — the two apex-adjacent T-junction fences (`j12`-`m`,
+///   `j4`-`j7`) land on `H`'s *interior* as T-junctions at `m` and `j7`.
+/// - `h_end_l`-`c` and `h_end_r`-`c`: two more interior fences
+///   ("diagonals") running from `H`'s two endpoints down to a single
+///   shared interior point `c`, which sits exactly on the mirror axis.
+///   The `v2-v3`/`v6-v7`-anchored T-junction fences (`j0`-`j11`,
+///   `j9`-`j13`) land on these diagonals' interiors (at `j11`, `j13`).
+/// - `j6`-`c` and `j10`-`c`: the `v3-v4`/`v5-v6`-anchored T-junction
+///   fences run straight to `c` themselves (ordinary corner, not a
+///   T-junction).
+/// - `c` is thus a 4-way ordinary-corner coincidence (both diagonals and
+///   both of these last two fences share that one endpoint) — costing
+///   `4-2=2` moduli dimensions (`docs/asymmetric-methods.md` §1.3); with
+///   `n=18` that leaves `18-3-2=13` moduli, comfortably positive, so the
+///   skeleton has real room to satisfy every field's area cap (unlike
+///   the disproven hub reading, whose 1-parameter family was
+///   *everywhere* infeasible).
+///
+/// This gives exactly 9 interior fences (2+2+2+1+2 across the 5 kinds
+/// above) forming 7 bounded faces total (Euler check: 22 vertices, 28
+/// edges after subdividing at every T-junction/corner, 8 faces
+/// including the unbounded one), each `<=1`; the two largest sit right
+/// at `0.9956`, i.e. near, not at, the cap (unlike the n=11 record,
+/// where 3 of 4 faces sit exactly *at* the cap at its optimum) — this
+/// particular numeric solve did not attempt to prove this is *the*
+/// area-maximizing configuration for this skeleton (no multi-start,
+/// unlike n=11's later Jacobian-rank check), only that it validates.
+///
+/// Traced from `18.gif` (184x180px) via skeletonize + junction-cluster +
+/// branch-walk + a from-scratch pixel/line-fit pass (the repo's existing
+/// `trace2-4.py`/`analyze.py` scripts undercounted this skeleton's real
+/// junction structure), boundary vertices fit to the exact regular 9-gon
+/// by least-squares against 3 independently-traced pixel points
+/// (residual ~0.04px), then solved: T-junction fractions and the free
+/// interior points (`h_end_l`, `c`) refined by `scipy.optimize.SLSQP`
+/// from the pixel-traced initial guess, satisfying the 5 remaining unit-
+/// length equality constraints (boundary is closed-form; T-junction
+/// collinearity is enforced by construction via each point's fraction
+/// along its target fence) while minimizing the two over-cap faces'
+/// excess — landing all faces safely `<1`. Scratch solve scripts:
+/// `/tmp/fences-verify-n18/solve4.py` (feasibility) and `solve5.py`
+/// (face-area minimization).
+#[test]
+fn regular_9gon_split_diagonal_hub_n18() {
+    let v0 = Point::new(1.4619022000815, 0.0000000000000);
+    let v1 = Point::new(0.5222095792956, 0.3420201433257);
+    let v2 = Point::new(0.0222095792956, 1.2080455471101);
+    let v3 = Point::new(0.1958577569626, 2.1928533001223);
+    let v4 = Point::new(0.9619022000815, 2.8356409098089);
+    let v5 = Point::new(1.9619022000815, 2.8356409098089);
+    let v6 = Point::new(2.7279466432005, 2.1928533001223);
+    let v7 = Point::new(2.9015948208675, 1.2080455471101);
+    let v8 = Point::new(2.4015948208675, 0.3420201433257);
+    let j12 = Point::new(0.9157227562649, 0.1987930601173);
+    let j4 = Point::new(2.0080816438982, 0.1987930601173);
+    let j0 = Point::new(0.1022827626416, 1.6621631360589);
+    let j9 = Point::new(2.8215216375215, 1.6621631360589);
+    let j6 = Point::new(0.5808761249775, 2.5159220707201);
+    let j10 = Point::new(2.3429282751856, 2.5159220707201);
+    let m = Point::new(1.1241592641019, 1.1768289603790);
+    let j7 = Point::new(1.7996451360612, 1.1768289603790);
+    let h_end_l = Point::new(0.9619022000815, 1.1768289603790);
+    let h_end_r = Point::new(1.9619022000815, 1.1768289603790);
+    let j11 = Point::new(1.0371459727647, 1.3071549976195);
+    let j13 = Point::new(1.8866584273983, 1.3071549976195);
+    let c = Point::new(1.4619022000815, 2.0428543641635);
+
+    let coords = vec![
+        v0, v1, v2, v3, v4, v5, v6, v7, v8, j12, j4, j0, j9, j6, j10, m, j7, h_end_l, h_end_r, j11,
+        j13, c,
+    ];
+
+    const V0: usize = 0;
+    const V1: usize = 1;
+    const V2: usize = 2;
+    const V3: usize = 3;
+    const V4: usize = 4;
+    const V5: usize = 5;
+    const V6: usize = 6;
+    const V7: usize = 7;
+    const V8: usize = 8;
+    const J12: usize = 9;
+    const J4: usize = 10;
+    const J0: usize = 11;
+    const J9: usize = 12;
+    const J6: usize = 13;
+    const J10: usize = 14;
+    const M: usize = 15;
+    const J7: usize = 16;
+    const HENDL: usize = 17;
+    const HENDR: usize = 18;
+    const J11: usize = 19;
+    const J13: usize = 20;
+    const C: usize = 21;
+
+    let fences = vec![
+        (V0, V1),
+        (V1, V2),
+        (V2, V3),
+        (V3, V4),
+        (V4, V5),
+        (V5, V6),
+        (V6, V7),
+        (V7, V8),
+        (V8, V0),
+        (J12, M),
+        (J4, J7),
+        (J0, J11),
+        (J9, J13),
+        (J6, C),
+        (J10, C),
+        (HENDL, HENDR),
+        (HENDL, C),
+        (HENDR, C),
+    ];
+    let t_junctions = vec![
+        (J12, 0),
+        (J4, 8),
+        (J0, 2),
+        (J9, 6),
+        (J6, 3),
+        (J10, 5),
+        (M, 15),
+        (J7, 15),
+        (J11, 16),
+        (J13, 17),
+    ];
+
+    let sk = Skeleton {
+        vertex_count: 22,
+        fences,
+        t_junctions,
+    };
+    sk.validate_shape().unwrap();
+    assert_eq!(sk.n(), 18);
+
+    let config = sk.to_configuration(&coords);
+    assert_area(&config, 9.0 / 4.0 / (PI / 9.0).tan(), 7);
 }
 
 /// n=8: the "kinked hexagon" construction, reproducing the published
