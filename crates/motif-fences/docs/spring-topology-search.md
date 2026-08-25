@@ -345,3 +345,104 @@ scratch in this investigation — the rewire experiments here targeted n=12 and 
 (cheaper to iterate on) and both plateaued well short of target before this doc's time
 budget ran out; n=11 was not separately attempted. Recovering it remains open work for
 whoever picks up the multistart-over-rewire-chains architecture named above.
+
+## 7. Building that architecture: outer-level Metropolis SA over graph-edit chains
+
+§6 named the missing piece: a single greedy hill-climb chain is the wrong driver for
+`rewire_existing`; the WWW precedent (§2) is Metropolis over graph edits, and it belongs
+at the *outer* level, mirroring what the *inner* annealer already does at the coordinate
+level. This section builds that architecture (`spring-topology-prototype.rs`, mode
+`outer-sa`) and reports what it does and doesn't fix.
+
+### 7.1 Two more moves, motivated by a real expressiveness gap
+
+Neither `reroute_new_vertex` nor `rewire_existing` can ever *create* a T-junction:
+`reroute_new_vertex` always lands its new vertex at an ordinary degree-2 corner, and
+`rewire_existing` only repairs existing plain-fence pairings. But every open-record
+skeleton this crate has solved uses T-junctions load-bearingly (n=8's chord lands
+mid-edge on an apex-shoulder edge, not at the shoulder vertex; n=11's split hub needs a
+T-junction onto a chord's interior in addition to its 3-way coincidence). A move set that
+can't express "new fence anchored at an existing vertex, landing by T-junction on an
+existing fence's interior" cannot reach those topologies regardless of how the outer
+search is driven. Two moves close this gap:
+
+- **`chord_ear`** (Δn=+1): re-implements `skeleton.rs`'s private M4/ChordEar move locally
+  (that module doesn't expose it) — anchor a new fence at an existing vertex, land its
+  free end by T-junction on an existing fence's interior.
+- **`retarget_t_junction`** (Δn=0): reassigns an existing T-junction to a different host
+  fence — the "T-junction slide" trigger from §1.2(b), now usable as a proposal rather
+  than only a passive by-product of coordinate drift.
+
+**On the specific n=8 kink question** (chord endpoints landing at kinks partway up the
+apex-shoulder edges, not at the shoulder vertices themselves): `chord_ear`'s landing
+parameter `t` is a free continuous coordinate solved by the inner annealer, not a value
+fixed by the move. The `t ∈ (0.2, 0.8)` range in the move's implementation is only the
+initial guess handed to the SA — nothing stops the annealer from converging `t` close to
+0 or 1 (short of the incidence hinge's own `[0,1]` bound). **The move set can express a
+near-vertex kink**; whether a given search run *finds* one is a separate question (§7.3).
+
+### 7.2 The architecture
+
+`grow_mixed` builds an initial n-fence skeleton by mixing `reroute_new_vertex` and
+`chord_ear` from a triangle seed (both Δn=+1), so different chains start from
+structurally different topologies — some cycle-only, some already carrying T-junctions.
+`outer_sa_chain` then runs a Metropolis loop at fixed n: each iteration proposes
+`rewire_existing` or `retarget_t_junction` (both Δn=0), re-anneals the candidate skeleton
+from the chain's *current* coordinates using the unmodified inner annealer, and accepts
+or rejects by the standard Metropolis rule against a geometric outer-temperature
+schedule. The score is `Configuration::validate()`'s total area when the candidate is
+feasible, or a penalty-based fallback (always < 0, so any feasible candidate outranks any
+infeasible one) computed from the annealer's own residuals when it isn't — this fallback
+matters for the acceptance walk, not for reporting: no number in §7.3 below is reported
+unless it came from a chain state that passed `validate()` with `valid=true`, which every
+`outer-sa` log line states explicitly per attempt. `run_outer_sa` multistarts several
+independent chains and keeps the global best, dumping its skeleton as JSON for inspection
+— this is the "multistart over graph-edit chains" architecture named in §6, with
+`reroute_new_vertex`/`chord_ear`/`rewire_existing`/`retarget_t_junction` as the proposal
+set and the inner annealer as the sole evaluator.
+
+### 7.3 Results
+
+All runs below used 30,000–35,000 inner-annealer iterations per proposal and 8–12 outer
+chains of 150–300 Metropolis steps each (`--seed 1`; see the file's own doc comment for
+exact commands). Every reported number is `Configuration::validate()`-gated: `score_of`
+only reports a chain's score as the validated `total_area` when `validate()` succeeds,
+and the `outer-sa` log for every chain in every run below states `valid=true` explicitly.
+
+| n | target (published/trivial) | previous plateau (§5, single greedy chain) | outer-SA best (this section) | reached? |
+|---|---|---|---|---|
+| 4 | 1 (trivial) | n/a (reroute-growth already solved this, §5.1) | 0.9999915 | yes, no regression |
+| 8 | 2.0893244080014 (Daniel Mathias) | not attempted in §5 | 1.9992535298 | no — 95.6% of target |
+| 11 | 3.5372167764 (Teodor Tohanean, split hub) | not attempted in §5 | 3.422614 (8 of 12 chains; 4 chains not run — time-boxed) | no — 96.8% of target, partial |
+| 12 | 4 (trivial, 2x2 grid) | 2.596841 | 3.5813555692 | no — 89.5% of target |
+| 15 | 5 (trivial, P-pentomino) | 3.030812 | 4.4011583850 | no — 88.0% of target |
+
+**n=12's result is confirmed structurally, not just numerically, to not be the grid.** Its
+best skeleton uses 12 distinct vertices for 12 fences; the grid skeleton
+(`skeleton::grid(2,2)`) reuses only 9 vertices via shared corners. The outer-SA chain
+found a different, worse-scoring topology, not a near-miss on the actual record.
+
+**Honest verdict on the architecture change:** it moved every one of n=8/11/12/15
+substantially above where the single-greedy-chain prototype in §5 plateaued (n=12:
+2.60→3.58; n=15: 3.03→4.40; n=8 and n=11 weren't attempted with a single chain to compare
+against, but land at 95–97% of target here) — so Metropolis-at-the-outer-level is doing
+real work relative to greedy hill-climbing, confirming §6's diagnosis that the driver,
+not the moves, was the weak point of the earlier prototype. **But within this budget, it
+did not reach any of the four non-trivial targets, and n=12 specifically did not even
+find the right topology.** This is a second negative result on the outer search — the
+first (§5) showed a single chain plateaus; this one shows multistarted Metropolis chains
+get further but still don't close the gap at these sizes. Per the standing instruction to
+report this plainly rather than keep spending budget hoping for a better number: **the
+outer-SA architecture is a real improvement over blind multistart and over a single
+greedy chain, but it has not — in the budget spent here — demonstrated finding an
+asymmetric record topology unaided.** Whether more chains, more Metropolis steps, a
+better outer temperature schedule, or a richer/weighted proposal mix would close the
+remaining ~5–10% gap at n=8/11 or the larger gap at n=12/15 is open; a second negative at
+this scale is itself the kind of result that argues for treating bounded enumeration
+(§4) as the remaining route to try, rather than continuing to tune this architecture on
+faith that more compute alone would find it.
+
+n=11's partial result (96.8% of target, 8 of 12 chains) is the closest this investigation
+came to the "found unaided" result named as the real prize. It was not completed within
+this doc's time budget — the remaining 4 chains were not run to conclusion — so it is
+reported as a partial, not a finding.
