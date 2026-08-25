@@ -1,9 +1,9 @@
 //! Planar arrangement construction and bounded-face extraction.
 //!
 //! Given a set of unit segments ("fences"), this module:
-//! 1. finds every point where two fences meet (proper crossings, and
-//!    endpoints landing on another fence's interior — the common
-//!    T-junction case for this problem),
+//! 1. finds every point where two fences meet (proper crossings, T-junctions
+//!    where an endpoint lands on another fence's interior, and
+//!    endpoint-to-endpoint incidences),
 //! 2. merges near-duplicate points into a single vertex,
 //! 3. splits each original fence into sub-edges between consecutive
 //!    vertices lying on it,
@@ -98,11 +98,11 @@ pub fn build_arrangement(
             }
         }
     }
-    // T-junctions: endpoint of one segment lying on another segment's
-    // interior, which the line/line intersection above already covers
-    // in the generic (non-parallel) case, but we also check explicitly
-    // here so a near-parallel-but-touching-at-an-endpoint configuration
-    // (e.g. two fences meeting end-to-end) is never missed.
+    // Check explicitly for any endpoint lying on another segment,
+    // including T-junctions (endpoint on interior) and
+    // endpoint-to-endpoint incidences. Line/line intersection covers
+    // most cases, but we need this explicit check to catch segments that
+    // are nearly parallel or exactly touch at an endpoint.
     for i in 0..n {
         for j in 0..n {
             if i == j {

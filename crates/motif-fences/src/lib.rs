@@ -7,6 +7,18 @@
 //! > are "fields"; every field must have area <= 1. Maximize total
 //! > enclosed area.
 //!
+//! The phrase "not necessarily at an endpoint" might suggest endpoints
+//! must land on segment interiors only. However, this reading renders the
+//! problem vacuous: any finite set of segments has an extremal point
+//! (topmost, ties broken rightmost) that is necessarily an endpoint; if
+//! that endpoint must lie on the interior of another segment, that
+//! segment extends beyond the extremal point, a contradiction. Thus
+//! endpoint-on-endpoint incidence is not merely allowed—it is required by
+//! the non-emptiness of the constraint set. This is confirmed by every
+//! known record: all valid configurations (n=3 equilateral triangle, n=4
+//! unit square, n=9 hexagon-with-spokes) contain adjacent fences meeting
+//! endpoint-to-endpoint.
+//!
 //! # What "total enclosed area" means here
 //!
 //! This crate implements **total enclosed area = sum of the bounded
@@ -42,11 +54,10 @@
 //! [`configuration::Tolerance`]) — segment length, "point lies on
 //! segment" incidence, vertex merging, and the area bound all take an
 //! explicit epsilon, defaulted for hand-derived unit-scale coordinates.
-//! T-junctions (an endpoint landing in the interior of another fence)
-//! are the *common* case for valid configurations in this problem, not
-//! an edge case, and are handled by explicit endpoint-on-segment checks
-//! in [`arrangement::build_arrangement`], not just generic line/line
-//! intersection.
+//! Endpoint incidences (on either segment interiors or endpoints) are
+//! common in valid configurations and are handled by explicit
+//! endpoint-on-segment checks in [`arrangement::build_arrangement`],
+//! not just generic line/line intersection.
 
 pub mod arrangement;
 pub mod configuration;
