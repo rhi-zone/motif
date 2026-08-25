@@ -65,6 +65,7 @@ pub mod boundary_subdivision;
 pub mod bounds;
 pub mod configuration;
 pub mod geometry;
+pub mod interior_enumerate;
 pub mod rng;
 pub mod search;
 pub mod skeleton;
