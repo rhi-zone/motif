@@ -1,0 +1,7 @@
+[package]
+name = "motif-fences"
+version = "0.1.0"
+edition = "2021"
+description = "Evaluator for Erich Friedman's 'fences' packing problem: place n unit-length fences so every endpoint lies on some other fence, and maximize enclosed area subject to a per-field area bound."
+
+[dependencies]
