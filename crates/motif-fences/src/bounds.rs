@@ -15,6 +15,8 @@
 //! it can be tested against the record table — it is not asserted as a
 //! theorem anywhere in this module or its tests).
 
+use crate::arrangement::Arrangement;
+use crate::geometry::Point;
 use std::f64::consts::PI;
 
 /// The isoperimetric bound: `A(n) <= n / sqrt(pi)`, unconditionally, for
@@ -109,6 +111,72 @@ pub fn polyomino_ceiling(n: u32) -> u32 {
         cells += 1;
     }
     cells
+}
+
+/// The Bieberbach area threshold from `docs/upper-bounds.md` §5.4: a
+/// convex bounded face with area strictly greater than this has diameter
+/// `> 1` (Bieberbach's inequality, `area <= (pi/4) * diam^2`), which is
+/// exactly the room a Bieberbach chord (§5.4's conditional-extension
+/// theorem) needs to exist.
+pub const BIEBERBACH_AREA_THRESHOLD: f64 = PI / 4.0;
+
+/// Is `boundary` (a face's boundary vertices in traversal order, as
+/// produced by [`crate::arrangement::Face::boundary`]) a convex polygon?
+///
+/// Checks that consecutive edge-vector cross products all carry the same
+/// sign. A near-zero cross product (a "straight" vertex, angle `pi` —
+/// e.g. a boundary fence with a T-junction landing partway along it,
+/// §4.2) is treated as neutral, not a violation, matching the
+/// boundary-polygon lemma's own treatment of such vertices.
+///
+/// **DERIVED.**
+pub fn is_convex_polygon(boundary: &[Point], tol: f64) -> bool {
+    let n = boundary.len();
+    if n < 3 {
+        return false;
+    }
+    let mut sign = 0i32;
+    for i in 0..n {
+        let a = boundary[i];
+        let b = boundary[(i + 1) % n];
+        let c = boundary[(i + 2) % n];
+        let cross = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
+        if cross.abs() < tol {
+            continue; // straight vertex: neutral, not a sign violation
+        }
+        let s = if cross > 0.0 { 1 } else { -1 };
+        match sign {
+            0 => sign = s,
+            s0 if s0 != s => return false,
+            _ => {}
+        }
+    }
+    true
+}
+
+/// Indices into `arrangement.bounded_faces` of every face satisfying
+/// `docs/upper-bounds.md` §5.4's conditional-extension theorem: convex,
+/// with area strictly greater than [`BIEBERBACH_AREA_THRESHOLD`]. Each
+/// such face admits a Bieberbach chord — a valid unit fence, both
+/// endpoints on the face's boundary, whose addition yields a valid
+/// `(n+1)`-fence configuration with unchanged total area (constructively:
+/// `A(n+1) >= A(n)` for the `n` this configuration witnesses).
+///
+/// Named `qualifying_faces` (plural) rather than the single-`Option`
+/// shape first proposed, because a configuration can have more than one
+/// qualifying face (e.g. §5.4.2's per-record survey) and every one is a
+/// legitimate, independently constructible extension, not just the
+/// first found.
+///
+/// **DERIVED.**
+pub fn bieberbach_qualifying_faces(arrangement: &Arrangement) -> Vec<usize> {
+    arrangement
+        .bounded_faces
+        .iter()
+        .enumerate()
+        .filter(|(_, f)| f.area > BIEBERBACH_AREA_THRESHOLD && is_convex_polygon(&f.boundary, 1e-9))
+        .map(|(i, _)| i)
+        .collect()
 }
 
 #[cfg(test)]

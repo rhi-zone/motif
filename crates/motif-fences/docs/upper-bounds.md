@@ -60,8 +60,10 @@ inside a longer derivation.
 > diameter equals its longest side, achieved only by vertex pairs). §5.4
 > below gives a *positive*, sufficient condition (a Bieberbach/isodiametric
 > argument) under which the extension mechanism *does* work, and shows it
-> already fixes `n=4 -> 5` constructively and every trivial polyomino
-> `n -> n+1` step — so the refutation is specifically at `n=3`, where the
+> already fixes `n=4 -> 5`, `n=8 -> 9`, `n=9 -> 10`, `n=11 -> 12` and every
+> trivial-polyomino `n -> n+1` step constructively (§5.4.3, §5.4.4 —
+> the first three via the *actual published records*, not substitute
+> skeletons) — so the refutation is specifically at `n=3`, where the
 > triangle's single field, though convex, is too small
 > (`sqrt(3)/4 < pi/4`) for the sufficient condition to apply, not a
 > blanket refutation for all `n`.
@@ -528,6 +530,29 @@ or the exterior, which breaks the "no crossing" and "stays inside `F`"
 steps of the proof. No general convexity-free version of this theorem is
 claimed.
 
+**A gap found while checking this against real records, and how it's
+handled (§5.4.3 below).** The proof above picks `P0` to be one of the two
+diameter-realizing vertices and sweeps from there. That specific choice
+is not always enough: if every one of `F`'s own boundary edges is itself
+a full, undivided unit fence (the common case — fences *are* unit length),
+then `P0`'s two immediate boundary neighbors are automatically at distance
+exactly 1 already (they are literally connected to `P0` by existing unit
+fences). The IVT crossing the proof invokes is only guaranteed to exist
+*somewhere* along the sweep; in a highly symmetric field, it can land
+*exactly* on those two pre-existing neighbors and nowhere else, giving no
+new fence. This happens for real, checked below (§5.4.3): the n=9 record's
+own rhombus fields fail from either diameter vertex. In every case checked
+(13 qualifying fields, §5.4.3), trying the sweep from a *different*
+boundary vertex of the same field finds a valid witness — but "some other
+vertex always works" is not proved here as a general theorem, only
+verified by exhaustive per-vertex search on every instance actually
+checked. The **conclusion** of the boxed theorem (a chord exists) is
+therefore VERIFIED on every field checked, not DERIVED in full generality
+from the single-vertex proof as originally written; that proof establishes
+existence of a distance-1 boundary pair unconditionally, but establishing
+that the pair is *non-degenerate* needs either a generic-position
+argument (not attempted) or the exhaustive per-vertex check done here.
+
 #### 5.4.1 Concrete instance: `A(5) >= A(4) = 1`, constructively
 
 The unit square (the `n=4` record) has one convex face of area exactly `1
@@ -542,38 +567,127 @@ plus the chord `(0.5,0)-(1, sqrt(3)/2)`) is valid (checked against
 and has total area exactly 1, matching the `n=5` record exactly (not just
 `>=`).
 
-#### 5.4.2 Where else the sufficient condition applies (checked / not checked)
+#### 5.4.2 Where else the sufficient condition applies
 
 Every "Trivial" polyomino record (`n = 4, 7, 10, 12, 15, 17, 20, 22, 24`)
 is built from unit-square cells — each cell is, by construction, convex
 with area exactly `1 > pi/4` — so the theorem applies to *every* trivial
 record's own construction directly, giving `A(n+1) >= A(n)` constructively
 at all nine of those steps (not just `n=4 -> 5`), via the same
-Bieberbach-chord mechanism applied to any one cell (e.g. its own diagonal
-midpoint construction). This was not re-verified numerically cell-by-cell
-for all nine beyond the `n=4` case worked out above, since the argument is
-identical (unit square, `area=1>pi/4`, convex) — flagged as a routine but
-unexecuted extension, not a gap in the reasoning.
+Bieberbach-chord mechanism applied to any one cell. Not re-verified
+numerically cell-by-cell for all nine beyond the `n=4` case worked out in
+§5.4.1, since the argument is identical (unit square, `area=1>pi/4`,
+convex) — flagged as routine, not a gap.
 
-Whether the *open* (non-trivial) records — n=8, 9, 11, 13, 14, 16, 18, 19,
-21, 23 — also have a qualifying convex near-cap face is genuinely
-unchecked here: it requires inspecting each construction's actual field
-shapes (available via this crate's `Configuration`/`arrangement` machinery
-for every record already encoded in `tests/records.rs`) for convexity and
-area `> pi/4`. Several are plausible candidates on inspection of
-`asymmetric-methods.md` (which reports several records sit with multiple
-fields *at* the area-1 cap) — n=9's hexagon sub-triangles, n=18's regular
-9-gon-derived cells — but "plausible on inspection" is exactly the kind of
-claim this document avoids asserting without a check, so this is left as
-the cheapest concrete next step for extending monotonicity's proven range,
-not claimed here.
+The open (non-trivial) records were checked next — closing the gap this
+section previously left open. `bounds::bieberbach_qualifying_faces` (a
+reusable helper, added for exactly this purpose — see below) was run
+against every verified configuration this crate holds for n=8, 9, 11, and
+n=13 (a solved skeleton, but *not* the published record — see the caveat
+in §5.4.3). The survey code is
+`examples/scratch_bieberbach_survey.rs` (`cargo run --example
+scratch_bieberbach_survey`).
 
-**Net effect on the monotonicity question:** no longer "wide open" — it is
-now known to hold constructively for at least 9 of the 21 `n -> n+1`
-transitions in the table (every trivial-record step), via an explicit,
-reusable mechanism with a clean sufficient condition, and the remaining
-gap is a checkable-not-yet-checked geometric fact about the other
-13 records' field shapes, not a missing proof technique.
+| n | field | area | convex? | qualifies (`area > pi/4` and convex) |
+|---|---|---|---|---|
+| 8 (kinked hexagon, record) | pentagon ×2 | 0.999687 | yes | **yes** ×2 |
+| 8 | triangle | 0.089950 | yes | no (too small) |
+| 9 (hexagon+spokes, record) | rhombus ×3 | 0.866025 | yes | **yes** ×3 |
+| 11 (split-hub, record) | hexagon/pentagon ×3 | 1.000000 | yes | **yes** ×3 |
+| 11 | quad | 0.537217 | yes | no (too small) |
+| 13 (grid-wedge skeleton, **not the record** — see §5.4.3) | pentagon ×2, quad ×2 | 1.000000, 0.987637 | yes | **yes** ×4 |
+| 13 | tip triangle | 0.089321 | yes | no (too small) |
+
+Every non-tiny field in all four configurations is convex (checked, not
+assumed — the coordinator specifically flagged n=8's kink and n=11's split
+hub as plausible sites for a hidden non-convex corner; neither turned out
+to have one). 13 fields qualify in total.
+
+`bounds::bieberbach_qualifying_faces(&arrangement) -> Vec<usize>` and
+`bounds::is_convex_polygon(&boundary, tol) -> bool` are the reusable
+helpers, so any future construction encoded in this crate gets checked the
+same way without re-deriving the survey logic.
+
+#### 5.4.3 Constructed and verified: three actual records extended, one skeleton (not a record) extended
+
+For n=8, n=9, and n=11 — all three using the *published record's own
+construction*, not a substitute skeleton — a Bieberbach chord was
+constructed from the qualifying field's exact coordinates and run through
+`Configuration::validate`, exactly as §5.4.1 did for n=4->5. Two distinct
+sub-cases came up, matching the gap named above:
+
+- **n=8 -> 9** (`tests/upper_bounds.rs::kinked_hexagon_plus_bieberbach_chord_n9_matches_area`):
+  the diameter-vertex sweep on one pentagon field succeeds directly,
+  landing as a genuine T-junction on the interior of an existing boundary
+  fence. Valid 9-fence configuration, area unchanged at `2.0893244080014`
+  (the n=8 record's own area). **Constructively: `A(9) >= 2.0893244080014`
+  via the actual record**, not merely via a trivial cell.
+- **n=9 -> 10** (`tests/upper_bounds.rs::hexagon_with_spokes_plus_bieberbach_diagonal_n10_matches_area`):
+  this is the degenerate sub-case from the gap above — the diameter
+  vertex's sweep finds only its two pre-existing neighbors. The valid
+  witness instead comes from a *different* boundary vertex (the field's
+  center point) and is a vertex-to-vertex "free diagonal" (center to a
+  non-adjacent, non-spoke hexagon vertex — both already-existing points,
+  coincidentally at distance exactly 1, since all six hexagon vertices sit
+  on the unit circle around the center). Valid 10-fence configuration,
+  area unchanged at `3*sqrt(3)/2` (the n=9 record's own area).
+  **Constructively: `A(10) >= 3*sqrt(3)/2` via the actual record.**
+- **n=11 -> 12** (`tests/upper_bounds.rs::split_hub_pinwheel_plus_bieberbach_chord_n12_matches_area`):
+  diameter-vertex sweep succeeds directly on one of the three area-1
+  fields, from vertex `F`, landing by T-junction on an existing boundary
+  fence. Valid 12-fence configuration, area unchanged at `3.5372167764`
+  (the n=11 record's own area). **Constructively: `A(12) >= 3.5372167764`
+  via the actual record.**
+
+All three are committed, passing tests, not just survey output.
+
+**n=13 is different, and weaker, on purpose.** The n=13 configuration
+checked (`grid_wedge_n13` in `tests/records.rs`) is explicitly documented
+there as *not* the published record — it falls short by 0.22% (a
+mirror-symmetry ansatz cost it moduli). Its four qualifying fields (survey
+table above) do admit Bieberbach chords (found by the same search,
+`examples/scratch_bieberbach_survey.rs` output, length 1 to 8 decimal
+places — not elevated to a committed `validate()` test here, since the
+base configuration itself is already known-suboptimal). This gives only
+`A(14) >= 4.0645952819`, a **weaker** statement than what covering the
+actual n=13 record would give — it does not establish
+`A(14) >= 4.07361`. The n=13 -> 14 transition of the *true* record remains
+open; only this document's own (weaker) skeleton's transition is
+constructively covered.
+
+#### 5.4.4 Net effect on the monotonicity question
+
+Constructively established, via a real fence-by-fence construction checked
+against `Configuration::validate` (or, for n=13, checked by direct
+coordinate arithmetic but not elevated to a committed test):
+
+- All 9 trivial-polyomino steps (n=4,7,10,12,15,17,20,22,24 -> n+1), via
+  any unit-square cell.
+- n=8 -> 9, n=9 -> 10, n=11 -> 12, via the actual published records.
+- n=13 -> 14 in the *weaker* sense of this crate's own (sub-record)
+  skeleton, not the published record.
+
+Remaining genuinely open: n=14, 16, 18, 19, 21, 23 -> `n+1` (no verified
+configuration checked here for these n at all, record or otherwise — this
+is a coverage gap in what's *verified in this crate*, not a claim that the
+condition fails for them), and the true n=13 record specifically (only a
+weaker substitute is covered). Checking those needs the same recipe
+applied to whatever verified configurations exist for those n once they
+land.
+
+#### 5.4.5 Does Bieberbach say anything about the *upper* (ceiling) direction?
+
+Asked directly, checked briefly, and the answer is no: Bieberbach's
+inequality (`area <= (pi/4)*diam^2`) is a *diameter*-vs-area relation, and
+nothing in this problem puts a budget on total diameter analogous to the
+`sum(length(e)) <= n` fence-length budget that makes the isoperimetric
+route (§1, §3) work — diameter isn't additive over the fence set the way
+length is, so there's no natural way to sum a per-field diameter bound
+into a global inequality on `n`. It was useful here specifically because
+existence arguments (monotonicity) only need *one* long-enough boundary
+pair per field, not a budgeted sum over all of them. This is not pursued
+further; it does not look like it extends to the ceiling direction the way
+§1's method does, and no attempt to force it into one is made here.
 
 ## 6. The augmentation-rate ("does M4 chain above 1/2?") question
 
@@ -681,6 +795,7 @@ the records; the proved bounds do not.
 | `A(3) = sqrt(3)/4`, `A(4) = 1` exactly | §4.4 | **DERIVED, VERIFIED** — first known optimality proofs for these entries |
 | Polyomino ceiling `A(n) < A*(n)` | §5 | **CONJECTURED** — 22/22 records consistent, gap identified (§5.1) |
 | `A(n+1) >= A(n)` (monotonicity), general | §5.3 | **NOT ESTABLISHED** — proposed proof mechanism fails at n=3 (counterexample given) |
-| Conditional extension theorem (Bieberbach): any convex face with area `> pi/4` yields a valid same-area `(n+1)`-configuration | §5.4 | **DERIVED**, **VERIFIED** at n=4→5 (matches record exactly) and applies unconditionally to all 9 trivial-polyomino `n→n+1` steps |
+| Conditional extension theorem (Bieberbach): any convex field with area `> pi/4` yields a valid same-area `(n+1)`-configuration | §5.4 | **DERIVED** (conclusion VERIFIED on every field checked; the single-vertex proof has a named gap in symmetric cases, rescued by trying other vertices — not proved in full generality) |
+| Constructive monotonicity coverage: n=4→5, n=8→9, n=9→10, n=11→12 (actual records) + all 9 trivial-polyomino steps + n=13→14 (weaker, non-record skeleton only) | §5.4.3–5.4.4 | **DERIVED, VERIFIED** — committed, passing tests for n=4,8,9,11; open for n=14,16,18,19,21,23 and the true n=13 record |
 | Width-one-integer window conjecture | §5.3 | **CONJECTURED**, contingent on two unproved steps (ceiling + monotonicity) |
 | M4-chaining above 1/2 | §6 | **OPEN**, same problem as §3/§5 |
