@@ -2,7 +2,7 @@
 //! checked against Erich Friedman's table
 //! (<https://erich-friedman.github.io/packing/fence/>).
 
-use motif_fences::skeleton::Skeleton;
+use motif_fences::skeleton::{polyomino, Skeleton};
 use motif_fences::{Configuration, Point, Tolerance};
 use std::f64::consts::PI;
 
@@ -223,6 +223,34 @@ fn split_hub_pinwheel_n11() {
 
     let config = skeleton.to_configuration(&coords);
     assert_area(&config, 3.5372167764, 4);
+}
+
+/// n=15: the P-pentomino (5 cells: a 2x2 block plus one cell on top of
+/// the left column), the trivial minimum-edge polyomino for A=5. Unlike
+/// n=4/7/10/12/17/22/24 (all rectangle-shaped for their A), A=5 has no
+/// edge-minimal *rectangle* (a 1x5 strip needs 16 edges, not 15) — the
+/// minimum-edge shape is this non-rectangular polyomino instead, which
+/// `skeleton::grid` cannot express (see `skeleton::polyomino`). Area = 5.
+#[test]
+fn p_pentomino_n15() {
+    let cells = [(0, 0), (1, 0), (0, 1), (1, 1), (0, 2)];
+    let (sk, coords) = polyomino(&cells);
+    assert_eq!(sk.n(), 15);
+    let config = sk.to_configuration(&coords);
+    assert_area(&config, 5.0, 5);
+}
+
+/// n=20: a 3x3 square of cells with two opposite corners removed, the
+/// trivial minimum-edge polyomino for A=7 (again non-rectangular: a 1x7
+/// strip needs 22 edges — that's the *n=22* record, A=8 — and no
+/// rectangle factors 7 more squarely). Area = 7.
+#[test]
+fn notched_square_n20() {
+    let cells = [(1, 0), (2, 0), (0, 1), (1, 1), (2, 1), (0, 2), (1, 2)];
+    let (sk, coords) = polyomino(&cells);
+    assert_eq!(sk.n(), 20);
+    let config = sk.to_configuration(&coords);
+    assert_area(&config, 7.0, 7);
 }
 
 /// n=18: a regular unit-side 9-gon (area 9*cot(pi/9)/4, matching the

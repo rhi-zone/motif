@@ -186,6 +186,76 @@ pub fn grid(a: usize, b: usize) -> (Skeleton, Vec<Point>) {
     )
 }
 
+/// An arbitrary (not necessarily rectangular) edge-connected polyomino,
+/// given as a set of unit-cell `(x, y)` integer coordinates. Generalizes
+/// [`grid`] (a full rectangle is one special case) to any simply-
+/// connected cell set, e.g. a minimum-edge polyomino for a non-square
+/// cell count `A` (a rectangle is only edge-minimal when `A` factors
+/// close to a square; for most `A` the true minimum-edge shape is a
+/// near-square *non-rectangular* polyomino, which `grid` cannot express).
+///
+/// Each of the 4 unit edges of every cell is emitted once; an edge
+/// shared between two cells in `cells` is deduplicated (becomes a single
+/// interior fence, per the standard "count each grid edge once" rule),
+/// exactly as [`grid`] does internally. No T-junctions are needed: every
+/// vertex of a simply-connected polyomino's edge graph has degree >= 2
+/// (grid-boundary and grid-interior vertices are always ordinary
+/// corners), so every endpoint is already incident to another fence.
+///
+/// Panics if `cells` is empty. Does not itself check that `cells` is
+/// edge-connected or hole-free; an unconnected or ill-formed cell set
+/// will produce a skeleton whose `validate_shape` (or realized
+/// `Configuration::validate`) fails, which is the caller's signal that
+/// the cell set was invalid.
+pub fn polyomino(cells: &[(i64, i64)]) -> (Skeleton, Vec<Point>) {
+    assert!(!cells.is_empty(), "polyomino: empty cell set");
+    use std::collections::BTreeMap;
+
+    // Vertex coordinates are the integer grid points; assign indices on
+    // first sight, sorted so the mapping (and hence the resulting
+    // skeleton) is deterministic given the same `cells` input.
+    let mut vertex_index: BTreeMap<(i64, i64), usize> = BTreeMap::new();
+    let mut coords: Vec<Point> = Vec::new();
+    let mut idx_of = |p: (i64, i64), vertex_index: &mut BTreeMap<(i64, i64), usize>| -> usize {
+        *vertex_index.entry(p).or_insert_with(|| {
+            coords.push(Point::new(p.0 as f64, p.1 as f64));
+            coords.len() - 1
+        })
+    };
+
+    let mut edge_set: std::collections::BTreeSet<((i64, i64), (i64, i64))> =
+        std::collections::BTreeSet::new();
+    for &(x, y) in cells {
+        let corners = [
+            ((x, y), (x + 1, y)),         // bottom
+            ((x, y + 1), (x + 1, y + 1)), // top
+            ((x, y), (x, y + 1)),         // left
+            ((x + 1, y), (x + 1, y + 1)), // right
+        ];
+        for (a, b) in corners {
+            let key = if a <= b { (a, b) } else { (b, a) };
+            edge_set.insert(key);
+        }
+    }
+
+    let mut fences = Vec::with_capacity(edge_set.len());
+    for (a, b) in edge_set {
+        let ia = idx_of(a, &mut vertex_index);
+        let ib = idx_of(b, &mut vertex_index);
+        fences.push((ia, ib));
+    }
+
+    let vertex_count = coords.len();
+    (
+        Skeleton {
+            vertex_count,
+            fences,
+            t_junctions: Vec::new(),
+        },
+        coords,
+    )
+}
+
 /// A regular unit-side hexagon with unit spokes from the center to the
 /// vertices listed in `spoke_vertices` (indices into the hexagon's 6
 /// boundary vertices). The m=6 exact point-hub case from §1.3 — the only
@@ -447,6 +517,37 @@ mod tests {
         let (sk, _) = grid(2, 2);
         sk.validate_shape().unwrap();
         assert_eq!(sk.n(), 12);
+    }
+
+    #[test]
+    fn polyomino_matches_grid_for_a_rectangle() {
+        let cells: Vec<(i64, i64)> = (0..2).flat_map(|x| (0..2).map(move |y| (x, y))).collect();
+        let (sk, _) = polyomino(&cells);
+        sk.validate_shape().unwrap();
+        assert_eq!(sk.n(), 12); // same edge count as grid(2, 2)
+    }
+
+    #[test]
+    fn polyomino_p_pentomino_shape_is_valid() {
+        // A=5 minimum-edge polyomino (2x2 block + one cell on top of the
+        // left column): E = 4*5 - 5 = 15, matching the trivial n=15
+        // record area 5 (see `docs/asymmetric-methods.md`'s trivial-n
+        // formula f(A) = 2A + ceil(2*sqrt(A))).
+        let cells = [(0, 0), (1, 0), (0, 1), (1, 1), (0, 2)];
+        let (sk, _) = polyomino(&cells);
+        sk.validate_shape().unwrap();
+        assert_eq!(sk.n(), 15);
+    }
+
+    #[test]
+    fn polyomino_notched_square_shape_is_valid() {
+        // A=7 minimum-edge polyomino (3x3 square minus two opposite
+        // corners): E = 4*7 - 8 = 20, matching the trivial n=20 record
+        // area 7.
+        let cells = [(1, 0), (2, 0), (0, 1), (1, 1), (2, 1), (0, 2), (1, 2)];
+        let (sk, _) = polyomino(&cells);
+        sk.validate_shape().unwrap();
+        assert_eq!(sk.n(), 20);
     }
 
     #[test]
