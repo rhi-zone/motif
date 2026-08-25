@@ -275,3 +275,86 @@ fn notched_square_n20() {
 fn regular_9gon_with_subdivision_n18() {
     unimplemented!("open: what are the 9 additional unit fences that subdivide the 9-gon?")
 }
+
+/// n=8: the "kinked hexagon" construction, reproducing the published
+/// record (Daniel Mathias, 2.08932+) to the precision recovered by a
+/// numeric solve (SLSQP from a traced initial guess, then verified
+/// through `Configuration::validate`).
+///
+/// Skeleton: a hexagonal boundary Apex-SL-BL-BA-BR-SR-Apex (6 fences,
+/// ordinary corners throughout) plus 2 interior chords. The horizontal
+/// chord PL-PR does *not* run between the shoulder vertices — pixel
+/// inspection of the record image shows a kink partway up each
+/// apex-shoulder edge, and both of the chord's endpoints land by
+/// T-junction on the *interior* of those edges (at parameter ~0.531 from
+/// the apex). The vertical chord BA-M runs from the bottom apex up to a
+/// third T-junction M on the interior of PL-PR (at its midpoint, by
+/// symmetry).
+///
+/// That distinction is load-bearing, not cosmetic: tying the chord
+/// directly to the shoulder vertices instead makes the skeleton rigid
+/// (finitely many real solutions, best total area 1.860038), well short
+/// of the record. The T-junction version has one genuine continuous
+/// modulus, and its critical point is the record.
+///
+/// 9 vertices, 8 fences, 3 bounded faces. Unusually for these records,
+/// **no** area-cap constraint is active at the optimum: the two
+/// pentagons sit at 0.99969 (close to, but strictly under, 1) and the
+/// top triangle at 0.08995. The optimum is a smooth critical point on
+/// the 1-parameter equality manifold, not a boundary point — re-solving
+/// with the area caps dropped entirely reproduces the same solution, and
+/// forcing a pentagon to exactly 1 gives a strictly lower total.
+#[test]
+fn kinked_hexagon_n8() {
+    // Vertex order: Apex, SL, SR, BL, BR, BA, PL, PR, M.
+    const APEX: usize = 0;
+    const SL: usize = 1;
+    const SR: usize = 2;
+    const BL: usize = 3;
+    const BR: usize = 4;
+    const BA: usize = 5;
+    const PL: usize = 6;
+    const PR: usize = 7;
+    const M: usize = 8;
+
+    let coords_raw: [(f64, f64); 9] = [
+        (0.0, 1.1799004013071016),                   // Apex
+        (-0.9409471268040679, 0.8413468650542507),   // SL
+        (0.9409471268040679, 0.8413468650542507),    // SR
+        (-0.9875080549728485, -0.15756858139242782), // BL
+        (0.9875080549728485, -0.15756858139242782),  // BR
+        (0.0, 0.0),                                  // BA
+        (-0.5, 1.0),                                 // PL
+        (0.5, 1.0),                                  // PR
+        (0.0, 1.0),                                  // M
+    ];
+    let coords: Vec<Point> = coords_raw.iter().map(|&(x, y)| Point::new(x, y)).collect();
+
+    let fences = vec![
+        (APEX, SL), // 0: boundary; PL T-junctions onto this
+        (SL, BL),   // 1: boundary
+        (BL, BA),   // 2: boundary
+        (BA, BR),   // 3: boundary
+        (BR, SR),   // 4: boundary
+        (SR, APEX), // 5: boundary; PR T-junctions onto this
+        (PL, PR),   // 6: horizontal interior chord; M T-junctions onto this
+        (BA, M),    // 7: vertical interior chord
+    ];
+
+    let t_junctions = vec![
+        (PL, 0), // PL lands on the interior of Apex-SL
+        (PR, 5), // PR lands on the interior of SR-Apex
+        (M, 6),  // M lands on the interior of PL-PR
+    ];
+
+    let skeleton = Skeleton {
+        vertex_count: 9,
+        fences,
+        t_junctions,
+    };
+    skeleton.validate_shape().unwrap();
+    assert_eq!(skeleton.n(), 8);
+
+    let config = skeleton.to_configuration(&coords);
+    assert_area(&config, 2.0893244027, 3);
+}
