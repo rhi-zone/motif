@@ -333,6 +333,15 @@ fn regular_9gon_with_subdivision_n18() {
 /// record (Daniel Mathias, 2.08932+) at total area 2.0893244080014,
 /// verified through `Configuration::validate`.
 ///
+/// The area is an exact algebraic number: a smooth interior critical point of
+/// the (unit-length + T-junction) equality-constrained area function, no
+/// area-cap active. Its exact minimal polynomial over ℚ — degree 24,
+/// irreducible, root-matched to 580+ digits beyond the precision used to find
+/// it — is derived in `docs/asymmetric-methods.md` §8.2, along with a
+/// 100-digit decimal `2.0893244080014165918046324322618127695067429339652509...`.
+/// Whether the degree-24 extension is solvable in radicals is open (no
+/// available tool computes Galois groups above degree 6).
+///
 /// Skeleton: a hexagonal boundary Apex-SL-BL-BA-BR-SR-Apex (6 fences,
 /// ordinary corners throughout) plus 2 interior chords. The horizontal
 /// chord PL-PR does *not* run between the shoulder vertices — pixel

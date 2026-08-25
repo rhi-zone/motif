@@ -589,3 +589,93 @@ by that order. Same critical point. `tests/records.rs::kinked_hexagon_n8` now
 stores the polished coordinates, symmetrized so paired vertices are exact
 negations and axis vertices sit exactly on x=0 (unit-length residuals 2.2e-16).
 Flagged explicitly so the change isn't later mistaken for an improved record.
+
+### 8.2 n=8: exact algebraic certificate for the area (VERIFIED)
+
+§8.1 established that `kinked_hexagon_n8`'s optimum is a smooth interior
+critical point (no area cap active) on a moduli space whose mirror-symmetric
+stratum is emergent and 1-dimensional. That makes the record area a genuine
+algebraic number — the solution of a polynomial critical-point system — not
+just a converged float. This section derives its exact minimal polynomial.
+
+**Reduction to the symmetric stratum.** Parametrize the symmetric locus by
+`Apex = (0, ay)`, `SL = (-sx, sy)`, `SR = (sx, sy)`, `BL = (-bx, by)`,
+`BR = (bx, by)`, `BA = (0, 0)`, with `PL, PR, M` forced onto the vertical axis
+of symmetry. Two of the eight unit-length equations collapse to exact
+rationals independent of everything else: `PL-PR` unit length forces
+`PL = (-1/2, py)`, `PR = (1/2, py)`; `BA-M` unit length forces `M = (0, 1)` (so
+`py = 1`). The T-junction condition `PL` on segment `Apex-SL` at parameter `t`
+gives `t·sx = 1/2` and `ay + t(sy - ay) = 1`. Together with the three
+remaining unit-length equations (`Apex-SL`, `SL-BL`, `BL-BA`), this leaves a
+system of 5 polynomial equations in 6 unknowns `(ay, sx, sy, bx, by, t)` — a
+1-dimensional variety, matching §8's measured 1-dimensional symmetric stratum.
+
+**Criticality.** The area (`= 2·`shoelace of the symmetric hexagon
+`Apex,SL,BL,BA,BR,SR`) is extremized along this curve exactly where the
+augmented 6×6 Jacobian — the 5 constraint gradients plus the area gradient,
+all with respect to the 6 unknowns — is singular. That determinant condition
+plus the 5 constraints is a 0-dimensional system in 6 unknowns, solved by
+elimination (`sympy.resultant`, chained: eliminate `bx` from the `detJ=0`
+condition against the `BL-BA`/`SL-BL` pair, then eliminate `sy`, isolating
+`t`; separately substitute the area variable `A` for `bx` via its affine
+relation and eliminate `sy` then `t` to isolate `A`). Every elimination step
+produced large spurious factors independent of the eliminated-toward variable
+(artifacts of clearing denominators introduced by the rational
+parametrization); these were discarded by `sympy.factor_list`, keeping only
+factors that actually depend on the target variable.
+
+**Result — the area's exact minimal polynomial**, degree 24, `Area = A`:
+
+```
+1099511627776*A^24 - 17763984736256*A^22 + 2473901162496*A^21
++ 166635872714752*A^20 - 293013406351360*A^19 - 378562762768384*A^18
++ 2106837956558848*A^17 - 1735106797568000*A^16 - 4633311266734080*A^15
++ 8290667836659712*A^14 + 2766034138808320*A^13 - 12499528462034672*A^12
++ 2323795836413312*A^11 + 8352756631200992*A^10 - 3611489073935488*A^9
+- 2255207841503568*A^8 + 1546845296617728*A^7 + 64037587301256*A^6
+- 215938761119392*A^5 + 37632088116392*A^4 + 2917102422976*A^3
+- 1303252698872*A^2 + 96772141984*A + 186178441 = 0
+```
+
+(leading coefficient `2^40`; content — the gcd of all 25 integer coefficients
+— is 1, so this is the primitive form.)
+
+**Verification.**
+- **Irreducibility over ℚ**: `sympy.factor_list` on the primitive polynomial
+  returns it unchanged as a single irreducible factor of multiplicity 1. Since
+  the area is a root of this irreducible polynomial, this *is* its minimal
+  polynomial and the area's degree over ℚ is exactly 24 — not an artifact of
+  an unreduced resultant.
+- **Root match**: the critical-point system `(ay, sx, sy, bx, by, t)` was
+  re-solved from the known float solution with `mpmath.findroot` at 600-digit
+  working precision (Newton on the 3-variable reduced system `(bx, sy, t)`,
+  with `t`'s own minimal polynomial — also degree 24, independently derived
+  and confirmed irreducible along the way — checked to residual `~1e-246` at
+  250 digits). The resulting area value satisfies the degree-24 polynomial
+  above to residual `~1e-582` at 600-digit precision: 580+ digits beyond the
+  precision used to find the candidate, ruling out coincidence.
+- **Isolation**: the polynomial has 12 real roots; the matching one
+  (`2.0893244080014165918...`) is isolated from its nearest real neighbors
+  (`1.1541872908...` and `-2.0350440310...`) by more than 0.9, so there is no
+  ambiguity about which root is the geometric solution.
+- A companion degree-6 factor and a degree-36 factor also appeared in the
+  elimination for other reasons (extraneous branches of the same resultant
+  chain, e.g. the mirrored/negated configuration or non-optimal critical
+  points on the same stratum); both were checked numerically against the
+  600-digit area value and ruled out (residuals `~2.7e3` and `~1.2e28`
+  respectively — not roots).
+
+**Solvability in radicals: undetermined.** `sympy.polys.numberfields.galoisgroups.galois_group`
+only supports degree ≤ 6, and no other Galois-group-capable tool (PARI/GP,
+Magma) is available in this environment. Whether the degree-24 extension is
+solvable — and therefore whether the record area has a closed radical form —
+is open.
+
+**High-precision decimal** (100 digits, from the 600-digit Newton solve):
+
+```
+2.089324408001416591804632432261812769506742933965250906477681404686273919752982712347650628283051578
+```
+
+This is a genuine refinement of the previously-recorded `2.0893244080014` —
+consistent with it to all 14 given digits, extending it by 86 more.
