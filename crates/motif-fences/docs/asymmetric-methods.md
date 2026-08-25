@@ -679,3 +679,43 @@ is open.
 
 This is a genuine refinement of the previously-recorded `2.0893244080014` —
 consistent with it to all 14 given digits, extending it by 86 more.
+
+### 8.2 n=13: the cap is not the whole gap — the record needs a different skeleton (VERIFIED)
+
+A natural hypothesis for n=13's 0.009 shortfall (§7): since two pentagons sit
+exactly at the area-1 cap at our optimum, maybe the published 4.07361 is *this
+same construction* with its fields nudged slightly over 1 — i.e. an invalid
+configuration reported as a record. If so, relaxing the cap to `1 + ε` should
+climb straight to the record at small ε.
+
+Tested directly by a cap sweep on the exact `grid_wedge_n13` skeleton (same
+symmetric SLSQP solve, cap set to `1 + ε`, warm-started up the ε grid):
+
+```
+ε=0      total 4.0645952819   pentagons 1.000000 (active)
+ε=0.001  total 4.0653799       pentagons 1.001000 (active)
+ε=0.005  total 4.0678819       pentagons 1.005000 (active)
+ε≥0.008  total 4.0685197304    pentagons 1.007517 (cap no longer binding)
+ε=0.20   total 4.0685197304    (unchanged — plateau)
+```
+
+The total does **not** rise to the record. It **plateaus at 4.0685197304** once
+ε ≳ 0.008, because at that point the cap stops binding and the solve sits at the
+skeleton's *unconstrained* symmetric maximum (confirmed as the symmetric global
+by 60 random restarts with the cap dropped entirely). The record 4.07361 is
+**above that plateau by 0.0051** — so even with fields allowed to be arbitrarily
+oversized, this topology cannot reach it.
+
+Decomposing the 0.009015 gap: relaxing the cap buys at most **0.003924** of it
+(43%), and the remaining **0.005090** is a hard ceiling of the skeleton itself,
+not a cap violation. The sensitivity at the true cap is `dA/dε ≈ 0.80` and
+decays to 0 at the plateau, so there is no small ε that reaches the record.
+
+**Verdict: the hypothesis is refuted.** The record is not `grid_wedge_n13` with
+slightly-oversized fields; less than half the gap is cap-related and the rest is
+topological. Cohen's construction is a genuinely different skeleton than the one
+traced here — consistent with the independent finding that 13.gif's right-side
+cluster was mistraced. (Caveat of scope: this sweep is under the mirror-symmetry
+ansatz, so 4.0685197304 is the symmetric unconstrained ceiling; an asymmetric
+solve of the *same* skeleton could differ. But the cap-hypothesis is settled
+regardless — the cap explains under half the gap either way.)
