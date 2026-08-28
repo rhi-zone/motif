@@ -719,3 +719,33 @@ cluster was mistraced. (Caveat of scope: this sweep is under the mirror-symmetry
 ansatz, so 4.0685197304 is the symmetric unconstrained ceiling; an asymmetric
 solve of the *same* skeleton could differ. But the cap-hypothesis is settled
 regardless — the cap explains under half the gap either way.)
+
+### 8.3 n=13: dropping the symmetry ansatz doesn't help either — the valid ceiling is 4.0646 (VERIFIED)
+
+§8.2's cap sweep ran under the mirror-symmetry ansatz, leaving one question
+open: could an *asymmetric* configuration of the same `grid_wedge_n13` skeleton
+do better? Solved directly — all 12 vertices free (21 scalars after gauge-fixing
+C to the origin and RM to the x-axis), unit lengths and the three T-junction
+collinearities as equalities, multistarted from 170 symmetry-breaking
+perturbations of the symmetric optimum:
+
+- **Cap on (all fields ≤ 1):** asymmetric max = **4.0645952819**, identical to
+  the symmetric capped optimum, and the winning configuration collapses back to
+  mirror-symmetric (top/bottom y-coordinates agree to 9e-8). 168 of 170 feasible
+  restarts, none beating it. So the symmetry is emergent under the cap, exactly
+  as at n=8 (§8.1): dropping the ansatz gains nothing. The valid ceiling of this
+  topology is 4.0646 regardless of symmetry — **below the record by 0.009015.**
+- **Cap off:** asymmetric max ≥ **4.146**, which *does* exceed the record — but
+  only by ballooning one pentagon to area 1.715 (against a 0.434 opposite and a
+  near-degenerate tip). That is a grossly cap-violating, lopsided configuration,
+  not a valid packing.
+
+**Conclusion.** The `grid_wedge_n13` topology cannot *validly* reach 4.07361 by
+any coordinates, symmetric or not — its cap-respecting ceiling is 4.0646. It can
+exceed the record only by letting a field grow ~70% over the cap. This is the
+final piece confirming the record is a genuinely different skeleton (the
+right-side cluster of 13.gif having been independently found mistraced), not
+this one at different coordinates and not this one with a small cap violation
+(§8.2 already bounded the cap's contribution at 43% of the gap). The n=13 record
+is not reproduced by this crate; `grid_wedge_n13` stands as a verified-valid
+4.0645952819 construction with its shortfall fully accounted for.
