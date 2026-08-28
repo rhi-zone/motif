@@ -749,3 +749,40 @@ this one at different coordinates and not this one with a small cap violation
 (§8.2 already bounded the cap's contribution at 43% of the gap). The n=13 record
 is not reproduced by this crate; `grid_wedge_n13` stands as a verified-valid
 4.0645952819 construction with its shortfall fully accounted for.
+
+### 8.4 Correction to §8.2/§8.3: `grid_wedge_n13` IS topologically faithful to 13.gif; the published number is what's inconsistent (VERIFIED, supersedes the "different skeleton" claim above)
+
+**§8.2 and §8.3 above, and commit `d4aafa5`'s message, are stale and wrong on
+one point:** they conclude the record is a "genuinely different skeleton"
+because "13.gif's right-side cluster was independently found mistraced." A
+later, more careful pixel-measurement pass (both halves of 13.gif measured
+edge-by-edge — see `crates/motif-fences/scratch/n13/` for the raw
+measurement scripts) overturned that mistrace finding. It confirmed instead
+that `grid_wedge_n13` **is** topologically faithful to 13.gif:
+
+- TL-TM, TM-TR, BR-BM, BM-BL, BL-LM, LM-TL are all unit fences.
+- TM, BM, LM are genuine 3-way shared vertices (not T-junctions).
+- C is a genuine 4-way point.
+- The right cluster's TR-Tip and Tip-BR are unit fences; the U-D chord
+  T-junctions onto *both* of them, and RM T-junctions onto the U-D chord.
+
+This is exactly the skeleton `grid_wedge_n13` already encodes (see its doc
+comment in `tests/records.rs`). There is no second, undiscovered skeleton to
+find for n=13.
+
+Given that faithful topology, §8.3's own number stands: the valid ceiling
+(all fields ≤ 1, any coordinates, symmetric or asymmetric) is **4.0645952819**,
+below the published record **4.07361**. Combined with the corrected
+topology-matching finding, the conclusion inverts from "wrong skeleton" to:
+
+**Cohen's n=13 figure cannot validly enclose its own published area
+4.07361 under this problem's rules.** The figure and the published number
+are an inconsistent pair — reaching 4.07361 on this topology requires
+oversizing one pentagon to ~1.715, a ~70% area-cap violation (§8.3's
+uncapped result), not a coordinate choice this crate failed to find.
+
+This is one data point, not (yet) a pattern — see `crates/motif-fences/TODO.md`
+item 2 for the matching open question on n=21's own published record, and
+item 1 for the correction bookkeeping (this note doesn't rewrite git
+history; `d4aafa5`'s commit message itself still reads the old, superseded
+way).

@@ -1,0 +1,93 @@
+dims: x=39  faces=8  tjs=11  boundary_names=10
+
+=== CAPPED (fields<=1) valid ceiling ===
+/nix/store/m0v936rc6b8lckpi7xgsbhbmgis5hy95-python3.13-scipy-1.17.1/lib/python3.13/site-packages/scipy/optimize/_trustregion_constr/equality_constrained_sqp.py:81: UserWarning: Singular Jacobian matrix. Using SVD decomposition to perform the factorizations.
+  Z, LS, Y = projections(A, factorization_method)
+/nix/store/m0v936rc6b8lckpi7xgsbhbmgis5hy95-python3.13-scipy-1.17.1/lib/python3.13/site-packages/scipy/optimize/_trustregion_constr/equality_constrained_sqp.py:217: UserWarning: Singular Jacobian matrix. Using SVD decomposition to perform the factorizations.
+  Z, LS, Y = projections(A, factorization_method)
+[cap] trial 0 scale=0.02 best=7.6825913
+[cap] trial 1 scale=0.04 best=7.6825981
+/nix/store/m0v936rc6b8lckpi7xgsbhbmgis5hy95-python3.13-scipy-1.17.1/lib/python3.13/site-packages/scipy/optimize/_differentiable_functions.py:385: UserWarning: delta_grad == 0.0. Check if the approximated function is linear. If the function is linear better results can be obtained by defining the Hessian as zero instead of using quasi-Newton approximations.
+  self.H.update(self.x - self.x_prev, self.g - self.g_prev)
+[cap] trial 2 scale=0.07 best=7.6825982
+[cap] trial 3 scale=0.12 best=7.6825982
+[cap] trial 4 scale=0.20 best=7.6825982
+[cap] trial 5 scale=0.02 best=7.6825982
+[cap] trial 6 scale=0.04 best=7.6825982
+[cap] trial 7 scale=0.07 best=7.6825982
+[cap] trial 8 scale=0.12 best=7.6828226
+[cap] trial 9 scale=0.20 best=7.6828236
+[cap] trial 10 scale=0.02 best=7.6828236
+[cap] trial 11 scale=0.04 best=7.6828236
+[cap] trial 12 scale=0.07 best=7.6828236
+[cap] trial 13 scale=0.12 best=7.6828236
+[cap] trial 14 scale=0.20 best=7.6828236
+[cap] trial 15 scale=0.02 best=7.6828236
+[cap] trial 16 scale=0.04 best=7.6828236
+[cap] trial 17 scale=0.07 best=7.6828236
+[cap] trial 18 scale=0.12 best=7.6828236
+[cap] trial 19 scale=0.20 best=7.6828237
+[cap] trial 20 scale=0.02 best=7.6828237
+[cap] trial 21 scale=0.04 best=7.6828237
+[cap] trial 22 scale=0.07 best=7.6828237
+[cap] trial 23 scale=0.12 best=7.6828237
+[cap] trial 24 scale=0.20 best=7.6828237
+[cap] trial 25 scale=0.02 best=7.6828237
+[cap] trial 26 scale=0.04 best=7.6828237
+[cap] trial 27 scale=0.07 best=7.6828237
+[cap] trial 28 scale=0.12 best=7.6828237
+[cap] trial 29 scale=0.20 best=7.6828237
+[cap] trial 30 scale=0.02 best=7.6828237
+[cap] trial 31 scale=0.04 best=7.6828237
+[cap] trial 32 scale=0.07 best=7.6828237
+[cap] trial 33 scale=0.12 best=7.6828237
+[cap] trial 34 scale=0.20 best=7.6828237
+[cap] trial 35 scale=0.02 best=7.6828237
+[cap] trial 36 scale=0.04 best=7.6828237
+[cap] trial 37 scale=0.07 best=7.6828237
+[cap] trial 38 scale=0.12 best=7.6828237
+[cap] trial 39 scale=0.20 best=7.6828237
+CAPPED valid ceiling = 7.682823659  feasible=41/41
+face areas: [1.       0.721675 1.       0.999999 1.       0.999999 0.961338 0.999813]
+t params in (0,1): [0.1793 0.6042 0.7168 0.4906 0.3979 0.2085 0.949  0.1528 0.3585 0.9199
+ 0.6219]
+
+=== UNCAPPED (fields unbounded) ===
+[unc] trial 0 scale=0.02 best=7.6032620
+[unc] trial 1 scale=0.04 best=7.6941163
+[unc] trial 2 scale=0.07 best=7.6941891
+[unc] trial 3 scale=0.12 best=7.6941891
+[unc] trial 4 scale=0.20 best=7.6941891
+[unc] trial 5 scale=0.02 best=7.6942088
+[unc] trial 6 scale=0.04 best=7.6942088
+[unc] trial 7 scale=0.07 best=7.6942088
+[unc] trial 8 scale=0.12 best=7.6942088
+[unc] trial 9 scale=0.20 best=7.6942088
+[unc] trial 10 scale=0.02 best=7.6942088
+[unc] trial 11 scale=0.04 best=7.6942088
+[unc] trial 12 scale=0.07 best=7.6942088
+[unc] trial 13 scale=0.12 best=7.6942088
+[unc] trial 14 scale=0.20 best=7.6942088
+[unc] trial 15 scale=0.02 best=7.6942088
+[unc] trial 16 scale=0.04 best=7.6942088
+[unc] trial 17 scale=0.07 best=7.6942088
+[unc] trial 18 scale=0.12 best=7.6942088
+[unc] trial 19 scale=0.20 best=7.6942088
+[unc] trial 20 scale=0.02 best=7.6942088
+[unc] trial 21 scale=0.04 best=7.6942088
+[unc] trial 22 scale=0.07 best=7.6942088
+[unc] trial 23 scale=0.12 best=7.6942088
+[unc] trial 24 scale=0.20 best=7.6942088
+[unc] trial 25 scale=0.02 best=7.6942088
+[unc] trial 26 scale=0.04 best=7.6942088
+[unc] trial 27 scale=0.07 best=7.6942088
+[unc] trial 28 scale=0.12 best=7.6942088
+[unc] trial 29 scale=0.20 best=7.6942088
+UNCAPPED max = 7.694208843
+face areas: [1.1067 0.6664 0.9954 0.9674 1.0274 1.0227 0.911  0.9973]   max face=1.1067
+
+=== VERDICT ===
+record            = 7.69139
+capped valid ceil = 7.682824   (BELOW record, diff -0.008566)
+uncapped max      = 7.694209   (>= record)
+uncapped max face = 1.1067  (how oversized a field it needs)
