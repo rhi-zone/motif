@@ -44,6 +44,34 @@ finite-degree fact directly, mirroring `exists_finrank_adjoin_eq_residueCard_K_2
   `Module.finrank (K2P2 P₂) (K2P2 P₂)⟮γ⟯ = residueCard O`** — the `K_2 → K_3` analogue of
   `exists_finrank_adjoin_eq_residueCard_K_2`, using `K_3 P₃`'s splitting-field structure directly
   (independent of `hβ'norm`).
+
+## Why this file is kept despite having zero importers
+
+Confirmed by direct investigation (not assumed from a prior pass): `grep -rl` for this file's name
+and for each of its four theorem names, across every `.lean` file in the repo, returns nothing but
+this file's own declarations — no other file imports it or references its theorems, and
+`lean_lib «Langlands»`'s unrestricted glob (it builds every file under `Langlands/` regardless of
+import edges) is the only reason it is compiled at all.
+
+It is kept anyway because `exists_finrank_adjoin_eq_residueCard_K_3` is **the only place in this
+repository where a concrete root `γ` at tower depth `K_3` is actually *derived* rather than assumed.**
+The generic induction's own `n = 2` case reaching this depth, `isNStepFrom_ts_K3`
+(`LubinTateTowerStepLevelInduction.lean`), takes `γ`/`hγroot`/`hγfin` as **explicit hypotheses** —
+it does not derive them — and, checked directly, `isNStepFrom_ts_K3` itself is never called anywhere
+else in the repo, so nothing ever discharges those hypotheses concretely except this file. Likewise
+`exists_eisenstein_tower_step_K_3` (`LubinTateTowerStepLevelExists.lean`), which `isNStepFrom_ts_K3`
+does invoke, only *consumes* `γ`/`hγroot`/`hγfin` as parameters, same as it does. So without this
+file, no witness anywhere in the repo demonstrates the induction concretely reaching `n = 3` with a
+fully-instantiated, checkable `γ` — every generic theorem at this depth stops at an abstract `∃` or an
+explicit hypothesis. This is a genuinely different kind of value than "regression-check anchor for the
+generic machinery" (which is what `LubinTateTowerStepK3.lean`/`K3RootConnect.lean`/`K3Degree.lean`
+provide, via `rfl`-checks in the `Level*.lean` files that specialize against *their* witnesses, not
+this file's) — this file's value is standalone: it is the sole concrete existence proof at this depth,
+mirroring `LubinTateTowerStepConcrete.lean`'s role one level down at `K_1 → K_2` (which, unlike this
+file, happens to also sit in the generic-import closure via `LubinTateTowerStepSplittingField.lean` —
+an accident of accretion order per `§91`, not a difference in kind). A future cleanup pass can treat
+this reasoning as settled and need not re-derive it; only re-investigate if the generic induction is
+later extended to derive its own concrete witness at this depth, which would make this file redundant.
 -/
 
 noncomputable section

@@ -71,9 +71,9 @@ itself and `spectralNorm_extends`/`Polynomial.coe_aeval_eq_eval` to identify `sp
 
 ## What remains
 
-`[K_1_hsplitVacuous : K] = q - 1` and `Gal(K_1_hsplitVacuous/K) ≅ (O/π)ˣ` are not attempted here:
+`[K_1_torsionInK : K] = q - 1` and `Gal(K_1_torsionInK/K) ≅ (O/π)ˣ` are not attempted here:
 this file only pins down the *size* of the `π`-torsion point set, not the field extension
-`K_1_hsplitVacuous := K(F_π[π])` it generates (`Langlands.LubinTateFieldTower.K_1_hsplitVacuous`) or
+`K_1_torsionInK := K(F_π[π])` it generates (`Langlands.LubinTateFieldTower.K_1_torsionInK`) or
 its Galois-theoretic structure.
 -/
 
@@ -166,9 +166,9 @@ inside `card_piTorsion_one_eq_residueCard`'s proof below), extracted standalone:
 proof only uses `norm_lt_one_of_aeval_divX_eq_zero`, `X_mul_divX_add`, and
 `eval_eq_zero_iff_aeval_eq_zero`). Reused by `card_piTorsion_one_eq_residueCard`'s own proof, and by
 `Langlands.LubinTateFieldTower`'s transport of `hsplit` down to
-`K_1_hsplitVacuous := K(F_π[π])`: `K_1_hsplitVacuous`'s generators are exactly `Q`'s roots once
+`K_1_torsionInK := K(F_π[π])`: `K_1_torsionInK`'s generators are exactly `Q`'s roots once
 `hsplit` holds for `K`, so this is the fact that makes those generators already lie in
-`piTorsion hπ hf 1`, hence — trivially — in `K_1_hsplitVacuous` itself. -/
+`piTorsion hπ hf 1`, hence — trivially — in `K_1_torsionInK` itself. -/
 theorem mem_piTorsion_one_of_root_divX_map [DecidableEq K]
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O} (hπ : Irreducible π)
     (hπnorm : ‖algebraMap O K π‖ < 1) {f : O⟦X⟧} (hf : IsLubinTatePoly π (residueCard O) f)
