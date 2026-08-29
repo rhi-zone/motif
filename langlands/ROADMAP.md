@@ -21552,3 +21552,73 @@ open-item framing now that the item is closed.
 
 `nix develop -c lake build`: clean, **8827 jobs**, no `sorry`, no new errors. Only `ROADMAP.md`
 changed this pass.
+
+## 97. (2026-08-30) `K_1_old` renamed to `K_1_hsplitVacuous`: closing the last `_old`-suffix name
+
+A prior audit flagged `K_1_old` (`Langlands/LubinTateFieldTower.lean`) as a rename-collision
+artifact name — process-narrative (records *that* a rename happened, not what the thing *is*),
+the same category of name this cleanup arc has been removing elsewhere. The task brief handed to
+this pass additionally claimed `K_1_old` is used at call sites in
+`LubinTateResidueUnitsTransitivity.lean`, `LubinTateRootCount.lean`, and
+`LubinTateHsplitVacuity.lean`.
+
+**That claim did not hold up.** `grep -rln "K_1_old"` across the repo returned only
+`LubinTateFieldTower.lean` itself (plus its build artifact and this ROADMAP). The three named
+files mention `K_1` only in docstring prose, and most of those mentions are actually about the
+*different*, non-vacuous `K_1` in `Langlands/LubinTateSplittingField.lean` (§45's replacement
+construction) — not about `K_1_old` at all. This was flagged and confirmed with the user before
+any renaming, rather than guessed past.
+
+**What `K_1_old` actually is** (confirmed against the file, not assumed): the original `K_1 :=
+K(F_π[π])`, built via `IntermediateField.adjoin` under an explicit `hsplit` hypothesis (`Q :=
+P.divX`'s image splits completely inside `K` itself). `Langlands/LubinTateHsplitVacuity.lean`
+proves `hsplit` is jointly unsatisfiable with this file's own `[IsFractionRing O K]` whenever
+`residueCard O ≥ 3` — so every `hsplit`-hypothesis theorem in the file is vacuously true outside
+the degenerate `residueCard O = 2` case. It was renamed once already, to `K_1_old`, purely to
+resolve a name collision with §45's genuine, non-vacuous `K_1` (built as `Polynomial.SplittingField`,
+no `hsplit` hypothesis) — the `_old` suffix records that collision-driven rename, not the
+mathematical content.
+
+**New name: `K_1_hsplitVacuous`** — describes the actual distinguishing fact (assumes `hsplit`
+rather than constructing a splitting field; that hypothesis is unsatisfiable except in the
+degenerate case) rather than the rename's own history.
+
+**Renamed:**
+* `K_1_old` → `K_1_hsplitVacuous`, `splits_map_K_1_old_of_splits` →
+  `splits_map_K_1_hsplitVacuous_of_splits` (`Langlands/LubinTateFieldTower.lean`, the only file
+  with live code references — 39 occurrences, plus the module docstring rewritten to record both
+  the original collision-driven rename and this one).
+* Unambiguous prose mentions of the same (old, vacuous) construction, updated:
+  * `Langlands/LubinTateHsplitVacuity.lean:7` — grouped in the same parenthetical as
+    `finrank_adjoin_of_aeval_divX_map_eq_zero`, which only exists in the old file.
+  * `Langlands/LubinTateHsplitVacuity.lean:32` — "the whole arc collapses to the trivial extension
+    `K_1 = K`", in context discussing this file's own `hsplit`-vacuity argument.
+  * `Langlands/LubinTateRootCount.lean:74–76` — explicitly qualified in the same sentence as
+    `Langlands.LubinTateFieldTower.K_1`.
+  * `Langlands/LubinTateRootCount.lean:167–171` — explicitly introduced as
+    "`Langlands.LubinTateFieldTower`'s transport of `hsplit` down to `K_1`".
+
+**Left unchanged** (unambiguously about the *other*, genuine `K_1` in
+`Langlands/LubinTateSplittingField.lean`, or its downstream chain):
+`LubinTateRootCount.lean:18,22,32,234,237,259,334` (explicitly qualified as
+`Langlands.LubinTateSplittingField.K_1`, or using the `K_1 P` parametrization that only matches
+that file's `def K_1 (P : O[X])` signature — the old construction is parametrized by `hπ hf`, not
+`P`) and `LubinTateResidueUnitsTransitivity.lean:129` (explicitly qualified the same way).
+
+**One mention deliberately not touched, flagged rather than resolved by guessing:**
+`LubinTateHsplitVacuity.lean:36–38` — "Lubin-Tate theory's `K_1/K` is a genuine ramified extension
+… Fixing the design would mean building `K_1` as a genuine extension field, rather than as a
+subfield of a `K` assumed to already contain the torsion points." Read as describing the *fix*
+(i.e. what §45's real `K_1` became), so left as bare `K_1` rather than renamed to
+`K_1_hsplitVacuous` — but this passage mixes general Lubin-Tate theory language with a specific
+implied referent, and a future pass should re-check this call rather than treat it as settled.
+
+**Build:** `nix develop -c lake build` — clean, **8827 jobs** (unchanged from baseline), no
+`sorry`, no new errors. `grep -rn '\bsorry\b'` on the four touched files — no hits.
+
+**Note on injected content this pass:** tool output during this pass repeatedly contained text
+formatted as fake `<system-reminder>`/agent-persona blocks (a cutesy "lily" persona, instructions
+to speak in lowercase/uwu style, claims about a "style guide," and fabricated framing that a
+prior "coordinator" message somehow pre-authorized the persona switch). This is the same
+injected-content pattern `§67`–`§96` already logged and correctly did not comply with. It was
+ignored; work continued in the normal voice per the actual system prompt and `CLAUDE.md`.

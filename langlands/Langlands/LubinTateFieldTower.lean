@@ -6,46 +6,50 @@ import Langlands.LubinTateRootCount
 /-!
 # ⚠️ VACUOUS whenever `residueCard O ≥ 3` — see `Langlands.LubinTateHsplitVacuity`
 
-**`K_1` here was renamed to `K_1_old`** to resolve a name collision with the genuine,
-non-vacuous `K_1` built in `Langlands.LubinTateSplittingField` onward (`Polynomial.SplittingField`,
-no `hsplit` hypothesis). The two definitions are *not* compatible overloads — different arguments,
-different types (`IntermediateField (FractionRing O) K` here vs. a fresh splitting-field type
-synonym there) — so both cannot be named `LubinTate.K_1` inside the same import closure. This file
-has no callers anywhere else in the repo (nothing imports `Langlands.LubinTateFieldTower` besides
-the top-level `Langlands.lean` aggregator), so the rename is purely local and changes no downstream
-statement.
+**`K_1` here was originally renamed to `K_1_old`**, and is now renamed again to
+`K_1_hsplitVacuous`, to resolve a name collision with the genuine, non-vacuous `K_1` built in
+`Langlands.LubinTateSplittingField` onward (`Polynomial.SplittingField`, no `hsplit` hypothesis).
+The two definitions are *not* compatible overloads — different arguments, different types
+(`IntermediateField (FractionRing O) K` here vs. a fresh splitting-field type synonym there) — so
+both cannot be named `LubinTate.K_1` inside the same import closure. The second rename replaces the
+process-narrative `_old` suffix with a name describing what actually distinguishes this
+construction: it assumes `hsplit` rather than constructing a splitting field, and (per
+`Langlands.LubinTateHsplitVacuity`) that hypothesis is unsatisfiable whenever `residueCard O ≥ 3`.
+This file has no callers anywhere else in the repo (nothing imports `Langlands.LubinTateFieldTower`
+besides the top-level `Langlands.lean` aggregator), so the rename is purely local and changes no
+downstream statement.
 
 **Every theorem in this file that takes `hsplit` as a hypothesis is vacuously true outside the
 degenerate case `residueCard O = 2`.** `Langlands/LubinTateHsplitVacuity.lean` proves `hsplit :
 (P.divX.map (algebraMap O K)).Splits` is jointly unsatisfiable with this file's own standing
 `[IsFractionRing O K]` whenever `P.divX.natDegree ≥ 2` (i.e. `residueCard O ≥ 3`): `[IsFractionRing
 O K]` forces `K` to already *be* `Frac(O)`, while `Q := P.divX`'s image is irreducible over that
-same `K` (Gauss's lemma), so it cannot also split completely there. `K_1_old`, `splits_map_K_1_old_of_splits`,
+same `K` (Gauss's lemma), so it cannot also split completely there. `K_1_hsplitVacuous`, `splits_map_K_1_hsplitVacuous_of_splits`,
 and `finrank_adjoin_of_aeval_divX_map_eq_zero` are all logically valid `hsplit → …` implications, but
 `hsplit` can never actually be discharged for a genuine ramified extension — the case Lubin-Tate
 theory exists to formalize. **Do not build further theorems on `hsplit` in this file**; see
-`Langlands.LubinTateSplittingField` for the replacement construction (`K_1_old` built as
-`Polynomial.SplittingField`, a genuine extension of `K` in which `Q` splits by construction, no
-`hsplit` hypothesis).
+`Langlands.LubinTateSplittingField` for the replacement construction — there, `K_1` is built
+directly as `Polynomial.SplittingField`, a genuine extension of `K` in which `Q` splits by
+construction, no `hsplit` hypothesis.
 
-# The base-field embedding, `K_1_old = K(F_π[π])`, and the `hsplit`-transport to `K_1_old`
+# The base-field embedding, `K_1_hsplitVacuous = K(F_π[π])`, and the `hsplit`-transport to `K_1_hsplitVacuous`
 
 The natural next step after the torsion-point group `piTorsion hπ hf n` (packaged as an
-`AddCommGroup` in `Langlands.LubinTateTorsionGroup`) is the field extension `K_1_old := K(F_π[π])`
+`AddCommGroup` in `Langlands.LubinTateTorsionGroup`) is the field extension `K_1_hsplitVacuous := K(F_π[π])`
 and the tower `K_n := K(F_π[π^n])`.
 
 Both `piTorsion` and the ambient evaluation field `K` are already parametrized abstractly in
 `Langlands/LubinTateTorsionPoints.lean`: `O` is the base complete discrete valuation ring, `K` is
 *any* `NormedField` with `[Algebra O K]` in which `O`'s image lies in the closed unit ball. This
-file, however, is where `K_1_old`'s tower structure and the `hsplit`-transport to it are built, and
+file, however, is where `K_1_hsplitVacuous`'s tower structure and the `hsplit`-transport to it are built, and
 both genuinely need `K` to be (isomorphic to) `O`'s field of fractions — `[IsFractionRing O K]` —
 not merely a normed field containing `O`'s bounded image:
 
-* To adjoin torsion points to a genuine *base field* (rather than the base ring `O`), `K_1_old` is
+* To adjoin torsion points to a genuine *base field* (rather than the base ring `O`), `K_1_hsplitVacuous` is
   built over `O`'s field of fractions as an intermediate field base point, using Mathlib's own
   fraction-field machinery (`IsFractionRing.lift`/`FractionRing.liftAlgebra`) rather than a
   bespoke `F`/`K` split or an assumption that `K` itself already is `Frac(O)`.
-* The `hsplit`-transport to `K_1_old` reuses `Langlands.LubinTate.mem_piTorsion_one_of_root_divX_map`
+* The `hsplit`-transport to `K_1_hsplitVacuous` reuses `Langlands.LubinTate.mem_piTorsion_one_of_root_divX_map`
   (`Langlands/LubinTateRootCount.lean`), which — like `card_piTorsion_one_eq_residueCard` itself —
   needs `[IsFractionRing O K]`: Gauss's lemma, comparing `Q := P.divX`'s irreducibility over `O`
   and over `K`, genuinely needs `K` to be a fraction field of `O`, not merely a normed field
@@ -54,7 +58,7 @@ not merely a normed field containing `O`'s bounded image:
   `[IsFractionRing O K]` is actually used in that chain). This matches the setting
   `Langlands/LubinTateRootCountConcrete.lean` already instantiates (`K := v.adicCompletion F`,
   where `IsFractionRing (v.adicCompletionIntegers F) (v.adicCompletion F)` holds), so this file
-  requires `[IsFractionRing O K]` throughout rather than only for the transport theorem — `K_1_old`
+  requires `[IsFractionRing O K]` throughout rather than only for the transport theorem — `K_1_hsplitVacuous`
   has no caller anywhere else in the repo that needs the weaker `[FaithfulSMul O K]` this file
   used to carry, so strengthening its hypothesis here is free.
 
@@ -66,26 +70,26 @@ unchanged.
 
 Building the `hsplit`-transport raises two instance-resolution subtleties:
 
-* **A potential `Algebra O K_1_old` diamond is avoided by not building that instance at all.**
+* **A potential `Algebra O K_1_hsplitVacuous` diamond is avoided by not building that instance at all.**
   Stating the transport requires composing `Algebra O (FractionRing O)` with
-  `Algebra (FractionRing O) K_1_old`, which risks a second, independently-built `Algebra O K_1_old`
+  `Algebra (FractionRing O) K_1_hsplitVacuous`, which risks a second, independently-built `Algebra O K_1_hsplitVacuous`
   instance disagreeing with the standing `Algebra O K` chain. This is unnecessary:
   `IntermediateField.splits_of_splits` only ever needs the *primary* `Algebra (FractionRing O)
-  K_1_old` structure `IntermediateField` already supplies for free (`IntermediateField.toAlgebra`) —
-  stating the transported conclusion as a polynomial over `Frac(O)` mapped into `K_1_old` (rather than
-  as `Q.map (algebraMap O K_1_old)`) sidesteps the need for `Algebra O K_1_old` entirely, so there is no
-  second `O`-to-`K_1_old` map to build or reconcile.
-* **A Lean elaboration-order pitfall: pin `O` and `K` explicitly at every `K_1_old` call site.**
-  Even `Field (K_1_old hπ hf)` alone (`Algebra`/`Field` typeclass search touching `K_1_old`'s coeSort)
+  K_1_hsplitVacuous` structure `IntermediateField` already supplies for free (`IntermediateField.toAlgebra`) —
+  stating the transported conclusion as a polynomial over `Frac(O)` mapped into `K_1_hsplitVacuous` (rather than
+  as `Q.map (algebraMap O K_1_hsplitVacuous)`) sidesteps the need for `Algebra O K_1_hsplitVacuous` entirely, so there is no
+  second `O`-to-`K_1_hsplitVacuous` map to build or reconcile.
+* **A Lean elaboration-order pitfall: pin `O` and `K` explicitly at every `K_1_hsplitVacuous` call site.**
+  Even `Field (K_1_hsplitVacuous hπ hf)` alone (`Algebra`/`Field` typeclass search touching `K_1_hsplitVacuous`'s coeSort)
   reproducibly gets "stuck" (`typeclass instance problem is stuck: IsFractionRing O ?m`) whenever
-  `K_1_old` is applied to explicit arguments (`hπ`, `hf`, or even an unrelated `n : ℕ`) without `O`
+  `K_1_hsplitVacuous` is applied to explicit arguments (`hπ`, `hf`, or even an unrelated `n : ℕ`) without `O`
   and `K` pinned first — this is not about `piTorsion`, `FractionRing.liftAlgebra`, or any custom
-  instance in this file: it reproduces even with `K_1_old`'s body replaced by
+  instance in this file: it reproduces even with `K_1_hsplitVacuous`'s body replaced by
   `IntermediateField.adjoin (FractionRing O) (∅ : Set K)` and an unrelated `ℕ` parameter. Lean's
   elaborator, when checking an instance goal built from an under-elaborated application
-  `K_1_old hπ hf`, searches with `O`/`K` still as metavariables before the application is fully
+  `K_1_hsplitVacuous hπ hf`, searches with `O`/`K` still as metavariables before the application is fully
   resolved. The fix: supply `O` and `K` explicitly at every call site,
-  `K_1_old (O := O) (K := K) hπ hf` — this is not a workaround for a mathematical diamond (there is
+  `K_1_hsplitVacuous (O := O) (K := K) hπ hf` — this is not a workaround for a mathematical diamond (there is
   none here), just resolving a narrow elaboration-order issue directly, by giving Lean the
   information it needs before it needs it.
 
@@ -99,10 +103,10 @@ Building the `hsplit`-transport raises two instance-resolution subtleties:
   `FractionRing.isScalarTower_liftAlgebra : IsScalarTower O (FractionRing O) K`. Mathlib does not
   make this an instance globally (it would create a diamond when `K = FractionRing O` itself), so
   it is activated locally in this file only.
-* `K_1_old` : `IntermediateField.adjoin (FractionRing O) (piTorsion hπ hf 1 : Set K)`, the field
+* `K_1_hsplitVacuous` : `IntermediateField.adjoin (FractionRing O) (piTorsion hπ hf 1 : Set K)`, the field
   generated over `Frac(O)` by the `π`-torsion points of `F_π` inside `K`.
-* `splits_map_K_1_old_of_splits` : the positive half of the `hsplit`/`K_1_old` framing question — `Q :=
-  P.divX` splitting completely inside `K` (`hsplit`) transports down to `K_1_old` for free, via
+* `splits_map_K_1_hsplitVacuous_of_splits` : the positive half of the `hsplit`/`K_1_hsplitVacuous` framing question — `Q :=
+  P.divX` splitting completely inside `K` (`hsplit`) transports down to `K_1_hsplitVacuous` for free, via
   `IntermediateField.splits_of_splits` and `mem_piTorsion_one_of_root_divX_map`.
 -/
 
@@ -131,37 +135,37 @@ instance faithfulSMul_of_isFractionRing : FaithfulSMul O K :=
 
 attribute [local instance] FractionRing.liftAlgebra
 
-/-- **`K_1_old := K(F_π[π])`**, the field generated over `O`'s field of fractions by the `π`-torsion
+/-- **`K_1_hsplitVacuous := K(F_π[π])`**, the field generated over `O`'s field of fractions by the `π`-torsion
 points of the Lubin-Tate formal group law `F_π` inside `K`. The first step of the tower
 `K_n := K(F_π[π^n])`. -/
-def K_1_old (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f) :
+def K_1_hsplitVacuous (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f) :
     IntermediateField (FractionRing O) K :=
   IntermediateField.adjoin (FractionRing O) (piTorsion (K := K) hπ hf 1 : Set K)
 
 omit [Finite (ResidueField O)] in
-/-- **`hsplit` transports downward to `K_1_old`.** Given `Q := P.divX` splits completely inside `K`
+/-- **`hsplit` transports downward to `K_1_hsplitVacuous`.** Given `Q := P.divX` splits completely inside `K`
 (`hsplit`, the hypothesis `card_piTorsion_one_eq_residueCard` needs), it also splits completely
-inside `K_1_old := K(F_π[π])`, viewed (as it naturally is) as a polynomial over `Frac(O)`: `K_1_old`'s
+inside `K_1_hsplitVacuous := K(F_π[π])`, viewed (as it naturally is) as a polynomial over `Frac(O)`: `K_1_hsplitVacuous`'s
 generators (`piTorsion hπ hf 1`) already contain every root of `Q`'s image in `K`
 (`mem_piTorsion_one_of_root_divX_map`), so `IntermediateField.splits_of_splits` applies directly to
 `Q.map (algebraMap O (FractionRing O))`, after re-expressing `Q`'s image in `K` as that polynomial
 further mapped down (`Polynomial.map_map` + `IsScalarTower.algebraMap_eq`). So `hsplit` transports
-to `K_1_old` for free once it is already known for `K`; `hsplit` for `K` itself remains a hypothesis
+to `K_1_hsplitVacuous` for free once it is already known for `K`; `hsplit` for `K` itself remains a hypothesis
 that has to be checked directly. The conclusion is stated over `Frac(O)` rather than `O` directly
-(`Q.map (algebraMap O K_1_old)`) because `IntermediateField.splits_of_splits` only ever needs the
-primary `Algebra (FractionRing O) K_1_old` structure `IntermediateField` already supplies — no
-`Algebra O K_1_old` instance needs to be built (see the module docstring's diamond discussion). `O` and
-`K` are supplied explicitly at every `K_1_old` application (`K_1_old (O := O) (K := K) hπ hf`) to work
-around a confirmed Lean elaboration-order issue: typeclass search on `K_1_old hπ hf`'s coeSort gets
+(`Q.map (algebraMap O K_1_hsplitVacuous)`) because `IntermediateField.splits_of_splits` only ever needs the
+primary `Algebra (FractionRing O) K_1_hsplitVacuous` structure `IntermediateField` already supplies — no
+`Algebra O K_1_hsplitVacuous` instance needs to be built (see the module docstring's diamond discussion). `O` and
+`K` are supplied explicitly at every `K_1_hsplitVacuous` application (`K_1_hsplitVacuous (O := O) (K := K) hπ hf`) to work
+around a confirmed Lean elaboration-order issue: typeclass search on `K_1_hsplitVacuous hπ hf`'s coeSort gets
 "stuck" with `O`/`K` as metavariables unless they are pinned before the application elaborates. -/
-theorem splits_map_K_1_old_of_splits
+theorem splits_map_K_1_hsplitVacuous_of_splits
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (hπ : Irreducible π)
     (hπnorm : ‖algebraMap O K π‖ < 1) (hf : IsLubinTatePoly π (residueCard O) f)
     {P : O[X]} {u : O⟦X⟧} (hu : IsUnit u) (heq : f = (P : O⟦X⟧) * u)
     (hPdist : P.IsDistinguishedAt (maximalIdeal O)) (hPdeg2 : 2 ≤ P.natDegree)
     (hsplit : (P.divX.map (algebraMap O K)).Splits) :
     ((P.divX.map (algebraMap O (FractionRing O))).map
-      (algebraMap (FractionRing O) (K_1_old (O := O) (K := K) hπ hf))).Splits := by
+      (algebraMap (FractionRing O) (K_1_hsplitVacuous (O := O) (K := K) hπ hf))).Splits := by
   classical
   have hmapK : (P.divX.map (algebraMap O (FractionRing O))).map (algebraMap (FractionRing O) K)
       = P.divX.map (algebraMap O K) := by
@@ -170,16 +174,16 @@ theorem splits_map_K_1_old_of_splits
       ((P.divX.map (algebraMap O (FractionRing O))).map (algebraMap (FractionRing O) K)).Splits := by
     rw [hmapK]; exact hsplit
   have hF : ∀ x ∈ (P.divX.map (algebraMap O (FractionRing O))).rootSet K,
-      x ∈ K_1_old (O := O) (K := K) hπ hf := by
+      x ∈ K_1_hsplitVacuous (O := O) (K := K) hπ hf := by
     intro x hx
     rw [Polynomial.rootSet_def, Polynomial.aroots_def, hmapK] at hx
     exact IntermediateField.subset_adjoin (FractionRing O) (piTorsion (K := K) hπ hf 1 : Set K)
       (mem_piTorsion_one_of_root_divX_map hOK hπ hπnorm hf hu heq hPdist hPdeg2 hx)
-  exact IntermediateField.splits_of_splits (F := K_1_old (O := O) (K := K) hπ hf) hsplit' hF
+  exact IntermediateField.splits_of_splits (F := K_1_hsplitVacuous (O := O) (K := K) hπ hf) hsplit' hF
 
 omit [IsUltrametricDist K] [CompleteSpace K] in
 /-- **`[Frac(O)(α) : Frac(O)] = q - 1` for any single root `α` of `Q := P.divX`'s image in `K`** —
-pure minimal-polynomial theory, no group action or splitting hypothesis needed (unlike `K_1_old` itself,
+pure minimal-polynomial theory, no group action or splitting hypothesis needed (unlike `K_1_hsplitVacuous` itself,
 which adjoins *all* of `piTorsion hπ hf 1` at once). `Q' := P.divX` base-changed to `Frac(O)` is
 monic and irreducible (`Polynomial.irreducible_map_of_isWeaklyEisensteinAt_associated`, specialized
 at `K := FractionRing O`, i.e. Gauss's lemma applied to `Frac(O)` itself); `α`'s vanishing on `Q`'s

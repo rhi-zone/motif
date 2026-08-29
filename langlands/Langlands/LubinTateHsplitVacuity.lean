@@ -4,7 +4,7 @@ import Langlands.LubinTateRootCount
 # `hsplit` is unsatisfiable whenever `residueCard O ≥ 3`
 
 `Langlands.LubinTate.card_piTorsion_one_eq_residueCard` (`LubinTateRootCount.lean`) and everything
-built on it in this repo (`K_1`, `finrank_adjoin_of_aeval_divX_map_eq_zero`,
+built on it in this repo (`K_1_hsplitVacuous`, `finrank_adjoin_of_aeval_divX_map_eq_zero`,
 `LubinTateResidueUnitsTransitivity.lean`'s `orbit_image_eq_piTorsion_sdiff_zero`) take `hsplit :
 (P.divX.map (algebraMap O K)).Splits` as an explicit hypothesis — `Q := P.divX`'s image splits
 completely *inside `K` itself*, the design choice `LubinTateRootCount.lean`'s docstring flags as
@@ -29,7 +29,7 @@ true** whenever `residueCard O ≥ 3` — its hypotheses can never be jointly sa
 nothing about any actual instantiation with a nontrivial residue field. It is only *non-vacuously*
 meaningful at `residueCard O = 2` (`P.divX.natDegree = 1`, where `hsplit` trivially holds since every
 degree-`1` polynomial splits over its own base field, and the whole arc collapses to the trivial
-extension `K_1 = K`).
+extension `K_1_hsplitVacuous = K`).
 
 This does not mean any individual proof in this repo is *wrong* — every theorem built on `hsplit`
 remains a logically valid implication `hsplit → ...`. It means `hsplit`, as formalized (splitting
