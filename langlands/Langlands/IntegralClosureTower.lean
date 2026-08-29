@@ -25,6 +25,20 @@ This file exists to check, precisely, the caveat flagged for the Lubin-Tate towe
 with `integralClosure O baseChangeSplittingField` (integral closure over the *base*). The answer is yes, as sets, always
 — the two spellings denote the same ring (`toSubring_integralClosure_eq`).
 
+## Main results
+
+* `isIntegral_iff_isIntegral_integralClosure` : `x : M` is integral over `R` iff it is integral
+  over `↥(integralClosure R L)`.
+* `toSubring_integralClosure_eq` : `integralClosure R M` and `integralClosure (integralClosure R L)
+  M`, as subrings of `M`, are the same subring — the tower does not depend on where integrality is
+  computed from.
+* `isDomain_integralClosure_integralClosure`, `isLocalRing_integralClosure_integralClosure`,
+  `isPrincipalIdealRing_integralClosure_integralClosure`,
+  `isAdicComplete_integralClosure_integralClosure`,
+  `isDiscreteValuationRing_integralClosure_integralClosure` : `IsDomain`/`IsLocalRing`/
+  `IsPrincipalIdealRing`/`IsAdicComplete`/`IsDiscreteValuationRing` transport across the two
+  spellings, together with the `_symm` converses.
+
 ## What this closes
 
 `toSubring_integralClosure_eq` and `isIntegral_iff_isIntegral_integralClosure` are complete,

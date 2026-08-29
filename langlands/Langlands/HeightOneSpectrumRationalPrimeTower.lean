@@ -36,6 +36,15 @@ corresponding invariant of `p` in `K` and the `HeightOneSpectrum`-level invarian
 exactly the form needed to read off `v.asIdeal.ramificationIdx' w.asIdeal` from two "absolute"
 facts about `p` in `K` and in `L` (as `NumberField.Cyclotomic.Ideal` supplies for cyclotomic
 fields), without ever exhibiting `w.asIdeal` as an explicit ideal or invoking a going-up theorem.
+
+## Main results
+
+* `liesOver_span_int` : `w` lies over the rational prime `p`, given `w` lies over `v` and `v` lies
+  over `p`.
+* `ramificationIdx_int_eq_mul_ramificationIdx'` : the absolute ramification index of `p` in `L`
+  equals the absolute ramification index of `p` in `K` times the relative ramification index of
+  `w` over `v`.
+* `inertiaDeg_int_eq_mul_inertiaDeg'` : the analogous multiplicativity for inertia degrees.
 -/
 
 noncomputable section

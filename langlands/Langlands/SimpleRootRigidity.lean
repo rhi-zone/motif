@@ -19,6 +19,13 @@ and `Langlands.RamificationFiltration` (where rigidity forces a ramification-gro
 the lifted root *on the nose*, not merely modulo `𝔪`, which is what makes the kernel argument for
 the associated-graded embeddings work).
 
+## Main results
+
+* `IsLocalRing.residue_eval` : evaluation of a polynomial commutes with taking residues.
+* `IsLocalRing.isUnit_of_residue_ne_zero` : an element with nonzero residue is a unit.
+* `IsLocalRing.eq_of_isRoot_of_residue_eq` : two roots of the same polynomial with the same
+  residue are equal, provided one of them is a simple root (its derivative is a unit there).
+
 This file is deliberately kept to a `Mathlib.RingTheory.Henselian`-only import so that
 `Langlands.RamificationFiltration` — a general-theory file over an arbitrary
 `A : ValuationSubring L` — does not have to depend on the local-fields machinery of

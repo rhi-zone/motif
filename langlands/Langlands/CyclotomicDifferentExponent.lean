@@ -17,6 +17,8 @@ file computes `d` outright for the concrete mixed-characteristic wild Galois ins
 `Langlands.TotallyRamifiedCyclotomicConcreteExample` (`K = ℚ(ζ_3) ⊆ L = ℚ(ζ_9)`, completed at the
 unique places above `3`):
 
+## Main results
+
 * `Langlands.TotallyRamifiedCyclotomicConcreteExample.differentIdeal_eq` :
   `differentIdeal 𝒪_{K_v} 𝒪_{L_w} = 𝔪_{L_w} ^ 6`.
 
