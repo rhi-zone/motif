@@ -25,8 +25,8 @@ Two new ingredients over the univariate file:
 * `IsUltrametricDist.summable_of_tendsto_zero` is stated for an arbitrary index type, so it applies
   to `Fin 2 →₀ ℕ` exactly as it does to `ℕ`, with no adaptation.
 
-`evalMv_mul`/`evalMv_pow` (`ROADMAP.md` §23's "Lemma A" prerequisite) add the multiplicative
-structure, mirroring `Langlands.NonarchimedeanPowerSeriesEval.eval_mul`/`eval_pow` exactly:
+`evalMv_mul`/`evalMv_pow` add the multiplicative structure, mirroring
+`Langlands.NonarchimedeanPowerSeriesEval.eval_mul`/`eval_pow` exactly:
 `MvPowerSeries.coeff_mul` supplies the `Finset.HasAntidiagonal`-indexed convolution formula for
 `Fin 2 →₀ ℕ` (the same `HasAntidiagonal` class `PowerSeries.coeff_subst_X_zero_subst_mul_X_one`
 already uses), so `Summable.tsum_mul_tsum_eq_tsum_sum_antidiagonal` transfers verbatim with
@@ -36,10 +36,9 @@ already uses), so `Summable.tsum_mul_tsum_eq_tsum_sum_antidiagonal` transfers ve
 
 ## What this does not do
 
-No compatibility with `MvPowerSeries.subst`/`PowerSeries.subst` is proved here — that is
-`ROADMAP.md` §23's "Lemma A"/"Lemma S", built on top of `evalMv_mul`/`evalMv_pow`. See
-`Langlands.LubinTateFormalGroupEval`'s module docstring for the Lubin-Tate-specific specialization
-and the precise remaining gap.
+No compatibility with `MvPowerSeries.subst`/`PowerSeries.subst` is proved here; that would build on
+top of `evalMv_mul`/`evalMv_pow`. See `Langlands.LubinTateFormalGroupEval`'s module docstring for
+the Lubin-Tate-specific specialization and the precise remaining gap.
 -/
 
 @[expose] public section

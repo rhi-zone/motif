@@ -14,9 +14,9 @@ statements first (`Finsupp.degree_eq_sum`, `Finsupp.finite_of_degree_lt`, `Finse
 `Finset.prod_pow_eq_pow_sum`, `Finset.Nonempty.norm_sum_le_sup'_norm`) showed every ingredient the
 `Fin 2` file uses is already stated by Mathlib for an arbitrary finite `σ`, not just `Fin 2` — the
 only `Fin 2`-specific step in that file was unfolding `Fin.sum_univ_two`/`Fin.prod_univ_two` by
-hand instead of calling the general lemma. Generalizing costs nothing extra over hardcoding `Fin 3`
-(ROADMAP.md §25's "mechanical" base layer step): the `Fin 3` instance is recovered for free by
-specializing `σ := Fin 3`, with no bespoke `Fin 3` development needed at all.
+hand instead of calling the general lemma. Generalizing costs nothing extra over hardcoding `Fin 3`:
+the `Fin 3` instance is recovered for free by specializing `σ := Fin 3`, with no bespoke `Fin 3`
+development needed at all.
 
 The convergence argument is the same geometric one used throughout this development: a coefficient
 of algebra-mapped norm at most `1`, evaluated at a point `y : σ → K` with every coordinate of norm
@@ -30,9 +30,8 @@ directly; both intended instantiations (`Fin 2`, `Fin 3`) satisfy this.
 ## What this does not do
 
 No compatibility with `MvPowerSeries.subst`/`PowerSeries.subst` is proved here, matching the scope
-of `Langlands.NonarchimedeanMvPowerSeriesEvalFin2`. See `ROADMAP.md` §25 for the two `Fin 3`-arity
-eval-subst compatibilities this file's `evalMv`/`evalMv_mul`/`evalMv_pow` are meant to feed, which
-remain unbuilt.
+of `Langlands.NonarchimedeanMvPowerSeriesEvalFin2`. This file's `evalMv`/`evalMv_mul`/`evalMv_pow`
+are meant to feed two `Fin 3`-arity eval-subst compatibility results, which remain unbuilt.
 -/
 
 @[expose] public section

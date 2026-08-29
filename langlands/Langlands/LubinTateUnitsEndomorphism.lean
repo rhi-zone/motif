@@ -3,15 +3,14 @@ import Langlands.LubinTateFunctionalEquationBivariate
 /-!
 # The units endomorphism `[u]_F` of `F_π`, for `u ∈ Oˣ`
 
-`ROADMAP.md` §27's pointer-forward names `Gal(K_n/K) ↪ (O/π^n)ˣ` as the eventual target of the
-Lubin-Tate tower. The `Oˣ`-action on the tower ultimately comes from evaluating, for each
-`u ∈ Oˣ`, the power series `[u]_F` that is *the* endomorphism of `F_π` with linear coefficient
-`u` — this file constructs `[u]_F` and proves it commutes with `F_π`'s formal group law, at the
-level of formal power series (no evaluation yet).
+The `Oˣ`-action on the Lubin-Tate tower (ultimately `Gal(K_n/K) ↪ (O/π^n)ˣ`) comes from evaluating,
+for each `u ∈ Oˣ`, the power series `[u]_F` that is *the* endomorphism of `F_π` with linear
+coefficient `u` — this file constructs `[u]_F` and proves it commutes with `F_π`'s formal group
+law, at the level of formal power series (no evaluation yet).
 
 ## Route
 
-`Langlands.LubinTateFunctionalEquation.phiState`/`phiCoeff` (`ROADMAP.md` §8–§10) already builds,
+`Langlands.LubinTateFunctionalEquation.phiState`/`phiCoeff` already builds,
 for *any* `f, g ∈ ℱ_π` and *any* linear starting coefficient `a : O`, the unique power series
 intertwining `f` and `g` with that linear coefficient. Specializing `g := f` and `a := (u : O)`
 for `u : Oˣ` gives `phiU hπ hf u := PowerSeries.mk (phiCoeff hπ (u : O) hf hf)`, satisfying
@@ -65,8 +64,8 @@ own equation — no new coefficient recursion, purely substitution algebra.
 
 ## What this does not do
 
-No evaluation at concrete torsion points, and no group structure on `Oˣ` acting on `piTorsion` —
-see `ROADMAP.md`'s entry for this pass for the precise state of that next step.
+This file stops at the level of formal power series: no evaluation at concrete torsion points, and
+no group structure on `Oˣ` acting on `piTorsion`, is built here.
 -/
 
 @[expose] public section

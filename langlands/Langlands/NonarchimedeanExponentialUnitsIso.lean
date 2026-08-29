@@ -10,9 +10,9 @@ import Langlands.NonarchimedeanExponentialHasSum
 `𝔪_A^i` into the principal-units subgroup `U_A^{(i)} := ValuationSubring.principalUnitsPow A i`
 pointwise (an existential landing statement); `Langlands.NonarchimedeanExponentialAdd.exp_add` gives
 the group-homomorphism law. This file assembles those into an actual group isomorphism
-`Multiplicative ↥(𝔪_A^i) ≃* ↥(U_A^{(i)})`, for `i` above a strict threshold — closing item (b) of
-`ROADMAP.md`'s fifteenth pass "what remains" list (packaging item 3 + `exp_add` into the isomorphism
-the wild-case norm-group-index argument actually wants).
+`Multiplicative ↥(𝔪_A^i) ≃* ↥(U_A^{(i)})`, for `i` above a strict threshold — packaging the landing
+statement together with `exp_add` into the isomorphism the wild-case norm-group-index argument
+actually needs.
 
 ## Route
 
@@ -34,9 +34,8 @@ the wild-case norm-group-index argument actually wants).
   found anywhere in this repo or (searched) in Mathlib under any name).
 * **Injectivity.** Does not need `log`. `exp x₁ = exp x₂` reduces (via `exp_add`/`isUnit_exp`, `K`
   commutative) to `exp z = 1 ⟹ z = 0`, which follows from the same "isosceles triangle" principle
-  applied to `exp hnorm z - 1 - z` (bounded strictly below `‖z‖` for `z ≠ 0` below threshold via
-  `norm_pow_div_factorial_le`, `exp_mul_exp_neg`. Wait — see `norm_exp_sub_one_sub_lt` below for the
-  actual tail bound used) against `exp hnorm z = 1`.
+  applied to `exp hnorm z - 1 - z` (bounded strictly below `‖z‖` for `z ≠ 0` below threshold, via
+  `norm_exp_sub_one_sub_lt` below) against `exp hnorm z = 1`.
 
 ## The threshold: `logUnitsThreshold`, and why one threshold serves both directions
 
@@ -72,11 +71,10 @@ with no need to track two separate thresholds through the final theorem.
 
 ## What remains
 
-Toward the wild-case norm-group index theorem (`ROADMAP.md`'s fifteenth pass "what remains" list):
-item (a), a genuine concrete mixed-characteristic instance, and item (c), running the index
-computation through this isomorphism using `norm_exp_eq_exp_trace`
+Toward the wild-case norm-group index theorem: a genuine concrete mixed-characteristic instance, and
+running the index computation through this isomorphism using `norm_exp_eq_exp_trace`
 (`Langlands.AdicCompletionNormExpTrace`) — mirroring `Langlands.TotallyRamifiedNormIndex`'s pattern
-for the tame case. Neither is attempted in this file.
+for the tame case. Neither is done in this file.
 -/
 
 noncomputable section
@@ -374,8 +372,8 @@ for every `i ≥ i₀`. Mirrors `NonarchimedeanExponentialFiltration.exists_maxi
 but for `logUnitsThreshold` and for a bare `π : K` (no ambient `ValuationSubring A` needed) — this
 is exactly the piece `expEquiv`'s `{i : ℕ}`/`hthreshStrict` hypotheses need, supplied generically
 here so instantiating it against a concrete `NumberField`-visible `K` never has to write a fresh
-`‖·‖` fact with an explicit type ascription (the diamond-avoidance discipline: see
-`ROADMAP.md` §6u/§6v). -/
+`‖·‖` fact with an explicit type ascription (the diamond-avoidance discipline used throughout this
+file). -/
 theorem exists_pow_lt_logUnitsThreshold {π : K} (hπnorm : ‖π‖ < 1) :
     ∃ i₀ : ℕ, ∀ i ≥ i₀, ‖π‖ ^ i < logUnitsThreshold K p := by
   have h0 : (0 : ℝ) < logUnitsThreshold K p := by

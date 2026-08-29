@@ -22,10 +22,10 @@ the theorem Serre actually states, with none of that in the signature:
 
 ## How the tower disappears
 
-Serre's proof splits `L / K` at the maximal unramified subextension `M`, and the 31 prior passes
-recorded in `ROADMAP.md` all tried to *construct* such an `M` — which
-`Langlands.UnramifiedExtension`'s existence theorem only produces inside an ambient algebraically
-closed field, hence not inside a given `L`.
+Serre's proof splits `L / K` at the maximal unramified subextension `M`. But
+`Langlands.UnramifiedExtension`'s existence theorem only produces such an extension inside an
+ambient algebraically closed field, not inside a given `L`, so `M` cannot always be constructed as
+a literal subfield of `L`.
 
 The route taken here never builds `M` at all. Monogenicity of `𝒪_L` over `𝒪[K]` is, by
 `Langlands.ArtinianPrimitiveElement.LocalField.exists_adjoin_eq_top_of_residue_nilpotent`, a

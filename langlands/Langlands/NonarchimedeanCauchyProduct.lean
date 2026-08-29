@@ -15,11 +15,11 @@ This file iterates that binary product `n` times to get the `n`-ary Cauchy produ
 then the function sending each length-`n` tuple `g : Fin n → ι` to the product
 `∏ i, f (g i)` sums to `a ^ n` (`HasSum.pow_of_nonarchimedean`). This is exactly the "expand `y ^ n` as
 an infinite sum over multi-indices" step needed to evaluate a composite convergent power series
-`∑ n, c n * y ^ n` (with `y` itself an infinite sum `∑ k, f k`) as a single sum indexed by tuples,
-en route to the wild-ramification thread's `exp`/`log` mutual-inverse identity (see `ROADMAP.md`, the
-tenth pass on that thread) — matching this tuple-indexed sum against the formal coefficients of
-`PowerSeries.subst` (`Mathlib.RingTheory.PowerSeries.Substitution`'s `coeff_subst'`, a *finite* `finsum`
-over compositions) is the remaining, unattempted assembly step.
+`∑ n, c n * y ^ n` (with `y` itself an infinite sum `∑ k, f k`) as a single sum indexed by tuples.
+Matching this tuple-indexed sum against the formal coefficients of `PowerSeries.subst`
+(`Mathlib.RingTheory.PowerSeries.Substitution`'s `coeff_subst'`, a *finite* `finsum` over
+compositions) is what would turn this into the `exp`/`log` mutual-inverse identity; that step is
+not done in this file.
 
 ## Proof
 

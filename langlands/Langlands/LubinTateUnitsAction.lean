@@ -4,9 +4,9 @@ import Langlands.LubinTateTorsionGroup
 /-!
 # The `Oˣ`-action on `π^n`-torsion points
 
-`ROADMAP.md` §28 built `phiU hπ hf u` (`[u]_F`, `u : Oˣ`) as a formal endomorphism of the
-Lubin-Tate formal group law `F_π`, but left evaluation, torsion-point closure, and the action laws
-open. This file closes all four: `[u]_F` evaluated at concrete points respects `F_π`-addition,
+`phiU hπ hf u` (`[u]_F`, `u : Oˣ`) was already built as a formal endomorphism of the Lubin-Tate
+formal group law `F_π`, as a power series identity with no evaluation. This file closes the gap to
+a genuine group action: `[u]_F` evaluated at concrete points respects `F_π`-addition,
 maps `π^n`-torsion into itself, `[1]_F` is the identity, `[u]_F ∘ [v]_F = [uv]_F`, and the four
 facts assemble into a genuine `MulAction Oˣ ↥(piTorsion hπ hf n)` — the algebraic content behind
 `Gal(K_1/K) ≅ (O/π)ˣ`.
@@ -18,9 +18,8 @@ Every composition-closure argument below involving **two univariate power series
 them) is written in the prefix form `PowerSeries.subst a g` rather than dot notation `g.subst a`.
 With both substitutand and substituted series univariate, nested dot notation elaborates against
 `MvPowerSeries.subst` (whose namespace also matches `R⟦X⟧`'s reducible head) and the resulting
-unification diverges (`deterministic timeout at whnf`) rather than failing cleanly — reproduced
-directly (not guessed at) while drafting `subst_iter_eq_iter_subst`, then routed around by
-switching to prefix form throughout, exactly as `Langlands.LubinTateIterate.iter_succ'`/`iter_add`
+unification diverges (`deterministic timeout at whnf`) rather than failing cleanly; writing prefix
+form throughout avoids it, exactly as `Langlands.LubinTateIterate.iter_succ'`/`iter_add`
 already do. Mixed-arity compositions (univariate into multivariate or vice versa, as in
 `eval_phiU_FPiEval` below) do **not** trigger this — the multivariate side pins the notation
 resolution unambiguously — so those are written in the repo's usual dot-notation style.
@@ -44,8 +43,8 @@ resolution unambiguously — so those are written in the repo's usual dot-notati
   hf 1` with the same linear coefficient `1`, so `LubinTateFunctionalEquation
   .eq_of_coeff_zero_eq_zero_of_coeff_one_eq_of_subst_eq` (the intertwining series's uniqueness
   theorem) identifies them directly — no new machinery.
-* **Step 4** (`solvesFunctionalEq_subst_univ`, `phiU_subst_phiU_eq_phiU_mul`): the third
-  composition-closure fact `ROADMAP.md` anticipated, univariate-into-univariate this time (unlike
+* **Step 4** (`solvesFunctionalEq_subst_univ`, `phiU_subst_phiU_eq_phiU_mul`): a third
+  composition-closure fact, univariate-into-univariate this time (unlike
   `solvesFunctionalEq_subst_embed`/`_outer`'s multivariate shapes): if `h1`, `h2` both commute with
   `f`, so does `h1 ∘ h2`. Same six-line `subst_comp_subst_apply` reassociation chain as the other
   two composition-closure facts, in prefix form throughout per the footgun note above. Combined
@@ -62,8 +61,8 @@ Step 1 (`eval_phiU_FPiEval`) is not needed to build the `MulAction` itself — i
 respects `F_π`-addition (i.e. acts by group endomorphisms of `piTorsionAddCommGroup`), which is
 extra content proved here because it is independently meaningful for the eventual Galois-module
 structure, but upgrading `piTorsionMulAction` to a `DistribMulAction` (bundling that compatibility)
-is not attempted this pass. No size computation (`|piTorsion hπ hf 1| = q`), no `Gal(K_1/K) ↪ Oˣ`
-— see `ROADMAP.md`.
+is out of scope for this file, as is a size computation (`|piTorsion hπ hf 1| = q`) or an
+embedding `Gal(K_1/K) ↪ Oˣ`.
 -/
 
 @[expose] public section

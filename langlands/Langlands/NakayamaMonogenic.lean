@@ -18,15 +18,14 @@ lemma, already available in Mathlib as `IsLocalRing.map_mkQ_eq_top`
 `Algebra.adjoin R {a} = ⊤` to a statement purely about the residue algebra `S ⧸ 𝔪S`: do the images
 of the powers of `a` span it?
 
-This supersedes the `differentIdeal`/discriminant-tower route flagged as the "best candidate" by
-`ROADMAP.md`'s twenty-third/twenty-fourth passes: that route needed translating this repo's
-`Algebra.discr`/`spectralNorm` formalism into the ideal-valued `differentIdeal`/`FractionalIdeal`
-formalism (untranslated, and separately needed a classical resultant-of-a-sum identity for
-`disc_K(β + c•π)` that is not in Mathlib and would need to be built from scratch,
-`Mathlib.RingTheory.Polynomial.Resultant.Basic` having no connection to `Algebra.discr` at all,
-confirmed by grep this pass). The Nakayama route needs no discriminant, no resultant, and no
+An alternative discriminant/index-based route is available in principle but harder in practice: it
+would need translating this repo's `Algebra.discr`/`spectralNorm` formalism into the ideal-valued
+`differentIdeal`/`FractionalIdeal` formalism, and separately needs a classical resultant-of-a-sum
+identity for `disc_K(β + c•π)` that is not in Mathlib and would need to be built from scratch —
+`Mathlib.RingTheory.Polynomial.Resultant.Basic` has no connection to `Algebra.discr` at all.
+The Nakayama route needs no discriminant, no resultant, and no
 Eisenstein-ness of `minpoly K a` (which genuinely fails for the composite generator in the mixed
-ramification case, confirmed this pass: `mem_adjoin_of_smul_prime_pow_smul_of_minpoly_isEisensteinAt`
+ramification case: `mem_adjoin_of_smul_prime_pow_smul_of_minpoly_isEisensteinAt`
 requires `(minpoly R B.gen).IsEisensteinAt`, and Eisenstein-ness needs the *whole* extension totally
 ramified). It also gives the field-level primitive-element fact
 (`Langlands.PrimitiveElementFusion.exists_scalar_add_smul_primitive`) as a free corollary rather
@@ -34,33 +33,27 @@ than a separate input: if the powers of `a` already span the free rank-`ef` `R`-
 cannot satisfy a shorter algebraic relation over `K`, so `(minpoly K a).natDegree = ef` follows
 automatically once `Algebra.adjoin R {a} = ⊤` is known, with no separate pigeonhole argument needed.
 
-## Main result
+## Main results
 
 * `LocalField.adjoin_eq_top_of_map_mkQ_eq_top` : for `R` local, `S` a finite `R`-algebra, `a : S`,
   if the image of `Algebra.adjoin R {a}` in `S ⧸ (maximalIdeal R • ⊤)` is all of that quotient,
   then `Algebra.adjoin R {a} = ⊤`.
+* `LocalField.adjoin_eq_top_of_adjoin_quotient_eq_top` : the usable form of the above — if the
+  image of `β` generates `S ⧸ 𝔪_R S` as an algebra over the residue field `R ⧸ 𝔪_R`, then `β`
+  generates `S` over `R`. Combined with an Artinian primitive-element theorem
+  (`Langlands.ArtinianPrimitiveElement.LocalField.adjoin_add_nilpotent_eq_top`), this composes into
+  `LocalField.exists_adjoin_eq_top_of_residue_nilpotent`, which needs only that the residue algebra
+  `S ⧸ 𝔪_R S` contains a separable residue field `κ` and a nilpotent `π` with
+  `S ⧸ 𝔪_R S = κ + π · (S ⧸ 𝔪_R S)` — not an explicit isomorphism with `κ_M[T] ⧸ (T ^ e)`.
 * `LocalField.adjoin_singleton_eq_top_of_forall_sub_mem_span` : the totally-ramified specialization,
   in the form the residue data actually arrives in — if every `s : S` is congruent to a scalar mod
   `ϖ` and some power `ϖ ^ e` already lies in `𝔪_R S`, then `ϖ` generates `S` over `R`.
 
-## Status update (twenty-sixth pass)
+## What remains
 
-Items (1) and (2) below were the two gaps left open when this file was written. **Item (2) is now
-closed** — `Langlands.ArtinianPrimitiveElement`'s `LocalField.adjoin_add_nilpotent_eq_top` proves
-it, and with `c = 1`, so no scalar search is needed at the residue level. **Item (1) is no longer
-required in the form stated**: `adjoin_eq_top_of_adjoin_quotient_eq_top` (below) plus the Artinian
-primitive element theorem compose into
-`LocalField.exists_adjoin_eq_top_of_residue_nilpotent`, which needs only that the residue algebra
-`S ⧸ 𝔪_R S` contains a separable residue field `κ` and a nilpotent `π` with `S ⧸ 𝔪_R S = κ + π ·
-(S ⧸ 𝔪_R S)` — *not* an explicit isomorphism with `κ_M[T] ⧸ (T ^ e)`.
-
-What is still missing is the *ramification input* discharging those three hypotheses for the actual
-tower, and — logically prior to that — a tower object at all: see `ROADMAP.md`'s twenty-sixth pass.
-
-## What remains (as assessed when this file was written)
-
-The hypothesis this lemma needs — that the images of the powers of `a := β + c • π` span
-`S ⧸ 𝔪_K S` for `S := 𝒪_N` — is itself a nontrivial fact requiring:
+Turning either of the last two theorems above into a monogenicity result for the actual Lubin-Tate
+tower still needs the ramification input discharging their hypotheses, and — prior to that — a
+tower object to apply them to:
 
 1. Identifying `𝒪_N ⧸ 𝔪_K 𝒪_N` concretely. Using `𝒪_M = 𝒪_K[β]` (unramified: `𝔪_K 𝒪_M = 𝔪_M`) and
    `𝒪_N = 𝒪_M[π]` (Eisenstein of degree `e`), the classical computation is
@@ -71,21 +64,18 @@ The hypothesis this lemma needs — that the images of the powers of `a := β + 
    `κ_K`-dimension `ef`) for a suitable `c̄`? This is a linear-algebra fact about a nilpotent
    extension of a field extension, genuinely different in character from Mathlib's
    field-only primitive element theorem (`Mathlib.FieldTheory.PrimitiveElement`, which does not
-   apply to the non-reduced ring `κ_M[T] ⧸ (T ^ e)`) and not found in Mathlib by this pass's search
-   (`grep -rn "primitive" Mathlib/RingTheory/` turns up only field-theoretic and
-   `PrimitiveRoots`/`IsPrimitiveRoot` hits, nothing about generation of Artinian local algebras).
-   Notably, `Mathlib.RingTheory.LocalRing.Etale`'s own `exists_adjoin_eq_top` (the theorem this
-   repo's unramified half already uses, per `ROADMAP.md`'s thirteenth pass) proves monogenicity of
+   apply to the non-reduced ring `κ_M[T] ⧸ (T ^ e)`); Mathlib has no lemma about generation of
+   Artinian local algebras by a primitive element.
+   Notably, `Mathlib.RingTheory.LocalRing.Etale`'s own `exists_adjoin_eq_top` proves monogenicity of
    an *étale* (residue extension separable, ramification index `1`) local extension by exactly
    this Nakayama pattern — "lifts a primitive element of the residue field extension via Nakayama's
-   lemma" (its own docstring, `LocalRing/Etale.lean:92`) — confirming the pattern is the right one
-   in the unramified case, where the residue quotient genuinely is a field and
-   `Field.exists_primitive_element` applies directly. The totally-ramified/mixed case here differs
-   exactly because `S ⧸ 𝔪_K S` is a non-reduced Artinian ring (`T` nilpotent), not a field, so that
-   theorem's proof does not transfer verbatim; a new argument for the Artinian case is needed.
+   lemma" (its own docstring, `LocalRing/Etale.lean:92`) — in the unramified case, where the residue
+   quotient genuinely is a field and `Field.exists_primitive_element` applies directly. The
+   totally-ramified/mixed case differs exactly because `S ⧸ 𝔪_K S` is a non-reduced Artinian ring
+   (`T` nilpotent), not a field, so that theorem's proof does not transfer verbatim; a new argument
+   for the Artinian case is needed.
 
-Neither (1) nor (2) was attempted in code this pass; both are precisely scoped, genuinely new
-mathematical content, not lemma lookups.
+Both (1) and (2) are precisely scoped, genuinely new mathematical content, not lemma lookups.
 -/
 
 namespace LocalField

@@ -8,7 +8,7 @@ import Langlands.NonarchimedeanPowerSeriesEvalMap
 /-!
 # `baseChangeSplittingField` carries the same `NormedField`/`Algebra O` package `K_1` does
 
-`ROADMAP.md` §51's item 5/6 prerequisite: `LubinTate.baseChangeSplittingField` (`Langlands/LubinTateTowerStepConcrete.lean`)
+`LubinTate.baseChangeSplittingField` (`Langlands/LubinTateTowerStepConcrete.lean`)
 is so far only a bare `Field`/`Algebra K_1`/`IsSplittingField`. `piTorsion`, `FPiEval`, and `eval`
 (`Langlands.NonarchimedeanPowerSeriesEval`) all need `[NormedField baseChangeSplittingField] [IsUltrametricDist baseChangeSplittingField]
 [CompleteSpace baseChangeSplittingField] [Algebra O baseChangeSplittingField]` before they even typecheck at `K := baseChangeSplittingField`. This file supplies
@@ -35,8 +35,8 @@ a `K_3` step would need.
   norm transport by `rw [spectralNorm_extends]`). This choice makes `algebraMap O (baseChangeSplittingField P₂)` equal that
   three-hop composite **true by definition** (`K_2.algebraMap_O_eq`, `rfl`), which is exactly the
   hypothesis `NonarchimedeanPowerSeriesEval.eval_map` needs to identify `eval (f.map (towerHom hOK P))
-  β` with `eval f β` — the eval-naturality-under-base-change fact `ROADMAP.md` §51 flagged as needed
-  and not yet built.
+  β` with `eval f β` — an eval-naturality-under-base-change fact this tower step needs and that was
+  not otherwise available.
 * `K_2.hOK_transport` : `K`'s standing norm hypothesis transports down to `baseChangeSplittingField` unchanged, by
   `spectralNorm_extends` at the `K_1 P → K_2` hop, composed with `norm_le_one_of_mem_integralClosure`
   at the `O_{K_1} → K_1 P` hop.
@@ -69,7 +69,8 @@ instance baseChangeSplittingField.instIsAlgebraic : Algebra.IsAlgebraic K' (base
 
 /-- **The extended norm on `baseChangeSplittingField`**, `spectralNorm K' baseChangeSplittingField` made into an actual
 `NontriviallyNormedField` structure — the exact analogue of `K_1.instNontriviallyNormedField`, one
-level up and with the base field left as a free parameter `K'` rather than fixed to this arc's `K`. -/
+level up and with the base field left as a free parameter `K'` rather than fixed to the concrete
+`K` used in the instantiation below. -/
 instance baseChangeSplittingField.instNontriviallyNormedField : NontriviallyNormedField (baseChangeSplittingField (K' := K') P₂) :=
   spectralNorm.nontriviallyNormedField K' (baseChangeSplittingField (K' := K') P₂)
 

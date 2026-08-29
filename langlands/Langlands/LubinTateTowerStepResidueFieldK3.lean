@@ -19,8 +19,8 @@ the three inputs `IsLocalRing.residueFieldEquivOfAdjoinSingleton` needs besides 
 Assembling the *full* tower composite `ResidueField ↥𝒪[K] ≃+* ResidueField O_{K_3}` needs one further
 piece beyond the `K_1 → K_2` template: `residueFieldEquiv_K_2` (`Langlands/
 LubinTateTowerStepResidueField.lean`) is itself stated against the **nested** `O_{K_2}` spelling
-(`ResidueField ↥𝒪[K] ≃+* ResidueField (nested O_{K_2})`), since it predates `ROADMAP.md §73`'s switch
-to the flat spelling and was not itself revisited. Bridging its nested-typed codomain to the flat
+(`ResidueField ↥𝒪[K] ≃+* ResidueField (nested O_{K_2})`), predating the switch to the flat spelling
+used elsewhere in this file and not itself restated in that form. Bridging its nested-typed codomain to the flat
 `O_{K_2}` this file's own one-hop step is built against uses `Langlands/IntegralClosureTower.lean`'s
 `residueFieldEquiv_integralClosure_integralClosure` (`.symm`, nested → flat) — exactly the tool that
 file's own docstring anticipates for this purpose. `[IsLocalRing (nested O_{K_2})]`, needed for that

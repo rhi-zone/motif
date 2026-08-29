@@ -49,9 +49,8 @@ of characteristic `0`, and `p` the residue characteristic of `v`, some explicit 
 ## What remains
 
 Landing in the principal-units subgroup `U^{(i)}`, an explicit closed-form `i` (rather than
-existential), and the mutual-inverse/norm-compatibility facts are exactly the items
-`Langlands.NonarchimedeanExponentialFiltration`'s and `Langlands.NonarchimedeanExponential`'s "What
-remains" sections already flag as unattempted; none of that is closed by this file.
+existential), and the mutual-inverse/norm-compatibility facts are not addressed by this file; see
+`Langlands.NonarchimedeanExponentialFiltration` and `Langlands.NonarchimedeanExponential` for that.
 -/
 
 noncomputable section
@@ -109,7 +108,7 @@ first extract the norm bound through `exists_isUniformizer_valued`'s existential
 argument as `exists_uniformizer` uses internally (`Valued.toNormedField.norm_lt_one_iff`), extracted
 as a standalone reusable fact so a *concrete* uniformizer already in hand (e.g. one constructed by
 hand in a `NumberField`-visible file, where writing a fresh `‖·‖` type ascription risks the
-`NormedField` instance diamond — see `ROADMAP.md` §6u/§6v) can get its norm bound without going
+`NormedField` instance diamond) can get its norm bound without going
 through `exists_uniformizer`'s existential at all. -/
 theorem norm_lt_one_of_isUniformizer {π : v.adicCompletion F}
     (hπ : Valuation.IsUniformizer (Valued.v : Valuation _ ℤᵐ⁰) π) : ‖π‖ < 1 :=

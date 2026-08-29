@@ -4,7 +4,7 @@ import Langlands.NonarchimedeanPowerSeriesEvalSubst
 import Langlands.NonarchimedeanMvPowerSeriesEvalFin2
 
 /-!
-# Same-arity diagonal eval-subst compatibility: `ROADMAP.md` §23's "Lemma S"
+# Same-arity diagonal eval-subst compatibility
 
 `Φ : MvPowerSeries (Fin 2) R` (bivariate outer), substituted by the **diagonal family**
 `h i := g.subst (X i)` (`g : PowerSeries R` univariate, embedded along axis `i` — not landing in
@@ -43,9 +43,10 @@ evalSummandMv (h 0 ^ d 0 * h 1 ^ d 1) y m`.
 
 ## What this does not do
 
-This closes `ROADMAP.md` §23's "Lemma S" only. Combined with "Lemma A"
-(`Langlands.NonarchimedeanPowerSeriesEvalSubstMvIn`), it gives "Fact E" — the Lubin-Tate-specific
-closure fact `piTorsion` needs — assembled in `Langlands.LubinTateTorsionPoints`.
+This covers only the diagonal substitutand family. Combined with
+`Langlands.NonarchimedeanPowerSeriesEvalSubstMvIn.eval_subst_A` (the univariate-outer case), it
+supplies the eval-subst compatibility the Lubin-Tate closure fact `piTorsion` needs, assembled in
+`Langlands.LubinTateTorsionPoints`.
 -/
 
 @[expose] public section
@@ -302,7 +303,7 @@ theorem tendsto_T_cofinite_zero_S {g : PowerSeries R} {Φ : MvPowerSeries (Fin 2
   exact ⟨by omega, hnd⟩
 
 set_option maxHeartbeats 1000000 in
-/-- **Same-arity diagonal eval-subst compatibility (`ROADMAP.md` §23's "Lemma S").**
+/-- **Same-arity diagonal eval-subst compatibility.**
 `evalMv (Φ.subst (diagEmbed g)) y = evalMv Φ (fun i ↦ eval g (y i))`, for `Φ : MvPowerSeries
 (Fin 2) R` and `g : PowerSeries R` with zero constant term. -/
 theorem eval_subst_S {g : PowerSeries R} {Φ : MvPowerSeries (Fin 2) R}

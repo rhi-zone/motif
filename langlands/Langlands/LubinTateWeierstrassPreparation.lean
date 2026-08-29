@@ -5,14 +5,12 @@ import Langlands.NonarchimedeanPowerSeriesEval
 /-!
 # Weierstrass preparation for Lubin-Tate power series
 
-`ROADMAP.md` §29 named Weierstrass preparation as the remaining blocker for
-`|piTorsion hπ hf 1| = q`: turning `f` (a Lubin-Tate power series, an *infinite* object) into a
-genuine degree-`q` polynomial with the same roots, so that root-counting becomes a finite/algebraic
-question. Mathlib's `Mathlib.RingTheory.PowerSeries.WeierstrassPreparation` (Jz Pan, 2025) already
+Weierstrass preparation turns `f` (a Lubin-Tate power series, an *infinite* object) into a
+genuine degree-`q` polynomial with the same roots, so that root-counting toward
+`|piTorsion hπ hf 1| = q` becomes a finite/algebraic question. Mathlib's
+`Mathlib.RingTheory.PowerSeries.WeierstrassPreparation` (Jz Pan, 2025) already
 proves the general Weierstrass preparation theorem for power series over a complete local ring, in
-full generality with existence *and* uniqueness — **confirmed present, not absent, by reading the
-file directly**, correcting this thread's initial premise (a `grep`/`loogle` pass before this file
-existed had not turned it up). This file does not re-derive that theorem; it specializes Mathlib's
+full generality with existence *and* uniqueness. This file does not re-derive that theorem; it specializes Mathlib's
 statement to the Lubin-Tate setting, checking the two hypotheses (`g`'s residue-field image nonzero,
 and `O` adically complete) hold for `f`.
 
@@ -27,16 +25,13 @@ once:
 * `(f.map (residue O)).order = q` follows from `PowerSeries.order_X_pow` rewritten along the same
   congruence (`order_map_residue_eq`), identifying the *order* used internally by Mathlib's
   `PowerSeries.IsWeierstrassDivisorAt`/`exists_isWeierstrassFactorization` with the residue-field
-  size `q` directly, rather than needing to discover it — this is the "known Weierstrass degree in
-  advance" simplification `ROADMAP.md` flagged as possibly easier, confirmed here to be genuinely
-  available for `f` specifically.
+  size `q` directly, rather than needing to discover it.
 
 Mathlib's `PowerSeries.exists_isWeierstrassFactorization` additionally needs `O` to be adically
 complete with respect to its maximal ideal (`IsAdicComplete (IsLocalRing.maximalIdeal O) O`) — the
-literal formalization of "complete DVR", the standing hypothesis of classical Lubin-Tate theory that
-this repo's `O` (so far only `IsDomain`/`IsDiscreteValuationRing`/finite residue field) has not yet
-needed to state. It is added here as a new typeclass assumption on `O`, exactly matching what the
-classical theory requires — not a narrowing of scope, a hypothesis genuinely used by the argument.
+literal formalization of "complete DVR", the standing hypothesis of classical Lubin-Tate theory. It
+is added here as a new typeclass assumption on `O`, matching what the classical theory requires —
+not a narrowing of scope, but a hypothesis genuinely used by the argument.
 
 ## Main result
 
@@ -69,41 +64,36 @@ classical theory requires — not a narrowing of scope, a hypothesis genuinely u
 `Langlands.LubinTate.exists_piTorsion_one_eq_aeval_roots`
 (`Langlands/LubinTateTorsionPoints.lean`): `piTorsion hπ hf 1 = {x | ‖x‖ < 1 ∧ Polynomial.aeval x
 P = 0}`. What remains toward `|piTorsion hπ hf 1| = q` is root-counting, and it splits into two
-genuinely separate gaps (`ROADMAP.md` §31 records both in full):
+genuinely separate gaps:
 
-1. **Separability of `P` is not attempted, and `P` itself is *not* irreducible** (so no Eisenstein
+1. **Separability of `P` is not established, and `P` itself is *not* irreducible** (so no Eisenstein
    irreducibility criterion applies to `P` directly): `coeff_zero_eq_zero_of_eq_mul` shows `P`'s
    constant term is exactly `0`, i.e. `X ∣ P`, so `P = X * Q` for `Q : O[X]` of degree `q - 1` — the
-   root `0` (already known: `zero_mem_piTorsion`) accounts for one of `P`'s `q` roots, and it is `Q`,
+   root `0` (`zero_mem_piTorsion`) accounts for one of `P`'s `q` roots, and it is `Q`,
    not `P`, that is the genuine Eisenstein polynomial the classical argument needs: `Q`'s own
    constant term is `Q.coeff 0 = P.coeff 1` (shifting indices by the `X` factor), an associate of `π`
    (`coeff_one_associated_of_eq_mul`) — valuation exactly `1`, the sharp non-`P²`-membership Mathlib's
    `Polynomial.irreducible_of_eisenstein_criterion` needs and `IsDistinguishedAt`/
-   `IsWeaklyEisensteinAt` alone do not supply (that hypothesis was not yet checked for `Q` here,
-   only the underlying valuation fact it would need). The classical separability argument itself
+   `IsWeaklyEisensteinAt` alone do not supply (`Q`'s own `IsDistinguishedAt`/`IsWeaklyEisensteinAt`
+   status has not been checked here, only the underlying valuation fact it would need). The
+   classical separability argument itself
    (Serre, *Local Fields* Ch. IV; Washington, Thm 7.3) is a Newton-polygon computation on `Q`: every
    root has valuation exactly `1/(q-1)`, then a formal-derivative valuation comparison shows
-   `Q'(α) ≠ 0` at every root. Mathlib has **no Newton polygon file at all** (`grep -rl NewtonPolygon
-   .lake/packages/mathlib/Mathlib/` — no hits) and no "valuation of roots of an Eisenstein
-   polynomial" lemma; `Mathlib/RingTheory/Polynomial/Eisenstein/{Basic,Criterion,Distinguished,
-   IsIntegral}.lean` cover irreducibility and integral-closure facts only, not root valuations.
-   Building the valuation-of-roots machinery from scratch — extending `O`'s valuation to a field
+   `Q'(α) ≠ 0` at every root. Mathlib has no Newton polygon file and no "valuation of roots of an
+   Eisenstein polynomial" lemma; `Mathlib/RingTheory/Polynomial/Eisenstein/{Basic,Criterion,
+   Distinguished,IsIntegral}.lean` cover irreducibility and integral-closure facts only, not root
+   valuations. Building the valuation-of-roots machinery — extending `O`'s valuation to a field
    containing `Q`'s roots, an ultrametric argument bounding each root's norm from both sides, then
-   the derivative estimate — is a separate multi-lemma development comparable in scope to this
-   repo's `exp`/`log` or eval-subst threads, not a one-off consequence of Weierstrass preparation.
-   Not attempted this pass.
+   the derivative estimate — is a separate multi-lemma development, not a one-off consequence of
+   Weierstrass preparation.
 2. **`K` is not assumed to contain `P`'s roots**, and the statement is false without such a
    hypothesis: `piTorsion`/this file's `K` carries only `NormedField`/`IsUltrametricDist`/
    `CompleteSpace`/`[Algebra O K]` — for `K` the base field itself, `piTorsion hπ hf 1 = {0}` (size
-   `1`, not `q`). This gap was already identified and documented in `ROADMAP.md`'s `§29`/`§28`
-   thread (search "size computation `|piTorsion hπ hf 1| = q`: attempted, and found to need a
-   hypothesis") before this file existed; it is unaffected by this pass's `piTorsion`-`P`
-   identification and still needs `K ⊇ K_1` (the very field extension this whole thread is building
-   toward) or `[IsAlgClosed K]`.
+   `1`, not `q`). Closing this needs `K ⊇ K_1` (the field extension the Lubin-Tate tower is
+   building toward) or `[IsAlgClosed K]`.
 
-Neither gap is closed here. Everything proved this pass is a real, complete, `sorry`-free step
-toward closing them (the `piTorsion`-`P` identification, and the sharp linear-coefficient valuation
-fact `coeff_one_associated_of_eq_mul` that gap 1's argument needs as its base case), not a detour.
+Neither gap is closed here; `coeff_zero_eq_zero_of_eq_mul` and `coeff_one_associated_of_eq_mul` give
+the sharp linear-coefficient valuation fact gap 1's argument needs as its base case.
 
 ## References
 
@@ -163,7 +153,7 @@ theorem exists_isWeierstrassFactorization_of_isLubinTatePoly
 
 /-! ## The Weierstrass factor `P`'s own low-degree coefficients
 
-Toward separability of `P` (`ROADMAP.md`'s remaining gap): `P`'s constant coefficient is not merely
+Toward separability of `P` (the remaining gap above): `P`'s constant coefficient is not merely
 in the maximal ideal (as `IsDistinguishedAt` already gives) but *exactly* `0`, and `P`'s linear
 coefficient is not merely in the maximal ideal but an *associate of `π` itself* — i.e. a
 uniformizer, valuation exactly `1`. Both facts come from comparing `f`'s own defining congruences

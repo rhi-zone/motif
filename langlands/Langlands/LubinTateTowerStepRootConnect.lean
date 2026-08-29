@@ -11,7 +11,7 @@ import Langlands.LubinTateRootTranslation
 /-!
 # Connecting `eval_map_towerHom` to the roots of `P₂`
 
-`ROADMAP.md` §52's item 5 needs, precisely: turning "`β` is a root of `P₂`'s image" (stated, as in
+Turning "`β` is a root of `P₂`'s image" (stated, as in
 `exists_finrank_adjoin_eq_residueCard_K_2`, via the *polynomial* route through `K_1 P`,
 `Polynomial.aeval β (P₂.map (algebraMap O_{K_1} (K_1 P))) = 0`) into "`eval f β = algebraMap (K_1
 P) baseChangeSplittingField α`" (an equation about the *power-series* `eval`, directly against the original base `O`,
@@ -32,11 +32,12 @@ This file closes that connection, in two steps:
   `K_2.norm_le_one_of_mem_O_K1` for their coefficient-bound hypotheses), then `eval_map_towerHom`
   to land on `eval f β` itself.
 
-## What this does not do
-
-This file does not instantiate `eval_f_FPiEval`/`sub_mem_piTorsion_one_of_eval_f_eq` at `K := baseChangeSplittingField`
-(item 5's well-definedness/injectivity/transitivity), and does not touch item 6. See `ROADMAP.md`
-for the precise state of both.
+Beyond that connection, this file also builds the `O`-algebra composite naturality facts needed to
+run the whole `piTorsion`/translation machinery at `K := baseChangeSplittingField` (norm and
+injectivity transport for `algebraMap O baseChangeSplittingField`, and the fact that the level-`1`
+`π`-torsion does not grow when passing from `K_1 P` to `baseChangeSplittingField`,
+`piTorsion_one_K_2_eq_algebraMap_image`). It does not itself instantiate
+`eval_f_FPiEval`/`sub_mem_piTorsion_one_of_eval_f_eq` at `K := baseChangeSplittingField`.
 -/
 
 @[expose] public section
@@ -236,10 +237,9 @@ baseChangeSplittingField`.** For `β, β'` both roots (via the `K_1 P` polynomia
 (evaluated inside `baseChangeSplittingField`) with `β' = F_π(β, t')`. Both `eval f β` and `eval f β'` equal `algebraMap
 (K_1 P) baseChangeSplittingField α` by `eval_f_eq_of_aeval_P₂_eq_zero` (applied to each root separately), hence to each
 other; `Langlands.LubinTateRootTranslation.exists_piTorsion_translate_of_eval_f_eq` (the *generic*
-transitivity fact, needing no cardinality-matching) then supplies `t'` directly. This is item (5) of
-`ROADMAP.md`'s tower-step chain, instantiated at `K := baseChangeSplittingField` — no separate "well-definedness converse"
-of `eval_f_eq_of_aeval_P₂_eq_zero` is needed: the argument only ever uses its already-proved forward
-direction, applied once to each of `β` and `β'`. -/
+transitivity fact, needing no cardinality-matching) then supplies `t'` directly. No separate
+"well-definedness converse" of `eval_f_eq_of_aeval_P₂_eq_zero` is needed: the argument only ever uses
+its already-proved forward direction, applied once to each of `β` and `β'`. -/
 theorem exists_piTorsion_translate_of_aeval_P₂_eq_zero (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1)
     {π : O} (hπ : Irreducible π) {f : O⟦X⟧} (hf : IsLubinTatePoly π (residueCard O) f)
     (_hu₂ : IsUnit u₂) (heq₂ : shifted f (towerHom (K := K) hOK P) α' = (P₂ : _⟦X⟧) * u₂)
@@ -353,9 +353,9 @@ theorem K_2.instFaithfulSMul_O (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] [IsFractionRing O K] in
 /-- **`Q := P.divX`'s image over `baseChangeSplittingField` (via `K_2.instAlgebraO`) is `Q`'s image over `K_1 P`, further
 mapped along `algebraMap (K_1 P) baseChangeSplittingField`.** `Polynomial.map_map` plus
-`K_2.algebraMap_O_eq_comp_K_1` (as a `RingHom` equality, `RingHom.ext`). This is item (3) of
-`ROADMAP.md`'s item-6 sketch: the genuinely new piece needed to transport the roots-multiset identity
-`Polynomial.Monic.roots_map_of_card_eq_natDegree` supplies at `K_1 P` up to `baseChangeSplittingField`. -/
+`K_2.algebraMap_O_eq_comp_K_1` (as a `RingHom` equality, `RingHom.ext`). This is the piece needed to
+transport the roots-multiset identity `Polynomial.Monic.roots_map_of_card_eq_natDegree` supplies at
+`K_1 P` up to `baseChangeSplittingField`. -/
 theorem divX_map_algebraMap_O_K_2_eq_map (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
     letI := K_2.instAlgebraO (K := K) (P := P) P₂ hOK
     P.divX.map (algebraMap O (baseChangeSplittingField (K' := K_1 (K := K) P) P₂)) =
@@ -372,7 +372,7 @@ theorem divX_map_algebraMap_O_K_2_eq_map (hOK : ∀ c : O, ‖algebraMap O K c�
 
 /-- **`piTorsion hπ hf 1`, evaluated inside `baseChangeSplittingField`, is exactly the `algebraMap (K_1 P) baseChangeSplittingField`-image of
 `piTorsion hπ hf 1` evaluated inside `K_1 P`.** The level-`1` `π`-torsion does not grow when passing
-from `K_1 P` to `baseChangeSplittingField` — `ROADMAP.md` item 6's core missing fact.
+from `K_1 P` to `baseChangeSplittingField`.
 
 Proof: at each of `K := K_1 P` and `K := baseChangeSplittingField`, `piTorsion hπ hf 1 \ {0}` is exactly the root set of
 `Q := P.divX`'s image (`piTorsion_one_sdiff_zero_eq_roots_toFinset`). `Q`'s image splits completely

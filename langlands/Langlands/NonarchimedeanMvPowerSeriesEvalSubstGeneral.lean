@@ -4,8 +4,8 @@ import Langlands.NonarchimedeanMvPowerSeriesEval
 /-!
 # General eval-subst compatibility: `evalMv (Φ.subst A) z = evalMv Φ (fun i ↦ evalMv (A i) z)`
 
-`ROADMAP.md` §25/§26's **"Lemma-A-analogue"**, in the form that subsumes both of that section's two
-scoped compatibilities: a *multivariate* outer series `Φ : MvPowerSeries τ R` substituted by an
+This is the general form of eval-subst compatibility that subsumes both of the more specific cases
+proved elsewhere: a *multivariate* outer series `Φ : MvPowerSeries τ R` substituted by an
 **arbitrary** family `A : τ → MvPowerSeries σ R` (each component with zero constant term and
 algebra-mapped-norm-bounded coefficients), with `τ` and `σ` two arbitrary finite index types.
 
@@ -16,8 +16,8 @@ the shape associativity needs, which is `τ = Fin 2`, `σ = Fin 3`, and a **mixe
 components have different shapes: `A 0 = Φ.subst ![X 0, X 1]` (a genuinely bivariate composite
 embedded in 3-variable space) and `A 1 = X 2` (a bare coordinate). Stating the lemma for a
 completely arbitrary family removes the shape question entirely — and, applied twice (once for the
-outer `Φ.subst ![_, X 2]`, once for the inner `Φ.subst ![X 0, X 1]`), it is the *only* eval-subst
-compatibility that nesting needs; no separate "Lemma-S-analogue" arises.
+outer `Φ.subst ![_, X 2]`, once for the inner `Φ.subst ![X 0, X 1]`), it is the only eval-subst
+compatibility that nesting needs; no separate diagonal-shaped version is required.
 
 ## Route
 
@@ -26,13 +26,14 @@ and inner index `n : σ →₀ ℕ`; set
 `T : (τ →₀ ℕ) × (σ →₀ ℕ) → K := fun (d, n) ↦ algebraMap R K (coeff d Φ) *
 evalSummandMv (∏ i, A i ^ d i) z n`.
 
-The step that made `eval_subst_S` expensive — identifying the `d`-row's sum, where the diagonal
-family forced a hand-built "product of two independent geometric series" argument
-(`HasSum.mul_of_nonarchimedean` plus a bespoke `Fin 2 →₀ ℕ ≃ ℕ × ℕ` reindexing) because no
-multivariate multiplicativity was available at the time — is here a one-liner
-(`hasSum_evalMv` on the single series `∏ i, A i ^ d i`, then `HasSum.mul_left`), because
-`Langlands.NonarchimedeanMvPowerSeriesEval.evalMv_mul`/`evalMv_pow` are now stated for a general
-finite index type. That is what `evalMv_prod`/`evalMv_prod_pow` below package.
+Identifying the `d`-row's sum is a one-liner here (`hasSum_evalMv` on the single series
+`∏ i, A i ^ d i`, then `HasSum.mul_left`), because
+`Langlands.NonarchimedeanMvPowerSeriesEval.evalMv_mul`/`evalMv_pow` are stated for a general finite
+index type. `Langlands.NonarchimedeanMvPowerSeriesEvalSubstDiagonal.eval_subst_S`'s corresponding
+step instead needs a hand-built "product of two independent geometric series" argument
+(`HasSum.mul_of_nonarchimedean` plus a bespoke `Fin 2 →₀ ℕ ≃ ℕ × ℕ` reindexing), since that file's
+diagonal-family substitutand isn't a single multivariate series `evalMv_mul` applies to directly.
+`evalMv_prod`/`evalMv_prod_pow` below package the general-index-type route.
 
 * `coeff_bound_prod_mv`, `evalMv_prod` : coefficient boundedness and `evalMv`-multiplicativity
   extended from binary products to arbitrary `Finset` products, by `Finset.induction_on`.

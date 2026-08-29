@@ -22,17 +22,15 @@ tower statement.
 
 * `LubinTate.residueFieldEquiv_K_2` : **`ResidueField ↥𝒪[K] ≃+* ResidueField O_{K_2}`.**
 
-## A deviation from `ROADMAP.md §57`'s handoff wording, worth flagging precisely
+## Why the result is stated for `ResidueField ↥𝒪[K]`, not `ResidueField O`
 
-`§57`'s handoff describes the target as "the full `ResidueField O ≃+* ResidueField O_{K_2}`
-statement", composing with `residueFieldEquiv_K_1`. But `residueFieldEquiv_K_1` itself is stated
-`ResidueField ↥𝒪[K] ≃+* ResidueField ↥𝒪_{K_1}` — its *source* is the residue field of `𝒪[K] :=
-(ValuativeRel.valuation K).valuationSubring`, not of the abstract base ring `O` this whole arc's
-hypothesis package (`hOK`, `hπnorm`, …) is stated in terms of. No lemma identifying `ResidueField O`
-with `ResidueField ↥𝒪[K]` exists in this arc (relating `O`'s image in `K` to the *literal* valuation
-subring is `ROADMAP.md`'s long-tracked "gap 3" — see `Langlands/LubinTateTowerStep.lean`'s module
-docstring). This file states its result with the same `↥𝒪[K]` source `residueFieldEquiv_K_1` itself
-uses, rather than overclaiming a statement about `O` that nothing here establishes.
+`residueFieldEquiv_K_1` is stated `ResidueField ↥𝒪[K] ≃+* ResidueField ↥𝒪_{K_1}` — its *source* is
+the residue field of `𝒪[K] := (ValuativeRel.valuation K).valuationSubring`, not of the abstract base
+ring `O` the ambient hypothesis package (`hOK`, `hπnorm`, …) is stated in terms of. No lemma
+identifying `ResidueField O` with `ResidueField ↥𝒪[K]` exists here (relating `O`'s image in `K` to
+the *literal* valuation subring is a separate open gap — see `Langlands/LubinTateTowerStep.lean`'s
+module docstring). This file states its result with the same `↥𝒪[K]` source `residueFieldEquiv_K_1`
+itself uses, rather than overclaiming a statement about `O` that nothing here establishes.
 -/
 
 noncomputable section
@@ -51,8 +49,8 @@ variable {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [Valuativ
 variable {P : O[X]}
   {P₂ : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)))[X]}
 
-/-- **`ResidueField ↥𝒪[K] ≃+* ResidueField O_{K_2}`.** Closes `ROADMAP.md §57`'s residue-field
-preservation blocker for the second Lubin-Tate tower step. Composes
+/-- **`ResidueField ↥𝒪[K] ≃+* ResidueField O_{K_2}`.** Residue-field preservation for the
+second Lubin-Tate tower step. Composes
 `LubinTate.residueFieldEquiv_K_1` (`ResidueField ↥𝒪[K] ≃+* ResidueField O_{K_1}`) with
 `IsLocalRing.residueFieldEquivOfAdjoinSingleton` applied at `A := O_{K_1}`, `B := O_{K_2}`, `π := β`
 (viewed inside `O_{K_2}`) — `β ∈ maximalIdeal O_{K_2}` from

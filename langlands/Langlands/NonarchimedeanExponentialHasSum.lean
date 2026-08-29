@@ -19,7 +19,7 @@ merely a sequential limit, is required to reindex/rearrange terms at all).
 sums along `range n` (`tendsto_partialSum_exp`, `tendsto_partialSum_log`). That is weaker than
 `HasSum`, which asserts convergence of the net of *all* finite partial sums (unconditional
 convergence) — but `Langlands.NonarchimedeanUnconditionalSummability`'s
-`IsUltrametricDist.summable_of_tendsto_zero` (this pass, same wild-ramification thread) shows that in
+`IsUltrametricDist.summable_of_tendsto_zero` shows that in
 a complete ultrametric normed group, `Tendsto (terms) cofinite (nhds 0)` alone forces `Summable`,
 hence `HasSum`, with no separate rearrangement argument needed. Since `cofinite = atTop` on `ℕ`
 (`Nat.cofinite_eq_atTop`) and the per-term geometric bounds `norm_pow_div_factorial_le`/
@@ -41,7 +41,7 @@ comparing `HasSum.tendsto_sum_nat`'s partial-sum limit against `tendsto_partialS
   — from `hasSum_log` via `hasSum_nat_add_iff' 1`, since `coeff 0 (log K) = 0` drops out of the shift
   and `coeff (n+1) (log K) = (-1) ^ (n+2) / (n+1)` computes to match `(-1) ^ n * x ^ (n+1) / (n+1)`
   exactly (`(-1) ^ (n+2) = (-1) ^ n`) — this is precisely the index/sign match that
-  `Langlands.PowerSeriesExpLog`'s module docstring and `ROADMAP.md`'s §6f flagged as unverified.
+  `Langlands.PowerSeriesExpLog`'s module docstring flagged as unverified.
 
 ## What this does not close
 
@@ -50,9 +50,8 @@ does **not** establish that formal *substitution* (`PowerSeries.subst`, i.e. com
 another) commutes with evaluating the composite at a convergent point. That is a strictly harder
 claim (a Cauchy-product/double-series rearrangement argument for the composite series
 `(log K).subst (exp K - 1)`, not just termwise identification of each series on its own) and is not
-attempted in this file; see `ROADMAP.md`'s pass log for the precise remaining state and the specific
-Mathlib pieces (`FormalMultilinearSeries.ofScalars`, `HasFPowerSeriesAt.comp`) identified as candidate
-machinery for that remaining step.
+done in this file; `FormalMultilinearSeries.ofScalars` and `HasFPowerSeriesAt.comp` are candidate
+Mathlib machinery for that step.
 -/
 
 @[expose] public section
@@ -170,9 +169,9 @@ which is only characterized by a `HasSum`/convergent series (`hasSum_exp`, `hasS
 `‖log hnorm x‖ < convergenceRadius K p`. This is *not* automatic from `‖x‖ < logConvergenceRadius K p`
 alone: the crude bound below only gives `‖log hnorm x‖ ≤ ‖x‖ / ‖p‖`, and `‖x‖ / ‖p‖ < convergenceRadius
 K p` needs `‖x‖ < ‖p‖ ^ (p / (p - 1))` — strictly *narrower* than `logConvergenceRadius K p = ‖p‖`
-itself (since `p / (p - 1) > 1` for `p ≥ 2`, and `‖p‖ < 1`). This is exactly `ROADMAP.md`'s item 3
-("landing in `U^{(i)}`, not just the convergence domain"), now given a precise sufficient threshold
-rather than left as an unattempted note. -/
+itself (since `p / (p - 1) > 1` for `p ≥ 2`, and `‖p‖ < 1`). This gives a precise sufficient
+threshold for the composite to land inside `exp`'s domain, rather than leaving that as an open
+question. -/
 
 /-- **A norm bound on `log`.** `‖log hnorm x‖ ≤ ‖x‖ / ‖p‖`, for `x` in `log`'s convergence domain.
 Proved via `IsUltrametricDist.norm_tsum_le` (the norm of a sum in an ultrametric group is at most the

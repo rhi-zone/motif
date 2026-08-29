@@ -9,23 +9,23 @@ import Mathlib.FieldTheory.Minpoly.IsIntegrallyClosed
 /-!
 # Monogenicity of `O_{K_2}` over `O_{K_1}`
 
-`ROADMAP.md`'s `§56` ("Gap 2"): `Langlands/TowerBundleResidueField.lean`'s
-`_of_valuationSubring` engine cannot be reused for the `K_1 → K_2` hop, because its `letI` chain
-rebuilds a *second, non-defeq* `NontriviallyNormedField (K_1 P)` instance (via `Valued.mk'`), distinct
-from the one already registered (`K_1.instNontriviallyNormedField`, the `spectralNorm` route
-`baseChangeSplittingField`'s own construction is built against). This file sidesteps that formalism entirely, applying
+`Langlands/TowerBundleResidueField.lean`'s `_of_valuationSubring` engine cannot be reused for the
+`K_1 → K_2` hop, because its `letI` chain rebuilds a *second, non-defeq* `NontriviallyNormedField
+(K_1 P)` instance (via `Valued.mk'`), distinct from the one already registered
+(`K_1.instNontriviallyNormedField`, the `spectralNorm` route `baseChangeSplittingField`'s own
+construction is built against). This file sidesteps that formalism entirely, applying
 `Langlands/EisensteinMonogenicAbstract.lean`'s bare-Eisenstein monogenicity theorem directly at
 `R := O_{K_1}`, `K := K_1 P`, `L := baseChangeSplittingField P₂` — no `ValuativeRel`/`NormedField` structure on `K_1 P` is
 built or required.
 
-**Checked directly (not assumed) that this level does *not* reproduce the `O → K_2` instance
-diamond** `Langlands/LubinTateTowerStepSplittingField.lean`'s `K_2.instAlgebraO` docstring warns
-about: `O_{K_1} := ↥(integralClosure ↥𝒪[K] (K_1 P))` is, unlike the base `O`, syntactically a
+This level does **not** reproduce the `O → K_2` instance diamond that
+`Langlands/LubinTateTowerStepSplittingField.lean`'s `K_2.instAlgebraO` docstring warns about:
+`O_{K_1} := ↥(integralClosure ↥𝒪[K] (K_1 P))` is, unlike the base `O`, syntactically a
 `Subalgebra ↥𝒪[K] (K_1 P)`-coerced type, so Mathlib's generic `Subalgebra.instSMulSubtypeMem` (`the
 action by a subalgebra is the action by the underlying algebra`) already supplies `Algebra O_{K_1}
 (baseChangeSplittingField P₂)` and `IsScalarTower O_{K_1} (K_1 P) (baseChangeSplittingField P₂)` via ordinary instance search, *and* this
 instance agrees with the honest composite `algebraMap (K_1 P) (baseChangeSplittingField P₂) ∘ algebraMap O_{K_1} (K_1 P)`
-by `rfl` — confirmed by direct `rfl`/`infer_instance` test before relying on it. (The `O → K_2` case
+by `rfl` (verified directly by `rfl`/`infer_instance`). (The `O → K_2` case
 needed a hand-built `K_2.instAlgebraO` precisely because `O` is *not* itself a subalgebra of `K_1 P`
 — it reaches `K_1 P` via a longer, unrelated path through `K` — so no such generic instance applies
 there.) No custom `Algebra`/`IsScalarTower` instance is built in this file as a result.
@@ -62,9 +62,8 @@ instance on the *base* field of the integral closure, i.e. exactly the diamond t
 substitute construction of `IsLocalRing O_{K_2}` from monogenicity alone (e.g. via the classical "an
 integral extension of a local ring, local mod the base's maximal ideal, is itself local" argument —
 `Ideal.isMaximal_comap_of_isIntegral_of_isMaximal` for the lying-over half, plus an
-Eisenstein-nilpotence argument for the residual quotient) is built in this pass: it is a genuine,
-general, reusable commutative-algebra lemma not identified by `ROADMAP.md §56`'s scoping and not yet
-attempted. See `ROADMAP.md` for the precise handoff.
+Eisenstein-nilpotence argument for the residual quotient) is built here: it would be a genuine,
+general, reusable commutative-algebra lemma, not yet attempted.
 -/
 
 noncomputable section

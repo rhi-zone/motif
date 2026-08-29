@@ -12,9 +12,8 @@ complete, characteristic-`0`, nonarchimedean-valued field of residue characteris
 builds that convergence theory from scratch for a *general* such field (not just `ℚ_p`), phrased
 purely in terms of `NormedField`/`IsUltrametricDist` — no `HeightOneSpectrum`/`adicCompletion`
 machinery is needed for this part, and none is assumed, so this file is independent of the rest of
-this repo's local-field infrastructure and could be lifted out (upstream candidate: confirmed
-absent from Mathlib in every form checked — `padicLog`, `expLocal`, valuation-tied `exp`/`log`,
-Lubin–Tate constructions — see `ROADMAP.md`'s wild-ramification scoping pass).
+this repo's local-field infrastructure and could be lifted out (checked absent from Mathlib in every
+form searched — `padicLog`, `expLocal`, valuation-tied `exp`/`log`, Lubin–Tate constructions).
 
 ## Motivation
 
@@ -82,14 +81,14 @@ Not attempted in this file, and not small:
 
 * **The mutual-inverse relationship between `exp` and `log`** (`exp (log (1+x)) = 1+x` and
   `log (1 + (exp x - 1)) = x` on matched domains) — needed to actually turn `U_L^{(i)}` into
-  `(𝔪_L^i, +)`, not just to produce two independently convergent maps into `L`. Genuinely attempted
-  this pass (not merely deferred): Mathlib's `Mathlib.RingTheory.PowerSeries.Exp` and
+  `(𝔪_L^i, +)`, not just to produce two independently convergent maps into `L`. Mathlib's
+  `Mathlib.RingTheory.PowerSeries.Exp` and
   `.Log` provide *formal* power series `PowerSeries.exp`/`PowerSeries.log` over any `Algebra ℚ A`
   (available here since `CharZero K` gives `K` a canonical `ℚ`-algebra structure) with `order_exp`,
   `deriv_log`, etc., but as of the version vendored in this repo's `.lake/packages/mathlib` there is
   no `exp_log`/`log_exp`-style formal mutual-inverse identity for them (`Log.lean` has only order and
   derivative facts) — so there is no ready-made formal statement to transport to the convergent case
-  even setting aside the (substantial, itself unattempted) formal-to-convergent bridging argument
+  even setting aside the substantial formal-to-convergent bridging argument
   that would be needed regardless (matching coefficients between `PowerSeries.exp`/`log`'s indexing
   and this file's, and justifying that termwise convergence commutes with formal substitution).
 * **Translating the abstract thresholds `‖x‖ < ‖p‖^(1/(p-1))` (`exp`) and `‖x‖ < ‖p‖` (`log`) into
