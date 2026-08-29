@@ -9,12 +9,11 @@ import Langlands.LubinTateTowerStepConcreteK2Flat
 import Langlands.LubinTateTowerStepK3Degree
 
 /-!
-# The existence half of the inductive tower step, generic in `Level` (`ROADMAP.md` §83)
+# The existence half of the inductive tower step, generic in `Level`
 
-`§82` closed the connecting identity generically over `Level` and named the precise remaining
-obstacle for the `∀ n` chain: *"generalize `exists_eisenstein_tower_step_K_2` to produce a
-`TowerStep` over `lvl.next Pn` from a `TowerStep` over `lvl`"*, plus a generic `hOK_transport`
-needed before transitivity generalizes. This file does both.
+This file generalizes `exists_eisenstein_tower_step_K_2` to produce a `TowerStep` over
+`lvl.next Pn` from a `TowerStep` over `lvl`, and builds the generic `hOK_transport` fact needed
+before transitivity generalizes.
 
 ## What the general engine already gave, and what the concrete files added on top
 
@@ -27,8 +26,8 @@ adds exactly four `baseChangeSplittingField`-specific things, and nothing else:
 1. the *uniformizer* `α'` at the next level (`irreducible_of_isEisensteinAt_K_2`);
 2. the `IsAdicComplete` instance for the next level's ring of integers;
 3. the `IsLocalHom` instance for the next level's structure map;
-4. (in `§77`'s `exists_eisenstein_tower_step_K_2_flat'`) a nested → flat spelling transport of the
-   engine's whole output along `integralClosureRingEquiv`.
+4. (in `exists_eisenstein_tower_step_K_2_flat'`) a nested → flat spelling transport of the engine's
+   whole output along `integralClosureRingEquiv`.
 
 This file supplies (1)–(3) generically. **(4) turns out not to be needed at all generically**: the
 engine can be run *directly* at the flat `(lvl.next Pn).OL`, since all three of its side conditions
@@ -37,18 +36,17 @@ that single `Prop` transports along `integralClosureRingEquiv` by `Irreducible.m
 `Polynomial.map`/`PowerSeries.map` transport of the output, and hence no `hcompeq`-style
 structure-map identification, is required.
 
-## A correction to `§82`'s ledger, checked by build
+## Deriving `[IsDomain lvl.OL]`/`[IsDiscreteValuationRing lvl.OL]`
 
-`§82` recorded `[IsDomain lvl.OL]`/`[IsDiscreteValuationRing lvl.OL]` as *"not derivable generically
-(no lemma in this repo constructs them)"*. That is **wrong**, and this file corrects it:
-`LocalField.isDiscreteValuationRing_integralClosure` (`Langlands/MonogenicIntegralClosure.lean`)
-constructs exactly this for `↥(integralClosure ↥𝒪[K] L)` given `[FiniteDimensional K L]`, and
-`Level` stores that as its `finiteDim` field. `Level.isDiscreteValuationRing_OL`/`Level.isDomain_OL`
-below close by `infer_instance` after `letI := lvl.algL; letI := lvl.finiteDim`. What is true, and
-what `§82`'s observation was really about, is that these are not found by *instance search* at a
-concrete tower level, because `finiteDim` is deliberately not a global instance — which is why the
-concrete `K_3`-level files carry `[IsDiscreteValuationRing (O_K2 P₂)]` as an ambient hypothesis.
-Nothing here removes those ambient hypotheses from the existing concrete files.
+These are derivable generically: `LocalField.isDiscreteValuationRing_integralClosure`
+(`Langlands/MonogenicIntegralClosure.lean`) constructs exactly this for
+`↥(integralClosure ↥𝒪[K] L)` given `[FiniteDimensional K L]`, and `Level` stores that as its
+`finiteDim` field. `Level.isDiscreteValuationRing_OL`/`Level.isDomain_OL` below close by
+`infer_instance` after `letI := lvl.algL; letI := lvl.finiteDim`. They are not, however, found by
+*instance search* at a concrete tower level, because `finiteDim` is deliberately not a global
+instance — which is why the concrete `K_3`-level files carry `[IsDiscreteValuationRing (O_K2 P₂)]`
+as an ambient hypothesis. Nothing here removes those ambient hypotheses from the existing concrete
+files.
 
 ## Main results
 
@@ -58,7 +56,7 @@ Nothing here removes those ambient hypotheses from the existing concrete files.
 * `Level.algebraMap_OL_towerHom`, `Level.algebraMap_O_eq_comp_L`, `Level.algebraMap_O_eq_comp_OL` :
   the generic forms of `algebraMap_O_K_1_eq_comp_towerHom`/`K_2.algebraMap_O_eq_comp_K_1`/
   `K_3.algebraMap_O_eq_comp_O_K2`.
-* **`Level.hOK_transport`** : `§82`'s named prerequisite — `hOK` one level up, generically.
+* **`Level.hOK_transport`** : `hOK` one level up, generically.
 * `Level.hπnorm_transport` : likewise for the strict uniformizer bound.
 * `Level.irreducible_root_next` : the next level's generator is a uniformizer of
   `(lvl.next Pn).OL`, the generic `irreducible_of_isEisensteinAt_K_2`.
@@ -71,9 +69,9 @@ Nothing here removes those ambient hypotheses from the existing concrete files.
 * `Level.adjoin_eq_integralClosure_next` : monogenicity of the next level's ring of integers over
   `lvl.OL`, the generic `adjoin_eq_integralClosure_K_2`/`adjoin_eq_integralClosure_K_3`.
 
-## Concrete checks, in this arc's established `rfl`-against-the-real-theorem discipline
+## Concrete checks, by `rfl` against the real theorems
 
-* **Depth `K_1 → K_2`**: `exists_eisenstein_tower_step_K_2_flat'_of_Level` states `§77`'s
+* **Depth `K_1 → K_2`**: `exists_eisenstein_tower_step_K_2_flat'_of_Level` states
   `exists_eisenstein_tower_step_K_2_flat'` verbatim and proves it from
   `Level.exists_tower_step_next` at `level_K_1`; an `example` checks the fully-applied terms are
   `rfl`-equal. Likewise `exists_piTorsion_translate_of_aeval_P₂_eq_zero_of_Level` and
@@ -82,15 +80,15 @@ Nothing here removes those ambient hypotheses from the existing concrete files.
   compare against — so the check available at this depth is instantiation, not recovery:
   `exists_eisenstein_tower_step_K_3` below runs the *same* generic theorem at `level_K_2`, in the
   real `K_3`-level hypothesis package (`finrank_K_3_eq_residueCard` supplying `hgen`), **producing
-  `K_4`'s Eisenstein polynomial** — the first time this arc reaches that depth. Two `example`s check
-  by `rfl` that the level it lands on is the real one: `((level_K_2 P₂).next P₃).L` is literally
-  `K_3 P₃`, and `(level_K_2 P₂).next P₃` is literally `((level_K_1).next P₂).next P₃`.
+  `K_4`'s Eisenstein polynomial**. Two `example`s check by `rfl` that the level it lands on is the
+  real one: `((level_K_2 P₂).next P₃).L` is literally `K_3 P₃`, and `(level_K_2 P₂).next P₃` is
+  literally `((level_K_1).next P₂).next P₃`.
 
 ## What this does not close
 
-**Not generalized**: the degree/splitting/residue-field chain (`§75`–`§77`'s
-`finrank_K_n_eq_residueCard`, `adjoin_root_eq_top_K_n`, `piTorsion_one_K_n_eq_algebraMap_image`,
-`splits_divX_map_*`, `residueFieldEquiv_K_n`). `Level.exists_tower_step_next` therefore takes
+**Not generalized**: the degree/splitting/residue-field chain (`finrank_K_n_eq_residueCard`,
+`adjoin_root_eq_top_K_n`, `piTorsion_one_K_n_eq_algebraMap_image`, `splits_divX_map_*`,
+`residueFieldEquiv_K_n`). `Level.exists_tower_step_next` therefore takes
 `hgen : (minpoly lvl.L β).natDegree = Module.finrank lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)` — "the chosen root
 generates the next field" — as an explicit hypothesis, exactly as the concrete theorems take `hβfin`/
 `hγfin`. Generalizing that chain needs two things `Level`/`TowerStep` do not currently carry: an
@@ -120,7 +118,7 @@ variable {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [Valuativ
 /-- **`lvl.OL` is a discrete valuation ring**, derived from `Level`'s own stored fields —
 `LocalField.isDiscreteValuationRing_integralClosure` applied at `L := lvl.L`, whose
 `[FiniteDimensional K L]` hypothesis is exactly `lvl.finiteDim`. See this file's module docstring
-for why `§82` recorded this as underivable, and in what (weaker) sense that observation was right. -/
+for why this is not found automatically by instance search at a concrete tower level. -/
 theorem Level.isDiscreteValuationRing_OL (lvl : Level K) : IsDiscreteValuationRing lvl.OL := by
   letI := lvl.algL
   letI := lvl.finiteDim

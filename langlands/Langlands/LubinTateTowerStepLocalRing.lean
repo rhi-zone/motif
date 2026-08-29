@@ -6,14 +6,13 @@ import Langlands.LubinTateTowerStepMonogenic
 import Langlands.IntegralExtensionLocalRing
 
 /-!
-# `IsLocalRing O_{K_2}`, closing the sub-gap `ROADMAP.md §57` identified
+# `IsLocalRing O_{K_2}`
 
 `Langlands/LubinTateTowerStepMonogenic.lean`'s `adjoin_eq_integralClosure_K_2` proves `O_{K_2} :=
 integralClosure O_{K_1} (baseChangeSplittingField P₂)` is monogenic over `O_{K_1}`, but residue-field preservation needs
 the further fact `[IsLocalRing O_{K_2}]` — a hypothesis
 `IsLocalRing.residueFieldEquivOfAdjoinSingleton` (`Langlands/TotallyRamifiedResidueField.lean`) bakes
-directly into its signature, and monogenicity alone does not supply it. `§57` diagnosed this precisely
-and sketched (but did not attempt) the route this file executes:
+directly into its signature, and monogenicity alone does not supply it. This file closes that gap via
 `Langlands/IntegralExtensionLocalRing.lean`'s general
 `IsLocalRing.of_isIntegral_of_isLocalRing_quotient_map_maximalIdeal` reduces `[IsLocalRing O_{K_2}]`
 to `[IsLocalRing (O_{K_2} ⧸ 𝔪_{O_{K_1}} · O_{K_2})]`, and this file identifies that quotient's
@@ -32,10 +31,9 @@ local-ness directly from `β`'s Eisenstein minimal polynomial `P₂`.
   integralClosure R L`. Then `integralClosure R L` is local. Proved entirely by the "nilpotent
   generator of the residual quotient" route
   (`Langlands/IntegralExtensionLocalRing.lean`'s two lemmas), with no valuation theory. Stated
-  abstractly (not tied to the Lubin-Tate tower's concrete `K_1`/`baseChangeSplittingField` types) precisely to avoid the
-  `Algebra`/`IsScalarTower` instance-diamond fragility this whole arc is built around: instantiating
-  it at concrete types is a single application, with no in-proof `set`/rewriting of the ambient ring
-  needed.
+  abstractly (not tied to the Lubin-Tate tower's concrete `K_1`/`baseChangeSplittingField` types) to
+  avoid `Algebra`/`IsScalarTower` instance-diamond fragility: instantiating it at concrete types is a
+  single application, with no in-proof `set`/rewriting of the ambient ring needed.
 * `isLocalRing_integralClosure_K_2` : **`IsLocalRing O_{K_2}`**, the instantiation of the above at
   `R := O_{K_1}`, `L := baseChangeSplittingField P₂`, under exactly `adjoin_eq_integralClosure_K_2`'s hypothesis package.
 * `isLocalHom_algebraMap_integralClosure_K_2` : the free corollary
@@ -90,8 +88,7 @@ local ring.
 
 Stated abstractly, with `R` and `L` arbitrary type variables (not the Lubin-Tate tower's concrete
 `K_1 P`/`baseChangeSplittingField P₂`), so that instantiating it is a single application with no in-proof `set`/rewriting
-of the ambient ring — avoiding the `Algebra`/`IsScalarTower` instance-diamond fragility this whole
-arc is otherwise built around.
+of the ambient ring — avoiding `Algebra`/`IsScalarTower` instance-diamond fragility.
 
 Proof: `β' := ⟨β, hβint⟩ : ↥(integralClosure R L)` generates `↥(integralClosure R L)` as an
 `R`-algebra (`Algebra.adjoin_singleton_eq_top_of_adjoin_eq_integralClosure`). Reducing `P₂`'s defining

@@ -6,16 +6,14 @@ import Langlands.LubinTateTowerStepLevelExists
 import Langlands.LubinTateSplittingFieldTorsion
 
 /-!
-# The `Algebra O lvl.L` self-composite, and the `Splits` invariant, generic in `Level` (`ROADMAP.md`
-§84)
+# The `Algebra O lvl.L` self-composite, and the `Splits` invariant, generic in `Level`
 
-`§83` closed the existence half of the inductive tower step and named the precise remaining
-obstacle for the degree/splitting chain (`[K_{n+1}:K_n] = residueCard O`,
-`residueFieldEquiv_K_n`): stating `(P.divX.map (algebraMap O lvl.L)).Splits` at all needs an
-`Algebra O lvl.L` composite that `Level`/`TowerStep` did not carry, and the `Splits` fact itself is
+Stating `(P.divX.map (algebraMap O lvl.L)).Splits` for a general `Level` needs an `Algebra O lvl.L`
+composite that `Level`/`TowerStep` do not carry on their own, and the `Splits` fact itself is
 genuine level-indexed induction data (free at the base from `K_1`'s own construction, and
-propagated to every later level by `Polynomial.Splits.map`), not a corollary of anything `Level`
-already holds. This file supplies both.
+propagated to every later level by `Polynomial.Splits.map`), not a corollary of anything else
+`Level` holds. This file supplies both, which the degree/splitting chain
+(`[K_{n+1}:K_n] = residueCard O`, `residueFieldEquiv_K_n`) needs.
 
 ## The self-composite, and why it is safe to build generically (unlike `Level.OL` itself)
 
@@ -24,43 +22,41 @@ already holds. This file supplies both.
 via `lvl.algL`. It needs no `hOK` at all (unlike `Level.instAlgebraO`, the *next*-level composite,
 which routes through `lvl.OL` and hence needs `hOK` to build `Level.towerHom`): `Algebra K lvl.L`
 (`lvl.algL`) and `Algebra O K` (ambient) compose directly, with no `Algebra.ofSubsemiring` search
-anywhere in the construction. This is exactly the distinction `§78` drew for
-`instAlgebraK_of_algebraL`: genericity over an abstract intermediate type costs nothing when the
+anywhere in the construction. Genericity over an abstract intermediate type costs nothing when the
 construction is a plain `RingHom.comp`, and only becomes expensive when a subring/subalgebra
 membership search (`Algebra.ofSubsemiring`) is involved — which this composite never invokes.
 
 `Level.instAlgebraOSelf`, instantiated at `level_K_1`, is **`K_1.instAlgebraO` on the nose (`rfl`)**:
 both unfold to the identical `((algebraMap K (K_1 P)).comp (algebraMap O K)).toAlgebra` term, since
-`level_K_1.algL := K_1.instAlgebra` (`§80`). No new proof is needed for the base case; it is a
-definitional coincidence, not a theorem.
+`level_K_1.algL := K_1.instAlgebra`. No new proof is needed for the base case; it is a definitional
+coincidence, not a theorem.
 
 ## The composite identity one level up
 
 `Level.algebraMap_OSelf_next_eq` proves `algebraMap O (lvl.next Pn).L` (via the *next* level's own
 self-composite) agrees, as a `RingHom`, with `algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn)` (via
-`lvl.instAlgebraO Pn hOK`, `§82`'s *next*-level-from-`lvl` composite) — the generalization of
+`lvl.instAlgebraO Pn hOK`, the *next*-level-from-`lvl` composite) — the generalization of
 `algebraMap_O_K_1_eq_comp_towerHom`/`K_2.algebraMap_O_eq_comp_K_1`
-(`Langlands/LubinTateTowerStepRootConnect.lean`). Built entirely from two already-proved pieces, no
-new elaboration-cost investigation needed: `(lvl.next Pn).algebraMap_OSelf_eq` (this file, `rfl`) and
-`algebraMap_K_eq_of_Level`/`Level.algebraMap_O_eq_comp_L` (`§81`/`§83`, already committed). This
-sidesteps entirely the diamond risk a naive proof via `IsScalarTower lvl.OL lvl.L (baseChangeSplittingField (K' :=
+(`Langlands/LubinTateTowerStepRootConnect.lean`). It is built entirely from two already-proved
+pieces: `(lvl.next Pn).algebraMap_OSelf_eq` (this file, `rfl`) and
+`algebraMap_K_eq_of_Level`/`Level.algebraMap_O_eq_comp_L`. This sidesteps the diamond risk a naive
+proof via `IsScalarTower lvl.OL lvl.L (baseChangeSplittingField (K' :=
 lvl.L) Pn)` would run into: that instance is not registered anywhere for an abstract `lvl` (the
 `baseChangeSplittingField` combinator's own `[Algebra O' K']` hypothesis, instantiated at `O' := lvl.OL`, would need to
-be found by the same `Algebra.ofSubsemiring`-style search `§73`/`§79` already documented as
-expensive/diamond-prone against an abstract ambient level); this proof never needs that instance,
-only raw function composition through already-known composite facts.
+be found by an `Algebra.ofSubsemiring`-style search, which is expensive/diamond-prone against an
+abstract ambient level); this proof never needs that instance, only raw function composition
+through already-known composite facts.
 
 ## The `Splits` transport
 
 `Level.splits_next` transports `(Q.map (algebraMap O lvl.L)).Splits` (self-composite) to
 `(Q.map (algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn))).Splits` (next-level composite), by
 `Polynomial.Splits.map` plus `Polynomial.map_map` plus the composite identity above — the direct
-generalization of `splits_divX_map_K2P2` (`§75`), whose own proof used exactly this shape one level
-down (`(splits_divX_map_K_1 P).map … ` then `Polynomial.map_map` then `K_2.algebraMap_O_eq_comp_K_1`).
-`§75` already established that the mathematical content here is free once stated correctly
-("splitting propagates up the tower... the only per-level work is bookkeeping the algebra-map
-composites") — this file makes that bookkeeping itself generic in `lvl`, rather than redone by hand
-at every new depth.
+generalization of `splits_divX_map_K2P2`, whose own proof used exactly this shape one level down
+(`(splits_divX_map_K_1 P).map … ` then `Polynomial.map_map` then `K_2.algebraMap_O_eq_comp_K_1`).
+The mathematical content here is free once stated correctly — splitting propagates up the tower,
+and the only per-level work is bookkeeping the algebra-map composites — so this file makes that
+bookkeeping itself generic in `lvl`, rather than redone by hand at every new depth.
 
 ## Checked against both concrete depths
 
@@ -69,11 +65,11 @@ at every new depth.
   has exactly `splits_divX_map_K2P2`'s type — checked directly by `example`, not merely claimed to
   "specialize" (it typechecks *as* that statement, using the base-case `rfl` above to bridge the
   two `Algebra O (K_1 P)` instances).
-* **`K_2 → K_3`, instantiation not recovery** (`§83`'s own discipline: there is no pre-existing
-  `splits_divX_map_K3P3`/similar in this repo to compare against, checked by `grep` before writing):
-  the same generic step, run twice (`level_K_1 → level_K_2 → (level_K_2).next P₃`), types against
-  `K_3.instAlgebraO`'s real four-hop composite and produces `(P.divX.map (algebraMap O (K_3 P₃))).
-  Splits` — the first time this arc has this fact at that depth.
+* **`K_2 → K_3`, instantiation not recovery** (there is no pre-existing `splits_divX_map_K3P3`/
+  similar in this repo to compare against, checked by `grep` before writing): the same generic
+  step, run twice (`level_K_1 → level_K_2 → (level_K_2).next P₃`), types against
+  `K_3.instAlgebraO`'s real four-hop composite and produces
+  `(P.divX.map (algebraMap O (K_3 P₃))).Splits`.
 
 ## What this does not close
 
@@ -82,13 +78,13 @@ at every new depth.
 `adjoin_root_eq_top`, or the degree computation (`hgen`, `finrank_..._eq_residueCard`) themselves.
 Those need, beyond what is built here: a generic `Level`-level `FaithfulSMul O lvl.L`/injectivity
 fact (the `K_2.instFaithfulSMul_O`/`K_3.instFaithfulSMul_O` analogue, itself needing `[FaithfulSMul
-O K]` composed through the self-composite — mechanical, but not built here), and — the genuinely
-larger remaining piece — `FPiEval_algebraMap_mem_adjoin`'s generic form, which is not bookkeeping: it
-is a `tsum`-lands-in-a-finite-dimensional-subspace analytic argument
+O K]` composed through the self-composite — mechanical, but not built here), and a genuinely larger
+remaining piece: `FPiEval_algebraMap_mem_adjoin`'s generic form, which is not bookkeeping — it is a
+`tsum`-lands-in-a-finite-dimensional-subspace analytic argument
 (`Submodule.mem_of_hasSum_of_finiteDimensional`), currently written once per concrete level
-(`Langlands/LubinTateTowerStepDegree.lean`/`LubinTateTowerStepK3Degree.lean`) and not yet
-restated generically. `Level.exists_tower_step_next`'s `hgen` hypothesis (`§83`) therefore remains
-an external hypothesis, unchanged by this file. See `ROADMAP.md §84` for the full account.
+(`Langlands/LubinTateTowerStepDegree.lean`/`LubinTateTowerStepK3Degree.lean`) and not yet restated
+generically. `Level.exists_tower_step_next`'s `hgen` hypothesis therefore remains an external
+hypothesis, unchanged by this file.
 -/
 
 @[expose] public section
@@ -111,10 +107,9 @@ variable {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [Valuativ
 
 /-- **`Algebra O lvl.L`, the self-composite**, `O → K → lvl.L`, built the same way as
 `K_1.instAlgebraO`: composing the ambient `algebraMap O K` with `lvl.algL`'s own `algebraMap K
-lvl.L`. Unlike `Level.instAlgebraO` (`§82`, the *next*-level composite), this needs no `hOK`: it
-never routes through `lvl.OL`/`Level.towerHom`, so it involves no `Algebra.ofSubsemiring` search —
-safe to generalize over an abstract `lvl`, per the same distinction `§78` drew for
-`instAlgebraK_of_algebraL`. -/
+lvl.L`. Unlike `Level.instAlgebraO` (the *next*-level composite), this needs no `hOK`: it never
+routes through `lvl.OL`/`Level.towerHom`, so it involves no `Algebra.ofSubsemiring` search — safe
+to generalize over an abstract `lvl`. -/
 @[reducible] def Level.instAlgebraOSelf (lvl : Level K) : Algebra O lvl.L :=
   letI := lvl.algL
   ((algebraMap K lvl.L).comp (algebraMap O K)).toAlgebra
@@ -141,11 +136,11 @@ example (P : O[X]) :
 
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (IsLocalRing.ResidueField O)]
   [IsFractionRing O K] in
-/-- **The composite through `lvl.instAlgebraO Pn hOK` (`§82`'s next-level composite) agrees with the
+/-- **The composite through `lvl.instAlgebraO Pn hOK` (the next-level composite) agrees with the
 next level's own self-composite.** Generalizes `algebraMap_O_K_1_eq_comp_towerHom`/
 `K_2.algebraMap_O_eq_comp_K_1` (`Langlands/LubinTateTowerStepRootConnect.lean`); built purely from
-already-committed pieces (`Level.algebraMap_OSelf_eq`, `algebraMap_K_eq_of_Level` `§81`,
-`Level.algebraMap_O_eq_comp_L` `§83`), never from an `IsScalarTower lvl.OL lvl.L (baseChangeSplittingField (K' :=
+already-committed pieces (`Level.algebraMap_OSelf_eq`, `algebraMap_K_eq_of_Level`,
+`Level.algebraMap_O_eq_comp_L`), never from an `IsScalarTower lvl.OL lvl.L (baseChangeSplittingField (K' :=
 lvl.L) Pn)` instance search — see the module docstring for why that route is avoided. -/
 theorem Level.algebraMap_OSelf_next_eq (lvl : Level K) (Pn : lvl.OL[X])
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
@@ -183,8 +178,8 @@ omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (IsLocalRing.ResidueField 
   [IsFractionRing O K] in
 /-- **The `Splits` invariant transports one level up.** `Q`'s image, known to split over `lvl.L`
 (its self-composite), maps further to split over the next level's field, via `Polynomial.Splits.map`
-plus `Polynomial.map_map` plus `Level.algebraMap_OSelf_next_eq`. Generalizes `splits_divX_map_K2P2`
-(`§75`), whose proof is exactly this shape one level down. -/
+plus `Polynomial.map_map` plus `Level.algebraMap_OSelf_next_eq`. Generalizes `splits_divX_map_K2P2`,
+whose proof is exactly this shape one level down. -/
 theorem Level.splits_next (lvl : Level K) (Pn : lvl.OL[X])
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {Q : O[X]}
     (hSplits : letI := lvl.instAlgebraOSelf (O := O); (Q.map (algebraMap O lvl.L)).Splits) :
@@ -200,7 +195,7 @@ theorem Level.splits_next (lvl : Level K) (Pn : lvl.OL[X])
     (Level.algebraMap_OSelf_next_eq lvl Pn hOK)] at hmap
 
 omit [Finite (IsLocalRing.ResidueField ↥(ValuativeRel.valuation K).valuationSubring)] in
-/-- **`Level.splits_next`, checked against the real `splits_divX_map_K2P2` (`§75`)**: applying it at
+/-- **`Level.splits_next`, checked against the real `splits_divX_map_K2P2`**: applying it at
 `level_K_1`, fed `splits_divX_map_K_1` (free from `K_1`'s own construction) for the base case,
 produces exactly `splits_divX_map_K2P2`'s statement. -/
 example {P : O[X]}
@@ -212,10 +207,9 @@ example {P : O[X]}
 
 omit [Finite (IsLocalRing.ResidueField O)]
   [Finite (IsLocalRing.ResidueField ↥(ValuativeRel.valuation K).valuationSubring)] in
-/-- **`Level.splits_next`, run twice, at the `K_2 → K_3` depth this arc has never reached for this
-fact before** — instantiation, not recovery (`§83`'s own discipline: no pre-existing
-`splits_divX_map_K3P3`/similar exists in this repo to compare against, checked by `grep` before
-writing this file). -/
+/-- **`Level.splits_next`, run twice, reaching the `K_2 → K_3` depth** — instantiation, not
+recovery: no pre-existing `splits_divX_map_K3P3`/similar exists in this repo to compare against
+(checked by `grep` before writing this file). -/
 example {P : O[X]}
     (P₂ : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring
       (K_1 (K := K) P)))[X]) (P₃ : (O_K2 (K := K) P₂)[X])

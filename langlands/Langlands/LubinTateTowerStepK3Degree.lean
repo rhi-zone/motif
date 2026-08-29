@@ -23,9 +23,8 @@ LubinTateTowerStepConcrete.lean`), built from `exists_eisenstein_tower_step_K_1`
 This file mirrors that same scope decision one level up: `finrank_K_3_eq_residueCard` below takes an
 analogous `hγfin` hypothesis rather than deriving `γ`'s existence from `exists_eisenstein_tower_
 step_K_2`'s output, which lives in the *nested* `O_{K_2}` type (`Langlands/
-LubinTateTowerStepConcreteK2.lean`) and would need transporting to the flat spelling first
-(`ROADMAP.md §74`'s "what remains" note) — that transport is a separate, not-yet-attempted piece of
-work, out of scope here.
+LubinTateTowerStepConcreteK2.lean`) and would need transporting to the flat spelling first — that
+transport is not built here.
 
 ## Main results
 
@@ -181,8 +180,7 @@ theorem adjoin_root_eq_top_K_3 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {
 
 /-! ## `[K_3 : baseChangeSplittingField] = q` -/
 
-/-- **`Module.finrank (K2P2 P₂) (K_3 P₃) = residueCard O`** — `[K_3 : baseChangeSplittingField] = q`, the third genuine
-tower-step degree computation of the Lubin-Tate arc. Takes `hγfin : Module.finrank (K2P2 P₂)
+/-- **`Module.finrank (K2P2 P₂) (K_3 P₃) = residueCard O`** — `[K_3 : baseChangeSplittingField] = q`. Takes `hγfin : Module.finrank (K2P2 P₂)
 (K2P2 P₂)⟮γ⟯ = residueCard O` as an external hypothesis (see the module docstring for why — the
 existence of such a `γ` at a *concrete* `P₃` needs `exists_eisenstein_tower_step_K_2`'s output
 transported from the nested `O_{K_2}` spelling, out of scope here); `adjoin_root_eq_top_K_3`

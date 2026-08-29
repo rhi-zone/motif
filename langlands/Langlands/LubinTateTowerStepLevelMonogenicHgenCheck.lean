@@ -7,23 +7,23 @@ import Langlands.LubinTateTowerStepMonogenic
 import Langlands.LubinTateTowerStepMonogenicK3
 
 /-!
-# Item-1 gap `ROADMAP.md §86` left open: does the generic monogenicity theorem, fed the *derived*
-`hgen`, still agree with the concrete hand-written theorems?
+# Does the generic monogenicity theorem, fed the *derived* `hgen`, still agree with the concrete
+hand-written theorems?
 
-`§86` derived `Level.natDegree_minpoly_eq_finrank` (the generic `hgen`) but did not re-check that
-`Level.adjoin_eq_integralClosure_next` (`§83`), fed *that* derived `hgen` rather than an externally
-assumed one, still produces the same monogenicity fact as `adjoin_eq_integralClosure_K_2`
+`Level.natDegree_minpoly_eq_finrank` (the generic `hgen`) needs checking against
+`Level.adjoin_eq_integralClosure_next`: fed *that* derived `hgen` rather than an externally assumed
+one, does it still produce the same monogenicity fact as `adjoin_eq_integralClosure_K_2`
 (`Langlands/LubinTateTowerStepMonogenic.lean`) and `adjoin_eq_integralClosure_K_3`
-(`Langlands/LubinTateTowerStepMonogenicK3.lean`) at the two real concrete depths. This file is
+(`Langlands/LubinTateTowerStepMonogenicK3.lean`) at the two real concrete depths? This file is
 exactly that check, at both depths, `rfl`.
 
-What the `rfl` does and does not establish, unchanged from every other `rfl` check in this arc
-(`§82`–`§86`): both sides are proofs of a `Prop` (an equation between subalgebras), so definitional
-proof irrelevance makes the check about whether the two *statements* elaborate to the same type —
-which is the real content here, since it is exactly what could fail if the derived `hgen`'s stated
-type did not match what `Level.adjoin_eq_integralClosure_next`'s `hgen` argument expects, or if the
-generic theorem's conclusion, instantiated, did not line up with the concrete theorem's own
-statement. It is not an independent re-proof of monogenicity.
+**What the `rfl` does and does not establish**: both sides are proofs of a `Prop` (an equation
+between subalgebras), so definitional proof irrelevance makes the check about whether the two
+*statements* elaborate to the same type — which is the real content here, since it is exactly what
+could fail if the derived `hgen`'s stated type did not match what
+`Level.adjoin_eq_integralClosure_next`'s `hgen` argument expects, or if the generic theorem's
+conclusion, instantiated, did not line up with the concrete theorem's own statement. It is not an
+independent re-proof of monogenicity.
 
 * At `K_1 → K_2` (`level_K_1`): `adjoin_eq_integralClosure_K_2` takes `hirr` as an **explicit**
   hypothesis, so the check simply reuses the caller-supplied `hirr` on both sides.
@@ -33,11 +33,11 @@ statement. It is not an independent re-proof of monogenicity.
   check derives `hirr` the identical way before feeding it to `Level.adjoin_eq_integralClosure_next`,
   matching what the concrete theorem's own proof does line for line.
 
-Both checks needed `letI := (level_K_2 …).algL; letI := (level_K_2 …).finiteDim` active before
-`IsFractionRing (level_K_2 …).OL (level_K_2 …).L` resolves for the `irreducible_map_of_
-isWeaklyEisensteinAt_associated` call at the `K_2 → K_3` depth — the same `§83`-documented pattern
-(`Level.isDiscreteValuationRing_OL`/`Level.isDomain_OL`'s own derivation) applied here to a different
-consumer of the same two `letI`s; not a new elaboration-cost finding.
+Both checks need `letI := (level_K_2 …).algL; letI := (level_K_2 …).finiteDim` active before
+`IsFractionRing (level_K_2 …).OL (level_K_2 …).L` resolves for the
+`irreducible_map_of_isWeaklyEisensteinAt_associated` call at the `K_2 → K_3` depth (the same pattern
+`Level.isDiscreteValuationRing_OL`/`Level.isDomain_OL` need internally), applied here to a different
+consumer of the same two `letI`s.
 -/
 
 noncomputable section

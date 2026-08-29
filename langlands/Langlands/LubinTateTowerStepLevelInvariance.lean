@@ -5,51 +5,47 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import Langlands.LubinTateTowerStepLevelDegree
 
 /-!
-# `piTorsion`-invariance and the degree theorem, generically in `Level` (`ROADMAP.md` §86)
+# `piTorsion`-invariance and the degree theorem, generically in `Level`
 
-`§85` narrowed what stands between `Level.FPiEval_algebraMap_mem_adjoin` and the `∀ n` degree
-theorem to precisely three items: a generic `FaithfulSMul O lvl.L`, a generic roots-multiset
-transport along the level-change ring map, and reapplication of the already-generic
-`piTorsion_one_sdiff_zero_eq_roots_toFinset` at two levels. This file supplies all three, closes
-`piTorsion_one_K_2_eq_algebraMap_image`/`_K_3_eq_algebraMap_image`'s generic form, and then the
-whole degree chain that was blocked on it — `adjoin_root_eq_top`, `hgen`, and
-`finrank_K_n_eq_residueCard` — all checked `rfl`-equal to the two hand-written concrete depths.
+Getting the `∀ n` degree theorem generic in `Level` needs three ingredients: a generic
+`FaithfulSMul O lvl.L`, a generic roots-multiset transport along the level-change ring map, and
+reapplication of the already-generic `piTorsion_one_sdiff_zero_eq_roots_toFinset` at two levels.
+This file supplies all three, closes `piTorsion_one_K_2_eq_algebraMap_image`/
+`_K_3_eq_algebraMap_image`'s generic form, and then the whole degree chain built on it —
+`adjoin_root_eq_top`, `hgen`, and `finrank_K_n_eq_residueCard` — all checked `rfl`-equal to the two
+hand-written concrete depths.
 
-## What the three items actually turned out to be
+## What the three ingredients turn out to be
 
-* **`FaithfulSMul O lvl.L` is mechanical, as `§84` guessed** — checked by real elaboration, not
-  assumed: `Level.faithfulSMul_OSelf` is `IsFractionRing.injective O K` composed with
-  `(algebraMap K lvl.L).injective`, through `Level.algebraMap_OSelf_eq`'s (`§84`) factorization of
-  the self-composite. It needs no hypothesis beyond the ambient `[IsFractionRing O K]` the whole
-  arc already carries. The next-level analogue (`Level.faithfulSMul_O_next`, the generic
-  `K_2.instFaithfulSMul_O`/`K_3.instFaithfulSMul_O`) is the same composition one hop longer,
-  through `Level.algebraMap_O_eq_comp_L` (`§83`).
-* **The roots-multiset transport needs no new general-purpose lemma.** `§85` flagged this as
-  possibly Mathlib-shaped work. Checked against Mathlib directly before writing anything:
-  `Polynomial.Monic.roots_map_of_card_eq_natDegree`
-  (`Mathlib/Algebra/Polynomial/Roots.lean`) and `Polynomial.Splits.roots_map`
-  (`Mathlib/Algebra/Polynomial/Splits.lean`) already state exactly the multiset transport, and
-  `Multiset.toFinset_map` converts it to the `Finset.image` form. What was genuinely missing is
-  only this repo's own algebra-map bookkeeping — `Level.map_algebraMap_O_next_eq_map`, the generic
-  `divX_map_algebraMap_O_K_2_eq_map`/`_K_3_eq_map`, which is `Polynomial.map_map` plus the
-  composite identity `Level.algebraMap_OSelf_comp_next`. Adding a "general" roots-transport lemma
-  here would have duplicated Mathlib, so none was added.
-* **`piTorsion_one_sdiff_zero_eq_roots_toFinset` transfers unchanged**, as `§85` predicted: it is
-  already generic in its own field parameter (`Langlands/LubinTateRootCount.lean`), and the two
-  instantiations need only `hOK`/`hπnorm` at each level. At `lvl.L` those come from `hnormL`
-  through `Level.norm_algebraMap_OSelf` (new here, one line); at the next level they are
-  `Level.hOK_transport`/`Level.hπnorm_transport` (`§83`) unchanged.
+* **`FaithfulSMul O lvl.L` is mechanical**: `Level.faithfulSMul_OSelf` is
+  `IsFractionRing.injective O K` composed with `(algebraMap K lvl.L).injective`, through
+  `Level.algebraMap_OSelf_eq`'s factorization of the self-composite. It needs no hypothesis beyond
+  the ambient `[IsFractionRing O K]`. The next-level analogue (`Level.faithfulSMul_O_next`, the
+  generic `K_2.instFaithfulSMul_O`/`K_3.instFaithfulSMul_O`) is the same composition one hop longer,
+  through `Level.algebraMap_O_eq_comp_L`.
+* **The roots-multiset transport needs no new general-purpose lemma.**
+  `Polynomial.Monic.roots_map_of_card_eq_natDegree` (`Mathlib/Algebra/Polynomial/Roots.lean`) and
+  `Polynomial.Splits.roots_map` (`Mathlib/Algebra/Polynomial/Splits.lean`) already state exactly
+  the multiset transport, and `Multiset.toFinset_map` converts it to the `Finset.image` form. What
+  was genuinely missing is only this repo's own algebra-map bookkeeping —
+  `Level.map_algebraMap_O_next_eq_map`, the generic `divX_map_algebraMap_O_K_2_eq_map`/`_K_3_eq_map`,
+  which is `Polynomial.map_map` plus the composite identity `Level.algebraMap_OSelf_comp_next`.
+* **`piTorsion_one_sdiff_zero_eq_roots_toFinset` transfers unchanged**: it is already generic in
+  its own field parameter (`Langlands/LubinTateRootCount.lean`), and the two instantiations need
+  only `hOK`/`hπnorm` at each level. At `lvl.L` those come from `hnormL` through
+  `Level.norm_algebraMap_OSelf` (new here, one line); at the next level they are
+  `Level.hOK_transport`/`Level.hπnorm_transport` unchanged.
 
 ## The degree chain, which follows once invariance closes
 
 With invariance generic, `adjoin_root_eq_top_K_2`/`_K_3`'s proof generalizes verbatim
 (`Level.adjoin_root_eq_top`), since every other ingredient was already generic:
-`Level.norm_lt_one_of_root` and `Level.exists_piTorsion_translate_of_root` (`§82`/`§83`),
-`Level.FPiEval_algebraMap_mem_adjoin` (`§85`), and `Polynomial.IsSplittingField.adjoin_rootSet`,
+`Level.norm_lt_one_of_root` and `Level.exists_piTorsion_translate_of_root`,
+`Level.FPiEval_algebraMap_mem_adjoin`, and `Polynomial.IsSplittingField.adjoin_rootSet`,
 which applies to `baseChangeSplittingField (K' := lvl.L) Pn` by that combinator's own construction at every level.
 
-`hgen` — the hypothesis `Level.exists_tower_step_next`/`Level.adjoin_eq_integralClosure_next` have
-taken externally since `§83` — is then **derivable, not assumed**: `Level.natDegree_minpoly_eq_finrank`
+`hgen` — the hypothesis `Level.exists_tower_step_next`/`Level.adjoin_eq_integralClosure_next` take
+externally — is then **derivable, not assumed**: `Level.natDegree_minpoly_eq_finrank`
 is `IntermediateField.adjoin.finrank` applied to `Level.adjoin_root_eq_top`'s conclusion, with `β`'s
 integrality free from `Algebra.IsIntegral.of_finite`. The degree theorem itself
 (`Level.finrank_next_eq_residueCard`) is `IntermediateField.finrank_top'` against the same
@@ -59,7 +55,7 @@ conclusion, exactly as the two concrete versions are.
 
 Four `example`s, each a fully-applied generic term checked `rfl`-equal to the corresponding
 hand-written concrete theorem (proof irrelevance witnessing that the two *statements* elaborate to
-the same `Prop` — the discipline `§82`–`§85` already use):
+the same `Prop`):
 
 * `Level.piTorsion_one_next_eq_algebraMap_image` at `level_K_1` = `piTorsion_one_K_2_eq_algebraMap_image`
 * the same at `level_K_2` = `piTorsion_one_K_3_eq_algebraMap_image`
@@ -67,24 +63,23 @@ the same `Prop` — the discipline `§82`–`§85` already use):
 * the same at `level_K_2` = `finrank_K_3_eq_residueCard`
 
 The `K_2 → K_3` instances feed the generic `Splits` datum as `Level.splits_next (level_K_1) P₂ hOK
-(splits_divX_map_K_1 P)` (`§84`), i.e. the induction actually runs one hop before being consumed.
+(splits_divX_map_K_1 P)`, i.e. the induction actually runs one hop before being consumed.
 
-## What this does not close, and the precise reason
+## What this file does not close, and why
 
 **Residue-field preservation (`residueFieldEquiv_K_2`/`_K_3`'s generic form) is not closed here**,
-and it is not blocked on mathematics: attempted for real this pass, and abandoned on an
-elaboration-cost obstacle that was diagnosed rather than forced. The generic step assembles from
-pieces that all exist — `Level.adjoin_eq_integralClosure_next` (`§76`/`§83`, now feedable the
-derived `hgen`), `Algebra.adjoin_singleton_eq_top_of_adjoin_eq_integralClosure`,
+and the obstacle is elaboration cost, not mathematics. The generic step would assemble from pieces
+that all exist — `Level.adjoin_eq_integralClosure_next` (feedable the derived `hgen`),
+`Algebra.adjoin_singleton_eq_top_of_adjoin_eq_integralClosure`,
 `mem_maximalIdeal_of_isDistinguishedAt_root`, `IsLocalRing.residueFieldEquivOfAdjoinSingleton`, and
 `residueFieldEquiv_integralClosure_integralClosure` for the nested→flat bridge — but applying
 `IsLocalRing.residueFieldEquivOfAdjoinSingleton` to the *real* `hβmem`/`hadjS` terms over an
 abstract `lvl` exceeds the default `maxHeartbeats` in `whnf`. Measured with `set_option diagnostics
 true`: 90565 `Membership.mem`, 89736 `Set`, 50194 `integralClosure`, 46028 `SetLike.coe`, 44525
 `Set.Mem` unfoldings, dragging 751 `baseChangeSplittingField`/`SplittingField` and the `Ideal.Quotient`/`RingCon`
-quotient internals underneath them. Two things were checked and ruled out, rather than assumed: the
-same application with *opaque* hypotheses of the same shape elaborates in seconds, and an explicit
-type ascription on `hβmem` does not help — so this is the `§72`-class structural `whnf` walk over
+quotient internals underneath them. Two things were checked and ruled out: the same application
+with *opaque* hypotheses of the same shape elaborates in seconds, and an explicit type ascription
+on `hβmem` does not help — so this is a structural `whnf` walk over
 `↥(integralClosure lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn))`'s set-membership unfolding, not an instance
 search and not a two-committed-instances diamond. Per this project's no-shim rule no
 `maxHeartbeats` override was added; the piece is left open with this measurement on the record.
@@ -128,7 +123,7 @@ variable {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [Valuativ
   [Algebra O K] [IsFractionRing O K]
 
 /-- **The self-composite preserves `K`'s norm on `O`'s image**: `‖algebraMap O lvl.L c‖ =
-‖algebraMap O K c‖`, immediately from `Level.algebraMap_OSelf_eq` (`§84`) and `hnormL`. This is the
+‖algebraMap O K c‖`, immediately from `Level.algebraMap_OSelf_eq` and `hnormL`. This is the
 generic form of the computation `K_1.hOK_transport`/`K_1.hπnorm_transport` each do by hand, and it
 supplies both the `hOK`- and the `hπnorm`-shaped hypotheses that
 `piTorsion_one_sdiff_zero_eq_roots_toFinset` needs at `lvl.L` itself. -/
@@ -141,12 +136,11 @@ theorem Level.norm_algebraMap_OSelf (lvl : Level K)
   show ‖algebraMap K lvl.L (algebraMap O K c)‖ = ‖algebraMap O K c‖
   exact hnormL _
 
-/-- **`algebraMap O lvl.L` is injective**, for the self-composite `Level.instAlgebraOSelf` (`§84`)
-— the `Level`-generic `K_1.instFaithfulSMul`, and the gap `§84`/`§85` each named as still open.
-`§84` predicted it would be mechanical; checked here by real elaboration, it is: the composite is
+/-- **`algebraMap O lvl.L` is injective**, for the self-composite `Level.instAlgebraOSelf`
+— the `Level`-generic `K_1.instFaithfulSMul`. The composite is
 `algebraMap K lvl.L ∘ algebraMap O K`, injective as a ring hom out of a field composed with
-`IsFractionRing.injective`. It needs no hypothesis beyond the ambient `[IsFractionRing O K]` the
-whole arc already carries — in particular no `hOK` and no norm data. -/
+`IsFractionRing.injective`. It needs no hypothesis beyond the ambient `[IsFractionRing O K]`
+— in particular no `hOK` and no norm data. -/
 theorem Level.faithfulSMul_OSelf (lvl : Level K) :
     letI := lvl.instAlgebraOSelf (O := O)
     FaithfulSMul O lvl.L := by
@@ -158,7 +152,7 @@ theorem Level.faithfulSMul_OSelf (lvl : Level K) :
 
 /-- **`algebraMap O (baseChangeSplittingField (K' := lvl.L) Pn)` is injective** — the `Level`-generic
 `K_2.instFaithfulSMul_O`/`K_3.instFaithfulSMul_O`. The same composition one hop longer, reading the
-three factors off `Level.algebraMap_O_eq_comp_L` (`§83`). -/
+three factors off `Level.algebraMap_O_eq_comp_L`. -/
 theorem Level.faithfulSMul_O_next (lvl : Level K) (Pn : lvl.OL[X])
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
     letI := lvl.instAlgebraO Pn hOK
@@ -170,9 +164,9 @@ theorem Level.faithfulSMul_O_next (lvl : Level K) (Pn : lvl.OL[X])
     (algebraMap K lvl.L).injective).comp (IsFractionRing.injective O K)
 
 /-- **`algebraMap lvl.L (baseChangeSplittingField (K' := lvl.L) Pn) ∘ algebraMap O lvl.L = algebraMap O (baseChangeSplittingField (K' :=
-lvl.L) Pn)`**, as a `RingHom` equality. Bridges `Level.algebraMap_O_eq_comp_L` (`§83`, which factors
-the next-level composite through `K`) with `Level.algebraMap_OSelf_eq` (`§84`, which identifies
-`algebraMap O lvl.L` with that same `K`-route) — the same combination `§85` performed inline inside
+lvl.L) Pn)`**, as a `RingHom` equality. Bridges `Level.algebraMap_O_eq_comp_L` (which factors
+the next-level composite through `K`) with `Level.algebraMap_OSelf_eq` (which identifies
+`algebraMap O lvl.L` with that same `K`-route) — the same combination used inline inside
 `Level.FPiEval_algebraMap_mem_adjoin`, extracted here as a standalone `RingHom` identity so that
 `Polynomial.map_map` can consume it directly. -/
 theorem Level.algebraMap_OSelf_comp_next (lvl : Level K) (Pn : lvl.OL[X])
@@ -216,7 +210,7 @@ under a systematic substitution, with nothing `n`-specific in it.
 
 `hSplits` (`Q := P.divX`'s image splits over `lvl.L`) is genuinely level-indexed induction data, not
 derivable from `Level`: it is free at the base from `K_1 P`'s own construction
-(`splits_divX_map_K_1`) and propagates upward by `Level.splits_next` (`§84`).
+(`splits_divX_map_K_1`) and propagates upward by `Level.splits_next`.
 
 Proof: at each of `lvl.L` and `baseChangeSplittingField (K' := lvl.L) Pn`, `piTorsion hπ hf 1 \ {0}` is the root set of
 `Q`'s image (`piTorsion_one_sdiff_zero_eq_roots_toFinset`, already generic in its own field
@@ -293,10 +287,10 @@ variable (lvl : Level K) [IsDomain lvl.OL] [IsDiscreteValuationRing lvl.OL]
 
 `baseChangeSplittingField (K' := lvl.L) Pn` is by construction the splitting field of `Pn`'s image over `lvl.L`, hence
 generated by its roots (`Polynomial.IsSplittingField.adjoin_rootSet`). Every root `β'` differs from
-`β` by a `piTorsion hπ hf 1`-translate (`Level.exists_piTorsion_translate_of_root`, `§83`), and by
+`β` by a `piTorsion hπ hf 1`-translate (`Level.exists_piTorsion_translate_of_root`), and by
 `Level.piTorsion_one_next_eq_algebraMap_image` (above) that translate is the `algebraMap`-image of
 an `lvl.L`-torsion point `t`, so `β' = F_π(β, algebraMap t) ∈ lvl.L⟮β⟯` by
-`Level.FPiEval_algebraMap_mem_adjoin` (`§85`); `β` lies in its own adjoin. -/
+`Level.FPiEval_algebraMap_mem_adjoin`; `β` lies in its own adjoin. -/
 theorem Level.adjoin_root_eq_top (Pn : lvl.OL[X])
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1)
     (hnormL : letI := lvl.algL; ∀ x : K, ‖algebraMap K lvl.L x‖ = ‖x‖)
@@ -345,8 +339,8 @@ theorem Level.adjoin_root_eq_top (Pn : lvl.OL[X])
 (baseChangeSplittingField (K' := lvl.L) Pn)` — the chosen root really does generate the next field.
 
 This hypothesis has been carried externally by `Level.irreducible_root_next`,
-`Level.exists_tower_step_next` and `Level.adjoin_eq_integralClosure_next` since `§83`, which is
-where `§83`/`§84` both located the remaining obstacle to a self-contained `∀ n` step. It follows
+`Level.exists_tower_step_next` and `Level.adjoin_eq_integralClosure_next` — the remaining
+obstacle to a self-contained `∀ n` step. It follows
 from `Level.adjoin_root_eq_top` by `IntermediateField.finrank_top'` and
 `IntermediateField.adjoin.finrank`; `β`'s integrality over `lvl.L` is free from
 `Algebra.IsIntegral.of_finite`, `baseChangeSplittingField (K' := lvl.L) Pn` being finite over `lvl.L`. -/
@@ -431,7 +425,7 @@ example {P : O[X]}
         hPdist hPdeg := rfl
 
 /-- **Invariance, `K_2 → K_3`, `rfl`-recovery**: the same generic theorem at `level_K_2`, fed the
-`Splits` datum propagated one hop by `Level.splits_next` (`§84`), types exactly as
+`Splits` datum propagated one hop by `Level.splits_next`, types exactly as
 `piTorsion_one_K_3_eq_algebraMap_image`'s own statement. -/
 example {P : O[X]}
     (P₂ : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)))[X])
@@ -451,7 +445,7 @@ example {P : O[X]}
 
 /-- **The degree theorem, `K_1 → K_2`, `rfl`-recovery** against `finrank_K_2_eq_residueCard`.
 The concrete version's extra `hα'coe : (α' : K_1 P) = α` argument is the inessential
-scaffolding `§82` already identified; the generic theorem does not need it. -/
+scaffolding the generic theorem does not need. -/
 example {P : O[X]}
     (P₂ : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)))[X])
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1)
@@ -480,7 +474,7 @@ example {P : O[X]}
         hPdeg hu₂ heq₂ hα'irr hP₂dist hassoc hdeg hα'norm hα'coe hβroot hβfin := rfl
 
 /-- **The degree theorem, `K_2 → K_3`, `rfl`-recovery** against `finrank_K_3_eq_residueCard` —
-the first time this arc has the degree computation stated once and checked at both real depths. -/
+the degree computation stated once and checked at both real depths. -/
 example {P : O[X]}
     (P₂ : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)))[X])
     [IsLocalRing (O_K2 (K := K) P₂)] [IsDiscreteValuationRing (O_K2 (K := K) P₂)]

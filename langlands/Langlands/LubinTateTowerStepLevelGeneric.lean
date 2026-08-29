@@ -5,44 +5,40 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import Langlands.LubinTateTowerStepBundleOL
 
 /-!
-# `§78`/`§79`'s generic `Algebra K K_n`/norm-bound pieces, restated against the bundled `Level`
-structure (`ROADMAP.md` §81)
+# `Algebra K K_n`/norm-bound generic pieces, restated against the bundled `Level` structure
 
-`§80` built `Level` and checked that it avoids `§79`'s `O_L`-type diamond for exactly one piece of
-the chain (the norm bound, `Level.norm_le_one_of_mem_OL`/`Level.norm_le_one_of_mem_algebraMap_OL`),
-and named as its own "most useful next step": *"restate `§78`'s `instAlgebraK_of_algebraL`/
-`hnorm_K_of_algebraL` against `Level` (replacing the loose `[Algebra K L]` `variable` those theorems
-currently take with a `lvl : Level K` argument), checking whether `Level` can absorb all of
-`§78`/`§79`'s generic pieces under one bundled argument rather than one per theorem."* This file does
-exactly that, for all four of `§78`/`§79`'s generic pieces (not just the norm bound `§80` already
-exercised): `instAlgebraK_of_algebraL`, `hnorm_K_of_algebraL`,
-`norm_le_one_of_algebraMap_le_one_of_algebraL`, `injective_algebraMap_comp_of_algebraL`.
+`Level` already avoids the `O_L`-type diamond for one piece of the chain — the norm bound
+(`Level.norm_le_one_of_mem_OL`/`Level.norm_le_one_of_mem_algebraMap_OL`). This file restates the
+remaining four generic pieces (`instAlgebraK_of_algebraL`, `hnorm_K_of_algebraL`,
+`norm_le_one_of_algebraMap_le_one_of_algebraL`, `injective_algebraMap_comp_of_algebraL`, each
+originally parametrized by a free `[Algebra K L]` hypothesis) against the bundled `Level` structure
+instead, replacing that loose `variable` with a single `lvl : Level K` argument.
 
 ## Why this is mechanical, not a new diamond risk
 
-Every one of `§78`/`§79`'s four generic pieces is either (a) a direct `RingHom.comp`/`.toAlgebra`
-term with no `Algebra.ofSubsemiring`-style typeclass search (`instAlgebraK_of_algebraL`,
-`hnorm_K_of_algebraL`, both consuming `[Algebra K L]` only via ordinary `algebraMap` application), or
-(b) not dependent on `[Algebra K L]` at all (`norm_le_one_of_algebraMap_le_one_of_algebraL`,
+Each of the four generic pieces is either (a) a direct `RingHom.comp`/`.toAlgebra` term with no
+`Algebra.ofSubsemiring`-style typeclass search (`instAlgebraK_of_algebraL`, `hnorm_K_of_algebraL`,
+both consuming `[Algebra K L]` only via ordinary `algebraMap` application), or (b) not dependent on
+`[Algebra K L]` at all (`norm_le_one_of_algebraMap_le_one_of_algebraL`,
 `injective_algebraMap_comp_of_algebraL` — confirmed by their own `omit [Algebra K L]`/lack of use in
 `Langlands/LubinTateTowerStepInductiveAlgebraK.lean`). None of them ever names `O_L`'s *type* — the
-one construction `§79`'s independent-hypothesis attempt hit a genuine diamond on. So restating them
-against `Level lvl` is a thin, `letI := lvl.algL`-activated wrapper around the already-general
-`L`-parametrized versions, at `L := lvl.L` — no new elaboration-cost or diamond risk is introduced,
-confirmed by the concrete checks below actually closing at default heartbeats.
+one construction that an earlier independent-hypothesis attempt hit a genuine diamond on. So
+restating them against `Level lvl` is a thin, `letI := lvl.algL`-activated wrapper around the
+already-general `L`-parametrized versions, at `L := lvl.L` — no new elaboration-cost or diamond risk
+is introduced, confirmed by the concrete checks below actually closing at default heartbeats.
 
 ## Main results
 
 * `instAlgebraK_of_Level`, `algebraMap_K_eq_of_Level`, `hnorm_K_of_Level` : the `Level`-parametrized
-  restatements of `§78`'s three generic pieces.
+  restatements of the `[Algebra K L]`-dependent generic pieces.
 * `norm_le_one_of_algebraMap_le_one_of_Level`, `injective_algebraMap_comp_of_Level` : the
-  `Level`-parametrized restatements of `§79`'s two generic pieces.
-* Two families of concrete checks, mirroring `§78`/`§79`'s own `funext`+`rfl` discipline exactly, at
-  both `level_K_1` (`L := K_1 P`) and `level_K_2` (`L := baseChangeSplittingField (K' := K_1 P) P₂`, the `§78`-established
-  next depth): `instAlgebraK_of_Level`/`hnorm_K_of_Level` recover `K_2.instAlgebraK`/`K_2.hnorm_K`
-  exactly at `level_K_1`, and `hnorm_K_K_3`'s statement (the `K_3`-depth fact `§78` derived — there is
-  no dedicated `K_3.instAlgebraK`/`K_3.hnorm_K` declaration anywhere in this repo, confirmed by grep
-  before writing this file, matching `§78`'s own established scope) at `level_K_2`;
+  `Level`-parametrized restatements of the `[Algebra K L]`-independent generic pieces.
+* Two families of concrete checks, mirroring the original `funext`+`rfl` discipline exactly, at
+  both `level_K_1` (`L := K_1 P`) and `level_K_2` (`L := baseChangeSplittingField (K' := K_1 P) P₂`):
+  `instAlgebraK_of_Level`/`hnorm_K_of_Level` recover `K_2.instAlgebraK`/`K_2.hnorm_K`
+  exactly at `level_K_1`, and `hnorm_K_K_3`'s statement (there is no dedicated
+  `K_3.instAlgebraK`/`K_3.hnorm_K` declaration anywhere in this repo, confirmed by grep before
+  writing this file) at `level_K_2`;
   `norm_le_one_of_algebraMap_le_one_of_Level`, composed with `norm_le_one_of_mem_integralClosure`,
   recovers `K_2.norm_le_one_of_mem_O_K1`/`K_3.norm_le_one_of_mem_O_K2` exactly at both depths, and
   `injective_algebraMap_comp_of_Level`, composed with `Subtype.coe_injective`, recovers
@@ -51,12 +47,11 @@ confirmed by the concrete checks below actually closing at default heartbeats.
 
 ## What this does not test or claim
 
-**Not attempted**: the connecting-identity/transitivity/invariance/degree/monogenicity chain — `§78`'s
-own repeatedly-unrevised "most important next obstacle" (formalizing "level `n`'s data" as an actual
-Lean argument type usable by *that* chain, not just the `Algebra K K_n`/norm-bound pieces this file
-and `§80` together now cover). **Not claimed**: that `Level` is the final answer to that question —
-only that it absorbs the four generic pieces `§78`/`§79` built without friction, checked at both
-concrete depths this arc has real data for.
+**Not attempted**: the connecting-identity/transitivity/invariance/degree/monogenicity chain —
+formalizing "level `n`'s data" as an actual Lean argument type usable by *that* chain, not just the
+`Algebra K K_n`/norm-bound pieces this file covers. **Not claimed**: that `Level` is the final
+answer to that question — only that it absorbs these four generic pieces without friction, checked
+at both concrete depths this repo has real data for.
 -/
 
 @[expose] public section
@@ -135,8 +130,8 @@ example :
       (K_2.instAlgebraK (K := K) (P := P) P₂') := rfl
 
 /-- `hnorm_K_of_Level`, instantiated at `level_K_1` with `hnorm_K_K_1` as the base case, agrees with
-`K_2.hnorm_K`'s statement (a type-check, `§78`'s own "recorded to make the base-case instantiation
-explicit and reusable" discipline). -/
+`K_2.hnorm_K`'s statement — recorded as a type-check to make the base-case instantiation explicit
+and reusable. -/
 theorem hnorm_K_of_level_K_1 :
     letI := (level_K_1 (K := K) (P := P)).algL
     letI := instAlgebraK_of_Level (level_K_1 (K := K) (P := P)) P₂'
@@ -144,8 +139,7 @@ theorem hnorm_K_of_level_K_1 :
   hnorm_K_of_Level (level_K_1 (K := K) (P := P)) P₂' (hnorm_K_K_1 (K := K) (P := P))
 
 /-- `norm_le_one_of_algebraMap_le_one_of_Level`, composed with `norm_le_one_of_mem_integralClosure`
-(the caller's own responsibility, matching `§79`'s own composition discipline), recovers
-`K_2.norm_le_one_of_mem_O_K1` exactly. -/
+(the caller's own responsibility), recovers `K_2.norm_le_one_of_mem_O_K1` exactly. -/
 example :
     (fun c => K_2.norm_le_one_of_mem_O_K1 (K := K) (P := P) (P₂ := P₂') c) =
     (fun c => norm_le_one_of_algebraMap_le_one_of_Level (level_K_1 (K := K) (P := P)) P₂'
@@ -170,7 +164,7 @@ variable (P₂ : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSub
 variable (P₃ : (O_K2 (K := K) P₂)[X])
 
 /-- `hnorm_K_of_Level`, instantiated at `level_K_2` with `hnorm_K_K_2` as its `hnormL`, agrees with
-`hnorm_K_K_3`'s statement — the `K_3`-depth fact `§78` derived, now reached via `Level` instead of a
+`hnorm_K_K_3`'s statement — reached via `Level` instead of a
 free `L` variable. -/
 theorem hnorm_K_of_level_K_2 :
     letI := (level_K_2 (K := K) (P := P) P₂).algL

@@ -5,18 +5,15 @@ import Mathlib.RingTheory.LocalRing.ResidueField.Basic
 /-!
 # The general inductive Lubin-Tate tower step: Eisenstein-ness at a moving base
 
-`ROADMAP.md`'s `§44` milestone closed `Gal(K_1/K) ≃* (O/π)ˣ` (the level-`1` Lubin-Tate extension)
-and named, as the natural next step, generalizing to the tower `K_n := K(F_π[π^n])`. A prior
-research-only scoping pass identified the DIRECT route — applying `LubinTateWeierstrassPreparation`
-to `iter f n` (`Langlands.LubinTate.iter`, already fully generic over `n`, `IsLubinTatePoly (π^n)
-(q^n) (iter f n)`, `Langlands.LubinTateIterate.isLubinTatePoly_iter`) — as DEAD for `n ≥ 2`: the
-Weierstrass factor's own constant-coefficient-associate fact
+Once `Gal(K_1/K) ≃* (O/π)ˣ` is known for the level-`1` Lubin-Tate extension, the natural next step is
+generalizing to the tower `K_n := K(F_π[π^n])`. The DIRECT route — applying
+`LubinTateWeierstrassPreparation` to `iter f n` (`Langlands.LubinTate.iter`, already fully generic
+over `n`, `IsLubinTatePoly (π^n) (q^n) (iter f n)`, `Langlands.LubinTateIterate.isLubinTatePoly_iter`)
+— is DEAD for `n ≥ 2`: the Weierstrass factor's own constant-coefficient-associate fact
 (`Langlands.LubinTateWeierstrassPreparation.coeff_one_associated_of_eq_mul`) ties `Q_n`'s constant
 term to an associate of `(iter f n).coeff 1 = π ^ n`
 (`Langlands.LubinTateIterate.coeff_one_iter`), which lies in `𝔪 ^ n ⊆ 𝔪 ^ 2` once `n ≥ 2` — exactly
-what `Polynomial.irreducible_of_eisenstein_criterion` excludes. **Re-verified here by direct
-computation, not assumed**: `coeff_one_associated_of_eq_mul` and `coeff_one_iter` are read together
-above, confirming the claim.
+what `Polynomial.irreducible_of_eisenstein_criterion` excludes.
 
 The classical route (Serre, *Local Fields* Ch. IV; Washington Ch. 7) is instead **inductive over
 fields**: `K_n = K_{n-1}(α_n)`, where `α_n` is chosen so `f(α_n) = α_{n-1}` for `α_{n-1}` a fixed
@@ -82,30 +79,26 @@ polynomial the induction needs).
 
 ## Why no bridge is needed for this half
 
-The task this file responds to asked, as a design decision already made upstream, for a general
-`ValuativeRel ↔ spectralNorm`/`NormedField` bridge reusing
+A general `ValuativeRel ↔ spectralNorm`/`NormedField` bridge reusing
 `Langlands.TotallyRamifiedEisenstein.isEisensteinAt_minpoly_of_isUniformizer` (a totally-ramified
 Eisenstein theorem stated for `O := ↥(ValuativeRel.valuation K).valuationSubring`, the *specific*
-`ValuativeRel`-canonical valuation subring, not an abstract DVR). Reading that theorem's proof
-against `LubinTateEisensteinQ.lean`'s abstract-`O` machinery (as used throughout the rest of the
-Lubin-Tate arc: `[IsDiscreteValuationRing O] [Algebra O K] [IsFractionRing O K]`, with `O`'s image in
-`K`'s closed unit ball an explicit hypothesis `hOK`, *not* derived from `O` being literally the
-valuation subring) shows why: `isEisensteinAt_minpoly_of_isUniformizer`'s proof needs `hcoeffs : ∀ i,
-(minpoly K π).coeff i ∈ O`, obtained via `mem_valuationSubring_iff_norm_le_one` — i.e. it needs `O` to
-contain **every** element of `K` of norm `≤ 1`, not merely to have its own image land inside the
-closed unit ball (`hOK`'s direction). This is a strictly stronger fact than `hOK` supplies, and is
-false for an *arbitrary* abstract `O` satisfying only `hOK`: `hOK` is compatible with `O`'s image
-being a proper subring of the closed unit ball. Closing this gap for an *arbitrary* `O'` would need
-proving `O'` literally equals (or is isomorphic to) `(valuation K').valuationSubring` for some
-`ValuativeRel K'` compatible with `K'`'s norm — exactly `ROADMAP.md`'s long-tracked "gap 3" (`grep -n
-"gap 3" ROADMAP.md`), independently identified across at least four prior Phase 2b passes (the
-thirty-ninth through forty-second) as a **standing, unresolved, general architectural question**, not
-specific to this tower-generalization task. Those passes' repeated finding — checked again here, not
-merely cited — is that at *concrete* instantiations (`O := v.adicCompletionIntegers F`, `K :=
-v.adicCompletion F`) the needed instances resolve automatically via `#synth` (the ambient `Valued`
-structure already supplies a compatible `ValuativeRel`), so the bridge is a non-problem there; but no
-general bridge from an *abstract* `hOK`-style `O` to a `ValuativeRel`-canonical valuation subring has
-ever been built or is attempted here.
+`ValuativeRel`-canonical valuation subring, not an abstract DVR) is not built, and this file does not
+need it. Reading that theorem's proof against `LubinTateEisensteinQ.lean`'s abstract-`O` machinery (as
+used throughout the rest of the Lubin-Tate arc: `[IsDiscreteValuationRing O] [Algebra O K]
+[IsFractionRing O K]`, with `O`'s image in `K`'s closed unit ball an explicit hypothesis `hOK`, *not*
+derived from `O` being literally the valuation subring) shows why: `isEisensteinAt_minpoly_of_isUniformizer`'s
+proof needs `hcoeffs : ∀ i, (minpoly K π).coeff i ∈ O`, obtained via `mem_valuationSubring_iff_norm_le_one`
+— i.e. it needs `O` to contain **every** element of `K` of norm `≤ 1`, not merely to have its own
+image land inside the closed unit ball (`hOK`'s direction). This is a strictly stronger fact than
+`hOK` supplies, and is false for an *arbitrary* abstract `O` satisfying only `hOK`: `hOK` is
+compatible with `O`'s image being a proper subring of the closed unit ball. Closing this gap for an
+*arbitrary* `O'` would need proving `O'` literally equals (or is isomorphic to) `(valuation
+K').valuationSubring` for some `ValuativeRel K'` compatible with `K'`'s norm — a standing, unresolved,
+general architectural question, not specific to this tower-generalization task. At *concrete*
+instantiations (`O := v.adicCompletionIntegers F`, `K := v.adicCompletion F`) the needed instances
+resolve automatically via `#synth` (the ambient `Valued` structure already supplies a compatible
+`ValuativeRel`), so the bridge is a non-problem there; but no general bridge from an *abstract*
+`hOK`-style `O` to a `ValuativeRel`-canonical valuation subring has been built.
 
 **This file's Eisenstein-existence step does not need that bridge at all.** Weierstrass preparation
 (`PowerSeries.exists_isWeierstrassFactorization`) needs only `g.map (residue O') ≠ 0` and `[
@@ -122,7 +115,7 @@ throughout, so they apply verbatim to `P'` here with no new bridging work, once 
 Frac(O')` are supplied. What remains genuinely open — constructing `O'` itself (see below) — is a
 different problem from the `ValuativeRel` bridge, and is not attempted here either.
 
-## What remains open — the moving-base construction (`ROADMAP.md`'s task step 5)
+## What remains open — the moving-base construction
 
 This file takes `O'`, `ψ`, and `α'` as **hypotheses** — it does not construct `O_{n-1}` from `O_{n-2}`
 and a chosen torsion generator. Constructing it (as, e.g., the integral closure of `O` in `K_{n-1} :=
@@ -134,25 +127,20 @@ The `[IsAdicComplete (maximalIdeal O') O']` hypothesis this section carries is n
 the concrete `O' := O_{K_1} := ↥(NormedField.valuation (K := K_1 P)).valuationSubring`
 instantiation, given `K_1 P` separable over `K` and `K`'s residue field finite
 (`IsDedekindDomain.HeightOneSpectrum.isAdicComplete_valuationSubring_K_1_of_adicCompletion`,
-`Langlands/LubinTateSplittingFieldDVR.lean`, closed in `ROADMAP.md`'s Phase 2c forty-first pass).
-That was **not** the case when this file was first written — `LubinTateSplittingFieldDegreeConcrete.
-lean`'s docstring recorded `IsAdicComplete` as unavailable in this Mathlib even at the *base* `O`.
-What remains open, and is a **separate, unclosed problem** from the `IsAdicComplete` gap, is
-constructing `O_{n-1}` itself as an instance of an *abstract* `IsDomain`/`IsDiscreteValuationRing`
-`O'` satisfying this section's hypothesis package — i.e. proving `O_{K_1}` (or, at later steps,
-`O_{K_{n-1}}`) *is* an `IsDomain`/`IsDiscreteValuationRing` ring in the sense this file's variables
-require (straightforward at `n = 1`, via `LubinTate.isDiscreteValuationRing_valuationSubring_K_1`)
-and, crucially, has the **same residue field as `O`** ("total ramification", load-bearing at every
-step of the induction — not attempted anywhere in this arc yet, see `ROADMAP.md`'s Phase 2c
-forty-first pass for what is and isn't available for that). Checked directly against Mathlib
-(`grep`, no hits for any lemma constructing `IsDiscreteValuationRing`/`IsAdicComplete` instances for
-the integral closure of a DVR in a `spectralNorm`-normed finite extension) and against this repo
-(`Langlands.TowerValuationSubring`/`Langlands.MonogenicMaximalOrder` build comparable
-integral-closure machinery only inside the `ValuativeRel`/`ValuationSubring` formalism, not the
-`spectralNorm`/`NormedField` one `K_1 := Q.SplittingField` (`Langlands.LubinTateSplittingField`)
-actually uses). This residue-field-preservation gap, not `IsAdicComplete`, is now the genuine
-remaining blocker for turning this file's per-step Eisenstein fact into an actual `baseChangeSplittingField`
-instantiation — see `ROADMAP.md` for the precise scope handed to whoever continues this.
+`Langlands/LubinTateSplittingFieldDVR.lean`).
+What remains open, separately from that, is constructing `O_{n-1}` itself as an instance of an
+*abstract* `IsDomain`/`IsDiscreteValuationRing` `O'` satisfying this section's hypothesis package —
+i.e. proving `O_{K_1}` (or, at later steps, `O_{K_{n-1}}`) *is* an `IsDomain`/`IsDiscreteValuationRing`
+ring in the sense this file's variables require (straightforward at `n = 1`, via
+`LubinTate.isDiscreteValuationRing_valuationSubring_K_1`) and, crucially, has the **same residue field
+as `O`** ("total ramification", load-bearing at every step of the induction). Mathlib has no lemma
+constructing `IsDiscreteValuationRing`/`IsAdicComplete` instances for the integral closure of a DVR in
+a `spectralNorm`-normed finite extension, and this repo's `Langlands.TowerValuationSubring`/
+`Langlands.MonogenicMaximalOrder` build comparable integral-closure machinery only inside the
+`ValuativeRel`/`ValuationSubring` formalism, not the `spectralNorm`/`NormedField` one
+`K_1 := Q.SplittingField` (`Langlands.LubinTateSplittingField`) actually uses. This residue-field-preservation
+gap, not `IsAdicComplete`, is what stands between this file's per-step Eisenstein fact and an actual
+`baseChangeSplittingField` instantiation.
 -/
 
 @[expose] public section

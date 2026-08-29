@@ -6,50 +6,48 @@ import Langlands.LubinTateTowerStepBaseNorm
 
 /-!
 # The `Algebra K K_n` composite and its norm-preservation fact, generalized to an arbitrary tower
-depth (`ROADMAP.md` §78)
+depth
 
-`ROADMAP.md` §73's "next concrete step toward the `∀ n` family" flagged this precisely: "the
-`Algebra K K_n` composite itself must generalize. `K_2.instAlgebraK` is a concrete two-hop `def`; an
-inductive family needs an analogous `K_n.instAlgebraK` built inductively (composing the previous
-level's composite with one more `algebraMap`), which [was] not built or tested [there] — it is a
-genuinely new piece, not a mechanical repeat of what closed."
+The `Algebra K K_n` composite (`K_2.instAlgebraK`, `Langlands/LubinTateTowerStepBaseNorm.lean`) is a
+concrete two-hop `def` hardcoded to the intermediate field `K_1 P`; an inductive `∀ n` family needs
+an analogous `K_n.instAlgebraK` built inductively (composing the previous level's composite with one
+more `algebraMap`) instead of a separate hand-written definition per level. This file builds that
+piece generically.
 
-This file builds exactly that piece, generically. `Langlands/LubinTateTowerStepSplittingField.lean`'s
-`NormExtension` section already establishes that `LubinTate.baseChangeSplittingField`'s `NontriviallyNormedField`/
-`IsUltrametricDist`/`CompleteSpace`/`NormedSpace` package is `n`-independent by construction (generic
-in `baseChangeSplittingField`'s own two free parameters `O'`/`K'` — confirmed directly by that file's own docstring and
-body, re-confirmed here by reading it before writing this file). What was *not* yet generic is the
-`Algebra K K_n` composite (`K_2.instAlgebraK`, `Langlands/LubinTateTowerStepBaseNorm.lean`) and its
-norm-preservation corollary (`K_2.hnorm_K`) — both hardcoded to the concrete intermediate field
-`K_1 P`. This file replaces that hardcoding with an abstract intermediate field `L`, so the exact same
-lemma applies at every tower depth: first at `L := K_1 P` (recovering `K_2.instAlgebraK`/`K_2.hnorm_K`
-verbatim, checked below), then at `L := baseChangeSplittingField P₂` (deriving the analogous `K_3`-level composite and
-norm fact *for free*, with no new per-level file, checked below), and so on for any further level —
-the proof never uses anything specific to which level `L` sits at, only that `[Algebra K L]` holds
-and that `K`'s norm already extends exactly to `L` (`hnormL`, itself the previous level's own output).
+`Langlands/LubinTateTowerStepSplittingField.lean`'s `NormExtension` section already establishes that
+`LubinTate.baseChangeSplittingField`'s `NontriviallyNormedField`/`IsUltrametricDist`/`CompleteSpace`/`NormedSpace`
+package is `n`-independent by construction (generic in `baseChangeSplittingField`'s own two free parameters
+`O'`/`K'`). What was *not* yet generic is the `Algebra K K_n` composite (`K_2.instAlgebraK`,
+`Langlands/LubinTateTowerStepBaseNorm.lean`) and its norm-preservation corollary (`K_2.hnorm_K`) —
+both hardcoded to the concrete intermediate field `K_1 P`. This file replaces that hardcoding with an
+abstract intermediate field `L`, so the exact same lemma applies at every tower depth: first at
+`L := K_1 P` (recovering `K_2.instAlgebraK`/`K_2.hnorm_K` verbatim, checked below), then at
+`L := baseChangeSplittingField P₂` (deriving the analogous `K_3`-level composite and norm fact *for
+free*, with no new per-level file, checked below), and so on for any further level — the proof never
+uses anything specific to which level `L` sits at, only that `[Algebra K L]` holds and that `K`'s
+norm already extends exactly to `L` (`hnormL`, itself the previous level's own output).
 
 ## What this does and does not generalize
 
-**Generalizes**: the `Algebra K K_n` composite and its norm-preservation fact — precisely the piece
-`§73` identified as missing. This is a genuine, reusable, `∀`-shaped induction on this one piece of
-tower data: `hnorm_K_of_algebraL`, applied at level `n`'s own output, produces level `n+1`'s fact,
-using the *same* lemma at every step (not a new lemma per level).
+**Generalizes**: the `Algebra K K_n` composite and its norm-preservation fact. This is a genuine,
+reusable, `∀`-shaped induction on this one piece of tower data: `hnorm_K_of_algebraL`, applied at
+level `n`'s own output, produces level `n+1`'s fact, using the *same* lemma at every step (not a new
+lemma per level).
 
-**Does not generalize** (deliberately out of scope, per `§73`'s own scoping and confirmed here by
-direct check before writing): the flat ring-of-integers construction itself (`O_{K_n} :=
-↥(integralClosure ↥𝒪[K] K_n)`, `§73`) is **not** rebuilt as a function of an abstract `[Algebra K L]`
-*hypothesis* here — doing so would reproduce exactly `§67`'s original obstacle (an ambient, abstract
-`Algebra K L` variable makes `Algebra.ofSubsemiring`'s instance search for `Algebra ↥𝒪[K] L` time out
-at `200,000` heartbeats; only a *concrete*, already-elaborated `letI`-bound term avoids this, `§73`'s
-own load-bearing finding). `instAlgebraK_of_algebraL` below sidesteps this entirely: it is built as an
-explicit `RingHom.comp`/`.toAlgebra` term, needing no typeclass search of the base-ring-restriction
-kind at all, so genericity over an abstract `L` costs nothing here — but the O-flat construction
-itself must still be instantiated per concrete level, with a concrete `letI`, exactly as `§73`
-established. The `Algebra O K_n` composite (`K_2.instAlgebraO`, the *outer ring* `O`'s four-hop
-version one level further, `Langlands/LubinTateTowerStepK3.lean`) is also not generalized here — it
-threads through `towerHom`/the flat `O_{K_{n-1}} → 𝒪[K]`-vs-`O_{K_{n-2}}` distinction that changed
-shape between `K_2.instAlgebraO`'s three-hop and `K_3.instAlgebraO`'s four-hop version (`§73`), and is
-a separate, larger piece of work not attempted this pass.
+**Does not generalize** (deliberately out of scope): the flat ring-of-integers construction itself
+(`O_{K_n} := ↥(integralClosure ↥𝒪[K] K_n)`) is **not** rebuilt as a function of an abstract
+`[Algebra K L]` *hypothesis* here — doing so would hit the same obstacle as before: an ambient,
+abstract `Algebra K L` variable makes `Algebra.ofSubsemiring`'s instance search for
+`Algebra ↥𝒪[K] L` time out at `200,000` heartbeats; only a *concrete*, already-elaborated
+`letI`-bound term avoids this. `instAlgebraK_of_algebraL` below sidesteps this entirely: it is built
+as an explicit `RingHom.comp`/`.toAlgebra` term, needing no typeclass search of the
+base-ring-restriction kind at all, so genericity over an abstract `L` costs nothing here — but the
+O-flat construction itself must still be instantiated per concrete level, with a concrete `letI`.
+The `Algebra O K_n` composite (`K_2.instAlgebraO`, the *outer ring* `O`'s four-hop version one level
+further, `Langlands/LubinTateTowerStepK3.lean`) is also not generalized here — it threads through
+`towerHom`/the flat `O_{K_{n-1}} → 𝒪[K]`-vs-`O_{K_{n-2}}` distinction that changed shape between
+`K_2.instAlgebraO`'s three-hop and `K_3.instAlgebraO`'s four-hop version, and is a separate, larger
+piece of work.
 
 ## Main results
 
@@ -69,8 +67,7 @@ a separate, larger piece of work not attempted this pass.
 * `hnorm_K_K_2` : instantiating `hnorm_K_of_algebraL` at `L := K_1 P` with `hnorm_K_K_1` as the base
   case recovers `K_2.hnorm_K`'s statement.
 * `hnorm_K_K_3` : instantiating the generic lemma a *second* time, at `L := baseChangeSplittingField (K' := K_1 P) P₂`,
-  derives the `K_3`-level norm-preservation fact — with **no new per-level file**, the deliverable
-  `§73` scoped and did not build.
+  derives the `K_3`-level norm-preservation fact — with **no new per-level file**.
 -/
 
 @[expose] public section
@@ -101,7 +98,7 @@ variable (P₂ : O'[X])
 intermediate field `L`.** Built as an explicit `RingHom.comp`/`.toAlgebra` term — no typeclass search
 of the `Algebra.ofSubsemiring` kind is involved, so genericity over an abstract `[Algebra K L]` costs
 nothing here (unlike the flat ring-of-integers construction, which genuinely does need a concrete
-term, per `§73`/this file's module docstring). Mirrors `K_2.instAlgebraK`, with `L` in place of the
+term, per this file's module docstring). Mirrors `K_2.instAlgebraK`, with `L` in place of the
 hardcoded `K_1 P`. -/
 @[reducible] def instAlgebraK_of_algebraL : Algebra K (baseChangeSplittingField (K' := L) P₂) :=
   ((algebraMap L (baseChangeSplittingField (K' := L) P₂)).comp (algebraMap K L)).toAlgebra
@@ -135,29 +132,27 @@ theorem hnorm_K_of_algebraL (hnormL : ∀ x : K, ‖algebraMap K L x‖ = ‖x�
 
 /-! ### Extending a norm bound / injectivity fact one hop further, into `baseChangeSplittingField (K' := L) P₂`
 
-`ROADMAP.md` §79's second generalized piece. `K_2.norm_le_one_of_mem_O_K1`/`norm_le_one_of_mem_
-O_K2_in_K2P2`+`K_3.norm_le_one_of_mem_O_K2` and `K_2.instFaithfulSMul_O_K1`/`K_3.instFaithfulSMul_
-O_K2` each split into two genuinely different pieces: (1) "`O_L`'s elements have norm `≤ 1`
-in `L` itself"/"the subring inclusion `O_L → L` is injective" — already fully general, no new
-lemma needed (`norm_le_one_of_mem_integralClosure`, `Subtype.coe_injective`, applied at `K' := K`);
-(2) "a bound/injectivity fact already established in `L` extends one hop further, into
-`baseChangeSplittingField (K' := L) P₂`" — genuinely repeated by hand at every level, generalized here.
+`K_2.norm_le_one_of_mem_O_K1`/`norm_le_one_of_mem_O_K2_in_K2P2`+`K_3.norm_le_one_of_mem_O_K2` and
+`K_2.instFaithfulSMul_O_K1`/`K_3.instFaithfulSMul_O_K2` each split into two genuinely different
+pieces: (1) "`O_L`'s elements have norm `≤ 1` in `L` itself"/"the subring inclusion `O_L → L` is
+injective" — already fully general, no new lemma needed (`norm_le_one_of_mem_integralClosure`,
+`Subtype.coe_injective`, applied at `K' := K`); (2) "a bound/injectivity fact already established in
+`L` extends one hop further, into `baseChangeSplittingField (K' := L) P₂`" — genuinely repeated by hand at
+every level, generalized here.
 
-**A first attempt at (2) generalized the *type* `O_L` itself** (taking `[Algebra ↥𝒪[K] L]` as an
-explicit ambient hypothesis, distinct from the `[Algebra K L]` this file's `Generic` section
-already carries) — this does **not** work: `norm_le_one_of_mem_integralClosure`'s own statement
-derives its `Algebra ↥𝒪[K'] L` instance internally via `Algebra.ofSubsemiring` from its own
-`[Algebra K' L]` parameter, which is a *syntactically different, non-unifying* instance from an
-independently-hypothesized one — applying the lemma then fails with an application type mismatch
-(the two `integralClosure ↥𝒪[K] L` types disagree on which `Algebra ↥𝒪[K] L` instance they carry,
-confirmed directly by the actual elaborator error, not inferred). This is a genuinely new
-instance-diamond finding, distinct from `§67`/`§73`'s (which was about `Algebra.ofSubsemiring`'s
-*search cost* over an abstract hypothesis, not about two independently-supplied instances
-disagreeing) — recorded here rather than forced past with a workaround. The fix taken below avoids
-the diamond entirely by never naming `O_L`'s type in the generic lemma at all: instead of taking a
-membership proof and deriving the bound, it takes the *already-established* bound in `L` as an
-explicit hypothesis, and extends it — the concrete `O_L`-membership step is left to the call site,
-using the existing, already-general `norm_le_one_of_mem_integralClosure` directly (its own
+Generalizing the *type* `O_L` itself for (2) (taking `[Algebra ↥𝒪[K] L]` as an explicit ambient
+hypothesis, distinct from the `[Algebra K L]` this file's `Generic` section already carries) does
+**not** work: `norm_le_one_of_mem_integralClosure`'s own statement derives its `Algebra ↥𝒪[K'] L`
+instance internally via `Algebra.ofSubsemiring` from its own `[Algebra K' L]` parameter, which is a
+*syntactically different, non-unifying* instance from an independently-hypothesized one — applying
+the lemma then fails with an application type mismatch (the two `integralClosure ↥𝒪[K] L` types
+disagree on which `Algebra ↥𝒪[K] L` instance they carry). This is an instance diamond distinct from
+the one elsewhere in this construction (which is about `Algebra.ofSubsemiring`'s *search cost* over
+an abstract hypothesis, not about two independently-supplied instances disagreeing). The fix taken
+below avoids the diamond entirely by never naming `O_L`'s type in the generic lemma at all: instead
+of taking a membership proof and deriving the bound, it takes the *already-established* bound in `L`
+as an explicit hypothesis, and extends it — the concrete `O_L`-membership step is left to the call
+site, using the existing, already-general `norm_le_one_of_mem_integralClosure` directly (its own
 `Algebra ↥𝒪[K] L` instance never has to be named or compared against another one). -/
 
 /-- **A norm bound already established in `L` extends unchanged into `baseChangeSplittingField (K' := L) P₂`** — the
@@ -211,10 +206,9 @@ exactly -/
 
 /-- **The generic composite, instantiated at `L := K_1 P`, carries the same `algebraMap` function as
 `K_2.instAlgebraK`** — checked directly (`rfl` at the `RingHom` level, cheap; the analogous check on
-the full bundled `Algebra` structure, attempted first, hit a `200,000`-heartbeat `isDefEq` timeout —
-recorded as a genuinely new, small elaboration-cost finding in `ROADMAP.md` §78, not merely claimed to
-not matter — comparing two `Algebra` structures forces `isDefEq` to walk their `toSMul`/`toModule`
-substructure too, not just the `algebraMap` ring hom the whole arc actually cares about; comparing the
+the full bundled `Algebra` structure, attempted first, hit a `200,000`-heartbeat `isDefEq` timeout,
+since comparing two `Algebra` structures forces `isDefEq` to walk their `toSMul`/`toModule`
+substructure too, not just the `algebraMap` ring hom that actually matters downstream; comparing the
 ring hom directly sidesteps that walk entirely). This is the operative sense in which the two
 constructions "agree": every downstream use only ever inspects `algebraMap`, never the raw `Algebra`
 term. -/
@@ -250,12 +244,11 @@ omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (IsLocalRing.ResidueField 
   [IsDiscreteValuationRing ↥(ValuativeRel.valuation K).valuationSubring] [IsFractionRing O K] in
 /-- **`K`'s norm extends exactly to `K_3`-shaped `baseChangeSplittingField (K' := baseChangeSplittingField (K' := K_1 P) P₂) P₃`** — derived by
 applying `hnorm_K_of_algebraL` a *second* time, at `L := baseChangeSplittingField (K' := K_1 P) P₂`, fed `hnorm_K_K_2` as
-its `hnormL`. **No new per-level file was needed for this** — the exact deliverable `§73`'s "next
-concrete step" flagged as missing (`K_n.instAlgebraK`/its norm fact, built inductively rather than
-hand-copied) is realized here, for real, at the concrete `n = 1 → 2 → 3` depth this arc has data for.
-Nothing in this proof or `hnorm_K_of_algebraL`'s own proof refers to `L` being `K_1`- or `baseChangeSplittingField`-shaped
-specifically — the same call would produce the `K_4`-level fact from this theorem's own conclusion,
-and so on indefinitely. -/
+its `hnormL`. No new per-level file is needed for this: `K_n.instAlgebraK`/its norm fact is built
+inductively rather than hand-copied, checked concretely at `n = 1 → 2 → 3`. Nothing in this proof or
+`hnorm_K_of_algebraL`'s own proof refers to `L` being `K_1`- or `baseChangeSplittingField`-shaped specifically —
+the same call would produce the `K_4`-level fact from this theorem's own conclusion, and so on
+indefinitely. -/
 theorem hnorm_K_K_3 :
     letI := K_2.instAlgebraK (K := K) (P := P) P₂
     letI := instAlgebraK_of_algebraL (K := K) (O' := P₃O)

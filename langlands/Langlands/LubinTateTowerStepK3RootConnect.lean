@@ -12,24 +12,21 @@ import Langlands.LubinTateRootTranslation
 /-!
 # Norm-transport, connecting-identity, and transitivity infrastructure for the `K_2 → K_3` step
 
-The `K_2 → K_3` analogue of `Langlands/LubinTateTowerStepRootConnect.lean`. **Update (`ROADMAP.md
-§74`): the theorem this file was previously blocked on, `norm_lt_one_of_aeval_P₃_eq_zero`, now
-closes**, against the *flat* `O_{K_2}` spelling `§73` switched to — see "History: the blocker, and
-how it closed" below. The connecting identity (`eval_f_eq_of_aeval_P₃_eq_zero`) and transitivity
-(`exists_piTorsion_translate_of_aeval_P₃_eq_zero`) close as well, built directly on top of it,
-mirroring `Langlands/LubinTateTowerStepRootConnect.lean`'s own structure at the `K_1 → K_2` step.
+The `K_2 → K_3` analogue of `Langlands/LubinTateTowerStepRootConnect.lean`: this file builds
+`norm_lt_one_of_aeval_P₃_eq_zero`, the connecting identity (`eval_f_eq_of_aeval_P₃_eq_zero`), and
+transitivity (`exists_piTorsion_translate_of_aeval_P₃_eq_zero`), mirroring
+`Langlands/LubinTateTowerStepRootConnect.lean`'s own structure at the `K_1 → K_2` step.
 **Invariance** (`piTorsion_one_K_3_eq_algebraMap_image`'s analogue) and the full degree computation
-(`[K_3 : baseChangeSplittingField] = q`) are **not built in this file** — see "What remains, and why it wasn't attempted"
-below.
+(`[K_3 : baseChangeSplittingField] = q`) are covered further down ("Invariance and the degree
+computation"); instantiation at a concrete `P₃` is **not built in this file**.
 
-**Update (`ROADMAP.md §73`):** `O_{K_2}` is now the *flat* spelling `↥(integralClosure ↥𝒪[K]
-(baseChangeSplittingField P₂))`, not the nested `↥(integralClosure O_{K_1} (baseChangeSplittingField P₂))` this docstring originally described
-(`§62`–`§72`). `norm_le_one_of_mem_O_K2_in_K2P2`'s `Langlands/IntegralClosureTower.lean` detour
-(mentioned below) is consequently **no longer needed** — with the flat spelling, `y.2` already is
-the fact `norm_le_one_of_mem_integralClosure` needs directly. `K_3.instFaithfulSMul_O_K2` also
-changed from `instance` to `theorem` (it now needs a `letI`-activated `Algebra ↥𝒪[K] (baseChangeSplittingField P₂)` to
-even state, so cannot be found by ordinary instance search without that `letI` already active — see
-`§73`).
+`O_{K_2}` is the *flat* spelling `↥(integralClosure ↥𝒪[K] (baseChangeSplittingField P₂))`, not the
+nested `↥(integralClosure O_{K_1} (baseChangeSplittingField P₂))`. With the flat spelling,
+`norm_le_one_of_mem_O_K2_in_K2P2`'s `Langlands/IntegralClosureTower.lean` detour (mentioned below)
+is unnecessary — `y.2` already is the fact `norm_le_one_of_mem_integralClosure` needs directly.
+`K_3.instFaithfulSMul_O_K2` is a `theorem`, not an `instance`: it needs a `letI`-activated
+`Algebra ↥𝒪[K] (baseChangeSplittingField P₂)` to even state, so it cannot be found by ordinary
+instance search without that `letI` already active.
 
 ## Naming, relative to the `K_1 → K_2` template
 
@@ -51,18 +48,15 @@ is replaced by `γ` (the `K_3`-level generator, root of `P₃`'s image).
   `↥𝒪[K]` directly, landing it in `integralClosure ↥𝒪[K] (baseChangeSplittingField P₂)` — applicable with `K' := K`
   (`K_2.hnorm_K` supplying `hnorm`, the same base-relative shortcut `Langlands/
   LubinTateTowerStepAdicCompleteK2.lean` already uses for `IsAdicComplete`).
-* **An elaboration-cost lesson that closed several pieces**: `FaithfulSMul`/injectivity goals
-  mentioning the doubly-`baseChangeSplittingField`-nested `K_3` type, closed via an explicit `(algebraMap ...).injective`
-  *dot-notation* term, do not terminate within several million heartbeats — the *same* fact, closed
-  via the named lemma application `RingHom.injective _` instead of dot notation, elaborates in a few
-  seconds. This closed `K_3.instFaithfulSMul_O_K2`/`K_3.instFaithfulSMul_O` (both needed — an earlier
-  draft of this docstring claimed only the `O`-relative one was needed, mirroring
-  `K_2.instFaithfulSMul_O_K1` being declared-but-unused at the `K_1 → K_2` step; that claim did not
-  survive contact with the next file's needs — see "What does not close" below). This is a **new,
-  narrower elaboration finding** than `Langlands/LubinTateTowerStepK3.lean`'s two (naming `O'`;
-  avoiding premature return-type ascription): dot-notation projection forces a different (and here,
-  catastrophically expensive) elaboration path than the equivalent named-lemma application, for this
-  specific type shape. `NonarchimedeanPowerSeriesEval.eval_map`'s general form hits an analogous
+* **An elaboration-cost caveat**: for `FaithfulSMul`/injectivity goals mentioning the doubly-
+  `baseChangeSplittingField`-nested `K_3` type, closing them via an explicit `(algebraMap ...).injective`
+  *dot-notation* term does not terminate within several million heartbeats, while the *same* fact
+  closed via the named lemma application `RingHom.injective _` instead of dot notation elaborates in
+  a few seconds. Dot-notation projection forces a different (and here, catastrophically expensive)
+  elaboration path than the equivalent named-lemma application, for this specific type shape. Both
+  `K_3.instFaithfulSMul_O_K2` and `K_3.instFaithfulSMul_O` are needed downstream (unlike
+  `K_2.instFaithfulSMul_O_K1`, which is declared but unused at the `K_1 → K_2` step).
+  `NonarchimedeanPowerSeriesEval.eval_map`'s general form hits an analogous
   "expected type has an unresolved implicit ring parameter" snag when its `hcomp` proof is supplied as
   a pointwise `rfl`; `eval_map_towerHom2` is proved by directly repeating `eval_map`'s own short proof
   (`unfold`/`congr`/`funext`/`rw [PowerSeries.coeff_map]`) rather than invoking the general lemma,
@@ -73,45 +67,39 @@ is replaced by `γ` (the `K_3`-level generator, root of `P₃`'s image).
   `[IsDiscreteValuationRing O]` hypothesis is threaded through, one level up, wherever `O_{K_2}`
   plays the "base ring" role).
 
-## History: the blocker, and how it closed (`ROADMAP.md §65`–`§74`)
+## Why the flat `O_{K_2}` spelling is used
 
-`norm_lt_one_of_aeval_P₃_eq_zero` — the `K_2 → K_3` analogue of `norm_lt_one_of_aeval_P₂_eq_zero` —
-was, against the *nested* `O_{K_2}` spelling, a genuine, sustained, unresolved elaboration-cost
-obstacle across five separate passes (`§65`–`§72`): every individual prerequisite instance/fact
-elaborated in 2–4 seconds alone, but combining any two of them in one declaration exceeded
-`400,000` heartbeats, and the full five-conjunct combination exceeded `8,000,000` heartbeats (40×
-default) with no result. `§72`'s `trace.Meta.isDefEq`-instrumented run identified the mechanism
-directly (not by inference): a large *reflexive* structural-congruence `isDefEq` walk (70,890+
-logged comparisons, every one a term compared against itself, all succeeding) over `O_{K_2}`'s own
-doubly-nested-`Subalgebra` type's definitional unfolding — cost scaling with unfolding *depth*, not
-a genuine two-instance diamond.
+Against the *nested* `O_{K_2}` spelling, `norm_lt_one_of_aeval_P₃_eq_zero` (the `K_2 → K_3` analogue
+of `norm_lt_one_of_aeval_P₂_eq_zero`) is a genuine, sustained elaboration-cost obstacle: every
+individual prerequisite instance/fact elaborates in 2–4 seconds alone, but combining any two of
+them in one declaration exceeds `400,000` heartbeats, and the full five-conjunct combination exceeds
+`8,000,000` heartbeats (40× default) with no result. A `trace.Meta.isDefEq`-instrumented run
+identified the mechanism directly (not by inference): a large *reflexive* structural-congruence
+`isDefEq` walk (70,890+ logged comparisons, every one a term compared against itself, all
+succeeding) over `O_{K_2}`'s own doubly-nested-`Subalgebra` type's definitional unfolding — cost
+scaling with unfolding *depth*, not a genuine two-instance diamond.
 
-**`§74` confirms directly**: against the *flat* `O_{K_2}` spelling `§73` switched to (one
-`integralClosure` layer instead of two), the exact same repro that timed out at `400,000`–
-`4,000,000` heartbeats under the nested spelling now elaborates **at or under default heartbeats
-(`200,000`), in seconds**, both for `§72`'s minimal `isUnit_one` repro and for the
-`Associated`-destructuring variant that previously needed `4,000,000` heartbeats. The full
-`norm_lt_one_of_aeval_P₃_eq_zero` theorem — never successfully drafted as a real declaration by any
-of `§65`–`§72` — closes as a genuine, `sorry`-free, non-scoped-test declaration for the first time
-in this arc. See `ROADMAP.md §74` for exact timings and the implication for the tower's
-representation choice.
+Against the *flat* `O_{K_2}` spelling (one `integralClosure` layer instead of two), the exact same
+repro that timed out at `400,000`–`4,000,000` heartbeats under the nested spelling elaborates **at
+or under default heartbeats (`200,000`), in seconds**, both for the minimal `isUnit_one` repro and
+for the `Associated`-destructuring variant that previously needed `4,000,000` heartbeats. The full
+`norm_lt_one_of_aeval_P₃_eq_zero` theorem closes as a genuine, `sorry`-free declaration only with
+this flat spelling.
 
-## `ROADMAP.md §75`: invariance and the degree computation close too
+## Invariance and the degree computation
 
-The gap this docstring previously described (invariance needing "`Q`'s image splits over `K2P2 P₂`
-too, not just over `K_1 P`", with no such lemma built) is **closed**: `splits_divX_map_K2P2` supplies
-exactly that fact, via Mathlib's fully general `Polynomial.Splits.map` (a polynomial already split
-over a field, mapped further along *any* ring hom out of that field, is still split over the target
-— no new Mathlib-level lemma was needed, only identifying the right composite via
-`K_2.algebraMap_O_eq_comp_K_1`). `piTorsion_one_K_3_eq_algebraMap_image` (this file) and
+`splits_divX_map_K2P2` supplies "`Q`'s image splits over `K2P2 P₂` too, not just over `K_1 P`", via
+Mathlib's fully general `Polynomial.Splits.map` (a polynomial already split over a field, mapped
+further along *any* ring hom out of that field, is still split over the target — no new Mathlib-level
+lemma was needed, only identifying the right composite via `K_2.algebraMap_O_eq_comp_K_1`).
+`piTorsion_one_K_3_eq_algebraMap_image` (this file) and
 `adjoin_root_eq_top_K_3`/`finrank_K_3_eq_residueCard` (`Langlands/LubinTateTowerStepK3Degree.lean`)
-now close as well, mirroring `Langlands/LubinTateTowerStepRootConnect.lean`/`LubinTateTowerStepDegree.
-lean`'s `K_1 → K_2` template essentially verbatim. See `ROADMAP.md §75` for the full account,
-including what still remains (instantiation at a *concrete* `P₃`, which needs `exists_eisenstein_
-tower_step_K_2`'s nested-`O_{K_2}`-typed output transported to the flat spelling — a separate,
-not-yet-attempted piece).
+close as well, mirroring `Langlands/LubinTateTowerStepRootConnect.lean`/`LubinTateTowerStepDegree.
+lean`'s `K_1 → K_2` template essentially verbatim. Instantiation at a *concrete* `P₃` needs
+`exists_eisenstein_tower_step_K_2`'s nested-`O_{K_2}`-typed output transported to the flat spelling,
+which is not built here.
 
-## Main results (closed)
+## Main results
 
 * `norm_le_one_of_mem_O_K2_in_K2P2` / `K_3.norm_le_one_of_mem_O_K2` : the bound theorem above, and its
   extension one hop further into `K_3`.
@@ -123,8 +111,7 @@ not-yet-attempted piece).
 * `eval_map_towerHom2` : naturality of `eval` under the four-hop-derived `O → O_{K_2}` structure map.
 * `towerHom2` : the `O → O_{K_2}` structure map itself.
 * `K_3.hOK_transport` : `K`'s uniform norm bound transports down to `K_3` unchanged.
-* `norm_lt_one_of_aeval_P₃_eq_zero` : a root of `P₃`'s image lies in the open unit ball of `K_3`
-  (`ROADMAP.md §74`).
+* `norm_lt_one_of_aeval_P₃_eq_zero` : a root of `P₃`'s image lies in the open unit ball of `K_3`.
 * `eval_f_eq_of_aeval_P₃_eq_zero` : the connecting identity, `eval f γ = algebraMap O_{K_2} K_3 β'`
   for `γ` a root of `P₃`'s image.
 * `exists_piTorsion_translate_of_aeval_P₃_eq_zero` : transitivity of the `piTorsion hπ hf 1`
@@ -132,9 +119,8 @@ not-yet-attempted piece).
 * `K_3.hπnorm_transport` : `K`'s strict uniformizer bound transports down to `K_3` unchanged.
 * `divX_map_algebraMap_O_K_3_eq_map` : `Q`'s image over `K_3` is `Q`'s image over `K2P2 P₂`, further
   mapped along `algebraMap (K2P2 P₂) K_3`.
-* `splits_divX_map_K2P2` : `Q`'s image splits completely over `K2P2 P₂` (`ROADMAP.md §75`).
-* `piTorsion_one_K_3_eq_algebraMap_image` : the `K2P2 P₂ → K_3` `piTorsion hπ hf 1`-invariance fact
-  (`ROADMAP.md §75`).
+* `splits_divX_map_K2P2` : `Q`'s image splits completely over `K2P2 P₂`.
+* `piTorsion_one_K_3_eq_algebraMap_image` : the `K2P2 P₂ → K_3` `piTorsion hπ hf 1`-invariance fact.
 -/
 
 @[expose] public section
@@ -161,7 +147,7 @@ variable {π : O} {f : O⟦X⟧} {P : O[X]} (P₂ : (↥(integralClosure
 /-! ## `O_{K_2}`'s elements, viewed in `baseChangeSplittingField P₂`, have norm at most `1` -/
 
 /-- **`O_{K_2}`'s elements, viewed in `baseChangeSplittingField P₂`, have norm at most `1`.** With the *flat* spelling
-`O_{K_2} := ↥(integralClosure ↥𝒪[K] (baseChangeSplittingField P₂))` (`ROADMAP.md §73`), `y.2` **already is** membership in
+`O_{K_2} := ↥(integralClosure ↥𝒪[K] (baseChangeSplittingField P₂))`, `y.2` **already is** membership in
 `integralClosure ↥𝒪[K] (baseChangeSplittingField P₂)` directly — `norm_le_one_of_mem_integralClosure` applies to `y`
 verbatim, with no `Langlands/IntegralClosureTower.lean` detour needed (unlike the nested spelling,
 where `y.2` was membership in `integralClosure O_{K_1} (baseChangeSplittingField P₂)` and had to be converted first). -/
@@ -185,7 +171,7 @@ automatically available the way it was for the nested spelling: Mathlib's
 `Algebra ↥S₀ A` for `S₀ : Subalgebra R S` given `[Algebra R S] [Algebra S A]`; for the *nested*
 spelling `R := O_{K_1}`, `Algebra O_{K_1} (baseChangeSplittingField P₂)` is free (`baseChangeSplittingField.instAlgebra`), but for the *flat*
 spelling `R := ↥𝒪[K]`, `Algebra ↥𝒪[K] (baseChangeSplittingField P₂)` is exactly `K_2.instAlgebraK`'s
-`Algebra.ofSubsemiring`-derived instance, which needs the `letI` active (`ROADMAP.md §73`). -/
+`Algebra.ofSubsemiring`-derived instance, which needs the `letI` active. -/
 theorem K_3.norm_le_one_of_mem_O_K2 (c : O_K2 (K := K) P₂) :
     letI := K_2.instAlgebraK (K := K) (P := P) P₂
     ‖algebraMap _ (K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃) c‖ ≤ 1 := by
@@ -200,11 +186,10 @@ theorem K_3.norm_le_one_of_mem_O_K2 (c : O_K2 (K := K) P₂) :
 
 /-- **`algebraMap O_{K_2} K_3` is injective.** Needed by `norm_coeff_map_of_isWeaklyEisensteinAt_
 associated`'s `[FaithfulSMul O_{K_2} K_3]` requirement (mirroring `K_2.instFaithfulSMul_O_K1`'s own
-role at the `K_1 → K_2` step — this pass's earlier module-docstring note that this instance "is not
-built here since nothing downstream needs it" was **wrong**, corrected here: it genuinely is needed,
-just not by the pieces built before this one). Built via the `intro a b hab` + separate `have`s
-style (not `rw` immediately followed by a composed `.comp` term), and `RingHom.injective _` (not
-dot notation) for the first hop — the same two fixes that closed `K_3.instFaithfulSMul_O`. -/
+role at the `K_1 → K_2` step, though unlike that instance, this one actually is used downstream).
+Built via the `intro a b hab` + separate `have`s style (not `rw` immediately followed by a composed
+`.comp` term), and `RingHom.injective _` (not dot notation) for the first hop — the same two fixes
+that closed `K_3.instFaithfulSMul_O`. -/
 theorem K_3.instFaithfulSMul_O_K2 :
     letI := K_2.instAlgebraK (K := K) (P := P) P₂
     FaithfulSMul (O_K2 (K := K) P₂)
@@ -235,7 +220,7 @@ theorem K_3.instFaithfulSMul_O_K2 :
 /-- **`algebraMap O (baseChangeSplittingField P₂)` [via `K_2.instAlgebraO`] equals `algebraMap O_{K_2} (baseChangeSplittingField P₂) ∘`
 the first three hops of `K_3.instAlgebraO`'s composite** (`O → ↥𝒪[K] → O_{K_2}`). By `rfl`, unlike
 `algebraMap_O_K_1_eq_comp_towerHom` (which needs a genuine proof at the `K → K_1 P` level) —
-**relative to the flat `O_{K_2}` spelling** (`ROADMAP.md §73`), the middle hop is `↥𝒪[K] → O_{K_2}`
+**relative to the flat `O_{K_2}` spelling**, the middle hop is `↥𝒪[K] → O_{K_2}`
 (the subalgebra inclusion), not `O_{K_1} → O_{K_2}` as with the nested spelling — `O_{K_2}`'s algebra
 structure over `baseChangeSplittingField P₂` and `K`'s two-hop composite (`K_2.instAlgebraK`) already agree definitionally
 once both are routed through the same `Algebra.ofSubsemiring`-derived instance (`letI`-activated),
@@ -332,7 +317,7 @@ theorem eval_map_towerHom2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {f : 
 structure map `Langlands/LubinTateTowerStep.lean`'s `TowerStep` section needs at `O' := O_{K_2}`.
 Mirrors `towerHom` one level up. **The middle hop is `↥𝒪[K] → O_{K_2}` (the subalgebra inclusion),
 not `O_{K_1} → O_{K_2}`**, since the flat `O_{K_2}` sits directly over `↥𝒪[K]`, not over `O_{K_1}`
-(`ROADMAP.md §73`) — so this composite uses `toValuationSubring hOK : O →+* ↥𝒪[K]` directly, rather
+— so this composite uses `toValuationSubring hOK : O →+* ↥𝒪[K]` directly, rather
 than the three-hop `towerHom hOK P : O →+* O_{K_1}`. -/
 def towerHom2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
     letI := K_2.instAlgebraK (K := K) (P := P) P₂
@@ -369,15 +354,14 @@ theorem K_3.hOK_transport (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
 
 /-- **A root of `P₃`'s image (via the `K2P2` polynomial route) lies in `K_3`'s open unit ball.**
 The `K_2 → K_3` analogue of `norm_lt_one_of_aeval_P₂_eq_zero` (`Langlands/
-LubinTateTowerStepRootConnect.lean`), closed here for the first time against the **flat** `O_{K_2}`
-spelling (`ROADMAP.md §73`/`§74`) — `§65`–`§72` diagnosed and never closed this theorem against the
-*nested* spelling, blocked on a severe `isDefEq`-cost obstacle now confirmed (`§74`) to be resolved
-by the flat switch. Same argument as `norm_lt_one_of_aeval_P₂_eq_zero`, one level up: `Langlands.
+LubinTateTowerStepRootConnect.lean`), provable against the **flat** `O_{K_2}` spelling but not
+against the *nested* spelling, which hits a severe `isDefEq`-cost obstacle (see the module
+docstring). Same argument as `norm_lt_one_of_aeval_P₂_eq_zero`, one level up: `Langlands.
 EisensteinRootNorm`'s ultrametric-only Eisenstein-polygon computation (no irreducibility over a base
 field needed), fed the norm data `norm_coeff_map_of_isWeaklyEisensteinAt_associated`
 (`Langlands.LubinTateEisensteinQ`) produces from `P₃`'s `O_{K_2}`-level Eisenstein data (`hP₃dist`/
 `hassoc`). `hβ'irr`/`hβ'norm` are carried as explicit hypotheses (not derived from `O_{K_2}`'s own
-construction), matching this arc's standing convention at every tower level. -/
+construction), matching the convention used at every tower level. -/
 theorem norm_lt_one_of_aeval_P₃_eq_zero (β' : O_K2 (K := K) P₂) (hβ'irr : Irreducible β')
     (hP₃dist : P₃.IsDistinguishedAt (maximalIdeal _)) (hassoc : Associated (P₃.coeff 0) β')
     (hdeg : 0 < P₃.natDegree)
@@ -580,7 +564,7 @@ theorem splits_divX_map_K2P2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
 
 /-- **`piTorsion hπ hf 1`, evaluated inside `K_3`, is exactly the `algebraMap (K2P2 P₂) K_3`-image
 of `piTorsion hπ hf 1` evaluated inside `K2P2 P₂`.** The `K_2 → K_3` analogue of `piTorsion_one_
-K_2_eq_algebraMap_image`, closing the gap `ROADMAP.md §74` left open: with `splits_divX_map_K2P2`
+K_2_eq_algebraMap_image`. With `splits_divX_map_K2P2`
 in hand, the argument mirrors the `K_1 → K_2` template exactly (`Q`'s image splits over both ends,
 `Polynomial.Monic.roots_map_of_card_eq_natDegree` transports the roots multiset along `algebraMap
 (K2P2 P₂) K_3`, `divX_map_algebraMap_O_K_3_eq_map` identifies the further-mapped polynomial with

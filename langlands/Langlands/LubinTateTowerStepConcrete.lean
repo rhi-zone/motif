@@ -248,10 +248,9 @@ moving base `O_{K_1}`.** Every hypothesis of that file's `TowerStep` section is 
 The conclusion is the level-2 Eisenstein polynomial: a monic degree-`q` `P₂` over `O_{K_1}`,
 Weierstrass factor of `f(X) - α'`, whose image over `K_1 P` is irreducible. The raw
 `IsDistinguishedAt`/`Associated (P₂.coeff 0) α'` data is also returned (not just the derived
-`Monic`/`Irreducible` facts) so downstream root-membership arguments (`ROADMAP.md` item 5's
-"connect `eval_map_towerHom` to the roots of `P₂`" step) can rebuild `P₂`'s Eisenstein-shape norm
-bound without re-invoking `exists_isWeierstrassFactorization_shifted` at a possibly-different
-existential witness. -/
+`Monic`/`Irreducible` facts) so downstream root-membership arguments connecting `eval_map_towerHom`
+to the roots of `P₂` can rebuild `P₂`'s Eisenstein-shape norm bound without re-invoking
+`exists_isWeierstrassFactorization_shifted` at a possibly-different existential witness. -/
 theorem exists_eisenstein_tower_step_K_1
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (hπ : Irreducible π)
     (hπnorm : ‖algebraMap O K π‖ < 1)
@@ -291,9 +290,9 @@ level. It is applied throughout this codebase at every tower step: at the litera
 (`baseChangeSplittingField (K' := K_1 P) P₂`, producing the level-2 Lubin-Tate extension over `K_1 P`'s
 image of the level-2 Eisenstein polynomial `P₂` from `exists_eisenstein_tower_step_K_1`), to build
 `K_3` (`Langlands/LubinTateTowerStepConcreteK3.lean`, `K' := K_2 P₂`), and inside the fully generic
-`Level.next` (`Langlands/LubinTateTowerStepLevelGeneric.lean`) at an arbitrary prior level's field.
-Renamed from `K_2` (`ROADMAP.md` §92) once its genuinely generic role — not "the second level"
-specifically — was recognized. Mirrors `LubinTate.K_1`'s own definition
+`Level.next` (`Langlands/LubinTateTowerStepLevelGeneric.lean`) at an arbitrary prior level's field —
+hence the name, reflecting its genuinely generic role rather than "the second level" specifically.
+Mirrors `LubinTate.K_1`'s own definition
 (`Langlands/LubinTateSplittingField.lean`) at the concrete `K' := K` instantiation, with no `divX`
 peel: `0` is not a root of `f(X) - α'`, so `P₂` itself, not `P₂.divX`, is the Eisenstein
 polynomial there. -/

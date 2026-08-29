@@ -5,15 +5,14 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import Langlands.LubinTateTowerStepLevelGeneric
 
 /-!
-# The connecting identity, generic in `Level` (`ROADMAP.md` §82)
+# The connecting identity, generic in `Level`
 
-`§80` built `Level` (bundling `L`, its normed-field/completeness instances, `algL : Algebra K L` as a
-plain stored field, and `finiteDim`) and `§81` restated `§78`/`§79`'s four `Algebra K K_n`/norm-bound
-generics against it, explicitly leaving as "not attempted" the piece `§78` had repeatedly named its
-"most important next obstacle": *"formalizing 'level `n`'s data' as an actual Lean argument type
-usable by [the connecting-identity/transitivity/invariance/degree/monogenicity] chain, not just the
-`Algebra K K_n`/norm-bound pieces this file and `§80` together now cover."* This file closes the
-connecting identity itself, generically.
+`Level` bundles `L`, its normed-field/completeness instances, `algL : Algebra K L` as a plain stored
+field, and `finiteDim`; the generic `Algebra K K_n`/norm-bound pieces built against it are elsewhere
+(`Langlands/LubinTateTowerStepLevelGeneric.lean`). This file closes the connecting identity itself,
+generically — the piece those files left unattempted: formalizing "level `n`'s data" as an actual
+Lean argument type usable by the connecting-identity/transitivity/invariance/degree/monogenicity
+chain.
 
 ## What the two concrete templates actually needed, diffed directly
 
@@ -41,11 +40,11 @@ Both templates' structure maps and `Algebra O K_{n+1}` composites turn out to be
 term** as their `Level`-generic counterparts, not merely equivalent — confirmed by `rfl`, not asserted:
 `Level.towerHom` is `towerHom hOK P` at `level_K_1` and `towerHom2 P₂ hOK` at `level_K_2`, and
 `Level.instAlgebraO` is `K_2.instAlgebraO` and `K_3.instAlgebraO` respectively. (`towerHom` goes
-`O → ↥𝒪[K] → O_{K_1}` and `towerHom2` goes `O → ↥𝒪[K] → O_{K_2}`; with the *flat* `O_{K_2}` spelling
-`§73` switched to, both are the single generic composite `(algebraMap ↥𝒪[K] lvl.OL).comp
-(toValuationSubring hOK)`. Under the nested spelling they would not have been.)
+`O → ↥𝒪[K] → O_{K_1}` and `towerHom2` goes `O → ↥𝒪[K] → O_{K_2}`; with the *flat* `O_{K_2}` spelling,
+both are the single generic composite `(algebraMap ↥𝒪[K] lvl.OL).comp
+(toValuationSubring hOK)`. Under a nested spelling they would not have been.)
 
-**A non-defeq pair found, and worked around by restating rather than bridging**: `§80`'s
+**A non-defeq pair found, and worked around by restating rather than bridging**:
 `Level.norm_le_one_of_mem_algebraMap_OL` states its bound against an `Algebra lvl.OL
 (baseChangeSplittingField (K' := lvl.L) P₂)` instance it introduces *itself*, by `letI`, as the explicit composite
 `((algebraMap lvl.L (baseChangeSplittingField …)).comp (algebraMap lvl.OL lvl.L)).toAlgebra`. Feeding it to
@@ -56,10 +55,10 @@ search) fails, with Lean reporting directly:
 > synthesized `(integralClosure (↥(ValuativeRel.valuation K).valuationSubring) lvl.L).toAlgebra`,
 > inferred `((algebraMap lvl.L (baseChangeSplittingField Pn)).comp (algebraMap lvl.OL lvl.L)).toAlgebra`
 
-These two *are* defeq at both concrete depths — that is exactly what `§80`'s own `funext`+`rfl`
+These two *are* defeq at both concrete depths — that is exactly what the `funext`+`rfl`
 checks against `K_2.norm_le_one_of_mem_O_K1`/`K_3.norm_le_one_of_mem_O_K2` establish — but not
-generically in `lvl`. This is **not** a diamond in `§79`'s sense (there is still exactly one stored
-`algL`, and both terms are functions of it); it is `§80`'s lemma having baked a *chosen* composite
+generically in `lvl`. This is **not** a diamond in the usual sense (there is still exactly one stored
+`algL`, and both terms are functions of it); it is that earlier lemma having baked a *chosen* composite
 into its statement where the concrete templates' statements use the search-found one. The fix taken
 is to restate the bound against the search-found instance (`Level.norm_le_one_of_mem_OL_next`,
 proved through `IsScalarTower.algebraMap_apply` exactly as `K_2.norm_le_one_of_mem_O_K1` and
@@ -70,21 +69,21 @@ which is also why the `rfl` checks below against the real theorems are meaningfu
 
 `Level K` is parametrized by `K` alone. The generator/Weierstrass data is not: it depends on `O`,
 on the Lubin-Tate series `f : O⟦X⟧`, and on `hOK` (through `Level.towerHom hOK`, which the Weierstrass
-equation names). Adding it to `Level` would therefore force all four of `§81`'s `Algebra K K_n`/
-norm-bound generics — none of which mention `O` or `f` at all — to carry it, and would break both
+equation names). Adding it to `Level` would therefore force the `Algebra K K_n`/
+norm-bound generics in `Langlands/LubinTateTowerStepLevelGeneric.lean` — none of which mention `O` or `f` at all — to carry it, and would break both
 concrete `Level` values. So the data goes in a separate `TowerStep f hOK` bundling `lvl : Level K`
-plus the step data, and `Level` is left exactly as `§80` built it.
+plus the step data, leaving `Level` itself unchanged.
 
 **No new diamond is introduced by the extension**, checked rather than assumed: every new field's type
 is built from `lvl.OL`, whose `CommRing`/`Algebra` structure is derived by ordinary typeclass search
-from the single stored `lvl.algL` (`§80`'s finding) — there is no second route to it, and the concrete
+from the single stored `lvl.algL` — there is no second route to it, and the concrete
 `TowerStep` values below elaborate at default heartbeats. The two `Prop`-class fields `[instDomain :
 IsDomain lvl.OL]`/`[instDVR : IsDiscreteValuationRing lvl.OL]` (needed to write `shifted` and
 `maximalIdeal lvl.OL` at all, and not derivable generically — no lemma in this repo constructs them,
 matching how both concrete templates obtain them: globally for `O_{K_1}`, as ambient hypotheses for
 `O_{K_2}`) cannot form a data-level diamond either, since `IsLocalRing` is reached through both and
 definitional proof irrelevance identifies the two routes. They are deliberately **not** promoted to
-global instances (matching `§80`'s treatment of `algL`); they are activated by `letI` at the one use
+global instances (matching `algL`'s own treatment); they are activated by `letI` at the one use
 site.
 
 ## Main results
@@ -106,8 +105,7 @@ site.
   concrete depth-2 level value is literally the generic successor of the depth-1 one.
 * `TowerStep`, `TowerStep.eval_f_eq_of_root` : the bundled step data and the connecting identity
   against it.
-* Two concrete checks, in this arc's established `rfl`-against-the-real-theorem discipline
-  (`§78`/`§80`/`§81`): the bundled theorem, instantiated at a `TowerStep` built over `level_K_1` from
+* Two concrete checks, `rfl`-against-the-real-theorem: the bundled theorem, instantiated at a `TowerStep` built over `level_K_1` from
   `eval_f_eq_of_aeval_P₂_eq_zero`'s own hypotheses (plus its `hα'coe` rewrite), is `rfl`-equal to
   `eval_f_eq_of_aeval_P₂_eq_zero` itself; instantiated at a `TowerStep` over `level_K_2`, it is
   `rfl`-equal to `eval_f_eq_of_aeval_P₃_eq_zero` itself.
@@ -120,8 +118,8 @@ concrete files derive transitivity (`exists_piTorsion_translate_of_aeval_P₂_eq
 `exists_piTorsion_translate_of_eval_f_eq`; the generic `hOK_transport` is not built here.
 **Not built**: any `TowerStep → TowerStep` successor map. `Level.next` supplies the *field* half of
 the induction step and is `rfl`-checked against the real depth-2 value, but producing the next
-step's generator/Weierstrass data is exactly what `exists_eisenstein_tower_step_K_2` does concretely
-(`ROADMAP.md §77`) and no generic version of that exists. **Not derived**: `Level.eval_f_eq_of_root`'s
+step's generator/Weierstrass data is exactly what `exists_eisenstein_tower_step_K_2` does concretely,
+and no generic version of that exists. **Not derived**: `Level.eval_f_eq_of_root`'s
 `hα'norm` hypothesis, carried explicitly here exactly as both concrete templates carry it.
 -/
 
@@ -151,7 +149,7 @@ variable {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [Valuativ
 Generalizes `towerHom` (`O → ↥𝒪[K] → O_{K_1}`) and `towerHom2` (`O → ↥𝒪[K] → O_{K_2}`) at once — and
 is `rfl`-equal to each at the corresponding concrete `Level`, checked below. The middle hop is the
 `lvl.OL` subalgebra inclusion out of `↥𝒪[K]`, which is available precisely because `Level.OL` derives
-its `Algebra ↥𝒪[K] lvl.L` from the structure's own stored `algL` (`ROADMAP.md §80`). -/
+its `Algebra ↥𝒪[K] lvl.L` from the structure's own stored `algL`. -/
 def Level.towerHom (lvl : Level K) (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) : O →+* lvl.OL :=
   letI := lvl.algL
   (algebraMap ↥(ValuativeRel.valuation K).valuationSubring lvl.OL).comp
@@ -195,9 +193,9 @@ omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (IsLocalRing.ResidueField 
   [Finite (IsLocalRing.ResidueField ↥(ValuativeRel.valuation K).valuationSubring)]
   [Algebra O K] [IsFractionRing O K] in
 /-- **`algebraMap lvl.OL (baseChangeSplittingField (K' := lvl.L) Pn)` is injective**, generic in `lvl` — the `Level`-level
-`K_2.instFaithfulSMul_O_K1`/`K_3.instFaithfulSMul_O_K2`, which `§81` recorded as deliberately left
-unbuilt (*"recovering `K_2.instFaithfulSMul_O_K1`/`K_3.instFaithfulSMul_O_K2` concretely needs an
-extra `faithfulSMul_iff_algebraMap_injective` unwrapping layer"*) and which
+`K_2.instFaithfulSMul_O_K1`/`K_3.instFaithfulSMul_O_K2`, left unbuilt elsewhere (recovering
+`K_2.instFaithfulSMul_O_K1`/`K_3.instFaithfulSMul_O_K2` concretely needs an
+extra `faithfulSMul_iff_algebraMap_injective` unwrapping layer) and which
 `norm_coeff_map_of_isWeaklyEisensteinAt_associated` genuinely requires. Follows
 `K_3.instFaithfulSMul_O_K2`'s own shape: `RingHom.injective _` for the field hop (**not** dot
 notation, per that file's elaboration finding), `Subtype.coe_injective` for the subalgebra inclusion,
@@ -221,9 +219,9 @@ generic in `lvl`, and stated against the `Algebra lvl.OL (baseChangeSplittingFie
 finds**, which is what `norm_coeff_map_of_isWeaklyEisensteinAt_associated` and both concrete
 templates' statements use.
 
-This is deliberately *not* `§80`'s `Level.norm_le_one_of_mem_algebraMap_OL`, which states the same
+This is deliberately *not* `Level.norm_le_one_of_mem_algebraMap_OL`, which states the same
 bound against a composite instance it introduces itself by `letI`: those two instances are defeq at
-both concrete depths (that is what `§80`'s own `rfl` checks show) but **not** generically in `lvl` —
+both concrete depths (that is what its own `rfl` checks show) but **not** generically in `lvl` —
 see this file's module docstring for Lean's own report of the mismatch. Proved exactly as
 `K_2.norm_le_one_of_mem_O_K1`/`K_3.norm_le_one_of_mem_O_K2` are: split the map through `lvl.L` by
 `IsScalarTower.algebraMap_apply`, then `spectralNorm_extends` for the field hop and
@@ -249,8 +247,8 @@ omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (IsLocalRing.ResidueField 
 `norm_lt_one_of_aeval_P₃_eq_zero`, with the same argument both use: `Langlands.EisensteinRootNorm`'s
 ultrametric-only Eisenstein-polygon computation (no irreducibility over a base field needed), fed the
 norm data `norm_coeff_map_of_isWeaklyEisensteinAt_associated` produces from `Pn`'s `lvl.OL`-level
-Eisenstein data. `hα'norm` is carried as an explicit hypothesis, matching this arc's standing
-convention at every tower level. -/
+Eisenstein data. `hα'norm` is carried as an explicit hypothesis, matching the convention used
+at every tower level in this development. -/
 theorem Level.norm_lt_one_of_root (lvl : Level K) [IsDomain lvl.OL]
     [IsDiscreteValuationRing lvl.OL] (Pn : lvl.OL[X])
     (hnormL : letI := lvl.algL; ∀ x : K, ‖algebraMap K lvl.L x‖ = ‖x‖)
@@ -326,13 +324,13 @@ theorem Level.eval_f_eq_of_root (lvl : Level K) [IsDomain lvl.OL]
 
 /-! ## The next `Level`, one hop up -/
 
-/-- **The next `Level`**: `L := baseChangeSplittingField (K' := lvl.L) Pn`, with `§81`'s `instAlgebraK_of_Level` as its
+/-- **The next `Level`**: `L := baseChangeSplittingField (K' := lvl.L) Pn`, with `instAlgebraK_of_Level` as its
 stored `algL` and finite-dimensionality over `K` by `FiniteDimensional.trans` through `lvl.L` (the
-`IsScalarTower K lvl.L (baseChangeSplittingField …)` it needs is exactly `§81`'s `algebraMap_K_eq_of_Level`, fed to
+`IsScalarTower K lvl.L (baseChangeSplittingField …)` it needs is exactly `algebraMap_K_eq_of_Level`, fed to
 `IsScalarTower.of_algebraMap_eq`).
 
 `(level_K_1).next P₂ = level_K_2 P₂` holds **by `rfl`** (checked below): the concrete depth-2 `Level`
-value `§80` built by hand is literally this generic successor of the depth-1 one, not merely an
+value built by hand is literally this generic successor of the depth-1 one, not merely an
 equivalent restatement. -/
 @[reducible] def Level.next (lvl : Level K) (Pn : lvl.OL[X]) : Level K where
   L := baseChangeSplittingField (K' := lvl.L) Pn
@@ -354,7 +352,7 @@ data, the Weierstrass unit and factorization, and the two norm facts.
 Kept separate from `Level` rather than folded into it because `Level K` is parametrized by `K` alone
 while this data depends on `O`, `f` and `hOK` (see the module docstring). The two instance-implicit
 fields are needed to state `shifted`/`maximalIdeal lvl.OL` at all and are not derivable generically;
-they are deliberately not promoted to global instances, matching `§80`'s treatment of `algL`. -/
+they are deliberately not promoted to global instances, matching `algL`'s own treatment. -/
 structure TowerStep (f : O⟦X⟧) (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) where
   /-- The level this step starts from. -/
   lvl : Level.{_, v} K
@@ -426,7 +424,7 @@ example (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) :
     (level_K_2 (K := K) (P := P) P₂).instAlgebraO P₃ hOK =
       K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK := rfl
 
-/-- **`level_K_2` is literally `(level_K_1).next P₂`** — the depth-2 `Level` value `§80` built by
+/-- **`level_K_2` is literally `(level_K_1).next P₂`** — the depth-2 `Level` value built by
 hand is the generic successor of the depth-1 one, not merely an equivalent restatement. -/
 example : (level_K_1 (K := K) (P := P)).next P₂ = level_K_2 (K := K) (P := P) P₂ := rfl
 
@@ -461,7 +459,7 @@ theorem eval_f_eq_of_aeval_P₂_eq_zero_of_TowerStep (hOK : ∀ c : O, ‖algebr
   exact IsScalarTower.algebraMap_apply _ (K_1 (K := K) P) _ α'
 
 /-- **…and it is literally `eval_f_eq_of_aeval_P₂_eq_zero`**, checked by `rfl` on the fully-applied
-terms — this arc's established non-vacuity discipline (`§78`/`§80`/`§81`). -/
+terms. -/
 example (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {f : O⟦X⟧}
     {α' : ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))}
     {u₂ : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)))⟦X⟧}

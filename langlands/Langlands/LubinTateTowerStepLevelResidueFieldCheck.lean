@@ -6,15 +6,13 @@ import Langlands.LubinTateTowerStepLevelResidueField
 import Langlands.LubinTateTowerStepResidueFieldK3
 
 /-!
-# The `K_2 → K_3` residue-field cross-check `ROADMAP.md §88` left open
+# The `K_2 → K_3` residue-field cross-check
 
-`§88` closed `Level.residueFieldEquiv_next` (the generic one-hop residue-field-preservation step)
-and checked it against both concrete depths, but the `K_2 → K_3` check there was only a
-*type-checks* confirmation, not a data-level `rfl` against `residueFieldEquiv_K_3` itself:
-`residueFieldEquiv_K_3`'s own codomain is reached through the nested-vs-flat `residueFieldEquiv_
-integralClosure_integralClosure` bridge (`Langlands/IntegralClosureTower.lean`), which `§88`
-explicitly left untested rather than forced. This file does that check, at the concrete `K_2 → K_3`
-depth this arc has fully built.
+`Level.residueFieldEquiv_next` (the generic one-hop residue-field-preservation step) needs a
+data-level `rfl` check against `residueFieldEquiv_K_3` itself, not just a type-checks confirmation:
+`residueFieldEquiv_K_3`'s own codomain is reached through the nested-vs-flat
+`residueFieldEquiv_integralClosure_integralClosure` bridge (`Langlands/IntegralClosureTower.lean`).
+This file does that check, at the concrete `K_2 → K_3` depth.
 
 ## What the check states
 
@@ -22,23 +20,21 @@ depth this arc has fully built.
 composite `residueFieldEquiv_K_2 |>.trans (nested-flat bridge) |>.trans
 (IsLocalRing.residueFieldEquivOfAdjoinSingleton hγmem hadjS)`. `Level.residueFieldEquiv_next
 (level_K_2 P₂) P₃ …` is exactly a repackaging of that final factor, generic in `lvl : Level K`. Since
-`Level.residueFieldEquiv_next` derives its `hgen` internally from `Splits`+`[CharZero K]` data
-(`§86`/`§87`/`§88`'s established route) rather than taking `hβfin`/`hγfin` directly the way
-`residueFieldEquiv_K_3` does, this check supplies the `Splits` witness via `Level.splits_next
-(level_K_1) P₂ hOK (splits_divX_map_K_1 P)` (the identical expression
-`Langlands/LubinTateTowerStepLevelMonogenicHgenCheck.lean`'s own `K_2 → K_3` check already uses for
-the same purpose) and an ambient `[CharZero K]`, and derives `hirr` the same way
+`Level.residueFieldEquiv_next` derives its `hgen` internally from `Splits`+`[CharZero K]` data rather
+than taking `hβfin`/`hγfin` directly the way `residueFieldEquiv_K_3` does, this check supplies the
+`Splits` witness via `Level.splits_next (level_K_1) P₂ hOK (splits_divX_map_K_1 P)` (the identical
+expression `Langlands/LubinTateTowerStepLevelMonogenicHgenCheck.lean`'s own `K_2 → K_3` check already
+uses for the same purpose) and an ambient `[CharZero K]`, and derives `hirr` the same way
 `adjoin_eq_integralClosure_K_3`'s own proof does
-(`Polynomial.irreducible_map_of_isWeaklyEisensteinAt_associated`) — matching that file's already-
-established pattern for bridging the two hypothesis packages, not a new derivation route.
+(`Polynomial.irreducible_map_of_isWeaklyEisensteinAt_associated`) — matching that file's existing
+pattern for bridging the two hypothesis packages, not a new derivation route.
 
-**What the `rfl` does and does not establish**, unchanged from every other `rfl` check in this arc:
-both sides are `RingEquiv` *data*, not a `Prop` — so, as `§88` itself notes for the one-hop
-`Level.residueFieldEquiv_next` check, definitional proof irrelevance does *not* apply here the way it
-does for the `Prop`-valued checks (`§82`–`§87`). A `rfl` between two `RingEquiv` terms is a materially
-stronger claim: it says the generic route's composite (`residueFieldEquiv_K_2` composed with the
-nested-flat bridge composed with the *generic* final step) produces the literal same equivalence, as
-data, that `residueFieldEquiv_K_3`'s independently-hand-written proof produces. -/
+**What the `rfl` does and does not establish**: both sides are `RingEquiv` *data*, not a `Prop`, so
+definitional proof irrelevance does *not* apply here the way it does for `Prop`-valued checks. A
+`rfl` between two `RingEquiv` terms is a materially stronger claim: it says the generic route's
+composite (`residueFieldEquiv_K_2` composed with the nested-flat bridge composed with the *generic*
+final step) produces the literal same equivalence, as data, that `residueFieldEquiv_K_3`'s
+independently-hand-written proof produces. -/
 
 noncomputable section
 
@@ -129,9 +125,7 @@ noncomputable def genericResidueFieldEquiv_K_3_route {P : O[X]}
         hP₃dist.toIsWeaklyEisensteinAt hdeg₃ hassoc₃)
       hγroot)
 
-/-- **…and it is literally `residueFieldEquiv_K_3`**, checked by `rfl` on the fully-applied terms —
-this arc's established non-vacuity discipline (`§78`–`§88`), now closing the one data-level check
-`§88` left untested. -/
+/-- **…and it is literally `residueFieldEquiv_K_3`**, checked by `rfl` on the fully-applied terms. -/
 example {P : O[X]}
     (P₂ : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)))[X])
     [IsLocalRing (O_K2 (K := K) P₂)] [IsDiscreteValuationRing (O_K2 (K := K) P₂)]

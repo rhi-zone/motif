@@ -7,38 +7,35 @@ import Langlands.LubinTateTowerStepLocalRing
 import Langlands.TotallyRamifiedResidueField
 
 /-!
-# Residue-field preservation closes generically, over `Level` (`ROADMAP.md` §88)
+# Residue-field preservation closes generically, over `Level`
 
-`§86`/`§87` left exactly one piece of the `∀ n` tower-step induction open: the generic form of
-residue-field preservation, blocked on an elaboration-cost `whnf` timeout inside
-`IsLocalRing.residueFieldEquivOfAdjoinSingleton hβmem hadjS` at the abstract `lvl : Level K`
-(`§72`-class reflexive structural-congruence walk, not a diamond, not instance search — measured
-directly, twice, at both the concrete `K_3` depth `§68`/`§72` and the abstract `Level` `§86`/`§87`).
+The generic form of residue-field preservation across one tower hop is blocked by an
+elaboration-cost `whnf` timeout inside `IsLocalRing.residueFieldEquivOfAdjoinSingleton hβmem hadjS`
+at the abstract `lvl : Level K` — a reflexive structural-congruence walk, not a diamond and not
+instance search.
 
-**This file closes it, at default heartbeats, with no `maxHeartbeats` override anywhere.** The fix
-is exactly the family `§87` named as untried and did not build: avoid the caller reconstructing
-`⟨β, hβint⟩`'s underlying integrality proof more than once. `§87`'s own repro (matching every
-concrete call site in this arc, e.g. `Langlands/LubinTateTowerStepResidueField.lean`) derives
-`hβint : IsIntegral lvl.OL β` via a `refine ⟨Pn, hPndist.monic, ?_⟩; rwa [...]` tactic block, then
-*separately* re-derives the same fact as a standalone `hβroot' : Polynomial.aeval β Pn = 0` for
-`mem_maximalIdeal_of_isDistinguishedAt_root`'s own `hβroot` argument — two independently-elaborated
-proof terms of propositionally (but not syntactically) identical statements, both ending up
-embedded in the subtype value `⟨β, hβint⟩` that `hβmem`'s and `hadjS`'s *types* both mention.
-Deriving `hβroot'` once and using it directly as the third component of `hβint` (`⟨Pn, hPndist.monic,
-hβroot'⟩`, term-mode, not a second tactic block) — so both `hβmem` and `hadjS` are built from the
-literal same `hβint` term, not two term-level-distinct-but-defeq ones — removes the elaboration
-cost, measured directly: the un-deduplicated version does not close even given `maxHeartbeats
-1000000` reduced no further than `≈202,000`–`210,000` in bisection (barely over the default
-`200,000`), while the deduplicated version below closes cleanly at the plain default. (The
-`§87`-style explicit named `A`/`B`/`π` arguments on
-`IsLocalRing.residueFieldEquivOfAdjoinSingleton` were tried in combination with the deduplication
-and made things *worse* — pushed the timeout back to the theorem's stated conclusion type at line
-scope, not just the tactic body — so are deliberately not used here.)
+**This file closes it, at default heartbeats, with no `maxHeartbeats` override anywhere.** The fix is
+to avoid the caller reconstructing `⟨β, hβint⟩`'s underlying integrality proof more than once. The
+naive derivation obtains `hβint : IsIntegral lvl.OL β` via a `refine ⟨Pn, hPndist.monic, ?_⟩;
+rwa [...]` tactic block, then *separately* re-derives the same fact as a standalone
+`hβroot' : Polynomial.aeval β Pn = 0` for `mem_maximalIdeal_of_isDistinguishedAt_root`'s own
+`hβroot` argument — two independently-elaborated proof terms of propositionally (but not
+syntactically) identical statements, both ending up embedded in the subtype value `⟨β, hβint⟩` that
+`hβmem`'s and `hadjS`'s *types* both mention. Deriving `hβroot'` once and using it directly as the
+third component of `hβint` (`⟨Pn, hPndist.monic, hβroot'⟩`, term-mode, not a second tactic block) —
+so both `hβmem` and `hadjS` are built from the literal same `hβint` term, not two
+term-level-distinct-but-defeq ones — removes the elaboration cost: the un-deduplicated version does
+not close even given `maxHeartbeats 1000000`, reduced no further than `≈202,000`–`210,000` in
+bisection (barely over the default `200,000`), while the deduplicated version below closes cleanly at
+the plain default. (Explicit named `A`/`B`/`π` arguments on
+`IsLocalRing.residueFieldEquivOfAdjoinSingleton`, tried in combination with the deduplication, made
+things *worse* — pushed the timeout back to the theorem's stated conclusion type at line scope, not
+just the tactic body — so are deliberately not used here.)
 
-This confirms the `§72`/`§86`/`§87` diagnosis was accurate in kind (a reflexive structural-congruence
-`whnf` walk, not a diamond) but incomplete in scope: part of the walk's cost was genuinely avoidable
-term-level duplication introduced by the caller reconstructing the same integrality witness twice,
-not solely an intrinsic property of unifying the doubly-nested `Subalgebra` type itself.
+The underlying diagnosis is accurate in kind (a reflexive structural-congruence `whnf` walk, not a
+diamond) but was incomplete in scope: part of the walk's cost is genuinely avoidable term-level
+duplication introduced by the caller reconstructing the same integrality witness twice, not solely an
+intrinsic property of unifying the doubly-nested `Subalgebra` type itself.
 
 ## Main result
 
@@ -68,10 +65,9 @@ variable {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [Valuativ
 
 variable (lvl : Level K) [IsDomain lvl.OL] [IsDiscreteValuationRing lvl.OL]
 
-/-- **Residue-field preservation, one tower hop, generic in `lvl : Level K`.** The last piece of
-the `∀ n` inductive tower step (`ROADMAP.md` §55–§88): `hgen` is derived (not assumed, `§86`/`§87`
-item 1) via `Level.natDegree_minpoly_eq_finrank`, fed to `Level.adjoin_eq_integralClosure_next`
-(`§83`) for monogenicity, then the elementary quotient argument
+/-- **Residue-field preservation, one tower hop, generic in `lvl : Level K`.** `hgen` is derived
+(not assumed) via `Level.natDegree_minpoly_eq_finrank`, fed to
+`Level.adjoin_eq_integralClosure_next` for monogenicity, then the elementary quotient argument
 (`IsLocalRing.residueFieldEquivOfAdjoinSingleton`, `Langlands/TotallyRamifiedResidueField.lean`)
 gives the residue-field isomorphism. See the module docstring above for exactly which
 term-duplication removal is what makes this close at default heartbeats. -/

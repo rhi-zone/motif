@@ -12,14 +12,14 @@ import Langlands.LubinTateTowerStepResidueFieldK3
 `LubinTateTowerStepMonogenicK3.lean`/`LubinTateTowerStepResidueFieldK3.lean` state the `K_2 → K_3`
 generic theorems for an *arbitrary* `P₃ : (O_K2 P₂)[X]` and generator `β' : O_K2 P₂` satisfying the
 Weierstrass equation `heq₃`, taken as explicit hypotheses. `Langlands/
-LubinTateTowerStepConcreteK2Flat.lean`'s `exists_eisenstein_tower_step_K_2_flat'` (`ROADMAP.md §77`)
-supplies concrete such witnesses. This file feeds them through, mirroring the role `Langlands/
+LubinTateTowerStepConcreteK2Flat.lean`'s `exists_eisenstein_tower_step_K_2_flat'` supplies concrete
+such witnesses. This file feeds them through, mirroring the role `Langlands/
 LubinTateTowerStepConcrete.lean` plays at the `K_1 → K_2` step.
 
 ## Scope, matched precisely against the `K_1 → K_2` precedent
 
 `Langlands/LubinTateTowerStepConcrete.lean` itself never concretely discharges the norm bound
-`hα'norm : ‖algebraMap _ (baseChangeSplittingField P₂) (α' : _)‖ < 1` — every downstream theorem in this arc
+`hα'norm : ‖algebraMap _ (baseChangeSplittingField P₂) (α' : _)‖ < 1` — every downstream theorem
 (`Langlands/LubinTateTowerStepRootConnect.lean`, `LubinTateTowerStepDegree.lean`,
 `LubinTateTowerStepMonogenic.lean`, `LubinTateTowerStepLocalRing.lean`) keeps taking it as an
 explicit ambient hypothesis; a repository-wide search confirms `hα'norm` is *never* the conclusion of

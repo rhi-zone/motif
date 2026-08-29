@@ -5,42 +5,48 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import Langlands.LubinTateTowerStepLevelExists
 
 /-!
-# The `∀ n` Lubin-Tate tower-step induction, generic over `TowerStep` (`ROADMAP.md` §89)
+# The `∀ n` Lubin-Tate tower-step induction, generic over `TowerStep`
 
-`§88` closed the last named one-hop generic piece (residue-field preservation) but explicitly did
-**not** form any `∀ n`-indexed statement — its own text: *"turning it into an actual `∀ n`-indexed
-family still needs the step to be iterated by an actual recursion"* (`§83`), and `TowerStep.exists_next`
-"not yet re-bundled to also carry the residue-field piece — that composition was not attempted this
-pass" (`§88`). This file builds that recursion, for the existence/degree/monogenicity bundle
-(`TowerStep.exists_next`), and states precisely why the residue-field piece is left out.
+`TowerStep f hOK` bundles one hop of a Lubin-Tate tower: a `Level` (a field `L` with ring of
+integers `OL`), a uniformizer `gen : OL`, and the data of the *next* level — an Eisenstein
+polynomial `nextPoly`, a Weierstrass factorization `shifted f (lvl.towerHom hOK) gen = nextPoly *
+unit`, and the side facts needed to build `lvl.next nextPoly`. `TowerStep.exists_next` advances one
+such step to the next: given `ts : TowerStep f hOK` and, about the base-changed `ts.nextPoly` inside
+its splitting field, an irreducibility witness `hirr`, a root `β` of it (`hβroot`), and a degree
+equality `hgen` saying `β` generates that splitting field over `ts.lvl.L` (i.e. `ts.nextPoly` stays
+monogenic one level up), it produces a `TowerStep` sitting at `ts.lvl.next ts.nextPoly`. This file
+iterates that one step `∀ n` times, taking `hirr`/`β`/`hβroot`/`hgen` as a hypothesis supplied at
+every tower point rather than as something derived, and states precisely why folding residue-field
+preservation into the same induction would require changing `TowerStep` itself.
 
-## Design decision: propositional, oracle-hypothesised induction, not a constructive `def`
+## Design decision: propositional, hypothesis-driven induction, not a constructive `def`
 
-`TowerStep.exists_next`'s own hypotheses `hirr`/`β`/`hβroot`/`hgen` are supplied **externally** by
-the caller at every call site in this arc — they are not derived from `ts` alone by anything
-currently in the repo (`§83`'s own "what this does not close": *"the root-count chain... is separate,
-larger, unattempted work"*). Checked directly against the real proof term (`Langlands/
-LubinTateTowerStepLevelExists.lean:421-435`): `TowerStep.exists_next`'s proof is an explicit
-`refine ⟨{...}, rfl⟩`, not `Classical.choice` — so *given* `hirr`/`β`/`hβroot`/`hgen` at a level, the
-step itself is fully constructive. But a genuine `def : ℕ → TowerStep f hOK` needs this data supplied
-at *every* level, and no lemma in this repo (or reasonably in scope for this pass) constructs it
-generically — that is exactly the arc's own standing "root-count chain" gap. Two ways to handle this:
+`TowerStep.exists_next`'s hypotheses `hirr`/`β`/`hβroot`/`hgen` are not derived from `ts` alone by
+anything in this repo: at every existing call site they are supplied by hand, computed for one
+specific concrete polynomial at one specific level. No lemma here constructs this data
+*generically* — proves, for an arbitrary `TowerStep` at an arbitrary level, that such an irreducible
+factor / root / monogenic generator always exists (a "root-count" argument: bounding how a
+polynomial's roots and their degrees distribute across the extension, uniformly in `n`) — that is
+separate, larger work this file does not attempt. Checked directly against the real proof term
+(`TowerStep.exists_next` in `Langlands/LubinTateTowerStepLevelExists.lean`): its proof is an
+explicit `refine ⟨{...}, rfl⟩`, not `Classical.choice` — so *given* `hirr`/`β`/`hβroot`/`hgen` at a
+level, the step itself is fully constructive. But a genuine `def : ℕ → TowerStep f hOK` would need
+this data supplied at *every* level, which is exactly the gap above. Two ways to handle that:
 
-* **(a) Constructive `def`, extracting a witness via `Classical.choose` at each step from some
-  externally-supplied total oracle function.** Rejected: it does not remove the gap (a *literal*
-  total function `∀ ts, <the needed data>` still has to come from somewhere — this arc has never
-  built one, and building it is exactly the unattempted "root-count chain" work, not a formalization
-  choice), and it adds a real cost on top: `Classical.choose` does not reduce definitionally even
-  applied to an explicit witness, so a `def` built this way could not be `rfl`-checked against the
-  hand-built `level_K_1`/`level_K_2` values the way `§78`–`§88`'s entire discipline depends on.
-* **(b) A propositional `∀ n` theorem, taking the needed per-step data as a hypothesis of existential
-  (not functional) type: `∀ ts, ∃ hirr β hβroot hgen, …`.** This states the gap honestly as an open
-  assumption (standing in for the unbuilt root-count chain) rather than manufacturing a function to
-  discharge it, and the induction step itself stays fully constructive (`obtain` on a hypothesis is not
-  `Classical.choice`) — which is what makes the concrete checks below possible at all.
+* **(a) A constructive `def`, extracting a witness via `Classical.choose` at each step from some
+  externally-supplied total function producing this data for every `TowerStep`.** Rejected: it does
+  not remove the gap (that total function still has to be built — proving it exists is the same
+  unattempted "root-count" argument, not a formalization choice), and it adds a real cost on top:
+  `Classical.choose` does not reduce definitionally even when applied to an explicit witness, so a
+  `def` built this way could not be `rfl`-checked against the hand-built `level_K_1`/`level_K_2`
+  values the way the concrete checks below rely on.
+* **(b) A propositional `∀ n` theorem, taking the needed per-step data as a hypothesis of
+  existential (not functional) type: `∀ ts, ∃ hirr β hβroot hgen, …`.** This states the gap honestly
+  as an open assumption rather than manufacturing a function to discharge it, and the induction step
+  itself stays fully constructive (`obtain` on a hypothesis is not `Classical.choice`) — which is
+  what makes the concrete checks below possible by `rfl` at all.
 
-**(b) is what is built here**, confirming the task's own steer against (a) by reading the real proof
-term rather than assuming it.
+**(b) is what is built here.**
 
 ## The `∀ n`-indexed relation
 
@@ -55,48 +61,44 @@ exist, not which value it takes) — so `Level.next` iterated `n` times over is 
 field of an `n`-step `TowerStep` without first choosing the intervening `TowerStep`s, which is
 exactly what `IsNStepFrom`'s existential does explicitly rather than folding into a function.
 
-## The residue-field piece: deliberately left out, not attempted
+## The residue-field piece: why it stays out of this induction
 
-`Level.residueFieldEquiv_next` (`§88`) is not a drop-in replacement for the `hgen` hypothesis this
-file's oracle supplies: reading its real signature, it takes `hgen` as *derived*, not assumed, from
-`Level.natDegree_minpoly_eq_finrank`, which itself needs (1) a genuinely level-indexed `Splits`
-invariant `(P.divX.map (algebraMap O lvl.L)).Splits` — not carried by `TowerStep` and not derivable
-from the `hirr`/`β`/`hβroot`/`hgen` oracle this file's induction already assumes, only propagated
-level-to-level by a *separate* mechanism (`Level.splits_next`) — and (2) the **base-level** Eisenstein
-factorization data for `f` itself (`P u heq hPdist hPdeg`, `f = P * u` over `O`), which is fixed but
-foreign to every field `TowerStep` currently carries. Composing residue-field preservation into the
-induction here would therefore mean either (i) extending `TowerStep`'s own structure to also carry
-the `Splits` invariant and re-deriving `TowerStep.exists_next` to propagate it — exactly the
-`TowerStep.exists_next` signature change `§88` named and explicitly left out of its own scope — or
-(ii) building a second, parallel bundled step alongside `TowerStep.exists_next` carrying strictly more
-data, duplicating most of its proof. Both are real design/engineering commitments beyond what a single
-pass should force through unasked, not a gap this pass could not have found a route past — the route
-exists (`Level.residueFieldEquiv_next` closes generically, `§88`) but wiring it through the induction
-needs `TowerStep` itself to change shape, which `§88` deliberately deferred and this pass does too, for
-the same stated reason: it was not part of this pass's scope to redesign `TowerStep`. Recorded here
-rather than silently, per the task's own framing of this as a live open choice, not a default.
+`Level.residueFieldEquiv_next` proves the next level's residue field is unchanged, but it is not a
+drop-in replacement for the `hgen` hypothesis used here: reading its signature, it takes `hgen` as
+*derived*, not assumed, from `Level.natDegree_minpoly_eq_finrank`, which itself needs (1) a
+genuinely level-indexed `Splits` invariant, `(P.divX.map (algebraMap O lvl.L)).Splits` — not a field
+of `TowerStep`, and not derivable from `TowerStep`'s own `hirr`/`β`/`hβroot`/`hgen` data; it is only
+propagated level-to-level by a separate mechanism, `Level.splits_next` — and (2) the **base-level**
+Eisenstein factorization data for `f` itself (`P`, `u`, `heq : f = P * u`, `hPdist`, `hPdeg` over
+`O`), fixed once for the whole tower but not carried by any individual `TowerStep` either. Composing
+residue-field preservation into the induction here would therefore mean either (i) extending
+`TowerStep`'s own structure to also carry the `Splits` invariant (and the base-level Eisenstein
+data) and re-deriving `TowerStep.exists_next` to propagate it, or (ii) building a second, parallel
+bundled step carrying strictly more data than `TowerStep`, duplicating most of its proof. Both
+change what `TowerStep` (or its proof obligations) actually is, rather than being a gap closable by
+adding a lemma against the current structure — so it is recorded here as an open structural choice
+rather than attempted.
 
 ## Main results
 
 * `TowerStep.IsNStepFrom` — the `∀ n`-indexed "`n` tower hops from a fixed base" relation.
-* `TowerStep.exists_isNStepFrom` — **the `∀ n` induction**: given the base `π`/`hπ`/`hπnorm`/`hf` data
-  (constant throughout, matching `TowerStep.exists_next`'s own binding) and an oracle hypothesis
-  supplying, for *every* `TowerStep`, existential `hirr`/`β`/`hβroot`/`hgen` data (the arc's standing
-  "root-count chain" gap, stated as an assumption rather than discharged), `∀ n, ∃ st, IsNStepFrom ts₀
-  st n`. Proved by `induction n`, the base case `⟨ts₀, rfl⟩` and the step case a single application of
-  `TowerStep.exists_next` fed the oracle's output at the current point.
+* `TowerStep.exists_isNStepFrom` — **the `∀ n` induction**: given the base `π`/`hπ`/`hπnorm`/`hf`
+  data (constant throughout the tower, matching `TowerStep.exists_next`'s own binding) and a
+  hypothesis `hstep` supplying, for *every* `TowerStep`, existential `hirr`/`β`/`hβroot`/`hgen` data
+  (the standing "such data always exists" gap, stated as an assumption rather than discharged),
+  `∀ n, ∃ st, IsNStepFrom ts₀ st n`. Proved by `induction n`: the base case is `⟨ts₀, rfl⟩`, the step
+  case a single application of `TowerStep.exists_next` fed `hstep`'s witness at the current point.
 * Concrete checks at `n = 1` (`level_K_1 → level_K_2`) and `n = 2` (`level_K_1 → level_K_2 →
-  level_K_2.next P₃`, the latter using `§83`'s `exists_eisenstein_tower_step_K_3` — the first and only
-  place in this arc's history that data has been produced past `K_3`), showing the real hand-built
-  `TowerStep` values genuinely satisfy `IsNStepFrom` — **not** by invoking
-  `TowerStep.exists_isNStepFrom` with a literal total oracle (building one is precisely the unattempted
-  root-count chain, not something this pass can manufacture), but by the same discipline this arc has
-  used throughout: applying the single generic step (`TowerStep.exists_next`, or here, directly
-  constructing `TowerStep` values the same way its own proof does) at real data, and checking `IsNStepFrom`
-  holds of the results by `rfl` where the level-equality itself is `rfl` (`§82`'s `(level_K_1).next P₂ =
-  level_K_2 P₂`, `§83`'s twice-iterated `.next`), and by direct construction (not `rfl`) at the one
+  level_K_2.next P₃`, the latter using `exists_eisenstein_tower_step_K_3`), showing the real
+  hand-built `TowerStep` values genuinely satisfy `IsNStepFrom` — **not** by invoking
+  `TowerStep.exists_isNStepFrom` with a literal total hypothesis (building one generically is
+  exactly the unattempted work above), but by directly constructing `TowerStep` values the same way
+  `TowerStep.exists_next`'s own proof does, at real data, and checking `IsNStepFrom` holds of the
+  results by `rfl` where the level-equality itself is `rfl` (`(level_K_1).next P₂ = level_K_2 P₂`,
+  and its twice-iterated `.next` counterpart), and by direct construction (not `rfl`) at the one
   place a raw `obtain` against a genuine `∃` (`exists_eisenstein_tower_step_K_3`'s own conclusion) is
-  unavoidable — exactly the same shape of `∃`-typed step this arc's engine (`exists_isWeierstrassFactorization_shifted`) has always produced, not a new opacity introduced here.
+  unavoidable — the same shape of `∃`-typed step the underlying Weierstrass-factorization engine
+  (`exists_isWeierstrassFactorization_shifted`) always produces.
 -/
 
 @[expose] public section
@@ -122,7 +124,7 @@ variable {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [Valuativ
 /-! ## The `∀ n`-indexed relation -/
 
 /-- **`st` is `n` tower hops up from `ts₀`.** At `n = 0`, `st` literally is `ts₀`. At `n + 1`, some
-`n`-step point `st'` exists whose `Level` successor (`Level.next`, `§82`) is `st.lvl` — exactly
+`n`-step point `st'` exists whose `Level` successor (`Level.next`) is `st.lvl` — exactly
 `TowerStep.exists_next`'s own conclusion shape, one layer at a time. -/
 def TowerStep.IsNStepFrom {f : O⟦X⟧} {hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1}
     (ts₀ : TowerStep f hOK) : TowerStep f hOK → ℕ → Prop
@@ -130,12 +132,12 @@ def TowerStep.IsNStepFrom {f : O⟦X⟧} {hOK : ∀ c : O, ‖algebraMap O K c�
   | st, n + 1 =>
     ∃ st' : TowerStep f hOK, TowerStep.IsNStepFrom ts₀ st' n ∧ st.lvl = st'.lvl.next st'.nextPoly
 
-/-- **The `∀ n` tower-step induction.** `hstep` is the arc's standing open gap ("the root-count
-chain", `§83`) stated as an assumption: at *every* `TowerStep`, the data `TowerStep.exists_next`
-needs exists (not: a function computing it is given — see the module docstring for why that
-distinction is the whole point). The proof itself is a two-line `induction n`: the base case is
-`⟨ts₀, rfl⟩`, the step case is one application of `TowerStep.exists_next` fed `hstep`'s witness at the
-current point. -/
+/-- **The `∀ n` tower-step induction.** `hstep` states, as an assumption rather than something
+derived, that at *every* `TowerStep` the irreducibility/root/monogenicity data
+`TowerStep.exists_next` needs does exist (not: that a function computing it is given — see the
+module docstring for why that distinction is the whole point). The proof itself is a two-line
+`induction n`: the base case is `⟨ts₀, rfl⟩`, the step case is one application of
+`TowerStep.exists_next` fed `hstep`'s witness at the current point. -/
 theorem TowerStep.exists_isNStepFrom {f : O⟦X⟧} {hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1}
     [CharZero K] {π : O} (hπ : Irreducible π) (hπnorm : ‖algebraMap O K π‖ < 1)
     (hf : IsLubinTatePoly π (residueCard O) f)
@@ -199,7 +201,7 @@ def ts_K2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {f : O⟦X⟧}
 
 /-- **`n = 1`: `ts_K2` is one tower hop from `ts_K1`.** Holds by exhibiting `ts_K1` itself as the
 `n = 0` point and `rfl` for the level equation — `level_K_2 P₂ = (level_K_1).next P₂` is exactly
-`§82`'s own checked identity, in the other direction. -/
+the same checked identity used above, in the other direction. -/
 theorem isNStepFrom_ts_K2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {f : O⟦X⟧}
     {α' : ↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P))}
     {u₂ : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)))⟦X⟧}
@@ -219,12 +221,12 @@ theorem isNStepFrom_ts_K2 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {f : O
       (ts_K2 (K := K) (P := P) P₂ P₃ hOK β' hu₃ heq₃ hβ'irr hP₃dist hassoc₃ hdeg₃ hβ'norm) 1 :=
   ⟨ts_K1 (K := K) (P := P) P₂ hOK hu₂ heq₂ hα'irr hP₂dist hassoc₂ hdeg₂ hα'norm, rfl, rfl⟩
 
-/-! ### `n = 2`: reaching one hop past `level_K_2`, using `§83`'s `exists_eisenstein_tower_step_K_3` -/
+/-! ### `n = 2`: reaching one hop past `level_K_2`, using `exists_eisenstein_tower_step_K_3` -/
 
 /-- **`n = 2`: a real `TowerStep` at `(level_K_2 P₂).next P₃` is two tower hops from `ts_K1`.**
 `exists_eisenstein_tower_step_K_3`'s own conclusion is an `∃` (inherited from the underlying
-Weierstrass-factorization engine, `§83`'s own module docstring: this is not a new source of opacity,
-it is the same shape of `∃`-typed step this arc's engine has always produced), so unlike the `n = 1`
+Weierstrass-factorization engine — this is not a new source of opacity,
+it is the same shape of `∃`-typed step this repo's engine has always produced), so unlike the `n = 1`
 check this one genuinely uses `obtain` rather than closing entirely by `rfl` — recorded precisely, not
 elided: the level-equality half (`ts_K3.lvl = ts_K2.lvl.next ts_K2.nextPoly`) is still `rfl`, since
 `ts_K3` is built directly from the `obtain`ed witness by the same literal construction `TowerStep.
