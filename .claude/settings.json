@@ -58,6 +58,15 @@
         ]
       },
       {
+        "matcher": "Agent|Workflow",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/tooling/claude-hooks/enforce-cost-tier.sh"
+          }
+        ]
+      },
+      {
         "matcher": "",
         "hooks": [
           {
