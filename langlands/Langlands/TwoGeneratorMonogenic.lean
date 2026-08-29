@@ -12,9 +12,8 @@ import Mathlib.RingTheory.Adjoin.Polynomial.Basic
 Serre's monogenicity theorem (*Local Fields* III §6) writes the ring of integers of a local field as
 `𝒪_K[a]` for a *single* generator, and the classical route to it factors through the maximal
 unramified subextension `L_0`, proving `𝒪_{L_0} = 𝒪_K[x]` (unramified half) and
-`𝒪_L = 𝒪_{L_0}[π]` (Eisenstein half) separately. `ROADMAP.md`'s Phase 2b passes thirty-two to
-thirty-four record the obstruction to that route in this repo: `L_0` is never available as an
-actual subfield of the already-fixed `L`.
+`𝒪_L = 𝒪_{L_0}[π]` (Eisenstein half) separately. That route hits an obstruction in this repo:
+`L_0` is never available as an actual subfield of the already-fixed `L`.
 
 The observation this file rests on is that the consumer —
 `ValuationSubring.mem_ramificationGroup_succ_of_adjoin`

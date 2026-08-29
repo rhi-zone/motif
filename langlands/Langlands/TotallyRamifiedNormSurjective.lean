@@ -43,11 +43,10 @@ not formalized anywhere in this repo.
 
 ## On the filtration index shift
 
-`ROADMAP.md` Phase 2b's thirty-ninth pass records that on the `L` side the relevant filtration
-index is `e·j`, not `j`: `1 + π_K^j • L₀` is `U_{L₀}^{(e·j)}`, by
-`IsTotallyRamified.map_maximalIdeal_eq`. That is a correct reading of what is proved, but it is
-never needed as a hypothesis or a step: the whole argument quantifies over `z : L₀` directly, and
-only the `K`-side index `j` appears anywhere in the statements.
+On the `L` side the relevant filtration index is `e·j`, not `j`: `1 + π_K^j • L₀` is
+`U_{L₀}^{(e·j)}`, by `IsTotallyRamified.map_maximalIdeal_eq`. That shift is never needed as a
+hypothesis or a step below: the whole argument quantifies over `z : L₀` directly, and only the
+`K`-side index `j` appears anywhere in the statements.
 
 ## Main results
 

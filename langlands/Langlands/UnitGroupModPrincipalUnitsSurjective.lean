@@ -6,8 +6,7 @@ import Langlands.ResidueFieldNorm
 
 Let `L / K` be a finite extension of fraction fields of Dedekind domains `S / R`, let `v` be a
 place of `R` and `w` a place of `S` lying over `v`, and write `K₀ := v.adicCompletionIntegers K`,
-`L₀ := w.adicCompletionIntegers L`. This file closes the milestone scoped in `ROADMAP.md`'s
-Phase 2a "fifth pass" entry: composing `Langlands.ResidueFieldNorm`'s
+`L₀ := w.adicCompletionIntegers L`. Composing `Langlands.ResidueFieldNorm`'s
 `residueField_units_norm_surjective` (`𝓀[L]ˣ ↠ 𝓀[K]ˣ`) with the surjectivity of reduction mod the
 maximal ideal on unit groups (a general fact for any local ring, `IsLocalRing.residue_surjective`
 transported to units) and `Langlands.NormMapResidueCompatibility`'s `localNormMap_reduce` gives:

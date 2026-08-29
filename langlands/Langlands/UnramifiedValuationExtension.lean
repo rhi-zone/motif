@@ -34,8 +34,7 @@ exactly the assertion that this containment is an equality.
 ## Scope
 
 Connecting `IsUnramified` to `Ideal.ramificationIdx'` (`Mathlib.NumberTheory.RamificationInertia`)
-or to `Langlands.ResidueFieldNorm`'s residue-field-level statements is not attempted here; see
-`ROADMAP.md`, Phase 2a.
+or to `Langlands.ResidueFieldNorm`'s residue-field-level statements is not attempted here.
 -/
 
 noncomputable section

@@ -126,8 +126,8 @@ omit [Algebra.IsIntegral R S] in
 /-- **Full unramified norm-group surjectivity.** Under `IsUnramified`, every unit `y` of `K₀` is
 the exact norm `Algebra.norm K₀ x` of some unit `x` of `L₀`: `N_{L/K}(L^×) ⊇ O_K^×`.
 
-Since the twenty-first Phase 2b pass, the successive-approximation machinery this rests on lives
-in `Langlands.PrincipalUnitsSuccessiveApproximation`, stated with no ramification hypothesis; this
+The successive-approximation machinery this rests on lives in
+`Langlands.PrincipalUnitsSuccessiveApproximation`, stated with no ramification hypothesis; this
 theorem supplies its two inputs — `oneStepCorrection_of_isUnramified` (via the residue-field trace)
 and `exists_isUnit_mul_one_add_uniformizer_eq` (via the residue-field norm). -/
 theorem exists_isUnit_algebraMap_norm_eq_of_isUnramified (hU : IsUnramified K L v w)

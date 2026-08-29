@@ -11,8 +11,8 @@ norm reduces mod `𝔪_K` to the `[L₀ : K₀]`-th power map:
 
 `N_{L₀/K₀}(x) ≡ x̄ ^ [L₀ : K₀] (mod 𝔪_K)`.
 
-This is the **level-`0` computation** listed as open in `ROADMAP.md` Phase 2b's fortieth-pass entry,
-and the exact multiplicative counterpart of `Langlands.TotallyRamifiedTrace`'s
+This is the **level-`0` computation**, the exact multiplicative counterpart of
+`Langlands.TotallyRamifiedTrace`'s
 `IsLocalRing.residue_trace_eq_finrank_nsmul_residue` (`Tr(x) ≡ [L₀:K₀] · x̄`). Under
 `IsTotallyRamified` the exponent is the ramification index `e`
 (`IsTotallyRamified.finrank_eq`), so on units it says `N(u) ≡ ū ^ e`, exhibiting the level-`0`

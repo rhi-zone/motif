@@ -6,9 +6,8 @@ import Langlands.UnramifiedValuationExtension
 Let `L / K` be a finite extension of fraction fields of Dedekind domains `S / R`, let `v` be a
 place of `R` and `w` a place of `S` lying over `v`, and write `K₀ := v.adicCompletionIntegers K`,
 `L₀ := w.adicCompletionIntegers L`. This file defines `IsTotallyRamified`, the `e = [L₀ : K₀]`
-counterpart of `Langlands.UnramifiedValuationExtension`'s `IsUnramified` (`e = 1`), closing gap 1
-of `ROADMAP.md` Phase 2b's thirty-ninth-pass entry ("no `IsTotallyRamified` predicate exists in
-this repo's adic-completion vocabulary").
+counterpart of `Langlands.UnramifiedValuationExtension`'s `IsUnramified` (`e = 1`) — no such
+predicate existed elsewhere in this repo's adic-completion vocabulary.
 
 ## Main definitions
 
@@ -26,12 +25,11 @@ this repo's adic-completion vocabulary").
 
 Classically, (3) follows from (1) and (2) via the fundamental identity `e·f = n` for a finite
 extension of complete discrete valuation rings — `f = n / e = 1`, so `𝓀[L] = 𝓀[K]`. That identity
-is not available in this repository for `K₀ → L₀` (`ROADMAP.md` Phase 2b, thirty-eighth pass,
-records that even "the totally ramified case has equal residue fields" is nowhere verified here),
-and deriving it is a self-contained piece of work of its own. Rather than weaken the predicate to
-what happens to be cheap, all three classical components are recorded as fields; a future pass that
-proves `e·f = n` in this setting can drop (3) to a theorem and re-derive it, with no change to any
-consumer's statement.
+is not available in this repository for `K₀ → L₀` — even "the totally ramified case has equal
+residue fields" is nowhere verified here — and deriving it is a self-contained piece of work of its
+own. Rather than weaken the predicate to what happens to be cheap, all three classical components
+are recorded as fields; a future development that proves `e·f = n` in this setting can drop (3) to
+a theorem and re-derive it, with no change to any consumer's statement.
 
 Similarly, `finrank_eq` is stated with `Module.finrank K₀ L₀` on the left rather than
 `Module.finrank K L`: `Langlands.AdicCompletionIntegralClosure` supplies `Module.Free K₀ L₀`, so it

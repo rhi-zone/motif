@@ -13,15 +13,13 @@ import Langlands.TotallyRamifiedUniformizer
 intermediate extension `M / K` carrying no valuation structure of its own — only a
 `A : ValuationSubring M` lying over `𝒪[K]` plus a `RankOne A.valuation` instance — and uses it to
 transport `Langlands.TotallyRamifiedEisenstein.LocalField.adjoin_eq_integralClosure_of_isUniformizer`
-to base `M`. `ROADMAP.md`'s Phase 2c forty-second pass ("gap 3") named this file's two theorems as
-the "`_of_valuationSubring` variants" still needed to repeat that pass's `K → K_1` argument
-(`Langlands.TotallyRamifiedResidueField.residueField_map_bijective_of_isUniformizer`,
-`Langlands.TotallyRamifiedUniformizer.irreducible_of_isUniformizer`) one level up, at a moving base
-`M` (e.g. `K_1`) instead of the fixed base `K`.
-
-This file supplies exactly those two variants, by the same `letI`-substitution `TowerBundle.lean`
-already uses — no new mathematical content, only the transport `TowerBundle.lean`'s own docstring
-anticipated as "mechanical in shape."
+to base `M`. This file supplies the two matching `_of_valuationSubring` variants for a tower
+argument that needs to move the base up one level (e.g. from `K` to an intermediate `K_1`) rather
+than working with the fixed base `K`:
+`Langlands.TotallyRamifiedResidueField.residueField_map_bijective_of_isUniformizer` and
+`Langlands.TotallyRamifiedUniformizer.irreducible_of_isUniformizer`, both restated with their base
+field taken to be such an `M`, by the same `letI`-substitution `TowerBundle.lean` already uses — no
+new mathematical content, only that transport.
 
 ## Why this is a separate file, not an addition to `TowerBundle.lean`
 
@@ -41,8 +39,8 @@ file sits downstream of all three instead.
   is irreducible there — a genuine uniformizer of `𝒪_N`.
 
 Both are reusable at every tower level: `M` is an arbitrary field carrying only a `ValuationSubring`
-over `𝒪[K]`, not specific to `K_1`. Applying them *at* `K_1` (i.e. discharging `A`, `hA`, `hR` there
-concretely) is a separate, further step — see `ROADMAP.md` for what remains.
+over `𝒪[K]`, not specific to any particular intermediate field. Applying them *at* a concrete
+intermediate field (i.e. discharging `A`, `hA`, `hR` there concretely) is a separate, further step.
 -/
 
 open ValuativeRel Valuation IsLocalRing
@@ -62,8 +60,8 @@ applied with its base field taken to be `M / K` as above: under the same hypothe
 residue field of `𝒪_N`.
 
 Reusable at every tower level: `M` is an arbitrary intermediate extension carrying no `ValuativeRel`
-of its own, only a `ValuationSubring A` lying over `𝒪[K]` — exactly the shape this pass's `K → K_1`
-argument would need one level up, at `M := K_1`. -/
+of its own, only a `ValuationSubring A` lying over `𝒪[K]` — exactly the shape a tower argument would
+need one level up, at `M` a concrete intermediate field. -/
 theorem residueField_map_bijective_of_isUniformizer_of_valuationSubring
     (A : ValuationSubring M)
     (hA : A.comap (algebraMap K M) = (ValuativeRel.valuation K).valuationSubring)
@@ -105,7 +103,7 @@ intermediate extension.** `LocalField.irreducible_of_isUniformizer`
 (`Langlands.TotallyRamifiedUniformizer`) applied with its base field taken to be `M / K` as above —
 the second input `LubinTateTowerStep.lean`'s Weierstrass-preparation step needs of its moving base,
 now available for a moving base `M` built only from a `ValuationSubring` over `𝒪[K]`, one level up
-from where this pass's concrete `K → K_1` instantiation supplies it directly. -/
+from where a concrete `K → K_1` instantiation would supply it directly. -/
 theorem irreducible_of_isUniformizer_of_valuationSubring
     (A : ValuationSubring M)
     (hA : A.comap (algebraMap K M) = (ValuativeRel.valuation K).valuationSubring)

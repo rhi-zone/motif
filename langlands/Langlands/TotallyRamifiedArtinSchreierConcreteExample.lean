@@ -8,10 +8,9 @@ import Mathlib.NumberTheory.RamificationInertia.Basic
 /-!
 # A concrete WILD, SEPARABLE, GALOIS ramified extension: an Artin–Schreier extension of `k(X)`
 
-Targets `ROADMAP.md` §6n item (c): a wild instance of `IsTotallyRamified` with actual Galois
-structure, closing the gap left open by `Langlands.TotallyRamifiedWildConcreteExample` (which is
-wild but purely inseparable, hence provably not Galois — see that file's closing docstring, which
-first proposed the Artin–Schreier route pursued here).
+A wild instance of `IsTotallyRamified` with actual Galois structure, filling the gap left by
+`Langlands.TotallyRamifiedWildConcreteExample` (which is wild but purely inseparable, hence
+provably not Galois).
 
 ## Design: why `S := integralClosure R L`, not a literal polynomial-ring `S`
 
@@ -27,11 +26,10 @@ affine line) and totally ramified only **at infinity** — a point with no `Heig
 representative. Reaching a *finite* ramified place requires the Artin–Schreier parameter `a` to have
 an actual pole there, e.g. `a := X⁻¹` (pole of order `1`, coprime to `p`, at `X = 0`), and then the
 generator `theta` with `theta ^ p - theta = a` is **not** integral over `R = k[X]` — `S` cannot be presented as a
-literal polynomial ring in one variable this way (see the abandoned computation in an earlier pass
-of this file's design, recorded in `ROADMAP.md`: the "obvious" integral substitute `Y := X · theta`
-satisfies the monic relation `Y ^ p - X ^ (p-1) * Y - X ^ (p-1) = 0`, but proving *that* ring is a
-domain / Dedekind domain from scratch, rather than inheriting it from a fresh polynomial ring, is
-exactly as much work as the route actually taken below).
+literal polynomial ring in one variable this way. (The "obvious" integral substitute
+`Y := X · theta` satisfies the monic relation `Y ^ p - X ^ (p-1) * Y - X ^ (p-1) = 0`, but proving
+*that* ring is a domain / Dedekind domain from scratch, rather than inheriting it from a fresh
+polynomial ring, is exactly as much work as the route actually taken below.)
 
 The route taken instead: build `L` as the splitting field of `ArtinSchreier.poly p a` directly over
 `K := FractionRing R` (using `ArtinSchreier.irreducible_iff`, unconditional `ArtinSchreier.
@@ -56,7 +54,7 @@ a direct valuation computation on the completions, combined with the global boun
 
 ## Status
 
-See the closing section of this file and `ROADMAP.md` §6q for the precise account of what closed.
+See the closing section of this file for the precise statement proved.
 -/
 
 noncomputable section
@@ -770,7 +768,7 @@ theorem exists_sub_algebraMap_mem_maximalIdeal :
 
 /-- **`IsTotallyRamified K L v w` for this concrete instance.** Assembled from `map_maximalIdeal_eq`,
 `finrank_eq`, and `exists_sub_algebraMap_mem_maximalIdeal` above — a genuine wild (`p ∣ e`),
-Galois (`IsGalois K L`), *separable* Artin–Schreier extension, closing `ROADMAP.md` §6n item (c). -/
+Galois (`IsGalois K L`), *separable* Artin–Schreier extension. -/
 theorem isTotallyRamified : IsDedekindDomain.HeightOneSpectrum.IsTotallyRamified K L v w where
   map_maximalIdeal_eq := map_maximalIdeal_eq
   finrank_eq := finrank_eq
@@ -779,7 +777,7 @@ theorem isTotallyRamified : IsDedekindDomain.HeightOneSpectrum.IsTotallyRamified
 /-! ### Step 3 (`expEquiv` / `norm_exp_eq_exp_trace`): structurally inapplicable, not merely hard
 
 `IsGalois K L` holds unconditionally here (`ArtinSchreier.instIsGalois`), so this instance *is*
-genuinely Galois — the milestone `ROADMAP.md` §6n item (c) asks for. But
+genuinely Galois, wild, and separable. But
 `Langlands.AdicCompletionNormExpTrace.norm_exp_eq_exp_trace` additionally requires
 `[CharZero K] [CharZero L]` (see its signature), and
 `Langlands.NonarchimedeanExponentialUnitsIso.expEquiv` is built on the same `NonarchimedeanExponential`

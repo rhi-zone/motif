@@ -47,10 +47,9 @@ has to be named in the statement for the conclusion to be meaningful. A caller r
 
 The construction route is the `Valued.mk'` one (`Valued.mk' A.valuation`, then
 `Valued.toNontriviallyNormedField`), not `spectralNorm.nontriviallyNormedField`; the two are not
-definitionally equal and mixing them reproduces the instance diamond diagnosed in `ROADMAP.md`'s
-nineteenth-pass entry. Completeness is nevertheless obtained from `spectralNorm.completeSpace`,
-transported across that diamond by
-`LocalField.exists_completeSpace_of_finiteDimensional`.
+definitionally equal and mixing them reproduces a `NontriviallyNormedField M` instance diamond.
+Completeness is nevertheless obtained from `spectralNorm.completeSpace`, transported across that
+diamond by `LocalField.exists_completeSpace_of_finiteDimensional`.
 
 The `Compatible` instance needs no work at all: `ValuativeRel.ofValuation v` makes `v` compatible
 by definition (`Valuation.Compatible.ofValuation`).
@@ -183,8 +182,7 @@ theorem adjoin_eq_integralClosure_of_isUniformizer_of_valuationSubring
 /-- **`↥A` itself is Henselian, for `A : ValuationSubring M` lying over a complete discretely
 valued `𝒪[K]` with finite residue field, `M / K` finite.**
 
-This is the missing piece `ROADMAP.md`'s Phase 2b thirty-second/thirty-third-pass entries identify:
-a route to Hensel's lemma *inside the actual field `M`* (in particular, inside a fixed `L` when
+This gives a route to Hensel's lemma *inside the actual field `M`* (in particular, inside a fixed `L` when
 `M = L`), rather than inside an auxiliary algebraically closed field disconnected from `L`. It
 reuses exactly the `letI` bundle `isDiscreteValuationRing_valuation_valuationSubring_of_finiteDimensional`
 builds, plus `henselianLocalRing_of_valuationSubring` (`Langlands.UnramifiedExtension`) applied to

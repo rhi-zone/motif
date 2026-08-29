@@ -13,7 +13,7 @@ import Langlands.AdicCompletionNormExpTrace
 /-!
 # A concrete MIXED-CHARACTERISTIC, WILD, GALOIS ramified extension: `ℚ(ζ_{p²}) / ℚ(ζ_p)`
 
-Targets the task's headline gap: every existing `IsTotallyRamified` instance in this repo
+Every other `IsTotallyRamified` instance in this repo
 (`TotallyRamifiedConcreteExample`, `TotallyRamifiedWildConcreteExample`,
 `TotallyRamifiedArtinSchreierConcreteExample`) is equal-characteristic (built over `k[X]` for a
 finite field `k`), so none of them can exercise the `CharZero`-only machinery of
@@ -701,7 +701,7 @@ theorem algebraMap_R_K₀_L₀_eq (r : 𝓞 K) :
       algebraMap L (w.adicCompletion L) (algebraMap (𝓞 L) L (algebraMap (𝓞 K) (𝓞 L) r))
   rw [← IsScalarTower.algebraMap_apply (𝓞 K) K L, ← IsScalarTower.algebraMap_apply (𝓞 K) (𝓞 L) L]
 
-/-! ### `IsGalois (v.adicCompletion K) (w.adicCompletion L)` — closing blocker (2) of §6t
+/-! ### `IsGalois (v.adicCompletion K) (w.adicCompletion L)`
 
 `theta`'s minimal polynomial base-changes irreducibly to `Kv` (`map_minpoly_theta_irreducible`,
 already used for separability/`finrank` above), and `L / K` is Galois at the base level
@@ -763,8 +763,9 @@ theorem isTotallyRamified : IsDedekindDomain.HeightOneSpectrum.IsTotallyRamified
 This is what the instance was built for. Every prior concrete `IsTotallyRamified` instance in this
 repo is equal-characteristic, so none of them can even *state* the hypotheses of
 `Langlands.NonarchimedeanExponential`'s `exp`/`log` (whose series `∑ xⁿ / n!` needs `CharZero`) —
-see the closing section of `TotallyRamifiedArtinSchreierConcreteExample`, which records this as a
-structural, not incidental, obstruction. Here `K` and `L` are number fields, so
+a structural obstruction, not an incidental one: see the closing section of
+`TotallyRamifiedArtinSchreierConcreteExample` for why the equal-characteristic case cannot state
+these hypotheses at all. Here `K` and `L` are number fields, so
 `Langlands.AdicCompletionMixedCharacteristic`'s `instCharZeroAdicCompletion` gives `CharZero` at
 the completed level for free, and the residue characteristic is `p` because `p` lies in both
 `v.asIdeal` and `w.asIdeal`. That supplies `‖(p : Kv)‖ < 1` and `‖(p : Lw)‖ < 1` — the threshold
@@ -787,15 +788,16 @@ instance charP_residue_w : CharP ((𝓞 L) ⧸ w.asIdeal) p := by
 /-! ### The `exp`/`log` machinery, run end-to-end against this instance
 
 Both entry conditions are now in hand: `IsGalois (v.adicCompletion K) (w.adicCompletion L)`
-(`isGalois_Kv_Lw`, closing blocker (2) of the previous pass) and the `CharP`-residue threshold
-hypotheses `norm_natCast_lt_one_of_charP_residueField` needs. This is the first time in the entire
-`exp`/`log` thread that `AdicCompletionNormExpTrace.norm_exp_eq_exp_trace` /
+(`isGalois_Kv_Lw`) and the `CharP`-residue threshold hypotheses
+`norm_natCast_lt_one_of_charP_residueField` needs. This is the first time in the entire `exp`/`log`
+thread that `AdicCompletionNormExpTrace.norm_exp_eq_exp_trace` /
 `NonarchimedeanExponentialAdicCompletion`'s machinery is exercised against a genuine
 mixed-characteristic, wild, Galois instance — every earlier concrete instance in this repo was
 equal-characteristic, which cannot even *state* these hypotheses (`CharZero` is required).
 
-Note on blocker (1) from the previous pass (the `NormedField`/`RankOne` diamond): it does not
-actually block this invocation. `norm_natCast_lt_one_of_charP_residueField` and
+There are two competing `NormedField (v.adicCompletion K)` instances in scope for any number field:
+this repo's own, and Mathlib's `absNorm`-based one. That diamond does not actually block this
+invocation: `norm_natCast_lt_one_of_charP_residueField` and
 `exists_maximalIdeal_pow_norm_exp_eq_exp_trace` are both proved *generically* over abstract Dedekind
 domains (no `NumberField` hypothesis in scope at their definition sites), so `‖·‖` there resolves
 uniquely to this repo's own `NormedField` instance — Mathlib's competing `absNorm`-based instance
@@ -838,7 +840,7 @@ homomorphism law into the actual group isomorphism `U_{L_w}^{(i)} ≅ (𝔪_{L_w
 `A := w.adicCompletionIntegers L` (definitionally a `ValuationSubring (w.adicCompletion L)`), `π :=
 Θ₀`, `p := 3`. Every piece it needs is already in hand except the uniformizer's norm bound and the
 threshold index, both supplied by the same "leave the type to be inferred" `def` discipline as
-`hnormK`/`hnormL` above, drawing on the two generic lemmas added alongside this pass
+`hnormK`/`hnormL` above, drawing on two generic lemmas
 (`norm_lt_one_of_isUniformizer`, `exists_pow_lt_logUnitsThreshold`) so that no fresh `‖·‖` type
 ascription is ever written in this file. -/
 
@@ -1193,10 +1195,10 @@ def forall_maximalIdeal_pow_norm_exp_eq_exp_trace_iN :=
   IsDedekindDomain.HeightOneSpectrum.forall_maximalIdeal_pow_norm_exp_eq_exp_trace K L v w p
     hnormK hnormL forall_maximalIdeal_pow_norm_lt_i1 exists_maximalIdeal_pow_norm_trace_lt_i3
 
-/-! ### Status: both blockers closed, the `exp`/`log` machinery runs end-to-end
+/-! ### Status: the `exp`/`log` machinery runs end-to-end against this instance
 
-The previous pass left two blockers here; both are now closed, in this file plus the two
-generalized lemmas it draws on:
+Two obstructions had to be cleared, both resolved in this file plus the two generalized lemmas it
+draws on:
 
 **(1) The `NormedField (v.adicCompletion K)` instance diamond** (this repo's own
 `instNontriviallyNormedFieldAdicCompletion` vs. Mathlib's `absNorm`-based
@@ -1208,11 +1210,11 @@ resolves uniquely to this repo's instance (Mathlib's competing instance requires
 unavailable in that generic context) — the diamond only bites `‖·‖` written *fresh* in a
 number-field-visible file such as this one, which `hnormK`/`hnormL`/
 `exists_maximalIdeal_pow_norm_exp_eq_exp_trace` above avoid by leaving their types to be inferred.
-Separately, `Langlands.RankOneNormTransport` (built the previous pass) closes the diamond as
-general infra for whenever a future instance *does* need to compare the two norms explicitly, but
-that machinery was not needed here.
+Separately, `Langlands.RankOneNormTransport` closes the diamond as general infra for whenever a
+future instance *does* need to compare the two norms explicitly, but that machinery was not needed
+here.
 
-**(2) `norm_exp_eq_exp_trace` needs `IsGalois (v.adicCompletion K) (w.adicCompletion L)`.** Closed
+**(2) `norm_exp_eq_exp_trace` needs `IsGalois (v.adicCompletion K) (w.adicCompletion L)`.** Resolved
 by generalizing `AdicCompletionPrimitiveElementDegree.finrank_and_isSeparable_of_primitiveElement`
 into a new `isGalois_of_primitiveElement`: the same primitive-element/irreducible-base-change
 hypotheses, plus `[Normal K L]` (free here, `IsGalois K L` already holds), transport `minpoly K
@@ -1221,35 +1223,33 @@ theta`'s splitting over `L` to `gPoly`'s splitting over `Lw` through the commuti
 field of `gPoly` over `Kv` (`thetaw` alone already generates `Lw`, `adjoin_thetaw_eq_top`) — see
 `isGalois_Kv_Lw` above.
 
-**The payoff.** `exists_maximalIdeal_pow_norm_exp_eq_exp_trace` above is the first time in this
-repo's entire `exp`/`log` thread (`ROADMAP.md` §6f–§6v) that `AdicCompletionNormExpTrace`'s wild-case
-norm/trace formula is exercised against a genuine mixed-characteristic (`CharZero K`, residue
-characteristic `p`), wild (`p ∣ e = p`), Galois instance — every earlier concrete instance in this
-repo was equal-characteristic and could not even state the hypotheses.
+**The payoff.** `exists_maximalIdeal_pow_norm_exp_eq_exp_trace` above is the first place in this
+repo where `AdicCompletionNormExpTrace`'s wild-case norm/trace formula is exercised against a
+genuine mixed-characteristic (`CharZero K`, residue characteristic `p`), wild (`p ∣ e = p`), Galois
+instance — every earlier concrete instance in this repo was equal-characteristic and could not even
+state the hypotheses.
 
-**Capstone (this pass, `ROADMAP.md` §6w).** `expEquiv_w` above instantiates
-`NonarchimedeanExponentialUnitsIso.expEquiv` (the `U_A^{(i)} ≅ (𝔪_A^i, +)` isomorphism) against this
-same concrete instance, at `A := w.adicCompletionIntegers L`, `π := Θ₀`. This was the last
-unexercised piece of the entire `exp`/`log` machinery: with `expEquiv_w` closed, mutual inverse,
-filtration landing, norm/trace compatibility, AND the units isomorphism have all now been run end
-to end against one real concrete mixed-characteristic wild Galois instance. Instantiating it needed
-two new `HeightOneSpectrum`-specialized wrappers in `NonarchimedeanExponentialAdicCompletion.lean`
+**`expEquiv_w`** above instantiates `NonarchimedeanExponentialUnitsIso.expEquiv` (the
+`U_A^{(i)} ≅ (𝔪_A^i, +)` isomorphism) against this same concrete instance, at
+`A := w.adicCompletionIntegers L`, `π := Θ₀`. With `expEquiv_w` in hand, mutual inverse, filtration
+landing, norm/trace compatibility, and the units isomorphism have all now been run end to end
+against one real concrete mixed-characteristic wild Galois instance. Instantiating it needed two new
+`HeightOneSpectrum`-specialized wrappers in `NonarchimedeanExponentialAdicCompletion.lean`
 (`exists_pow_lt_logUnitsThreshold`, `expEquiv`) rather than the generic
 `NonarchimedeanExponential.expEquiv` applied directly with the "leave the type to be inferred" `def`
 trick alone: the generic version's `A : ValuationSubring K` argument forces `[NormedField K]`
 concrete (and hence re-resolved, ambiguously, against Mathlib's competing instance) before any
 already-pinned-instance hypothesis argument gets a chance to fix it via unification, so the
 diamond-avoidance had to move one level out, to a wrapper baked in a `NumberField`-free file — the
-same mechanism `norm_natCast_lt_one_of_charP_residueField` already used, just applied to a
+same mechanism `norm_natCast_lt_one_of_charP_residueField` already uses, just applied to a
 richer-typed conclusion.
 
-**Not attempted: the actual wild-case norm-group index computation**, mirroring
+**Out of scope for this file: the actual wild-case norm-group index computation**, mirroring
 `TotallyRamifiedNormIndex`'s tame-case pattern (transporting the index formula to the
 additive/trace side via `norm_exp_eq_exp_trace` + `expEquiv_w`). `TotallyRamifiedNormIndex.lean` is
-long and bridges `K₀ˣ`-level index formulas up to the ambient-field index; assessed but not
-attempted in this pass — see `ROADMAP.md` §6w for the precise state of what's available (`expEquiv_w`,
-`exists_maximalIdeal_pow_norm_exp_eq_exp_trace`) versus what a dedicated pass would still need to
-build (the index-formula transport itself). -/
+long and bridges `K₀ˣ`-level index formulas up to the ambient-field index; `expEquiv_w` and
+`exists_maximalIdeal_pow_norm_exp_eq_exp_trace` above are available for that transport, but the
+transport itself is not built here. -/
 
 end Langlands.TotallyRamifiedCyclotomicConcreteExample
 

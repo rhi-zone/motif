@@ -50,7 +50,7 @@ relationship to the "tame" hypothesis) is **not formalized in Lean anywhere in t
 paragraph above is a hand computation, recorded here to fix precisely what is and is not proved.
 Formalizing it would need the image of `x ↦ x^e` on `𝓀[K]ˣ`, identified with the subgroup of index
 `gcd(e, q-1)` — routine finite-cyclic-group theory (`orderOf`/`IsCyclic` machinery in Mathlib), but
-not attempted this pass, since `localNormMap_range_eq_of_isTotallyRamified` above gives the exact
+is not needed here, since `localNormMap_range_eq_of_isTotallyRamified` above gives the exact
 range without it.
 
 ## `N(π_L)` is a uniformizer of `K₀`: proved concretely, not by instantiating the abstract bundle
@@ -83,8 +83,7 @@ an equality of real norms):
 
 So `norm_isUniformizer_eq_of_isUniformizer` is **not** used by this file, and no bridging between
 the `HeightOneSpectrum` and `ValuativeRel` settings is performed. That bridging remains open as a
-task in its own right (`ROADMAP.md` Phase 2b, thirty-ninth pass's gap 3); it is simply not a
-prerequisite for the result proved here.
+task in its own right; it is simply not a prerequisite for the result proved here.
 
 ## Main results
 

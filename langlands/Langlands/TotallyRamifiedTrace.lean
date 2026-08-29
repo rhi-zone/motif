@@ -11,17 +11,16 @@ ring trace reduces mod `𝔪_K` to multiplication by the degree:
 
 This is the totally-ramified counterpart of `Langlands.NormTraceLinearization`'s
 `residue_trace_eq_trace_residue_of_isUnramified` (which reduces the trace to the residue-field
-trace `𝓀[L] → 𝓀[K]`, a statement with no content here since `𝓀[L] = 𝓀[K]`), and closes gaps 3 and
-4 of `ROADMAP.md` Phase 2b's thirty-ninth-pass entry.
+trace `𝓀[L] → 𝓀[K]`, a statement with no content here since `𝓀[L] = 𝓀[K]`).
 
 ## Route
 
-The thirty-ninth pass derived this formula by hand and proposed two proof routes — Newton's
-identities on the Eisenstein minimal polynomial, or the reduced companion matrix. **Neither is used
-here**, and in particular the Eisenstein/monogenicity presentation of `O_L = O_K[π_L]` is *not*
-needed: gap 3 (threading `Langlands.TotallyRamifiedEisenstein`'s abstract `ValuativeRel`/
-`spectralNorm` bundle into the `HeightOneSpectrum` adic-completion setting, flagged as the riskiest
-unknown) is *avoided*, not closed. See "## Why no Eisenstein presentation is needed" below.
+Two classical proof routes for this formula are Newton's identities on the Eisenstein minimal
+polynomial, or the reduced companion matrix. **Neither is used here**, and in particular the
+Eisenstein/monogenicity presentation of `O_L = O_K[π_L]` is *not* needed: threading
+`Langlands.TotallyRamifiedEisenstein`'s abstract `ValuativeRel`/`spectralNorm` bundle into the
+`HeightOneSpectrum` adic-completion setting is *avoided* entirely by the route below, not required
+by it. See "## Why no Eisenstein presentation is needed" below.
 
 The route actually taken works with the Artinian quotient `A := L₀ ⧸ 𝔪_K·L₀` directly:
 

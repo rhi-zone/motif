@@ -29,8 +29,8 @@ of `Langlands.CyclotomicDifferentExponent` plugged in.
 ## Scope
 
 `j` remains existential: nothing in this repo computes an explicit threshold depth, nor closes the
-divisibility to an equality (that would need the generic `v(N(x)) = f · w(x)` valuation formula, not
-established here — see `ROADMAP.md` §6ac). This is a genuine, checked *bound*, not a computed value.
+divisibility to an equality (that would need the generic `v(N(x)) = f · w(x)` valuation formula,
+which this repo does not establish). This is a genuine, checked *bound*, not a computed value.
 -/
 
 noncomputable section

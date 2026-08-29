@@ -4,8 +4,7 @@ import Langlands.TotallyRamifiedNormIndex
 /-!
 # A concrete WILDLY ramified extension: `k(Y) / k(Y^p)` in characteristic `p`
 
-Targets item (a) flagged in `ROADMAP.md` §6n as "the only item with zero progress across sixteen
-passes": a concrete instance of `R S K L v w` with residue characteristic `p` of `K` *dividing* the
+A concrete instance of `R S K L v w` with residue characteristic `p` of `K` *dividing* the
 ramification index `e` (here `e := p`), the wild case. It follows
 `Langlands.TotallyRamifiedConcreteExample`'s construction pattern literally, with `e := p := 2`
 instead of `e := 3`, `p := 7`.
@@ -589,9 +588,8 @@ level (via `natDegree_minpoly_yLw`) restricted to the subring `K₀` (`LinearInd
 Only *surjectivity* — every element of `w.adicCompletionIntegers L` is an actual
 `v.adicCompletionIntegers K`-combination of the `yLw₀ ^ i` — needs one of the two arguments above,
 and neither is built, in Mathlib or in this repo, in a form directly usable here. Building either is
-comparable in scope to other genuinely new machinery in this repo (e.g. the sixteen-pass
-`expEquiv`/units-filtration thread) and was not attempted this pass to avoid leaving a broken or
-`sorry`-laden file.
+comparable in scope to other genuinely new machinery in this repo (e.g. the `expEquiv`/units-filtration
+thread), so it is not attempted here, to avoid leaving a broken or `sorry`-laden file.
 
 **Consequence:** `finrank_eq` and the full three-field assembly `isTotallyRamified` are NOT built in
 this file. What *is* fully built and sorry-free below is Field 3
@@ -680,9 +678,9 @@ as an explicit hypothesis, false here by construction (`p ∣ e`); more fundamen
 *purely inseparable* (the Frobenius-twist extension `k(Y)/k(Y^p)`), hence not Galois, so this
 instance also cannot exercise `Langlands.AdicCompletionNormExpTrace`'s `norm_exp_eq_exp_trace`
 (which needs `IsGalois`) or the `expEquiv` units-filtration isomorphism of
-`Langlands.NonarchimedeanExponentialUnitsIso` in any Galois-dependent way — see `ROADMAP.md` §6n
-item (c), which needs a wild instance with actual Galois structure to run on, not merely a wild
-`IsTotallyRamified` witness.
+`Langlands.NonarchimedeanExponentialUnitsIso` in any Galois-dependent way — that machinery needs a
+wild instance with actual Galois structure to run on, not merely a wild `IsTotallyRamified`
+witness.
 
 A genuinely **separable, Galois, wildly ramified** degree-`p` example would need a different
 construction: the Artin–Schreier extension `S := R[Y] / (X · Y ^ p - X · Y - 1)` (clearing

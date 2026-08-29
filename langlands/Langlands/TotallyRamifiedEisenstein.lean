@@ -16,9 +16,8 @@ import Mathlib.Topology.Algebra.Valued.NormedValued
 
 `LocalField.isEisensteinAt_minpoly_of_isUniformizer` (the theorem that a uniformizer of a totally
 ramified extension of a complete discretely-valued field has an Eisenstein minimal polynomial over
-`𝒪[K] := (valuation K).valuationSubring`) is proved, without `sorry`, in this file — closing the
-gap scoped in `ROADMAP.md` Phase 2b's thirteenth pass and
-`langlands/Langlands/RamificationFiltration.lean`'s `## Scope` section. Building on it,
+`𝒪[K] := (valuation K).valuationSubring`) is proved, without `sorry`, in this file — filling the
+gap scoped in `langlands/Langlands/RamificationFiltration.lean`'s `## Scope` section. Building on it,
 `LocalField.adjoin_eq_integralClosure_of_isUniformizer` proves the classical monogenicity statement
 for the totally ramified case (Serre, *Local Fields*, Ch. III): if `π` also generates `L` over `K`,
 the integral closure of `𝒪[K]` in `L` is generated as an `𝒪[K]`-algebra by `π`,
@@ -56,8 +55,8 @@ the integral closure of `𝒪[K]` in `L` is generated as an `𝒪[K]`-algebra by
   totally ramified extension. Built from the Eisenstein theorem plus Mathlib's
   `Algebra.discr_mul_isIntegral_mem_adjoin` and
   `mem_adjoin_of_smul_prime_pow_smul_of_minpoly_isEisensteinAt`
-  (`Mathlib.RingTheory.Polynomial.Eisenstein.IsIntegral`), confirmed by the sixteenth pass to be the
-  right general (non-`NumberField`-specific) levers for this step.
+  (`Mathlib.RingTheory.Polynomial.Eisenstein.IsIntegral`), the right general
+  (non-`NumberField`-specific) levers for this step.
 * `LocalField.coeff_zero_norm_eq_of_isUniformizer` : `‖(minpoly K π).coeff 0‖ = ‖ϖ‖` under `hram`
   alone (no `IsDiscreteValuationRing` needed). Extracted from `isEisensteinAt_minpoly_of_isUniformizer`'s
   proof (as `hcoeff0`) so `norm_isUniformizer_eq_of_isUniformizer` can reuse it.
@@ -67,17 +66,17 @@ the integral closure of `𝒪[K]` in `L` is generated as an `𝒪[K]`-algebra by
   uniformizer of `K`. Built from `Algebra.PowerBasis.norm_gen_eq_coeff_zero_minpoly`
   (`Mathlib.RingTheory.Norm.Basic`) applied to the same `PowerBasis K L` construction used in
   `adjoin_eq_integralClosure_of_isUniformizer`'s proof, plus `coeff_zero_norm_eq_of_isUniformizer`.
-  Progress toward Phase 2b's totally-ramified norm-group theorem: establishes that `N(π)`, one of
+  Toward the totally-ramified norm-group theorem: establishes that `N(π)`, one of
   the two generators on the RHS of `N_{L/K}(L^×) = ⟨N(π)⟩ · N_{L/K}(U_L)`, is indeed a uniformizer.
 
-## The final hypothesis design (differs from the fourteenth/fifteenth pass's plan)
+## The hypothesis design: `spectralNorm`, not an explicit `ValuationSubring`/`RankOne` route
 
-Earlier passes' diagnosis (see prior `ROADMAP.md` entries) planned to phrase "totally ramified of
-degree `n`" as an exact equation `A.valuation (algebraMap K L ϖ) = A.valuation π ^ n` at the level
-of a `ValuationSubring A : ValuationSubring L` extending `𝒪[K]`, pushed forward to a real equation
+Phrasing "totally ramified of degree `n`" as an exact equation
+`A.valuation (algebraMap K L ϖ) = A.valuation π ^ n` at the level of a
+`ValuationSubring A : ValuationSubring L` extending `𝒪[K]`, pushed forward to a real equation
 via a `RankOne A.valuation` instance's `hom'` (`Langlands.HenselianValuation`'s
-`exists_rankOne_compatible`/`exists_rankOne_absoluteValue_extends` machinery). Attempting this
-directly hit a genuine obstruction: the `RankOne A.valuation` instance's `.hom'` field, once
+`exists_rankOne_compatible`/`exists_rankOne_absoluteValue_extends` machinery), hits a genuine
+obstruction: the `RankOne A.valuation` instance's `.hom'` field, once
 resolved through Lean's dot notation, turned out to resolve to the *parent* `RankLeOne` structure's
 `hom'` (operating on the canonical `MonoidWithZeroHom.ValueGroup₀`-embedded value group), not
 directly on `A.ValueGroup` as the naive signature `A.valuation x : A.ValueGroup` would suggest — so
@@ -105,12 +104,12 @@ The remaining assembly (coefficients of `minpoly K π` lie in `𝒪[K]`, transpo
 `minpoly ↥𝒪[K] π` via `minpoly.isIntegrallyClosed_eq_field_fractions'`, `IsIntegrallyClosed`/
 `IsFractionRing ↥𝒪[K] K` as direct instances from `Mathlib.RingTheory.Valuation.LocalSubring`, and
 the ideal-power membership from `Valuation.Integers.maximalIdeal_pow_eq_setOf_le_v_algebraMap_pow`)
-follows the fifteenth pass's diagnosis closely and did not hit further obstructions.
+is routine given the above.
 
 ## Design note: `[IsDiscreteValuationRing ↥(valuation K).valuationSubring]` is a hypothesis
 
-As anticipated by the task brief, deriving this from `IsCyclic`/`Nontrivial` value-group conditions
-(`Valuation.valuationSubring_isDiscreteValuationRing`) was not attempted — it is orthogonal,
+Deriving this from `IsCyclic`/`Nontrivial` value-group conditions
+(`Valuation.valuationSubring_isDiscreteValuationRing`) is not attempted here — it is orthogonal,
 structural content about `K` (not about the Eisenstein/ramification argument), so it is taken as an
 explicit hypothesis rather than derived.
 -/
@@ -460,7 +459,7 @@ sense of `hram`, as in `isEisensteinAt_minpoly_of_isUniformizer`) that also gene
 (`hgen : (minpoly K π).natDegree = Module.finrank K L`, i.e. `K⟮π⟯ = L`) has `Algebra.norm K π`
 exactly of the norm of the fixed uniformizer `ϖ`: `‖Algebra.norm K π‖ = ‖ϖ‖`.
 
-This is one of the two facts (the other being unit-norm surjectivity, see `ROADMAP.md` Phase 2b)
+This is one of the two facts (the other being unit-norm surjectivity)
 needed for the totally-ramified norm-group theorem `N_{L/K}(L^×) = ⟨N(π)⟩ · N_{L/K}(U_L)`: it shows
 `N(π)` is itself a uniformizer of `K`, hence a valid generator of the cyclic quotient
 `K^× / N_{L/K}(L^×)` alongside `N_{L/K}(U_L)`.
