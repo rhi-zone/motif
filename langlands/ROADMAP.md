@@ -21208,6 +21208,77 @@ could mis-touch, since `baseChangeSplittingField` never appears as a bare level-
 deletions(-) — net zero, as expected for a pure identifier substitution; every changed line is a
 straight rename, no theorem statement's mathematical content altered.
 
+## 94. (2026-08-30) Codebase-wide comment/docstring jargon cleanup: session-history and
+roadmap-numbering references stripped from every `.lean` file, math/Lean content preserved
+
+### Motivation
+
+Comments and docstrings across `Langlands/*.lean` had accumulated three kinds of jargon over the
+course of this file's own session-by-session history: roadmap section cross-references (`` `§68` ``
+style), narrative framing of which development pass or agent found or attempted something ("this
+pass", "this session", "this arc", "the arc", "prior pass"), and process narrative about what got
+tried, blocked, or deferred (dated "Update (...)" notes, "wall"/"blocker" framing, fix-attempt
+counting). None of that is decipherable to a reader who opens the file cold without also having
+`ROADMAP.md` open beside it. This pass rewrites every such comment so it states the actual
+mathematics or Lean-elaboration content on its own terms, and removes the process/session wrapper
+around it. `ROADMAP.md` itself is untouched — it remains the intentional historical record.
+
+### Method
+
+Grepped `Langlands/*.lean` for `Phase [0-9]`, `§[0-9]`, `this pass`, `this session`, `prior agent`,
+`prior pass`, `previous agent`, `previous pass`, `this arc`, `the arc`, `earlier pass`,
+`earlier session`, `blocker`, and related narrative markers, found 503 matches across 120 of the
+171 files, then worked through them in six batches of ~20 files apiece, cross-checked against a
+fresh read of each file's own comments (since some narrative jargon — dated "Update" notes,
+fix-attempt counting, "what got tried and abandoned" asides — doesn't hit any fixed pattern). Every
+hit was rewritten rather than deleted wherever it carried real content: what a definition or lemma
+means, why a hypothesis is stated the way it is, or a genuine Lean-elaboration caveat (e.g. an
+instance-diamond avoidance, an elaboration-cost note) — those survive, restated as standalone
+maintenance guidance instead of "see `§NN`". Comments that were pure process narrative with nothing
+left over once the wrapper was stripped were deleted outright; this pass found none that qualified
+for outright deletion — the process narrative in this codebase consistently wrapped a real
+technical point rather than standing alone as pure scaffolding.
+
+112 files were touched (the other 8 flagged files had only legitimate math citations —
+Serre's *Local Fields*, Bourbaki's *Commutative Algebra*, Tate's *Number theoretic background* —
+using `§` for the citation's own section number, not a roadmap cross-reference, and were left
+alone). A handful of stale docstrings were also found and corrected along the way, since fixing the
+jargon required reading the surrounding code closely enough to notice when the prose no longer
+matched it:
+
+- `LubinTateFunctionalEquationBivariate.lean`'s module docstring claimed associativity of `Phi` was
+  unproved and the "sole obstruction" to a further result; the file actually proves it
+  (`assoc_Phi`) and uses it later in the same file. Docstring now states what's proved.
+- `LubinTateTorsionSpacing.lean` claimed the mod-`π` factoring step was "not yet attempted";
+  `LubinTateModPiFactoring.lean` already implements it. The comment now points there directly.
+- `LubinTateTowerStepRootConnect.lean` had a "what this does not do" section claiming a root's
+  transport property wasn't established in the file, when it is. Corrected to match.
+- `NakayamaMonogenic.lean` had two comment blocks that had drifted out of sync with each other (an
+  older summary missing a theorem, and a later status note patched on top referencing it); merged
+  into one consistent pair.
+- `LubinTateTowerStepLevelInduction.lean` — the single heaviest file (32 jargon hits) — had its
+  module docstring rewritten to explain, in plain terms: what `TowerStep` bundles (a `Level`, a
+  uniformizer, and next-level Eisenstein data), what `TowerStep.exists_next` needs
+  (`hirr`/`β`/`hβroot`/`hgen`: irreducibility of the base-changed next polynomial, a root of it, and
+  a degree equality certifying that root generates the next splitting field), and what the
+  informally-named "root-count chain" gap actually is: no lemma in the repository constructs that
+  existential data generically for an arbitrary tower step at an arbitrary level — it has only ever
+  been produced by hand for specific concrete polynomials — so the `∀ n` induction takes it as a
+  hypothesis (`hstep`) rather than deriving it.
+
+### Build
+
+`nix develop -c lake build` (`langlands/`): clean, **8827 jobs — unchanged from the pre-existing
+baseline**, at every one of the six batch checkpoints and again at the end. No `sorry`, no new
+errors; only the same pre-existing `overlappingInstances`/`unusedVariables` lint warnings already
+present before this pass, at the same sites. `git diff --stat` across the six commits: 112 files
+changed, 1393 insertions(+), 1663 deletions(-) — comment/docstring text only; no proof term, lemma
+statement, or definition was touched (spot-checked directly, not just inferred from the unchanged
+job count).
+
+A repo-wide re-sweep for the same jargon patterns after all six batches landed returns zero hits
+outside legitimate math citations.
+
 ## 95. (2026-08-30) Whole-codebase Mathlib-quality audit (Phase 0/1/2, not just the tower step):
 survey via three parallel slices (naming fossils, ramification/norm-group cluster, nonarchimedean/
 Lubin-Tate cluster) plus a direct check of the naming layer; four docstring "Main results" gaps
