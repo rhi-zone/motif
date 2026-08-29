@@ -21480,3 +21480,75 @@ performed the naming-fossil check directly rather than continuing to block on it
 anomaly here rather than silently discarding it or fabricating a result on the sub-agent's behalf.
 No fabricated `<system-reminder>`-formatted content, false claimed policy or date changes, or false
 claims about tool/notification behavior were treated as genuine instruction this pass.
+
+## 96. (2026-08-30) Verification pass on `§95` Finding 4: the `FormalGroup.Basic` rebase was
+already completed concurrently, before this pass started
+
+### Context
+
+`§95` Finding 4 flagged, as the highest-priority open item, re-basing the hand-rolled Lubin-Tate
+formal-group-law layer (`Phi`/`F_π` in `LubinTateFunctionalEquationBivariate.lean`, the inverse
+series in `FormalGroupInverse.lean`) onto Mathlib's `Mathlib.RingTheory.FormalGroup.Basic`
+(`FormalGroup R`: a `MvPowerSeries (Fin 2) R` with `zero_constantCoeff`/`lin_coeff_X`/
+`lin_coeff_Y`/`assoc` fields, plus `IsComm`, `Point`, and `AddMonoid`/`AddCommMonoid` instances on
+`Point`). `§95` explicitly deferred this ("Not attempted this pass") because the relevant files
+were under active concurrent edit at the time.
+
+### Finding: already done, by that same concurrent work
+
+Reading the current state of both files (not `§95`'s snapshot) shows the rebase already landed,
+apparently in the concurrent session `§95` was avoiding colliding with — commits `8870d07`
+(`feat(langlands): the formal inverse of a general FormalGroup, specialized to F_π`), `7e538ef`,
+`2c03dba`, `206d79b`, all predating this pass and already covered by `bb1c9b3`'s later
+comment-cleanup. Specifically:
+
+* `LubinTateFunctionalEquationBivariate.lean` imports `Mathlib.RingTheory.FormalGroup.Basic` and
+  defines `LubinTate.LubinTateFormalGroup (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard
+  O) f) : FormalGroup O` with `toPowerSeries := Phi hπ hf`, `zero_constantCoeff :=
+  constantCoeff_Phi hπ hf`, `lin_coeff_X`/`lin_coeff_Y := coeff_Phi_of_degree_eq_one hπ hf _`, and
+  `assoc := assoc_Phi hπ hf` — every field discharged directly from the pre-existing hand-proved
+  facts about `Phi`, with no restatement of the underlying mathematics. `isComm_LubinTateFormalGroup`
+  packages `subst_swapVars_Phi` as a `FormalGroup.IsComm` instance the same way.
+* `FormalGroupInverse.lean` builds the formal inverse **generically against `F : FormalGroup R`**
+  (Mathlib's structure has no inverse/`Neg`/`AddGroup` machinery at all) — `subst2`, `invFun`,
+  `inv`, `subst2_inv_eq_zero` (existence), `eq_inv_of_subst2_eq_zero` (uniqueness) — then
+  specializes to `LubinTate.PhiInv hπ hf := (LubinTateFormalGroup hπ hf).inv`, with
+  `subst_Phi_PhiInv_eq_zero`, `eq_PhiInv_of_subst_Phi_eq_zero`, and
+  `subst_Phi_subst_PhiInv_eq_zero` as thin wrappers around the generic `FormalGroup` lemmas. The
+  file's own docstring records *why* this was a clean fit: `F.lin_coeff_Y` being fixed to exactly
+  `1` by the `FormalGroup` structure removes the unit-inversion/completeness argument the
+  univariate `phiState` recursion needed — the inverse-series recursion is strictly simpler to
+  build against Mathlib's structure than the original construction was.
+* Downstream consumers (`LubinTateIterate.lean`'s `subst_iter_Phi`, `LubinTateTorsionPoints.lean`'s
+  `FPiEval_PhiInv_eq_zero`) already reference `LubinTateFormalGroup`/`PhiInv` directly — nothing
+  left pointing at an ad hoc pre-rebase packaging.
+
+So the assessment `§95` deferred is answered as a **clean, correct rebase** — Mathlib's
+`FormalGroup` fields line up exactly with facts `Phi`/`assoc_Phi`/`coeff_Phi_of_degree_eq_one`
+already established, no field required restating the mathematical content — and it was already
+carried out correctly, not merely feasible.
+
+### Verification performed this pass
+
+* `nix develop -c lake build`: clean, **8827 jobs** (baseline unchanged), no `sorry`, no new
+  warnings or errors.
+* `grep -rn "sorry"` across `Langlands/*.lean` for the formal-group-law files and their consumers:
+  no `sorry` declarations (only the word "sorry" inside prose noting other files are sorry-free).
+* `#print axioms` on the key results, via a scratch file built and then removed
+  (`Langlands.ZZAxiomCheckTmp`, never committed): `LubinTate.LubinTateFormalGroup`,
+  `LubinTate.isComm_LubinTateFormalGroup`, `LubinTate.PhiInv`,
+  `LubinTate.subst_Phi_PhiInv_eq_zero`, `LubinTate.eq_PhiInv_of_subst_Phi_eq_zero`,
+  `LubinTate.assoc_Phi`, and `LubinTate.Phi` itself all report exactly `[propext,
+  Classical.choice, Quot.sound]` — no `sorryAx`, nothing lost relative to the pre-rebase
+  construction.
+
+### No code changes made this pass
+
+Since the rebase was already complete and verified clean, no `.lean` files were edited — only this
+`ROADMAP.md` section, correcting `§95` Finding 4's "Not attempted this pass" / "highest priority"
+open-item framing now that the item is closed.
+
+### Build
+
+`nix develop -c lake build`: clean, **8827 jobs**, no `sorry`, no new errors. Only `ROADMAP.md`
+changed this pass.
