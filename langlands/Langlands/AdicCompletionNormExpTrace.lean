@@ -5,8 +5,8 @@ import Langlands.NonarchimedeanExponentialRingHom
 /-!
 # The norm/trace compatibility formula `N_{L_w/K_v}(exp x) = exp(Tr_{L_w/K_v} x)`
 
-The wild-case payoff of this repo's exp/log thread (ROADMAP.md Phase 2b, item 5 of the wild-case
-list), proved here **for a Galois extension of completions**.
+The norm/trace compatibility formula in the wild ramification case, proved here **for a Galois
+extension of completions**.
 
 ## Route
 
@@ -15,7 +15,7 @@ The classical one — conjugates — made available by three pieces that had to 
 1. `NonarchimedeanExponential.exp_add` and `.exp_sum`
    (`Langlands.NonarchimedeanExponentialAdd`, `Langlands.NonarchimedeanExponentialRingHom`):
    `exp` of a finite sum is the product of the `exp`s. Without this the formula is unprovable by
-   any route; it was unattempted in every prior pass.
+   any route.
 2. `NonarchimedeanExponential.map_exp`: a *continuous* ring homomorphism commutes with `exp`. The
    `K_v`-automorphisms of `L_w` are continuous for free — not by any isometry or
    uniqueness-of-valuation-extension argument, but because a linear map on a finite-dimensional
@@ -87,8 +87,8 @@ v.adicCompletion K) = WithZero.exp (-k)` for some integer `k`.** `convergenceRad
 literal `2 ^ (-k)` (a real `zpow`), and reassociating the `rpow` exponent against it
 (`Real.rpow_intCast`, `Real.rpow_mul`) lands on the single `rpow` `2 ^ (-(k:ℝ) * ((p:ℝ)-1)⁻¹)`. Proved
 in this `NumberField`-free file (no fresh `‖·‖`/`convergenceRadius` type ascription at a
-`NumberField`-visible call site) to avoid the `NormedField (v.adicCompletion K)` instance diamond —
-see `ROADMAP.md`'s established diamond-avoidance discipline. -/
+`NumberField`-visible call site) to avoid triggering the `NormedField (v.adicCompletion K)`
+instance diamond. -/
 theorem convergenceRadius_eq_rpow_of_valued_natCast_eq_exp {k : ℤ}
     (h : Valued.v (((p : ℕ) : v.adicCompletion K)) = WithZero.exp (-k)) :
     convergenceRadius (v.adicCompletion K) p = (2 : ℝ) ^ (-(k : ℝ) * ((p : ℝ) - 1)⁻¹) := by
@@ -174,8 +174,8 @@ for *every* `x ∈ 𝔪_{L_w}^i` with `i ≥ i₀` — no further hypotheses on 
   equations) `htrL` at that SAME threshold `i3` too: `‖Tr x‖ < convergenceRadius K_v p` implies
   `‖algebraMap (Tr x)‖ = ‖Tr x‖ ^ e < (convergenceRadius K_v p) ^ e = convergenceRadius L_w p`.
 
-Both conveniences replace what used to be a separate ε/δ-continuity argument
-(`exists_delta_of_continuous`, now removed) per hypothesis. -/
+Both conveniences replace what would otherwise require a separate ε/δ-continuity argument per
+hypothesis. -/
 theorem exists_maximalIdeal_pow_norm_exp_eq_exp_trace
     [IsGalois (v.adicCompletion K) (w.adicCompletion L)]
     (hnormK : ‖(p : v.adicCompletion K)‖ < 1) (hnormL : ‖(p : w.adicCompletion L)‖ < 1) :

@@ -4,10 +4,10 @@ import Langlands.NonarchimedeanMvPowerSeriesEvalSubstGeneral
 /-!
 # `F_π` is associative at concrete points: `F_π(F_π(a, b), c) = F_π(a, F_π(b, c))`
 
-The last missing `AddGroup` axiom for the concrete `π^n`-torsion points (`ROADMAP.md` §24–§26:
-identity, commutativity and both-sided inverse were already closed at the evaluated level;
-associativity was blocked on eval-subst compatibility at a nesting shape neither "Lemma A" nor
-"Lemma S" covers).
+The last missing `AddGroup` axiom for the concrete `π^n`-torsion points: identity, commutativity
+and both-sided inverse were already closed at the evaluated level, but associativity needs
+eval-subst compatibility at a nesting shape not covered by the single-substitution or
+diagonal-substitution compatibility lemmas used for those.
 
 ## Route
 
@@ -22,9 +22,8 @@ Each identification is **two applications of the single general compatibility**
 (`evalMv (Φ.subst A) z = evalMv Φ (fun i ↦ evalMv (A i) z)`, arbitrary family `A`, arbitrary finite
 index types) — once for the outer substitution (family `![Φ.subst ![X 0, X 1], X 2]`, whose two
 components have genuinely different shapes) and once for the inner one (family `![X 0, X 1]`,
-handled by `evalMv_subst_pair` below). No separate "Lemma-S-analogue" is needed: the general lemma's
-family is unconstrained, so the diagonal/nested distinction that shaped §23's two-lemma split
-disappears.
+handled by `evalMv_subst_pair` below). No separate diagonal-substitution lemma is needed here: the
+general lemma's family is unconstrained, so it covers the nested substitution shape directly.
 
 Two small bridges make this go through with no reproved analysis:
 

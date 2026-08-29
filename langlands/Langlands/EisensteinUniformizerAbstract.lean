@@ -18,19 +18,17 @@ inside the integral closure, is itself irreducible there (a uniformizer) — rep
 `hram : ‖ϖ‖ = spectralNorm K L π ^ n` total-ramification hypothesis with a bare
 `hEis : (minpoly R β).IsEisensteinAt (maximalIdeal R)` hypothesis.
 
-This is exactly the tool the `K_1 → K_2` tower step needs and the `K_1` level did not: at `K_1`,
-the generator's Eisenstein-ness and total ramification were both derived from a `hram` condition
-stated in terms of `K`'s norm (available because `K` carries `ValuativeRel`/`NormedField`
-structure). At `baseChangeSplittingField`, the "base field" one level up is `K_1 P`, and
-`Langlands/LubinTateTowerStepMonogenic.lean`'s docstring records — and this file's own probing
-confirms — that `K_1 P` deliberately carries **no** `ValuativeRel`/`NormedField` instance (giving
-it one reproduces a non-defeq diamond against the existing `spectralNorm`-based
-`K_1.instNontriviallyNormedField`). So the `K_1`-level route through `spectralNorm K (K_1 P) _`
-cannot be repeated one level up with `K_1 P` playing the role of the base field. What *is* already
-available one level up is the Eisenstein data itself: the Weierstrass-factorization step already
-produces `P₂` Eisenstein at `𝔪_{O_{K_1}}` directly (no norm computation), so a version of the
-uniformizer machinery that consumes Eisenstein-ness as a bare hypothesis, rather than deriving it
-from `hram`, is exactly what closes the gap.
+At the base field `K_1`, the generator's Eisenstein-ness and total ramification are both derived
+from a `hram` condition stated in terms of `K`'s norm (available because `K` carries
+`ValuativeRel`/`NormedField` structure). One level up, at `baseChangeSplittingField`, the "base
+field" is `K_1 P`, which deliberately carries **no** `ValuativeRel`/`NormedField` instance — giving
+it one would reproduce a non-defeq diamond against the existing `spectralNorm`-based
+`K_1.instNontriviallyNormedField` (see `Langlands/LubinTateTowerStepMonogenic.lean`). So the
+`K_1`-level route through `spectralNorm K (K_1 P) _` cannot be repeated with `K_1 P` playing the
+role of the base field. What *is* available at that level is the Eisenstein data itself: the
+Weierstrass-factorization step already produces `P₂` Eisenstein at `𝔪_{O_{K_1}}` directly (no norm
+computation needed), so a version of the uniformizer machinery that consumes Eisenstein-ness as a
+bare hypothesis, rather than deriving it from `hram`, is what's needed here.
 
 ## Main results
 
@@ -70,7 +68,7 @@ Unlike the `ValuativeRel`-based route, this file does *not* itself supply
 (`Langlands/MonogenicIntegralClosure.lean`), a construction specific to the `ValuativeRel`-canonical
 valuation subring. At a moving base such as `R := O_{K_1}` these instances are **not** free from
 `R`'s own structure; they are exactly what `Langlands/IntegralClosureTower.lean`'s general
-`RingEquiv`-transport (`§62`) supplies, given the *base*-relative (`R₀ := ↥𝒪[K]`-relative) instances
+`RingEquiv`-transport supplies, given the *base*-relative (`R₀ := ↥𝒪[K]`-relative) instances
 `Langlands/MonogenicIntegralClosure.lean` already provides. The caller is expected to stage them via
 that transport before invoking `irreducible_of_isEisensteinAt`.
 -/

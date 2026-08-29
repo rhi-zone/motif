@@ -16,10 +16,9 @@ for an arbitrary uniformizer produced existentially
 hand-constructed one, so it applies to *any* `IsDedekindDomain.HeightOneSpectrum` pair `v`, `w`
 with `w.asIdeal.LiesOver v.asIdeal` — no `IsTotallyRamified` hypothesis needed.
 
-This is prerequisite infrastructure for the wild-case norm-group index investigation
-(`ROADMAP.md` Phase 2b): relating `Tr_{L_w/K_v}(𝔪_{L_w}^i)` to `𝔪_{K_v}^j` via the different ideal
-needs exactly this ideal-power identity to translate a scaling by `𝔪_{K_v}^{-j}` (in `K_v`) into a
-scaling by `𝔪_{L_w}^{-je}` (in `L_w`).
+This is prerequisite infrastructure for relating `Tr_{L_w/K_v}(𝔪_{L_w}^i)` to `𝔪_{K_v}^j` via the
+different ideal: that computation needs exactly this ideal-power identity to translate a scaling
+by `𝔪_{K_v}^{-j}` (in `K_v`) into a scaling by `𝔪_{L_w}^{-je}` (in `L_w`).
 
 ## Route
 

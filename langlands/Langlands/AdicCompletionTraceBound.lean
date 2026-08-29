@@ -5,10 +5,8 @@ import Langlands.NonarchimedeanExponentialExtension
 
 Stating the wild-case norm/trace compatibility formula `N_{L_w/K_v}(exp x) = exp(Tr_{L_w/K_v} x)`
 requires knowing that `Tr_{L_w/K_v}(x)` lands in `exp_{K_v}`'s convergence domain whenever `x` lies
-in `exp_{L_w}`'s. `Langlands.NonarchimedeanExponentialExtension`'s docstring flags exactly this as
-the remaining obstruction, having checked that Mathlib has no lemma connecting `Algebra.trace` or
-`Algebra.norm` to any nonarchimedean norm (re-checked when this file was written: loogle for
-`Algebra.trace` together with `Norm.norm` still returns zero declarations).
+in `exp_{L_w}`'s. Mathlib has no lemma connecting `Algebra.trace` or `Algebra.norm` to any nonarchimedean norm (a
+loogle search for `Algebra.trace` together with `Norm.norm` returns no declarations).
 
 This file closes that gap. The route deliberately avoids the analytic "all conjugates have the same
 absolute value" argument (which would go through `spectralNorm`): that argument needs
@@ -49,8 +47,8 @@ to `0` as the filtration level grows is all that is needed.
 
 The compatibility formula itself. With this file, `N_{L_w/K_v}(exp_{L_w} x) = exp_{K_v}(Tr x)` is
 finally *stateable* (both sides are defined on a common domain). Proving it additionally needs the
-group-homomorphism law `exp (x + y) = exp x * exp y`, which no file in this repo's exp/log thread
-provides — see `ROADMAP.md` Phase 2b.
+group-homomorphism law `exp (x + y) = exp x * exp y`, which no file in this repo currently
+provides.
 -/
 
 noncomputable section

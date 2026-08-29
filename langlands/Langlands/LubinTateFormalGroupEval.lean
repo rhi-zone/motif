@@ -4,8 +4,8 @@ import Langlands.NonarchimedeanMvPowerSeriesEvalFin2
 /-!
 # `F_π` evaluated at concrete elements of the maximal ideal
 
-`ROADMAP.md` §19/§20 identified this as the missing crux piece of the Lubin-Tate torsion-point
-thread: `Langlands.LubinTateFunctionalEquationBivariate.Phi` (`F_π`) is a *formal* bivariate power
+The Lubin-Tate torsion-point thread needs this piece: `Langlands.LubinTateFunctionalEquationBivariate.Phi`
+(`F_π`) is a *formal* bivariate power
 series law; torsion points need it evaluated at *concrete* elements `a, b` of the maximal ideal of
 a complete local ring. This file supplies that evaluation, via
 `Langlands.NonarchimedeanMvPowerSeriesEvalFin2.evalMv` (the from-scratch
@@ -51,8 +51,7 @@ a double-series-interchange argument), but the torsion-point thread's next steps
 `eval (MvPowerSeries.subst A Φ) x = evalMv Φ (fun i ↦ eval (A i) x)` for a univariate family
 `A : Fin 2 → PowerSeries R`, which is not yet built (see
 `Langlands.NonarchimedeanPowerSeriesEvalSubst`'s module docstring for the precise route by which the
-univariate proof's structure is expected to transfer, and `ROADMAP.md` for the dependency-ordered
-remainder).
+univariate proof's structure is expected to transfer).
 -/
 
 @[expose] public section

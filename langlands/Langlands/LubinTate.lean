@@ -9,8 +9,8 @@ import Mathlib.FieldTheory.Finite.Basic
 
 Opens a new route toward local class field theory for this repo — Lubin-Tate theory, the
 ramified/hard half of local CFT and the route that connects to representation-theoretic / local
-Langlands machinery (as opposed to the purely cohomological route Phase 2/2a/2b pursued). This is
-the first file of that thread.
+Langlands machinery (as opposed to the purely cohomological route). This is the first file of
+that thread.
 
 For a complete discrete valuation ring `O` with uniformizer `π` and finite residue field of size
 `q`, the classical Lubin-Tate construction singles out the set `ℱ_π` of `f ∈ O⟦X⟧` satisfying:
@@ -47,11 +47,11 @@ same or different uniformizers) and a linear starting form, there is a unique po
 (in one or several variables) with `φ ≡` that linear form `(mod deg 2)` intertwining `f` and `g`,
 built by solving one linear equation in `O` per total-degree step, feasible precisely because `f`'s
 `πX`/`X^q` congruences make the degree-`n` equation invertible for every `n`. Specializing this
-lemma to `f = g` produces the associated formal group law `F_π` with `f` as an endomorphism (the
-stretch goal `ROADMAP.md` scopes as item 4). That lemma is substantial 2-variable formal power
+lemma to `f = g` produces the associated formal group law `F_π` with `f` as an endomorphism. That
+lemma is substantial 2-variable formal power
 series machinery (total-degree induction, `MvPowerSeries.subst`, a fresh coefficient-recursion
 argument genuinely comparable in scope to this repo's `exp`/`log` thread) and is not attempted in
-this file; see `ROADMAP.md`'s entry for this pass for the precise remaining gap.
+this file.
 
 ## Main results
 

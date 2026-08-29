@@ -38,8 +38,8 @@ closes the same way.
 **`IsDiscreteValuationRing`/`IsAdicComplete` also close, but needed a different technique**, because
 `IsDiscreteValuationRing.not_a_field'` (`maximalIdeal R ≠ ⊥`) and the two pieces `IsAdicComplete`
 extends (`IsHausdorff`, `IsPrecomplete`) all mention `IsLocalRing.maximalIdeal`, which itself needs a
-`[IsLocalRing R]` instance argument to even typecheck. A prior pass recorded (see git history) that
-once such a hypothesis is already elaborated (e.g. `inst : IsHausdorff (maximalIdeal
+`[IsLocalRing R]` instance argument to even typecheck. Once such a hypothesis is already elaborated
+(e.g. `inst : IsHausdorff (maximalIdeal
 ↥(integralClosure R M)) ↥(integralClosure R M)`), its embedded `[IsLocalRing]` instance argument is a
 **fixed** term referencing the un-abstracted original type — so `rw [toSubring_integralClosure_eq] at
 inst` fails with "motive is not type correct" (the motive-generalization cannot abstract the rewritten
@@ -57,12 +57,11 @@ R` and only afterward specializing `I := maximalIdeal`. Because `IsHausdorff I M
 M`/`IsAdicComplete I M` are themselves defined relative to an explicit `I : Ideal R` (no
 `IsLocalRing`-style nested instance argument inside the class signature — confirmed by reading
 `Mathlib/RingTheory/AdicCompletion/Basic.lean` directly), the obstruction never arises for these
-classes at that level of generality; it only arose because the previous attempt tried to `rw` an
+classes at that level of generality; it only arises when one tries to `rw` an
 already-instantiated `maximalIdeal`-headed hypothesis instead of routing through the explicit-ideal
 statement.
 
-**Mathlib already provides exactly this transport**, contrary to a prior pass's record (loogle,
-queried with different search terms, missed it): `IsHausdorff.congr_ringEquiv`,
+**Mathlib already provides exactly this transport**: `IsHausdorff.congr_ringEquiv`,
 `IsPrecomplete.congr_ringEquiv`, and `IsAdicComplete.congr_ringEquiv` (all in
 `Mathlib/RingTheory/AdicCompletion/Topology.lean`, authored 2025) give `IsAdicComplete (I.map e) S ↔
 IsAdicComplete I R` (similarly for the two pieces) for any `e : R ≃+* S` — general, no `IsLocalRing`

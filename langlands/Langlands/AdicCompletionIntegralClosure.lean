@@ -239,11 +239,10 @@ theorem map_maximalIdeal_restrictAdicCompletionIntegers
     (Ideal.map_isMaximal_of_equiv (restrictAdicCompletionIntegers K L v w σ))
 
 omit [Algebra.IsIntegral R S] in
-/-- **`σ` preserves membership in `𝔪_{L_w}^i` exactly, for the SAME `i`.** The payoff of this
-section: unlike the generic ε/δ continuity argument
-(`AdicCompletionNormExpTrace.lean`'s now-obsolete `exists_delta_of_continuous`), the threshold
-level `i` here needs no adjustment at all when passing from `x` to `σ x` — Galois conjugation is
-an *exact* symmetry of the filtration, not merely a continuous one. -/
+/-- **`σ` preserves membership in `𝔪_{L_w}^i` exactly, for the SAME `i`.** Unlike a generic ε/δ
+continuity argument, the threshold level `i` here needs no adjustment at all when passing from `x`
+to `σ x` — Galois conjugation is an *exact* symmetry of the filtration, not merely a continuous
+one. -/
 theorem restrictAdicCompletionIntegers_mem_maximalIdeal_pow
     (σ : w.adicCompletion L ≃ₐ[v.adicCompletion K] w.adicCompletion L) {i : ℕ}
     {x : w.adicCompletionIntegers L} (hx : x ∈ maximalIdeal (w.adicCompletionIntegers L) ^ i) :

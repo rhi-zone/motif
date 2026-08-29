@@ -39,8 +39,8 @@ totally ordered, so the sandwich collapses to an equality.
 
 Everything is phrased with `Submodule.map ((Algebra.trace K L).restrictScalars A)`, i.e. with the
 `K`-linear trace, so no naturality statement relating the bundled integral trace
-`Algebra.trace A B : B →ₗ[A] A` to `Algebra.trace K L` is needed (`ROADMAP.md` §6x item 1c): the
-image is manifestly an `A`-submodule of `K`, and step 3 at `j = 0` places it inside `A`.
+`Algebra.trace A B : B →ₗ[A] A` to `Algebra.trace K L` is needed: the image is manifestly an
+`A`-submodule of `K`, and step 3 at `j = 0` places it inside `A`.
 
 ## Main results
 

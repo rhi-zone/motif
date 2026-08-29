@@ -49,11 +49,11 @@ nonarchimedean local field and `L / K` algebraic, a `ValuationSubring` of `L` wh
   transport a `CompleteSpace` instance across two `PseudoMetricSpace` structures on the same type
   that agree on `dist` but were built via unrelated, non-defeq constructions — the tool needed to
   reconcile a `Valued`/`RankOne`-built `NontriviallyNormedField` with a `spectralNorm`-built one on
-  the same field (see the "nineteenth pass" and later entries of `ROADMAP.md`).
+  the same field.
 * `LocalField.exists_completeSpace_of_finiteDimensional` : for `A : ValuationSubring L` with
   `A.comap (algebraMap K L) = 𝒪[K]`, `K` complete, `L / K` finite, `L` is complete with respect to
-  the `Valued.mk' A.valuation`-determined uniform space — the permanent, reusable assembly of the
-  "twentieth pass" transport lemmas above, composed with `spectralNorm.completeSpace`.
+  the `Valued.mk' A.valuation`-determined uniform space — the reusable assembly of the
+  transport lemmas above, composed with `spectralNorm.completeSpace`.
 
 ## Implementation notes
 
@@ -388,7 +388,7 @@ theorem PseudoMetricSpace.toUniformSpace_eq_of_toDist_eq {α : Type*} {m m' : Ps
 type that agree on `dist`, even when their `UniformSpace` fields were built via unrelated
 constructions and are not defeq.
 
-This is the missing tool identified by the "nineteenth pass" of `ROADMAP.md`'s Phase 2b: composing
+This is the tool needed because composing
 a `Valued`/`RankOne`-built `NontriviallyNormedField M` (the totally-ramified route, via
 `Valued.mk'` + `Valued.toNontriviallyNormedField`) with `spectralNorm.completeSpace` (which is
 pinned to `spectralNorm.uniformSpace K M`, built from the unrelated abstract sup-over-embeddings
@@ -728,7 +728,7 @@ respect to the uniform space determined by `A.valuation` via `Valued.mk'` — th
 uniform structure `exists_rankOne_absoluteValue_extends` and this file's other theorems build via
 `Valued.mk'` + `Valued.toNontriviallyNormedField`.
 
-**Design choice (shape (a) from the task, not (b)):** the conclusion is stated as `CompleteSpace L`
+**Design choice:** the conclusion is stated as `CompleteSpace L`
 relative to the explicit `UniformSpace` term `(Valued.mk' A.valuation).toUniformSpace`, not relative
 to an ambient `[Valued L A.ValueGroup]`/`[RankOne A.valuation]` instance argument. This is possible
 (and preferable to threading those as hypotheses) because `Valued.mk' A.valuation` needs no
@@ -739,7 +739,7 @@ conclusion. A caller that has already done `letI := Valued.mk' A.valuation` (mir
 immediately by `haveI := exists_completeSpace_of_finiteDimensional K A hA`, with no further `letI`
 chain to repeat.
 
-**Why this needs `Langlands.HenselianValuation`'s new `UniformSpaceTransport` lemmas and not just
+**Why this needs `Langlands.HenselianValuation`'s `UniformSpaceTransport` lemmas and not just
 `spectralNorm.completeSpace` directly**: `Mathlib`'s general "finite extension of a complete
 nonarchimedean field is complete" theorem, `spectralNorm.completeSpace`, is pinned to
 `spectralNorm.uniformSpace K L` — a uniform structure built from the abstract sup-over-embeddings

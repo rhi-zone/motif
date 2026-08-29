@@ -18,12 +18,12 @@ closed discrete valuation ring with fraction field `K`, and `π` has Eisenstein 
 generating `L / K`. This file extracts exactly that tail of the proof as a standalone theorem
 stated for an *arbitrary* such `R`, not tied to any `ValuativeRel`-canonical valuation subring.
 
-This is the tool `ROADMAP.md`'s `§56` ("Gap 2") calls for: applying
-`Algebra.discr_mul_isIntegral_mem_adjoin` and
+This makes it possible to apply `Algebra.discr_mul_isIntegral_mem_adjoin` and
 `mem_adjoin_of_smul_prime_pow_smul_of_minpoly_isEisensteinAt` directly at a moving base `R`
 (e.g. `R := O_{K_1}`) that carries no `ValuativeRel`/`NontriviallyNormedField` structure of its
-own, sidestepping the instance diamond `Langlands/TowerBundleResidueField.lean`'s `_of_valuationSubring`
-variants hit when reused one level up (see `Langlands/LubinTateTowerStepMonogenic.lean`).
+own, sidestepping the instance diamond that `Langlands/TowerBundleResidueField.lean`'s
+`_of_valuationSubring` variants hit when reused one level up (see
+`Langlands/LubinTateTowerStepMonogenic.lean`).
 
 ## Main result
 

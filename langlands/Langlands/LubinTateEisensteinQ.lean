@@ -9,16 +9,15 @@ import Langlands.EisensteinRootNorm
 /-!
 # Eisenstein-ness and root valuation of the sharp Weierstrass-preparation factor `Q`
 
-`ROADMAP.md` §31 identified `piTorsion hπ hf 1` with the root set of `P`, the Weierstrass-prep
-factor of a Lubin-Tate power series `f`, and showed `P = X * Q` (`P`'s constant term is exactly `0`,
+`piTorsion hπ hf 1` is the root set of `P`, the Weierstrass-prep
+factor of a Lubin-Tate power series `f`; `P = X * Q` (`P`'s constant term is exactly `0`,
 `LubinTateWeierstrassPreparation.coeff_zero_eq_zero_of_eq_mul`) with `Q`'s own constant term an
 *associate* of the uniformizer `π` (`LubinTateWeierstrassPreparation.coeff_one_associated_of_eq_mul`,
-valuation exactly `1`, not merely `≥ 1`). §31 flagged the classical root-valuation argument for `Q`
-(every root has valuation exactly `1/(q-1)`) as needing genuinely new Newton-polygon machinery, since
-Mathlib has no Newton polygon development at all.
+valuation exactly `1`, not merely `≥ 1`). The classical root-valuation argument for `Q`
+(every root has valuation exactly `1/(q-1)`) would seem to need genuinely new Newton-polygon
+machinery, since Mathlib has no Newton polygon development at all.
 
-**This file finds a shortcut, confirmed by direct investigation (not assumed): no Newton polygon is
-needed.** Mathlib's `spectralNorm.spectralNorm_eq_norm_coeff_zero_rpow`
+**This file shows no Newton polygon is needed.** Mathlib's `spectralNorm.spectralNorm_eq_norm_coeff_zero_rpow`
 (`Mathlib.Analysis.Normed.Unbundled.SpectralNorm`) is a *completely general* identity — for *any*
 `x : L` algebraic over a complete normed field `K`, `spectralNorm K L x = ‖(minpoly K x).coeff 0‖ ^
 (1 / (minpoly K x).natDegree : ℝ)` — with no side conditions beyond `x` being a root of its own
@@ -32,9 +31,8 @@ Newton-polygon machinery, no bound-from-both-sides ultrametric argument, needed 
 the problem entirely to irreducibility of `Q` (over `O`, then over `K` via Gauss's lemma), which in
 turn follows from Mathlib's `Polynomial.irreducible_of_eisenstein_criterion` given the sharp
 `coeff 0 ∉ 𝔪 ^ 2` hypothesis — itself a direct, general consequence of "associate of a uniformizer"
-in any discrete valuation ring (`not_mem_sq_maximalIdeal_of_associated`, proved here, not previously
-in Mathlib: `grep -rn "not_mem.*maximalIdeal.*sq\|sq.*not_mem.*maximalIdeal"` in this repo and a
-loogle search for "Associated, Irreducible, Ideal.span" both came up empty).
+in any discrete valuation ring (`not_mem_sq_maximalIdeal_of_associated`, proved here; no such lemma
+currently exists in Mathlib).
 
 ## Main results
 
@@ -59,8 +57,8 @@ loogle search for "Associated, Irreducible, Ideal.span" both came up empty).
   ramification separability criterion, general `K[X]`-level form — a monic irreducible `Qk : K[X]`
   Eisenstein-shaped with a *sharp* constant-term norm `c` (`0 < c < 1`) and a *tame* degree (its
   image in `K` has norm exactly `1`) has every root `α` (in any algebraic extension `L`) as a
-  *simple* root, `Polynomial.aeval α Qk.derivative ≠ 0`. The classical derivative-valuation argument
-  §32 sketched, closed via `spectralNorm`'s power law (`isPowMul_spectralNorm`) and the finite-sum
+  *simple* root, `Polynomial.aeval α Qk.derivative ≠ 0`. The classical derivative-valuation argument,
+  closed via `spectralNorm`'s power law (`isPowMul_spectralNorm`) and the finite-sum
   ultrametric domination lemma `IsNonarchimedean.apply_sum_eq_of_lt`.
 * `Polynomial.separable_of_isEisensteinAt_of_natDegree_norm_eq_one` : the same hypotheses conclude
   `Qk.Separable` directly, via Mathlib's `Polynomial.separable_iff_derivative_ne_zero` (no
@@ -70,14 +68,14 @@ loogle search for "Associated, Irreducible, Ideal.span" both came up empty).
   (Q.natDegree : O)`, and `‖algebraMap O K π‖ < 1`) down to `Polynomial.Separable`.
 * `LubinTate.separable_map_divX_of_isLubinTatePoly` : specializes the bridge to `Q := P.divX`,
   reusing `divX_isWeaklyEisensteinAt_and_associated` exactly as `spectralNorm_eq_of_isLubinTatePoly_root`
-  does. **This closes §32's separability gap** — the tame-ramification route it identified but did
-  not attempt — given the two hypotheses `IsUnit (P.divX.natDegree : O)` and `‖algebraMap O K π‖ < 1`
+  does. **This gives a tame-ramification route to separability**, given the two hypotheses
+  `IsUnit (P.divX.natDegree : O)` and `‖algebraMap O K π‖ < 1`
   (both true in the concrete Lubin-Tate application but not derived here; no caller needing the
   concrete instantiation exists yet, matching `hPdeg2`'s existing convention).
 
 ## What this does not do
 
-**The splitting-field hypothesis** (§31's gap 2: `K` is not assumed to contain `Q`'s roots) is
+**The splitting-field hypothesis** — `K` is not assumed to contain `Q`'s roots — is
 unaffected by this file — every theorem here is stated for an arbitrary algebraic extension `L / K`
 containing a root `α`, exactly the generality needed to be combined with a splitting-field
 construction later, but no such construction is attempted here.
@@ -273,7 +271,7 @@ power series `f`.** Combines `divX_isWeaklyEisensteinAt_and_associated` (`Q`'s s
 `spectralNorm_eq_norm_coeff_zero_rpow_of_aeval_eq_zero` (the general spectralNorm-of-root reversal):
 for any root `α` of `Q.map (algebraMap O K)` in an algebraic extension `L / K`,
 `spectralNorm K L α` is pinned down exactly by `Q`'s own constant coefficient. This is the sharp
-root-valuation fact `ROADMAP.md` §31's classical Newton-polygon argument was expected to need — no
+root-valuation fact the classical Newton-polygon argument would otherwise be needed for — no
 Newton polygon required. -/
 theorem spectralNorm_eq_of_isLubinTatePoly_root {P : O[X]} {u : O⟦X⟧} (hu : IsUnit u) {f : O⟦X⟧}
     (heq : f = (P : O⟦X⟧) * u) (hf0 : PowerSeries.coeff 0 f = 0) {π : O}
@@ -514,7 +512,7 @@ factor `P`, reusing `divX_isWeaklyEisensteinAt_and_associated` for `Q`'s Eisenst
 degree" condition) and `hπnorm : ‖algebraMap O K π‖ < 1` are left as explicit hypotheses: for the
 concrete Lubin-Tate application `P.divX.natDegree = residueCard O - 1`, `hQn` is automatically true
 (its residue-field image is `-1 ≠ 0`, since `residueCard O` is a prime power), but no caller needing
-that concrete instantiation exists yet, so deriving it is left to a future pass — matching
+that concrete instantiation exists yet, so deriving it is left to a caller — matching
 `divX_isWeaklyEisensteinAt_and_associated`'s existing `hPdeg2` convention of taking a fact that is
 always true in the intended application as an explicit hypothesis rather than re-deriving it here. -/
 theorem separable_map_divX_of_isLubinTatePoly {O : Type*} [CommRing O] [IsDomain O]

@@ -4,14 +4,14 @@ import Mathlib.RingTheory.PowerSeries.Expand
 import Langlands.LubinTate
 
 /-!
-# The Lubin-Tate functional equation lemma: existence and uniqueness — CLOSED
+# The Lubin-Tate functional equation lemma: existence and uniqueness
 
 This file completes the Lubin-Tate thread opened in `Langlands/LubinTate.lean`: the **functional
 equation lemma**. That lemma builds, for `f, g ∈ ℱ_π` and a linear starting form `a`, a power
 series `φ` intertwining `f` and `g` — `f(φ(X)) = φ(g(X))` — and shows `φ` is the unique such series
 with the given linear coefficient. Both halves are proved here, in full:
 `subst_phi_eq_phi_subst` (existence) and `eq_of_coeff_zero_eq_zero_of_coeff_one_eq_of_subst_eq`
-(uniqueness) — see `ROADMAP.md` §10 for the milestone writeup.
+(uniqueness).
 
 The file proceeds in three stages. First, the residue-field congruence: reducing mod `π`, `f` and
 `g` act identically (as the Frobenius-twisted `q`-th power map) on *any* power series with zero
@@ -81,8 +81,8 @@ prove existence, and whose reuse against an *arbitrary* solution (via `genTrunc`
 ## What this does not yet do
 
 Everything downstream of the functional equation lemma itself: specializing `L = X + Y`, `f = g` to
-extract the formal group law `F_π` (the natural next step per `ROADMAP.md` §10), and the theory
-built on top of it (isogenies, the reciprocity map, etc.).
+extract the formal group law `F_π`, and the theory built on top of it (isogenies, the reciprocity
+map, etc.).
 -/
 
 @[expose] public section
@@ -219,7 +219,7 @@ theorem pi_mul_mul_unit_inv_mul_choose {π : O} {u : O} (hunit : IsUnit u) {y : 
     _ = y := hdvd.choose_spec.symm
 
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] in
-/-- **Truncation invariance, inner position** (Fact 1 of the existence induction). If two
+/-- **Truncation invariance, inner position.** If two
 admissible substitutands `b`, `b'` agree on coefficients `0, …, n` (packaged as
 `X^(n+1) ∣ (b - b')`), then substituting either of them into a fixed outer series `h` gives the
 same `n`-th coefficient. Proved the same way Mathlib's `PowerSeries.subst_substInv_right` proves
@@ -238,7 +238,8 @@ theorem coeff_subst_eq_of_dvd_sub {R S : Type*} [CommRing R] [CommRing S] [Algeb
   rwa [map_sub, sub_eq_zero] at this
 
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] in
-/-- **Truncation invariance, outer position** (the outer-position analogue of Fact 1). If two
+/-- **Truncation invariance, outer position** (the outer-position analogue of the inner-position
+truncation invariance above). If two
 outer series `f`, `f'` agree on coefficients `0, …, n`, substituting a fixed admissible `g` into
 either gives the same `n`-th coefficient. Unlike the inner-position case, this needs no
 `HasSubst` hypothesis on `f`/`f'` themselves (substitution is always defined in the outer
@@ -262,7 +263,8 @@ theorem coeff_subst_eq_of_dvd_sub_left {R S : Type*} [CommRing R] [CommRing S] [
     rw [coeff_of_lt_order n horder, smul_zero, smul_zero]
 
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] in
-/-- **The binomial correction identity** (Fact 2', the crux algebraic fact behind Fact 2). For `A`
+/-- **The binomial correction identity** (the crux algebraic fact behind the linear-correction
+identity below). For `A`
 with zero constant term, `c : S`, `n ≥ 1`, and every exponent `d`, the `n`-th coefficient of
 `(A + C c * X^n)^d` differs from that of `A^d` by exactly `c` when `d = 1`, and not at all
 otherwise. Proved via the geometric-sum factorization `x^d - y^d = (∑ i < d, x^i y^(d-1-i))(x-y)`
@@ -308,8 +310,8 @@ theorem coeff_pow_add_C_mul_X_pow_sub_coeff_pow {S : Type*} [CommRing S] {A : S�
     split_ifs <;> ring
 
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] in
-/-- **Fact 2, the linear-correction identity in `finsum` form.** Assembling
-`coeff_pow_add_C_mul_X_pow_sub_coeff_pow` (Fact 2') termwise across `coeff_subst'`'s `finsum`: the
+/-- **The linear-correction identity, in `finsum` form.** Assembling
+`coeff_pow_add_C_mul_X_pow_sub_coeff_pow` termwise across `coeff_subst'`'s `finsum`: the
 `n`-th coefficient of substituting `A + C c * X^n` into `h` differs from that of substituting `A`
 alone by exactly `c * coeff 1 h` — only the `d = 1` term of the `finsum` sees the correction. -/
 theorem coeff_subst_add_C_mul_X_pow {R : Type*} [CommRing R]
@@ -339,7 +341,7 @@ theorem coeff_subst_add_C_mul_X_pow {R : Type*} [CommRing R]
         · intro d hd; rw [if_neg hd, smul_zero]
 
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] in
-/-- **Fact 4, the leading coefficient of `g^n`.** For `b` with `coeff 0 b = 0` and
+/-- **The leading coefficient of `b^n`.** For `b` with `coeff 0 b = 0` and
 `coeff 1 b = u`, the `n`-th coefficient of `b^n` is `u^n`: by induction on `n`, using that
 `coeff i (b^n) = 0` for `i < n` (`le_order_pow_of_constantCoeff_eq_zero`) to collapse
 `coeff (n+1) (b^n * b)`'s convolution sum to its `(n, 1)` term, and `coeff 0 b = 0` to kill the
@@ -380,8 +382,8 @@ case required — this is what makes Lean accept the definition as a single stru
 over all prior coefficients via `Finset.sum`, which defeats Lean's termination checker since the
 recursive calls end up buried inside an opaque higher-order `Finset.sum` argument).
 
-At `n = d + 2 ≥ 2`, the new coefficient solves the linear equation the hand-derivation recorded in
-`ROADMAP.md` §8 identifies: `π · (1 - π^(d+1)) · c = coeff (d+2) (φ_d.subst g) - coeff (d+2)
+At `n = d + 2 ≥ 2`, the new coefficient solves the linear equation
+`π · (1 - π^(d+1)) · c = coeff (d+2) (φ_d.subst g) - coeff (d+2)
 (f.subst φ_d)`, where `φ_d` is the previous state's partial sum — obtained by extracting the
 `π`-divisible witness for the right-hand side via `uniformizer_dvd_coeff_subst_sub_subst` (this
 applies unconditionally, to *any* admissible partial sum, not only to ones already known to
@@ -686,8 +688,9 @@ theorem pi_mul_one_sub_pow_mul_coeff_of_subst_eq
   linear_combination hcoeff_eq
 
 omit [Finite (ResidueField O)] in
-/-- **The Lubin-Tate functional equation lemma, uniqueness half — MILESTONE alongside
-`subst_phi_eq_phi_subst`.** Any two power series with zero constant term, linear coefficient `a`,
+/-- **The Lubin-Tate functional equation lemma, uniqueness half** (alongside
+`subst_phi_eq_phi_subst`, the existence half). Any two power series with zero constant term,
+linear coefficient `a`,
 and both solving `f.subst _ = _.subst g` must coincide: their coefficients agree by strong
 induction on the degree, using `pi_mul_one_sub_pow_mul_coeff_of_subst_eq` to see that both
 coefficient sequences solve the *same* linear equation at every step once their truncations agree

@@ -12,14 +12,13 @@ import Langlands.UnramifiedExtension
 extension, but it does so inside an *auxiliary* algebraically closed field: its
 `HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv` produces
 `AdjoinRoot f` and embeds it via `IsAlgClosed.exists_root`, so the resulting extension is never
-identified with a subobject of a field already fixed by the caller. `ROADMAP.md`'s Phase 2b
-thirty-second, thirty-third and thirty-fourth passes record this as the obstruction blocking
-`Langlands.RamificationFiltration`'s kernel argument.
+identified with a subobject of a field already fixed by the caller. That is an obstruction for
+`Langlands.RamificationFiltration`'s kernel argument, which needs the root to live inside a ring
+already fixed by the caller.
 
-This file takes the other route, the one the thirty-fourth pass's entry scoped as its next step:
-apply Hensel's lemma **directly to the target ring** — for which
+This file takes the other route: apply Hensel's lemma **directly to the target ring** — for which
 `IsDedekindDomain.HeightOneSpectrum.henselianLocalRing_adicCompletionIntegers`
-(`Langlands.RamificationFiltrationAdicCompletion`, landed by the thirty-fourth pass) now supplies
+(`Langlands.RamificationFiltrationAdicCompletion`) supplies
 the `HenselianLocalRing` instance — in its *simple-root* form, `HenselianLocalRing.TFAE`'s second
 item. No ambient algebraically closed field appears anywhere below, and the root produced is an
 element of the given ring `R`, not of some newly built algebra.

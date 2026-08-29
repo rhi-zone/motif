@@ -35,9 +35,9 @@ This does not mean any individual proof in this repo is *wrong* — every theore
 remains a logically valid implication `hsplit → ...`. It means `hsplit`, as formalized (splitting
 *inside `K` itself*, with `K = Frac(O)` forced by `[IsFractionRing O K]`), can never be discharged
 for the mathematically interesting case (`q ≥ 3`, where Lubin-Tate theory's `K_1/K` is a genuine
-*ramified extension*, not contained in `K`). See `ROADMAP.md`'s entry for this pass for the full
-discussion and what would be needed to fix the design (building `K_1` as a genuine extension field,
-not a subfield of a `K` assumed to already contain the torsion points).
+*ramified extension*, not contained in `K`). Fixing the design would mean building `K_1` as a
+genuine extension field, rather than as a subfield of a `K` assumed to already contain the torsion
+points.
 
 ## Main result
 

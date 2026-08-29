@@ -3,24 +3,22 @@ import Mathlib.RingTheory.MvPowerSeries.Expand
 import Langlands.LubinTateFunctionalEquation
 
 /-!
-# The Lubin-Tate formal group law `F_π` — existence, uniqueness, commutativity
+# The Lubin-Tate formal group law `F_π` — existence, uniqueness, commutativity, associativity
 
-The 2-variable generalization of `Langlands/LubinTateFunctionalEquation.lean` scoped in
-`ROADMAP.md` §11/§12, now **closed**: for `f ∈ ℱ_π` there is a unique
-`Φ : MvPowerSeries (Fin 2) O` with `Φ ≡ X + Y (mod deg 2)` satisfying
+The 2-variable generalization of `Langlands/LubinTateFunctionalEquation.lean`: for `f ∈ ℱ_π` there
+is a unique `Φ : MvPowerSeries (Fin 2) O` with `Φ ≡ X + Y (mod deg 2)` satisfying
 `f.subst Φ = Φ.subst (f, f)` (i.e. `f` substituted into *each* of `Φ`'s two variables
-separately), and it is commutative. That `Φ` is the Lubin-Tate formal group law `F_π`.
+separately), and it is commutative and associative. That `Φ` is the Lubin-Tate formal group law
+`F_π`, and it is packaged in full as a Mathlib `FormalGroup O` (`LubinTateFormalGroup`), with a
+`FormalGroup.IsComm` instance (`isComm_LubinTateFormalGroup`).
 
-**Not yet proved: associativity** — `F_π(F_π(X, Y), Z) = F_π(X, F_π(Y, Z))`, which needs the
-3-variable case and is out of scope for this file. Without it, `Φ` cannot be packaged as a
-`FormalGroup O` (Mathlib's `Mathlib/RingTheory/FormalGroup/Basic.lean` makes `assoc` a field of
-the structure); every other field of that structure — `zero_constantCoeff`, `lin_coeff_X`,
-`lin_coeff_Y` — is available here (`constantCoeff_Phi`, `coeff_Phi_of_degree_eq_one`), as is
-`FormalGroup.IsComm`'s content (`subst_swapVars_Phi`).
+Associativity — `F_π(F_π(X, Y), Z) = F_π(X, F_π(Y, Z))` — needs a 3-variable functional equation
+argument, built toward the end of this file via a general finite-index-type uniqueness theorem
+(`eq_of_subst_eq_mv_fintype`) rather than redoing the `Fin 2`-specific machinery above for `Fin 3`.
 
 ## The substitution shape used here
 
-`f, g : O⟦X⟧` remain ordinary univariate power series (as in the closed 1-variable file); the new
+`f, g : O⟦X⟧` remain ordinary univariate power series (as in `Langlands/LubinTateFunctionalEquation.lean`); the new
 object is `Φ : MvPowerSeries (Fin 2) O`. Two different flavors of Mathlib's `subst` API compose to
 express the functional equation `f.subst Φ = Φ.subst (f, f)`:
 
@@ -48,8 +46,7 @@ express the functional equation `f.subst Φ = Φ.subst (f, f)`:
   direct generalization of `LubinTate.map_residue_subst_eq_map_residue_subst`. For `f ∈ ℱ_π` and
   any `Φ : MvPowerSeries (Fin 2) O` with zero constant term, reducing mod `π` gives
   `map (residue O) (f.subst Φ) = map (residue O) (Φ.subst (fun i ↦ f.subst (X i)))`; both sides
-  reduce to `(map (residue O) Φ) ^ q`. This closes item 3 of `ROADMAP.md` §11's three-item
-  breakdown.
+  reduce to `(map (residue O) Φ) ^ q`.
 * `uniformizer_dvd_coeff_subst_sub_subst_mv` : the coefficient-wise consequence, `π ∣ coeff n (Φ.subst
   (fun i ↦ f.subst (X i))) - coeff n (f.subst Φ)` for every `n : Fin 2 →₀ ℕ` — the multivariate
   analogue of `LubinTate.uniformizer_dvd_coeff_subst_sub_subst`, the solvability fact the
@@ -79,11 +76,6 @@ express the functional equation `f.subst Φ = Φ.subst (f, f)`:
   `(f ∘ A) ∘ b = f ∘ (A ∘ b)` for `A` multivariate — absent from Mathlib, whose
   `PowerSeries.subst_comp_subst_apply` only covers a univariate inner substitutand.
 
-## What this does not do
-
-**Associativity** (`F_π(F_π(X, Y), Z) = F_π(X, F_π(Y, Z))`) is not proved: it needs the 3-variable
-functional equation lemma, which none of the `Fin 2`-specific machinery here covers. This is the
-sole obstruction to packaging `Phi` as a Mathlib `FormalGroup O`.
 -/
 
 @[expose] public section
@@ -134,8 +126,7 @@ substitution, `f` embedded into each of `Φ`'s two variables) agree mod `π`. Bo
 `π`, to `(Φ mod π) ^ q`: the left via `f ≡ X^q (mod π)` (`PowerSeries.map_subst`), the right via
 `f ≡ X^q (mod π)` applied at each coordinate together with the multivariate Frobenius identity
 `pow_residueCard_eq_subst_X_pow_mv`. Direct multivariate generalization of
-`map_residue_subst_eq_map_residue_subst`; this is item 3 of `ROADMAP.md` §11's three-item
-breakdown. -/
+`map_residue_subst_eq_map_residue_subst`. -/
 theorem map_residue_subst_eq_map_residue_subst_mv {π : O} {f : O⟦X⟧}
     {Φ : MvPowerSeries (Fin 2) O}
     (hf : IsLubinTatePoly π (residueCard O) f) (hΦ0 : MvPowerSeries.constantCoeff Φ = 0) :
@@ -199,7 +190,7 @@ theorem uniformizer_dvd_coeff_subst_sub_subst_mv {π : O} (hπ : Irreducible π)
   rw [map_sub, hcoeff, sub_self]
 
 /-- **The multivariate binomial correction identity** (multi-index generalization of
-`LubinTate.coeff_pow_add_C_mul_X_pow_sub_coeff_pow`, Fact 2' of the univariate file). For `A` with
+`LubinTate.coeff_pow_add_C_mul_X_pow_sub_coeff_pow`). For `A` with
 zero constant term, a nonzero exponent `m : ι →₀ ℕ`, `c : S`, and any exponent `n : ι →₀ ℕ` of
 total degree at most that of `m` (`n.degree ≤ m.degree`), the `n`-th coefficient of
 `(A + monomial m c) ^ d` differs from that of `A ^ d` by exactly `c` when `n = m` and `d = 1`, and
@@ -286,8 +277,7 @@ theorem coeff_pow_add_monomial_sub_coeff_pow_mv {ι S : Type*} [DecidableEq ι] 
       exact sub_eq_zero.mp hcoeff.symm
 
 /-- **The multivariate linear-correction identity, `finsum`-assembled form** (multi-index
-generalization of `LubinTate.coeff_subst_add_C_mul_X_pow`, Fact 2 of the univariate file) —
-**this closes item 1 of `ROADMAP.md` §11's three-item breakdown**. For a univariate outer series
+generalization of `LubinTate.coeff_subst_add_C_mul_X_pow`). For a univariate outer series
 `h`, a multivariate substitutand `A` with zero constant term, a nonzero exponent `m : ι →₀ ℕ`, and
 any exponent `n : ι →₀ ℕ` of total degree at most that of `m`: the `n`-th coefficient of
 `h.subst (A + monomial m c)` differs from that of `h.subst A` by exactly `coeff 1 h • c` when
@@ -719,9 +709,9 @@ theorem PhiPartialSum_succ_succ (hπ : Irreducible π) (hf : IsLubinTatePoly π 
 multi-index of the new total degree.** The direct generalization of
 `LubinTate.pi_mul_one_sub_pow_mul_phiCoeff`: this is the precise sense in which `PhiState`'s
 degree-`(d+2)` case is well-defined, at *each* of the `d + 3` multi-indices of total degree `d +
-2` independently — matching `ROADMAP.md` §14's confirmation that distinct same-degree monomials
-do not interact, so each of these equations is exactly as solvable, and independently so, as the
-single univariate equation `phiState` solves at each step. -/
+2` independently — distinct same-degree monomials do not interact, so each of these equations is
+exactly as solvable, and independently so, as the single univariate equation `phiState` solves at
+each step. -/
 theorem pi_mul_one_sub_pow_mul_PhiCoeff (hπ : Irreducible π)
     (hf : IsLubinTatePoly π (residueCard O) f) (d k : ℕ) (hk : k ≤ d + 2) :
     π * (1 - π ^ (d + 1)) * PhiCoeff hπ hf (mkIdx k (d + 2 - k)) =

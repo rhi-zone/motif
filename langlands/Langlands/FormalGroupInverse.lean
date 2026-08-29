@@ -7,8 +7,7 @@ import Langlands.LubinTateFunctionalEquationBivariate
 Mathlib's `FormalGroup R` (`Mathlib/RingTheory/FormalGroup/Basic.lean`) axiomatizes a
 one-dimensional formal group law `F(X, Y) ∈ R⟦X, Y⟧` with `F ≡ X + Y (mod deg 2)` and
 associativity, and builds `AddMonoid`/`AddCommMonoid` on `F.Point σ`. It has **no** formal
-inverse series and no `Neg`/`AddGroup` instance anywhere (confirmed by grep, and recorded in
-`ROADMAP.md` §19). This file builds the missing piece: for any `F : FormalGroup R` over any
+inverse series and no `Neg`/`AddGroup` instance anywhere. This file builds the missing piece: for any `F : FormalGroup R` over any
 commutative ring `R`, a unique `i_F ∈ R⟦X⟧` with `i_F ≡ -X (mod deg 2)` and `F(X, i_F(X)) = 0`.
 
 ## Why this is simpler than `PhiState`
@@ -400,7 +399,7 @@ theorem eq_PhiInv_of_subst_Phi_eq_zero (hπ : Irreducible π)
 inverse under `F_π`.** In particular, applied to `A := f` or `A := iter f n`
 (`Langlands/LubinTateIterate.lean`) — the only substitutands the `[π^n]`-torsion development ever
 needs — this is the precise algebraic content "the `π^n`-multiplication endomorphism has an
-additive-inverse-compatible formal inverse", the fact `ROADMAP.md` §19 flagged as needed before any
+additive-inverse-compatible formal inverse", needed for any
 "group" (as opposed to commutative monoid) statement about torsion points. See the module-level
 docstring of `FormalGroup.subst2_subst_eq_zero` for exactly what this does, and does not, establish
 about Mathlib's `FormalGroup.Point`. -/

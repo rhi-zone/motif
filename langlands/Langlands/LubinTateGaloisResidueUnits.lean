@@ -3,8 +3,8 @@ import Langlands.LubinTateSplittingFieldDegree
 /-!
 # `Gal(K_1/K) ≃* (O/π)ˣ` — the Lubin-Tate reciprocity isomorphism at level `1`
 
-This file closes the capstone of the Lubin-Tate arc: the Galois group of the level-`1` Lubin-Tate
-splitting field over the base is **canonically the unit group of the residue field**,
+This file proves the capstone result of Lubin-Tate reciprocity: the Galois group of the level-`1`
+Lubin-Tate splitting field over the base is **canonically the unit group of the residue field**,
 
 **`Nonempty ((K_1 P ≃ₐ[K] K_1 P) ≃* (ResidueField O)ˣ)`**
 
@@ -218,15 +218,15 @@ theorem exists_unique_galUnit (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {�
 
 /-! ## The isomorphism -/
 
-/-- **`Gal(K_1/K) ≃* (O/π)ˣ`** — the capstone of the Lubin-Tate arc.
+/-- **`Gal(K_1/K) ≃* (O/π)ˣ`** — the Lubin-Tate reciprocity isomorphism at level `1`.
 
 The Galois group of the level-`1` Lubin-Tate splitting field over the base is isomorphic, as a
 group, to the unit group of the residue field: `Nonempty ((K_1 P ≃ₐ[K] K_1 P) ≃* (ResidueField O)ˣ)`.
 `K_1 P ≃ₐ[K] K_1 P` is exactly what Mathlib's `Gal(K_1 P/K)` notation abbreviates, and
 `ResidueField O` is this repo's model of `O/π`.
 
-Hypotheses are the standing ones of the arc, unchanged from
-`finrank_K_1_eq_residueCard_sub_one` and `isGalois_K_1`: `K` a complete nonarchimedean field
+Hypotheses match `finrank_K_1_eq_residueCard_sub_one` and `isGalois_K_1`: `K` a complete
+nonarchimedean field
 receiving `O` in its closed unit ball (`hOK`) with `π` a uniformizer of strictly smaller norm
 (`hπnorm`), `f` a Lubin-Tate series for `π` (`hf`) with Weierstrass factorization `f = P * u`, `P`
 distinguished of degree `q := residueCard O` (`hu`, `heq`, `hPdist`, `hPdeg`). No `hsplit`: `K_1 P`

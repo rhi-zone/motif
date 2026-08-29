@@ -11,14 +11,14 @@ import Mathlib.RingTheory.Adjoin.Basic
 /-!
 # An integral extension of a local ring is local once its "residual" quotient is
 
-`ROADMAP.md` `§57` records residue-field preservation for the second Lubin-Tate tower step
-(`O_{K_2} / O_{K_1}`) as blocked on `[IsLocalRing (integralClosure O_{K_1} (baseChangeSplittingField P₂))]`, an instance
+Residue-field preservation for the second Lubin-Tate tower step
+(`O_{K_2} / O_{K_1}`) needs `[IsLocalRing (integralClosure O_{K_1} (baseChangeSplittingField P₂))]`, an instance
 `IsLocalRing.residueFieldEquivOfAdjoinSingleton` bakes directly into its hypotheses. Monogenicity of
 `O_{K_2}` over `O_{K_1}` (`Langlands/LubinTateTowerStepMonogenic.lean`) does not by itself supply
 `IsLocalRing`, and at this level `IsLocalRing` cannot be obtained the way it was at the `K → K_1`
 level (`Langlands/MonogenicIntegralClosure.lean`'s `isDiscreteValuationRing_integralClosure`), because
-that route needs a `ValuativeRel (K_1 P)` instance the whole `K_1 → K_2` arc was built to avoid
-(`Langlands/LubinTateTowerStepMonogenic.lean`'s module docstring).
+that route needs a `ValuativeRel (K_1 P)` instance that `Langlands/LubinTateTowerStepMonogenic.lean`
+avoids by design (see its module docstring).
 
 This file proves the classical "going-up" replacement instead, with **no valuation theory at all**:
 
@@ -30,10 +30,10 @@ This file proves the classical "going-up" replacement instead, with **no valuati
 * `IsLocalRing.of_isIntegral_of_isLocalRing_quotient_map_maximalIdeal` : the general lemma above.
   `R` need not be a domain, `S` need not be a domain, and `𝔪_R S` need not be principal or generated
   by a single element — the only inputs are `[IsLocalRing R]`, `[Algebra.IsIntegral R S]`, and
-  `[IsLocalRing (S ⧸ Ideal.map (algebraMap R S) (maximalIdeal R))]`. This is more general than the
-  route `ROADMAP.md §57` sketched (which assumed `S` a domain, going through
-  `Ideal.isMaximal_comap_of_isIntegral_of_isMaximal` — that lemma, checked directly here, needs no
-  domain hypothesis either) and than a nilpotence-specific argument (`S ⧸ 𝔪_R S` local is used as a
+  `[IsLocalRing (S ⧸ Ideal.map (algebraMap R S) (maximalIdeal R))]`. This is more general than a
+  route assuming `S` a domain, going through
+  `Ideal.isMaximal_comap_of_isIntegral_of_isMaximal` (that lemma, checked directly here, needs no
+  domain hypothesis either), and than a nilpotence-specific argument (`S ⧸ 𝔪_R S` local is used as a
   black box; nothing about it being `κ[X]/(X^q)` or `π` being nilpotent enters this file at all).
 * `IsLocalHom.algebraMap_of_isIntegral` : once `[IsLocalRing R] [IsLocalRing S] [Algebra.IsIntegral R
   S]` hold, `algebraMap R S` is automatically a local homomorphism — the maximal ideal of `S`
