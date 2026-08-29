@@ -5,9 +5,8 @@ import Mathlib.RingTheory.LocalRing.ResidueField.Basic
 /-!
 # The principal-units filtration `U_A^{(i)} := 1 + 𝔪_A^i`
 
-Phase 2b (`ROADMAP.md`, thirty-seventh/thirty-eighth pass) needs, as a prerequisite for tame-case
-unit-norm surjectivity `N_{L/K}(U_L) ⊇ U_K`, the higher principal-units filtration of the unit
-group of a valuation ring — the multiplicative analogue of
+Tame-case unit-norm surjectivity `N_{L/K}(U_L) ⊇ U_K` needs, as a prerequisite, the higher
+principal-units filtration of the unit group of a valuation ring — the multiplicative analogue of
 `Langlands.RamificationFiltration`'s additive ramification-group filtration. Mathlib has only the
 level-1 group (`ValuationSubring.principalUnitGroup`, `{x : Kˣ | A.valuation (x - 1) < 1}`, with
 `unitsModPrincipalUnitsEquivResidueFieldUnits : A.unitGroup ⧸ ... ≃* (ResidueField A)ˣ` already
@@ -61,7 +60,7 @@ separate "is it in `A`" side condition, and the subgroup axioms are direct ideal
   `principalUnitsPow A (i+1) ⧸ (principalUnitsPow A (i+2)).subgroupOf (principalUnitsPow A (i+1))
     ≃* Multiplicative (ResidueField A)`
   — **`U_A^{(i+1)} / U_A^{(i+2)} ≅ (ResidueField A, +)` for every `i : ℕ`**, i.e. the graded pieces
-  of the filtration for index `≥ 1`, closing that half of Phase 2b's step 2. The `i = 0` half
+  of the filtration for index `≥ 1`. The `i = 0` half
   (`U_A^{(0)} / U_A^{(1)} ≅ (ResidueField A)ˣ`) is Mathlib's pre-existing
   `unitsModPrincipalUnitsEquivResidueFieldUnits`, reindexed via `principalUnitsPow_zero` /
   `principalUnitsPow_one` rather than reproved.

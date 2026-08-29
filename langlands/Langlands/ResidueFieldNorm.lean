@@ -32,8 +32,7 @@ the **abstract** norm `Algebra.norm 𝓀[K] : 𝓀[L] → 𝓀[K]` of the residu
 *not* statements about `IsDedekindDomain.HeightOneSpectrum.localNormMap` (the norm
 `N_{L_w/K_v} : (w.adicCompletion L)ˣ →* (v.adicCompletion K)ˣ` of `Langlands.NormMap`). Proving
 that `localNormMap` reduces mod the maximal ideal to `Algebra.norm 𝓀[K]` — the "compatibility
-square" — is a separate, open problem; see `ROADMAP.md`, Phase 2a. Nothing here should be read as
-having closed it.
+square" — is a separate, open problem. Nothing here should be read as having closed it.
 
 ## Main results
 

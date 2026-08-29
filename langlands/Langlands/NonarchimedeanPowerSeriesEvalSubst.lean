@@ -5,10 +5,8 @@ import Langlands.NonarchimedeanPowerSeriesEval
 /-!
 # Evaluation commutes with substitution: `eval (g.subst h) x = eval g (eval h x)`
 
-`Langlands.NonarchimedeanPowerSeriesEval`'s module docstring, and `ROADMAP.md`'s account of the
-Lubin-Tate torsion-point thread, flag this composition/substitution compatibility as "the actual
-blocker" left after evaluation itself and multiplicativity (`eval_mul`/`eval_pow`) were built. This
-file closes it, for the univariate-into-univariate case: `g h : PowerSeries R`, `h` with zero
+This file establishes that evaluation commutes with substitution, for the univariate-into-univariate
+case: `g h : PowerSeries R`, `h` with zero
 constant term (so `PowerSeries.subst h` makes sense as a substitution), both algebra-mapped into `K`
 with coefficients bounded by `1`, `x : K` with `‖x‖ < 1`, and `‖eval h x‖ < 1` (so `g` is itself
 evaluable at the point `eval h x`).
@@ -59,8 +57,7 @@ in place of `Finset.range`, and `MvPowerSeries.le_order_pow_of_constantCoeff_eq_
 `PowerSeries.le_order_pow_of_constantCoeff_eq_zero`; the inner "row" sums use this file's own
 `eval_mul`/`eval_pow` applied to a finite product `∏ i, (A i) ^ (d i)`, not a fresh
 multivariate Cauchy product, since each row's target ring stays univariate) but building and
-verifying it is a comparably-sized undertaking to this file on its own, not attempted this pass. See
-`ROADMAP.md` for the precise remaining state.
+verifying it is a comparably-sized undertaking to this file on its own, and is not done here.
 -/
 
 @[expose] public section

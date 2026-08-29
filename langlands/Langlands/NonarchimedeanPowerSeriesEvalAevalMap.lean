@@ -8,7 +8,7 @@ import Mathlib.Algebra.Polynomial.AlgebraMap
 /-!
 # `aeval` through an intermediate base agrees with `eval` against the original base
 
-`ROADMAP.md` §52's item 5 needs: for a polynomial `P : R[X]` base-changed to an intermediate ring
+For a polynomial `P : R[X]` base-changed to an intermediate ring
 `K'` (`[Algebra R K']`) and then evaluated (`Polynomial.aeval`) at a point of a target field `L`
 reached via `K'` (`[Algebra K' L]`), the result agrees with evaluating `P` (as a power series,
 `NonarchimedeanPowerSeriesEval.eval`) directly against `R`'s own algebra structure on `L`

@@ -5,13 +5,11 @@ import Mathlib.RingTheory.PowerSeries.Substitution
 /-!
 # The formal mutual-inverse identity for `PowerSeries.exp`/`PowerSeries.log`
 
-`Langlands.NonarchimedeanExponential`'s module docstring flags, as unattempted, the mutual-inverse
-relationship between its from-scratch convergent `exp`/`log` and notes that Mathlib's *formal* power
-series `PowerSeries.exp`/`PowerSeries.log` (`Mathlib.RingTheory.PowerSeries.Exp`/`.Log`) have "no
-`exp_log`/`log_exp`-style formal identity" to transport — a claim repeated, unchanged, through the
-sixth and seventh passes of this repo's wild-ramification thread (`ROADMAP.md` §§6d, 6e). That claim
-about the specific mutual-inverse *identity* was correct: no such lemma existed anywhere in the
-vendored Mathlib. But the **machinery** to derive it was already present and unused:
+`Langlands.NonarchimedeanExponential`'s module docstring flags, as unbuilt, the mutual-inverse
+relationship between its from-scratch convergent `exp`/`log` and Mathlib's *formal* power
+series `PowerSeries.exp`/`PowerSeries.log` (`Mathlib.RingTheory.PowerSeries.Exp`/`.Log`): no
+`exp_log`/`log_exp`-style formal identity existed anywhere in the vendored Mathlib. But the
+**machinery** to derive it was already present and unused:
 `Mathlib.RingTheory.PowerSeries.Substitution`'s `PowerSeries.substInv` construction (a formal
 substitution-inverse, `P.subst (substInv P) = X` and `(substInv P).subst P = X` for `P` with zero
 constant term and invertible linear coefficient) and `Mathlib.RingTheory.PowerSeries.Derivative`'s
@@ -50,14 +48,12 @@ This file proves both halves of that identity, `X`-substitution style
 ## What this does *not* close
 
 This file proves the identity for Mathlib's *formal* `PowerSeries.exp`/`.log` only. Transporting it
-to `Langlands.NonarchimedeanExponential`'s from-scratch *convergent* `exp`/`log` — the actual target
-of the wild-ramification thread's "mutual-inverse" gap — needs, additionally: (a) matching
-`PowerSeries.exp`/`.log`'s coefficient-indexed definitions against
+to `Langlands.NonarchimedeanExponential`'s from-scratch *convergent* `exp`/`log` needs, additionally:
+(a) matching `PowerSeries.exp`/`.log`'s coefficient-indexed definitions against
 `NonarchimedeanExponential.exp`/`.log`'s Cauchy-limit definitions termwise, and (b) an analytic
 argument that termwise convergence commutes with formal substitution (i.e. that the convergent `exp`
 and `log`, viewed as limits of their partial sums, actually satisfy the substitution identity that
-the formal power series satisfy coefficientwise). Neither (a) nor (b) is attempted here; see
-`ROADMAP.md`'s wild-ramification pass log for the precise status of that remaining gap.
+the formal power series satisfy coefficientwise). Neither (a) nor (b) is done here.
 -/
 
 @[expose] public section

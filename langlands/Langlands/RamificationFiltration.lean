@@ -54,7 +54,7 @@ subgroup of itself), not by a new definition. So the correspondence is:
 
 ## Scope
 
-**Associated-graded embeddings, attempted and blocked (2026-08-05).** The classical structure
+**Associated-graded embeddings.** The classical structure
 theory of the filtration attaches to a uniformizer `π` of `A` (`hπ : IsLocalRing.maximalIdeal A =
 Ideal.span {π}`) two maps: `σ ↦ σ(π)/π mod 𝔪_A` (a homomorphism `ramificationGroup K A 0 →*
 (ResidueField A)ˣ`, since `σ(π)` and `π` generate the same ideal `𝔪_A` — this part goes through
@@ -67,8 +67,7 @@ A.inertiaSubgroup K`), and for `i ≥ 1`, `σ ↦ (σ(π) - π)/π mod 𝔪_A^{i
 
 Both maps are well-defined as functions on `ramificationGroup K A i` (the `i + 1`-power membership
 needed for well-definedness is exactly the defining property of `ramificationGroup K A i` tested at
-`x = π`), and a direct computation (tracked in this session, not committed as Lean since it
-motivated the search below rather than completing it) confirms the **homomorphism property holds**:
+`x = π`), and the **homomorphism property holds**:
 for `σ, τ ∈ ramificationGroup K A i` (`i ≥ 1`), writing `σ(π) - π = π^{i+1} c_σ`, the identity
 `(στ)(π) - π = π^{i+1}(c_σ + σ(c_τ)) + d·σ(c_τ)` with `d = σ(π)^{i+1} - π^{i+1} - (i+1)π^{2i}(σ(π)
 - π)`-type remainder lying in `𝔪_A^{2i+1} ⊆ 𝔪_A^{i+2}` for `i ≥ 1` (using `x = π^i c_σ ∈ 𝔪_A^i` and
@@ -77,8 +76,7 @@ by induction) gives `c_{στ} ≡ c_σ + σ(c_τ) mod 𝔪_A`, and `σ(c_τ) ≡
 ramificationGroup K A i ≤ ramificationGroup K A 0 = A.inertiaSubgroup K` acts trivially on the
 residue field — so the composite class is additive.
 
-**The wall was the *kernel* direction, not the homomorphism property; it is now closed
-(2026-08-06).** The task is to show the kernel of the restriction of this map to
+The remaining task is the *kernel* direction: showing the kernel of the restriction of this map to
 `ramificationGroup K A i` is *exactly* `ramificationGroup K A (i + 1)`. The `⊇` inclusion is
 immediate (test the `∀ x` defining property of `G_{i+1}` at `x = π`). The `⊆` inclusion needs the
 converse: `σ(π) - π ∈ 𝔪_A^{i+2}` (a condition tested only at the single point `π`) must imply
@@ -87,10 +85,9 @@ his `i_G(σ) = v_L(σ(π_L) - π_L)`-based definition and the "acts trivially on
 definition used by this file's `ramificationGroup`).
 
 Classically this step goes through monogenicity of `O_L` over `O_{L_0}` for `L_0` the maximal
-unramified subextension, by an Eisenstein-polynomial argument. That route was blocked for a
-concrete reason recorded across `ROADMAP.md`'s Phase 2b passes twelve to thirty-four: this repo can
-only build `L_0` inside an *auxiliary* algebraically closed field, never as a subfield of the
-already-fixed `L`. The two lemmas at the end of this file take a different route, which does not
+unramified subextension, by an Eisenstein-polynomial argument. That route does not work here: this
+repo can only build `L_0` inside an *auxiliary* algebraically closed field, never as a subfield of
+the already-fixed `L`. The two lemmas at the end of this file take a different route, which does not
 need `L_0`, a single generator, an Eisenstein polynomial, or the ramification index:
 
 * `smul_eq_of_isRoot_of_mem_ramificationGroup_zero` — an element of `G_0` fixes a *simple* root
@@ -107,8 +104,8 @@ statement from `Langlands.TwoGeneratorMonogenic` — giving
 `IsDedekindDomain.HeightOneSpectrum.mem_ramificationGroup_succ_iff`, the kernel computation in
 concrete form.
 
-**Update (2026-08-06) — the associated-graded maps are now built as genuine bundled homomorphisms,
-in this file's "Associated-graded pieces" section below.** `gradedZeroHom : ramificationGroup K A 0
+**The associated-graded maps are built as genuine bundled homomorphisms, in this file's
+"Associated-graded pieces" section below.** `gradedZeroHom : ramificationGroup K A 0
 →* (ResidueField A)ˣ` (`σ ↦ σ(π)/π mod 𝔪_A`, exact multiplicativity, no error term — the `i = 0` case
 sketched above) and `gradedSuccHom : ramificationGroup K A (i + 1) →* Multiplicative (ResidueField
 A)` for every `i : ℕ` (`σ ↦ (σ(π) - π)/π^{i+2} mod 𝔪_A`; the additivity argument is *not* the
@@ -124,8 +121,7 @@ pair `{x, π}`, not available at this level of generality).
 `G_0 ⧸ G_1 ↪ 𝓀[L]ˣ` and `G_{i+1} ⧸ G_{i+2} ↪ 𝓀[L]`, and — together with a generic finite-group
 pigeonhole lemma proved at the end of this file (`Subgroup.exists_eventually_eq_of_antitone`) and a
 separatedness argument — the classical "eventually trivial" finiteness fact
-(`IsDedekindDomain.HeightOneSpectrum.exists_ramificationGroup_eq_bot`). See `ROADMAP.md`, Phase 2b,
-for the full account.
+(`IsDedekindDomain.HeightOneSpectrum.exists_ramificationGroup_eq_bot`).
 -/
 
 @[expose] public section

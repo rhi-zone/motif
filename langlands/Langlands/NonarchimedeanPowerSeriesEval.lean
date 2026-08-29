@@ -15,8 +15,8 @@ requires the target ring to carry `[UniformSpace S] [IsUniformAddGroup S] [IsTop
 instance connects `IsLinearTopology` to this repo's `NormedField`/`IsUltrametricDist`-based rings
 (confirmed by grep of both this repo's `Langlands/*.lean` and the relevant vendored Mathlib paths,
 `RingTheory/DedekindDomain/` and `RingTheory/Valuation/` — no hits for `IsLinearTopology` in either),
-and building that instance stack from scratch would be a large, diamond-risk-prone undertaking (this
-repo already hit a `NormedField`/`RankOne` diamond once, `ROADMAP.md` §6u).
+and building that instance stack from scratch would be a large, diamond-risk-prone undertaking:
+mixing `NormedField` with `RankOne` instances this way is a known source of diamonds.
 
 This file instead builds evaluation from scratch at the lighter generality this repo's other
 analytic files already use successfully (`Langlands.NonarchimedeanExponential`,

@@ -8,11 +8,10 @@ import Mathlib.RingTheory.DiscreteValuationRing.Basic
 Let `L / K` be a finite extension of fraction fields of Dedekind domains `S / R`, let `v` be a
 place of `R` and `w` a place of `S` lying over `v`, and write `K₀ := v.adicCompletionIntegers K`,
 `L₀ := w.adicCompletionIntegers L`, `𝓀[K] := IsLocalRing.ResidueField K₀`,
-`𝓀[L] := IsLocalRing.ResidueField L₀`. This file proves step 2 of the three-step route
-`ROADMAP.md`'s Phase 2a "sixth pass" entry lays out for upgrading `O_L^× ↠ O_K^× / (1+𝔪_K)`
-(`Langlands.UnitGroupModPrincipalUnitsSurjective`) to the full unramified norm-group theorem: the
-classical fact that the norm, restricted to a graded piece `1 + 𝔪_K^i` of the principal-units
-filtration, acts as the trace on the residue field.
+`𝓀[L] := IsLocalRing.ResidueField L₀`. This file proves the classical fact that the norm,
+restricted to a graded piece `1 + 𝔪_K^i` of the principal-units filtration, acts as the trace on
+the residue field — one step of upgrading `O_L^× ↠ O_K^× / (1+𝔪_K)`
+(`Langlands.UnitGroupModPrincipalUnitsSurjective`) to the full unramified norm-group theorem.
 
 ## Route
 
@@ -46,9 +45,8 @@ construct the quotient groups `(1 + 𝔪_L^{n+1}) / (1 + 𝔪_L^{n+2})` / `(1 + 
 as bundled objects or phrase the result as a genuine group homomorphism between them — building that
 group-theoretic packaging (and connecting `1 + π^{n+1} • x` to actual local units and to
 `localNormMap`, rather than working at the `Algebra.norm K₀`/`Algebra.trace K₀` ring level) is left
-to whoever assembles step 3 (the Cauchy-sequence argument), for which this file's identity is the
-input. See `ROADMAP.md`, Phase 2a, "Status 2026-08-05 (seventh pass)" for the precise scope
-statement.
+to the Cauchy-sequence argument (`Langlands.PrincipalUnitsCauchySequence`), for which this file's
+identity is the input.
 
 ## Main results
 
@@ -215,10 +213,9 @@ theorem exists_norm_one_add_uniformizer_pow_smul_eq_trace_add
 
 /-! ### `1 + π^{n+1} • x` is a local unit, and the identity transfers to `localNormMap`
 
-Closes the two gaps flagged in the module docstring (points 2 of the "Scope" section, and item 2
-of the seventh pass's "explicitly not built this session" list in `ROADMAP.md`), to the extent
-they are load-bearing for the successive-approximation assembly of
-`Langlands.PrincipalUnitsCauchySequence`. -/
+Closes the gap flagged in the module docstring's "Scope" section: connecting `1 + π^{n+1} • x` to
+actual local units and to `localNormMap`, to the extent load-bearing for the successive-approximation
+assembly of `Langlands.PrincipalUnitsCauchySequence`. -/
 
 omit [Module.Finite K L] [Algebra.IsIntegral R S]
   [Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)] in

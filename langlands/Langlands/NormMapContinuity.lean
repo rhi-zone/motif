@@ -9,9 +9,9 @@ Let `L / K` be a finite extension of fraction fields of Dedekind domains `S / R`
 `Algebra.norm (v.adicCompletion K) : w.adicCompletion L → v.adicCompletion K` underlying
 `localNormMap K L v w` (`Langlands.NormMap`) is continuous.
 
-This is the continuity ingredient flagged by `ROADMAP.md`'s Phase 2a "sixth pass" entry, step 3,
-as needed to pass a limit through the norm at the end of the successive-approximation argument.
-It composes directly from instances already built in `Langlands.NormMap`:
+This continuity fact is needed to pass a limit through the norm at the end of the
+successive-approximation argument. It composes directly from instances already built in
+`Langlands.NormMap`:
 `instNontriviallyNormedFieldAdicCompletion` (giving both `v.adicCompletion K` and
 `w.adicCompletion L` `NontriviallyNormedField` structures), the `ContinuousSMul (v.adicCompletion
 K) (w.adicCompletion L)` and `Module.Finite (v.adicCompletion K) (w.adicCompletion L)` instances
@@ -23,8 +23,7 @@ finite-dimensional space over a complete nontrivially normed field is continuous
 with `Continuous.matrix_det` (`Mathlib.Topology.Instances.Matrix`) and
 `Algebra.norm_eq_matrix_det` gives continuity of the norm itself.
 
-**Contrary to the task brief's concern that this might be "a genuine wall in Mathlib
-infrastructure": it is not.** The three ingredients (`LinearMap.continuous_of_finiteDimensional`,
+The three ingredients (`LinearMap.continuous_of_finiteDimensional`,
 `Continuous.matrix_det`, `Algebra.norm_eq_matrix_det`) are all pre-existing general Mathlib facts,
 and every typeclass instance `LinearMap.continuous_of_finiteDimensional` demands was already built
 in `Langlands.NormMap` for unrelated reasons (the `localNormMap` construction itself). No new

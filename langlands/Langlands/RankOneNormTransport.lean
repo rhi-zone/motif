@@ -6,8 +6,7 @@ import Langlands.NormMap
 
 ## The diamond this file closes
 
-`Langlands.TotallyRamifiedCyclotomicConcreteExample`'s closing section ("Two blockers found")
-diagnoses a genuine instance diamond for `v.adicCompletion K`, `K` a number field: this repo's
+There is a genuine instance diamond for `v.adicCompletion K`, `K` a number field: this repo's
 `Langlands.NormMap.instNontriviallyNormedFieldAdicCompletion` (`Valued.toNontriviallyNormedField`
 applied to `Valuation.IsRankOneDiscrete.rankOne _ (e := 2)`) and Mathlib's `NumberField.
 HeightOneSpectrum.instNormedFieldValuedAdicCompletion` (the same construction, `e := absNorm
@@ -49,12 +48,13 @@ Cauchy sequences agree despite being extracted relative to different `norm`s, vi
 
 ## What this does *not* close
 
-Blocker (2) of the concrete file (`IsGalois (v.adicCompletion K) (w.adicCompletion L)`, needed by
-`Langlands.AdicCompletionNormExpTrace.norm_exp_eq_exp_trace`) is untouched and is a separate,
-independently-fixable gap. Wiring `exp_eq_of_rankOne`/`norm_lt_convergenceRadius_iff_of_rankOne`
-into the concrete cyclotomic file itself (to actually invoke `norm_exp_eq_exp_trace` under
-Mathlib's ambient instance) is not done here either — the diamond is closed at the infrastructure
-level, but assembling it with the concrete example still needs blocker (2) resolved first.
+`IsGalois (v.adicCompletion K) (w.adicCompletion L)`, needed by
+`Langlands.AdicCompletionNormExpTrace.norm_exp_eq_exp_trace`, is a separate,
+independently-fixable gap and is untouched here. Wiring `exp_eq_of_rankOne`/
+`norm_lt_convergenceRadius_iff_of_rankOne` into the concrete cyclotomic file itself (to actually
+invoke `norm_exp_eq_exp_trace` under Mathlib's ambient instance) is not done here either — the
+diamond is closed at the infrastructure level, but assembling it with the concrete example still
+needs that `IsGalois` gap resolved first.
 -/
 
 noncomputable section

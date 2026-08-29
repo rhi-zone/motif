@@ -5,8 +5,8 @@ import Langlands.NonarchimedeanMvPowerSeriesEvalFin2
 /-!
 # Univariate-outer eval-subst compatibility: `eval g (evalMv Φ y) = evalMv (g.subst Φ) y`
 
-`ROADMAP.md` §23's **"Lemma A"**: `g : PowerSeries R` (univariate outer), substituted by a
-*single* bivariate substitutand `Φ : MvPowerSeries (Fin 2) R` (zero constant term), lands back in
+For `g : PowerSeries R` (univariate outer), substituted by a
+*single* bivariate substitutand `Φ : MvPowerSeries (Fin 2) R` (zero constant term), the result lands back in
 `MvPowerSeries (Fin 2) R`; evaluating the composite multivariately at a point `y : Fin 2 → K`
 agrees with evaluating `g` univariately at the point obtained by evaluating `Φ` multivariately at
 `y` first.
@@ -40,9 +40,9 @@ evalSummandMv (Φ ^ d) y n`.
 
 ## What this does not do
 
-This closes `ROADMAP.md` §23's "Lemma A" only. Combined with "Lemma S"
-(`Langlands.NonarchimedeanMvPowerSeriesEvalSubstDiagonal`), it gives "Fact E" — the
-Lubin-Tate-specific closure fact `piTorsion` needs — assembled in `Langlands.LubinTateTorsionPoints`.
+This is the univariate-outer case only. Combined with the diagonal-substitution compatibility fact
+(`Langlands.NonarchimedeanMvPowerSeriesEvalSubstDiagonal`), it gives the closure fact `piTorsion`
+needs — assembled in `Langlands.LubinTateTorsionPoints`.
 -/
 
 @[expose] public section
@@ -175,7 +175,7 @@ theorem tendsto_T_cofinite_zero_A {g : PowerSeries R} {Φ : MvPowerSeries (Fin 2
   exact ⟨by omega, hnd⟩
 
 set_option maxHeartbeats 1000000 in
-/-- **Univariate-outer eval-subst compatibility (`ROADMAP.md` §23's "Lemma A").**
+/-- **Univariate-outer eval-subst compatibility.**
 `eval g (evalMv Φ y) = evalMv (g.subst Φ) y`, for `g : PowerSeries R` and a *single* bivariate
 substitutand `Φ : MvPowerSeries (Fin 2) R` with zero constant term. -/
 theorem eval_subst_A {g : PowerSeries R} {Φ : MvPowerSeries (Fin 2) R}

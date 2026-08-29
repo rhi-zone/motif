@@ -7,7 +7,7 @@ import Langlands.NonarchimedeanPowerSeriesEval
 /-!
 # `eval` is natural under base change along a compatible ring homomorphism
 
-`ROADMAP.md` §51's item 5 needs: evaluating `f.map ψ` (a power series base-changed along
+Evaluating `f.map ψ` (a power series base-changed along
 `ψ : O →+* O'`) at a point of some target field `K`, using `[Algebra O' K]`, agrees with evaluating
 `f` itself directly at that point using `[Algebra O K]` — **provided** the two algebra structures on
 `K` agree along `ψ`, i.e. `algebraMap O' K ∘ ψ = algebraMap O K`.

@@ -47,18 +47,15 @@ already in scope via `Langlands.AdicCompletionIntegralClosure`).
 
 ## Scope
 
-**Update (2026-08-06) — closed.** `mem_ramificationGroup_succ_iff` was the kernel computation that
-`Langlands.RamificationFiltration`'s "Scope" docstring recorded as the blocker for the
-associated-graded embeddings; that file now builds the maps themselves
+`Langlands.RamificationFiltration` builds the associated-graded maps themselves
 (`ValuationSubring.gradedZeroHom`, `ValuationSubring.gradedSuccHom`) with kernels stated as
-point-test conditions at `π`. This file composes the two — `mem_ramificationGroup_succ_iff` turns
-the point test into genuine `ramificationGroup` membership — to get the embeddings
-(`gradedZeroHom_ker_eq`/`_kerLift_injective`, `gradedSuccHom_ker_eq`/`_kerLift_injective`) and,
-combined with finiteness of `L ≃ₐ[K] L` (automatic from `Module.Finite K L`) and a separatedness
-argument (`eq_one_of_forall_mem_ramificationGroup`, via the `𝔪`-adic `IsHausdorff` instance already
-in Mathlib for a local ring's own maximal ideal), the filtration-finiteness statement
-`exists_ramificationGroup_eq_bot`. This closes the ramification-group structure-theory thread; see
-`ROADMAP.md`, Phase 2b, for the full account and what comes next.
+point-test conditions at `π`; `mem_ramificationGroup_succ_iff` is the kernel computation that turns
+that point test into genuine `ramificationGroup` membership. This file composes the two to get the
+embeddings (`gradedZeroHom_ker_eq`/`_kerLift_injective`, `gradedSuccHom_ker_eq`/`_kerLift_injective`)
+and, combined with finiteness of `L ≃ₐ[K] L` (automatic from `Module.Finite K L`) and a
+separatedness argument (`eq_one_of_forall_mem_ramificationGroup`, via the `𝔪`-adic `IsHausdorff`
+instance already in Mathlib for a local ring's own maximal ideal), the filtration-finiteness
+statement `exists_ramificationGroup_eq_bot`.
 -/
 
 noncomputable section
@@ -150,8 +147,8 @@ theorem henselianLocalRing_adicCompletionIntegers (K : Type*) [Field K] [Algebra
 
 /-! ### `𝒪_L = 𝒪_K[x, π]`, and the kernel of the associated-graded map
 
-This is what `Langlands.RamificationFiltration`'s "Scope" docstring has recorded as blocked since
-`ROADMAP.md`'s Phase 2b twelfth pass. The route below is *not* the classical one: no maximal
+This is the step `Langlands.RamificationFiltration`'s "Scope" docstring identifies as needed to
+compute the kernel concretely. The route below is *not* the classical one: no maximal
 unramified subextension `L_0` is constructed as a subfield, no Eisenstein polynomial appears, and
 `𝒪_L` is not shown to be monogenic over anything. Instead
 

@@ -8,11 +8,10 @@ Specializes `Langlands.PrincipalUnitsFiltration`'s general `ValuationSubring.pri
 `principalUnitsGradedEquiv` to this repo's adic-completion setting (`Langlands.NormMap`,
 `Langlands.AdicCompletionIntegralClosure`): `R S` Dedekind domains with fraction fields `K L`,
 `v : HeightOneSpectrum R`, `w : HeightOneSpectrum S` with `w.asIdeal.LiesOver v.asIdeal`,
-`K₀ := v.adicCompletionIntegers K`, `L₀ := w.adicCompletionIntegers L`. This is step 1 of
-`ROADMAP.md`'s Phase 2b tame-case unit-norm surjectivity task (thirty-ninth pass): both `K₀` and
+`K₀ := v.adicCompletionIntegers K`, `L₀ := w.adicCompletionIntegers L`. Both `K₀` and
 `L₀` are already `ValuationSubring`s (of `v.adicCompletion K`, `w.adicCompletion L` respectively),
 so `PrincipalUnitsFiltration.lean`'s theory applies to each with no new mathematical content —
-purely an instantiation, as the ROADMAP's thirty-eighth-pass entry anticipated.
+purely an instantiation.
 
 ## Main definitions
 

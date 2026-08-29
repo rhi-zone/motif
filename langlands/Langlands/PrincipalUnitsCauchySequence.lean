@@ -10,9 +10,9 @@ Let `L / K` be a finite extension of fraction fields of Dedekind domains `S / R`
 place of `R` and `w` a place of `S` lying over `v`, and write `K₀ := v.adicCompletionIntegers K`,
 `L₀ := w.adicCompletionIntegers L`, `𝓀[K] := IsLocalRing.ResidueField K₀`,
 `𝓀[L] := IsLocalRing.ResidueField L₀`. This file proves the single Hensel-lift correction step of
-the successive-approximation argument sketched in `ROADMAP.md`'s Phase 2a "sixth pass" entry, step
-3: given a target residual error `t : K₀` at filtration level `n`, there is `z : L₀` correcting it
-to filtration level `n+1`, i.e. `Algebra.norm K₀ (1 + π^{n+1}•z) ≡ 1 + π^{n+1}·t \pmod{π^{n+2}}`.
+the successive-approximation argument: given a target residual error `t : K₀` at filtration level
+`n`, there is `z : L₀` correcting it to filtration level `n+1`, i.e.
+`Algebra.norm K₀ (1 + π^{n+1}•z) ≡ 1 + π^{n+1}·t \pmod{π^{n+2}}`.
 
 ## Route
 

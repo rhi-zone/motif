@@ -5,9 +5,8 @@ import Langlands.NonarchimedeanMvPowerSeriesEvalFin2
 /-!
 # Bivariate-outer eval-subst compatibility: `eval (Φ.subst A) x = evalMv Φ (fun i ↦ eval (A i) x)`
 
-`ROADMAP.md` §22 re-scoped this as the sole remaining prerequisite for the Lubin-Tate
-torsion-point thread's next steps, and pre-verified every Mathlib lemma the proof needs.
-This file closes it: for `Φ : MvPowerSeries (Fin 2) R` and a **univariate** family
+This file establishes the bivariate-outer eval-subst compatibility needed for the Lubin-Tate
+torsion-point development: for `Φ : MvPowerSeries (Fin 2) R` and a **univariate** family
 `A : Fin 2 → PowerSeries R` (each `A i` with zero constant term), substituting `A` into `Φ`
 (landing back in `PowerSeries R = MvPowerSeries Unit R`, since each `A i` is univariate) and then
 evaluating at a point `x : K` agrees with evaluating `Φ` multivariately at the point obtained by
