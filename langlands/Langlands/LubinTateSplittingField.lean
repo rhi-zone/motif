@@ -6,12 +6,12 @@ import Langlands.LubinTateRootCount
 /-!
 # `K_1` rebuilt as a genuine field extension: `Polynomial.SplittingField`
 
-`ROADMAP.md`'s `hsplit`-vacuity finding (`Langlands/LubinTateHsplitVacuity.lean`) showed that the
-old `K_1` (`Langlands/LubinTateFieldTower.lean`, `IntermediateField.adjoin (FractionRing O)
-(piTorsion hπ hf 1 : Set K)`) is built on a jointly-unsatisfiable pair of hypotheses whenever
-`residueCard O ≥ 3`: `[IsFractionRing O K]` forces `K` to already *be* `Frac(O)`, while `hsplit`
-demands `Q := P.divX`'s image *already* splits completely inside that same `K` — impossible once
-`Q` (degree `q - 1 ≥ 2`) is irreducible over its own base field (Gauss's lemma).
+`Langlands/LubinTateHsplitVacuity.lean` shows that the old `K_1` (`Langlands/LubinTateFieldTower.lean`,
+`IntermediateField.adjoin (FractionRing O) (piTorsion hπ hf 1 : Set K)`) is built on a
+jointly-unsatisfiable pair of hypotheses whenever `residueCard O ≥ 3`: `[IsFractionRing O K]` forces
+`K` to already *be* `Frac(O)`, while `hsplit` demands `Q := P.divX`'s image *already* splits
+completely inside that same `K` — impossible once `Q` (degree `q - 1 ≥ 2`) is irreducible over its
+own base field (Gauss's lemma).
 
 This file replaces that design: `K_1` is built as the **splitting field of `Q`'s image in `K`
 itself** (`Q.SplittingField`, for `Q := P.divX.map (algebraMap O K)`, `K` this repo's standing
@@ -55,10 +55,8 @@ be false in the interesting case. This means `LubinTateRootCount.lean`'s theorem
 `[IsFractionRing O K]` on their ambient field (`card_piTorsion_one_eq_residueCard`,
 `mem_piTorsion_one_of_root_divX_map`, the irreducibility-over-`K`-itself argument) do **not**
 transfer to `K_1` by direct specialization — re-deriving the root-count and degree facts for `K_1`
-(steps 4-5 of the rearchitecture) needs a fresh argument keyed to `K_1`'s own defining property
-(`Q` splits by construction) rather than a hypothesis, and is left to a follow-up pass; seeing this
-file's norm/valuation-extension wiring through to completion (confirming the instances above are
-mutually compatible and `lake build`-clean) is this pass's scope.
+needs a fresh argument keyed to `K_1`'s own defining property (`Q` splits by construction) rather
+than a hypothesis. This file covers the norm/valuation-extension wiring only.
 
 ## Main results
 

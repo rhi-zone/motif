@@ -9,7 +9,7 @@ import Langlands.LubinTateSplittingFieldDVR
 
 `Langlands.LubinTate.finrank_K_1_eq_residueCard_sub_one`
 (`Langlands/LubinTateSplittingFieldDegree.lean`) proves `[K_1 : K] = q - 1` from a package of
-hypotheses. An **earlier** version of that arc carried an extra hypothesis `hsplit :
+hypotheses. An **earlier** version of that theorem carried an extra hypothesis `hsplit :
 (P.divX.map (algebraMap O K)).Splits`, and `Langlands/LubinTateHsplitVacuity.lean` shows `hsplit` is
 jointly unsatisfiable with the standing `[IsFractionRing O K]` whenever `residueCard O ≥ 3` — so
 that earlier statement, though a valid implication, had no instances at any interesting residue
@@ -77,15 +77,14 @@ Weierstrass preparation (`exists_isWeierstrassFactorization_of_isLubinTatePoly`,
 * At `O := ℤ_[p]` this is a Mathlib instance
   (`Mathlib/NumberTheory/Padics/PadicIntegers.lean`), so the p-adic certificates below carry **no**
   hypothesis of any kind.
-* At `O := v.adicCompletionIntegers F` this was previously left as an explicit hypothesis, this
-  file's module docstring recording that no Mathlib instance/lemma bridges `IsAdicComplete` to
-  `CompleteSpace` + `IsDiscreteValuationRing` for a `ValuativeRel`-formalism field. That framing was
-  corrected in `ROADMAP.md`'s Phase 2c forty-first pass: the gap was not that the bridge is missing
-  from Mathlib, but that nobody had pointed `Mathlib.NumberTheory.LocalField.Basic`'s plain
-  `IsAdicComplete 𝓂[K] 𝒪[K]` instance (available once `IsNonarchimedeanLocalField K` holds) at the
-  *lighter* `[NontriviallyNormedField K] [IsUltrametricDist K] [ValuativeRel K] [_.Compatible]
-  [CompleteSpace K] [IsDiscreteValuationRing 𝒪[K]] [Finite 𝓀[K]]` bundle this repo's concrete
-  instances actually carry — exactly the bridge
+* At `O := v.adicCompletionIntegers F` this is not directly a Mathlib instance: no Mathlib
+  lemma bridges `IsAdicComplete` to `CompleteSpace` + `IsDiscreteValuationRing` for a
+  `ValuativeRel`-formalism field. The bridge exists nonetheless: point
+  `Mathlib.NumberTheory.LocalField.Basic`'s plain `IsAdicComplete 𝓂[K] 𝒪[K]` instance (available
+  once `IsNonarchimedeanLocalField K` holds) at the *lighter* `[NontriviallyNormedField K]
+  [IsUltrametricDist K] [ValuativeRel K] [_.Compatible] [CompleteSpace K]
+  [IsDiscreteValuationRing 𝒪[K]] [Finite 𝓀[K]]` bundle this repo's concrete instances actually
+  carry — exactly the bridge
   `Langlands.UnramifiedExtension.henselianLocalRing_of_valuationSubring` already builds for
   Henselian-ness, reused unchanged for `IsAdicComplete`
   (`Langlands.isAdicComplete_of_valuationSubring`). Instantiated at `K := v.adicCompletion F`
@@ -296,8 +295,8 @@ theorem exists_isGalois_K_1_padic_three :
 `finrank_K_1_eq_residueCard_sub_one` is satisfied with `residueCard ℤ_[3] = 3` and
 `Module.finrank ℚ_[3] (K_1 P) = 2` — a genuinely ramified degree-`2` extension, not the trivial
 `K_1 = K` case. This is exactly the range (`residueCard O ≥ 3`) in which
-`Langlands/LubinTateHsplitVacuity.lean` proves the *old*, `hsplit`-carrying form of the arc has no
-instances at all; the current form does. -/
+`Langlands/LubinTateHsplitVacuity.lean` proves the *old*, `hsplit`-carrying form of the theorem has
+no instances at all; the current form does. -/
 theorem exists_finrank_K_1_eq_two_padic_three :
     letI : Fact (Nat.Prime 3) := ⟨Nat.prime_three⟩
     residueCard ℤ_[3] = 3 ∧

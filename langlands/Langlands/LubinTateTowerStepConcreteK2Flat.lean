@@ -10,10 +10,9 @@ import Langlands.LubinTateTowerStepK3RootConnect
 
 `exists_eisenstein_tower_step_K_2` (`Langlands/LubinTateTowerStepConcreteK2.lean`) produces `P₃`/`u₃`
 typed against the **nested** `O_{K_2}` spelling `↥(integralClosure (↥(integralClosure ↥𝒪[K] (K_1 P)))
-(baseChangeSplittingField P₂))` — the spelling `Langlands/LubinTateTowerStepConcreteK2.lean` has used since it was written
-and was not touched by `ROADMAP.md §73`'s switch to the *flat* spelling `O_K2 := ↥(integralClosure
-↥𝒪[K] (baseChangeSplittingField P₂))` (`Langlands/LubinTateTowerStepK3.lean`). Every `K_3`-level theorem built in
-`ROADMAP.md §74`–`§75` (`Langlands/LubinTateTowerStepK3RootConnect.lean`,
+(baseChangeSplittingField P₂))` — the spelling that file has always used, which is distinct from the *flat* spelling
+`O_K2 := ↥(integralClosure ↥𝒪[K] (baseChangeSplittingField P₂))` (`Langlands/LubinTateTowerStepK3.lean`). Every
+`K_3`-level theorem (`Langlands/LubinTateTowerStepK3RootConnect.lean`,
 `Langlands/LubinTateTowerStepK3Degree.lean`) is stated against the flat spelling, so using
 `exists_eisenstein_tower_step_K_2`'s concrete witnesses there needs a transport.
 
@@ -136,7 +135,7 @@ generator `β'`, `Irreducible β'`, the Weierstrass equation `heq₃`, and `Asso
 exactly the data `Langlands/LubinTateTowerStepK3RootConnect.lean`'s `norm_lt_one_of_aeval_P₃_eq_zero`/
 `eval_f_eq_of_aeval_P₃_eq_zero`/`exists_piTorsion_translate_of_aeval_P₃_eq_zero` and
 `Langlands/LubinTateTowerStepK3Degree.lean`'s `finrank_K_3_eq_residueCard` take as explicit
-hypotheses (`ROADMAP.md §76`).
+hypotheses.
 
 The three previously-closed conjuncts transport exactly as in `exists_eisenstein_tower_step_K_2_flat`.
 The three new pieces:

@@ -9,20 +9,19 @@ This file's main result takes `hsplit` (via `card_piTorsion_one_eq_residueCard` 
 `ncard_piTorsion_one_sdiff_zero`) as a hypothesis, which `Langlands/LubinTateHsplitVacuity.lean`
 proves can never be discharged for `residueCard O ≥ 3` under this file's own standing
 `[IsFractionRing O K]`. See `Langlands.LubinTateRootCount`'s and `Langlands.LubinTateFieldTower`'s
-module docstrings for the full explanation, `Langlands.LubinTateSplittingField` for the replacement
-construction, and `ROADMAP.md` for the rearchitecture status. The freeness and `(O/π)ˣ`-action
-machinery this file builds on (`Langlands.LubinTateResidueUnitsFreeness`,
-`Langlands.LubinTateResidueUnitsAction`) does **not** depend on `hsplit` and remains genuine,
-non-vacuous, and reusable as-is.
+module docstrings for the full explanation, and `Langlands.LubinTateSplittingField` for the
+replacement construction. The freeness and `(O/π)ˣ`-action machinery this file builds on
+(`Langlands.LubinTateResidueUnitsFreeness`, `Langlands.LubinTateResidueUnitsAction`) does **not**
+depend on `hsplit` and remains genuine, non-vacuous, and reusable as-is.
 
 # Transitivity of the `(O/π)ˣ`-action on nonzero `π`-torsion
 
-`ROADMAP.md` §39/this pass's step 2 (`LubinTateResidueUnitsFreeness.lean`) closed freeness of the
-`(ResidueField O)ˣ`-action `residuePiTorsionMulAction` on `piTorsion hπ hf 1`: `u' • α = α` for
-`α` nonzero forces `u' = 1`, i.e. `stabilizer (ResidueField O)ˣ α = ⊥`. This file assembles that
-with `Nat.card (ResidueField O)ˣ = residueCard O - 1` (`Nat.card_units`, a `GroupWithZero` fact)
-and `card_piTorsion_one_eq_residueCard` into the counting argument the task brief anticipated: a
-free action of a group of size `q - 1` on a set of size `q - 1` is transitive.
+`LubinTateResidueUnitsFreeness.lean` establishes freeness of the `(ResidueField O)ˣ`-action
+`residuePiTorsionMulAction` on `piTorsion hπ hf 1`: `u' • α = α` for `α` nonzero forces `u' = 1`,
+i.e. `stabilizer (ResidueField O)ˣ α = ⊥`. This file assembles that with `Nat.card (ResidueField
+O)ˣ = residueCard O - 1` (`Nat.card_units`, a `GroupWithZero` fact) and
+`card_piTorsion_one_eq_residueCard` into a counting argument: a free action of a group of size
+`q - 1` on a set of size `q - 1` is transitive.
 
 ## Route
 

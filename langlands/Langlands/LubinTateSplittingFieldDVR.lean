@@ -13,14 +13,14 @@ import Langlands.LubinTateRootCountConcrete
 /-!
 # `O_{K_1}` is a discrete valuation ring
 
-`ROADMAP.md`'s Phase 2c thirty-ninth pass ("scoping and a first closed piece of the `K_n` tower
-generalization") identifies the largest remaining gap in generalizing the Lubin-Tate tower step
-(`Langlands/LubinTateTowerStep.lean`) to arbitrary `n`: whether `K_1 := Q.SplittingField`
+Generalizing the Lubin-Tate tower step (`Langlands/LubinTateTowerStep.lean`) to arbitrary `n`
+requires knowing whether `K_1 := Q.SplittingField`
 (`Langlands.LubinTate.K_1`, `Langlands/LubinTateSplittingField.lean`), a genuine finite extension of
 `K` built entirely in the `spectralNorm`/`NormedField` formalism (not `ValuativeRel`), has a ring of
 integers `O_{K_1}` that is itself a discrete valuation ring.
 
-This file closes that question, in general and at the arc's concrete instantiation.
+This file answers that question, both in general and at the repo's usual concrete instantiation
+`K := v.adicCompletion F`.
 
 ## Main results
 
@@ -35,7 +35,7 @@ This file closes that question, in general and at the arc's concrete instantiati
   `spectralNorm_extends` (`K_1`'s norm restricts to `K`'s norm on `K`'s image, the same fact
   `K_1.hOK_transport`/`K_1.hπnorm_transport` already use) to discharge `hnorm`.
 * `IsDedekindDomain.HeightOneSpectrum.isDiscreteValuationRing_valuationSubring_K_1_of_adicCompletion`
-  : the same at this arc's concrete instantiation `K := v.adicCompletion F`, where
+  : the same at the concrete instantiation `K := v.adicCompletion F`, where
   `[ValuativeRel K] [(NormedField.valuation).Compatible]
   [IsDiscreteValuationRing (ValuativeRel.valuation K).valuationSubring]` are already Mathlib/repo
   instances (`Langlands.NormMap`), so the corollary carries **no further hypothesis** of that kind.
@@ -227,8 +227,8 @@ theorem isDiscreteValuationRing_valuationSubring_K_1 (P : O[X]) :
 
 omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (ResidueField O)] [IsFractionRing O K] in
 /-- **`O_{K_1}` is Henselian**, given `K_1 P / K` is separable (e.g. from `isGalois_K_1`,
-`Langlands/LubinTateSplittingFieldDegree.lean`, at the arc's usual hypothesis package) and `𝒪[K]`
-has finite residue field. Applies
+`Langlands/LubinTateSplittingFieldDegree.lean`, under this file's standing hypothesis package) and
+`𝒪[K]` has finite residue field. Applies
 `NormedField.henselianLocalRing_valuationSubring_of_finiteDimensional` the same way
 `isDiscreteValuationRing_valuationSubring_K_1` applies its discreteness counterpart. -/
 theorem henselianLocalRing_valuationSubring_K_1
@@ -265,7 +265,7 @@ open LubinTate IsLocalRing Polynomial
 variable {A F : Type*} [CommRing A] [IsDedekindDomain A] [Field F] [Algebra A F]
   [IsFractionRing A F] (v : HeightOneSpectrum A)
 
-/-- **The same, at this arc's concrete instantiation `K := v.adicCompletion F`.** `K`'s
+/-- **The same, at the concrete instantiation `K := v.adicCompletion F`.** `K`'s
 `ValuativeRel`/`Compatible`/`IsDiscreteValuationRing` bundle is already available as instances
 (`Langlands.NormMap`'s `instValuativeRelValuedAdicCompletion`,
 `instance : (NormedField.valuation (K := v.adicCompletion F)).Compatible`, and
@@ -302,9 +302,8 @@ theorem valuationSubring_valuation_eq_adicCompletionIntegers :
       map_one]
   rw [h1, h2]
 
-/-- **The base `O := v.adicCompletionIntegers F` is `(maximalIdeal)`-adically complete.** This
-closes the gap `Langlands/LubinTateSplittingFieldDegreeConcrete.lean`'s module docstring records as
-missing: applies `isAdicComplete_of_valuationSubring` (`Langlands.UnramifiedExtension`) at `K :=
+/-- **The base `O := v.adicCompletionIntegers F` is `(maximalIdeal)`-adically complete.**
+Applies `isAdicComplete_of_valuationSubring` (`Langlands.UnramifiedExtension`) at `K :=
 v.adicCompletion F` — whose `NontriviallyNormedField`/`IsUltrametricDist`/`ValuativeRel`/
 `Compatible`/`CompleteSpace`/`IsDiscreteValuationRing` bundle is already available as instances
 (`Langlands.NormMap`, `Mathlib.RingTheory.DedekindDomain.AdicValuation`'s `CompleteSpace
@@ -321,7 +320,7 @@ instance isAdicComplete_adicCompletionIntegers [Finite (A ⧸ v.asIdeal)] :
   have h := isAdicComplete_of_valuationSubring (v.adicCompletion F)
   rwa [valuationSubring_valuation_eq_adicCompletionIntegers] at h
 
-/-- **`O_{K_1}` is `(maximalIdeal)`-adically complete, at this arc's concrete instantiation**, given
+/-- **`O_{K_1}` is `(maximalIdeal)`-adically complete, at the concrete instantiation**, given
 `K_1 P / v.adicCompletion F` is separable and `𝒪[v.adicCompletion F]` has finite residue field —
 the same hypotheses as `henselianLocalRing_valuationSubring_K_1_of_adicCompletion`. -/
 theorem isAdicComplete_valuationSubring_K_1_of_adicCompletion
@@ -339,7 +338,7 @@ theorem isAdicComplete_valuationSubring_K_1_of_adicCompletion
     infer_instance
   exact isAdicComplete_valuationSubring_K_1 P
 
-/-- **`O_{K_1}` is Henselian, at this arc's concrete instantiation**, given `K_1 P / v.adicCompletion
+/-- **`O_{K_1}` is Henselian, at the concrete instantiation**, given `K_1 P / v.adicCompletion
 F` is separable and `𝒪[v.adicCompletion F]` (equivalently, `v.adicCompletionIntegers F`, by
 `valuationSubring_valuation_eq_adicCompletionIntegers`) has finite residue field — a genuine
 hypothesis here (residue-field finiteness of `v` is not automatic for a general Dedekind domain,

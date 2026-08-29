@@ -11,13 +11,13 @@ proved:
 
 | structure field | fact |
 | --- | --- |
-| `add` well-defined | `mem_piTorsion_FPiEval` (§24) |
-| `neg` well-defined | `mem_piTorsion_PhiInv` (§24) |
+| `add` well-defined | `mem_piTorsion_FPiEval` |
+| `neg` well-defined | `mem_piTorsion_PhiInv` |
 | `zero` well-defined | `zero_mem_piTorsion` |
 | `add_assoc` | `FPiEval_assoc` (`Langlands.LubinTateFormalGroupEvalAssoc`) |
-| `zero_add` / `add_zero` | `FPiEval_zero` / `FPiEval_zero'` (§24) |
-| `neg_add_cancel` | `FPiEval_PhiInv_eq_zero'` (§25) |
-| `add_comm` | `FPiEval_comm` (§25) |
+| `zero_add` / `add_zero` | `FPiEval_zero` / `FPiEval_zero'` |
+| `neg_add_cancel` | `FPiEval_PhiInv_eq_zero'` |
+| `add_comm` | `FPiEval_comm` |
 
 This is **not** an `AddSubgroup K`: the group law is `F_π`-addition, not `K`'s addition (`F_π(x, y)
 = x + y + (higher-order terms)`), so the subtype carries a genuinely different `Add`. It is stated

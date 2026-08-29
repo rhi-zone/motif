@@ -4,14 +4,12 @@ import Langlands.LubinTateUnitsAction
 /-!
 # The `Oˣ`-action on nonzero `π`-torsion factors through `(O/π)ˣ`
 
-`ROADMAP.md` §37/§38 identified the mod-`π` factoring — `u ≡ v (mod π)` in `Oˣ` implies `eval
-(phiU hπ hf u) α = eval (phiU hπ hf v) α` exactly, for `α` a nonzero element of `piTorsion hπ hf
-1` — as the missing step turning the quadratic *closeness* bound
-`NonarchimedeanPowerSeriesEval.norm_eval_sub_coeff_one_mul_le` into an *exact* equality, and
-flagged the required minimum-spacing fact as needing genuinely new ramification infrastructure.
-`Langlands.LubinTateTorsionSpacing.norm_sub_eq_rpow_of_mem_piTorsion_one_ne_zero_of_ne` supplies
-exactly that (built without any discriminant computation); this file assembles it with the
-existing tail bound to close the factoring.
+The mod-`π` factoring — `u ≡ v (mod π)` in `Oˣ` implies `eval (phiU hπ hf u) α = eval (phiU hπ hf
+v) α` exactly, for `α` a nonzero element of `piTorsion hπ hf 1` — turns the quadratic *closeness*
+bound `NonarchimedeanPowerSeriesEval.norm_eval_sub_coeff_one_mul_le` into an *exact* equality, using
+the minimum-spacing fact
+`Langlands.LubinTateTorsionSpacing.norm_sub_eq_rpow_of_mem_piTorsion_one_ne_zero_of_ne` together with
+the existing tail bound.
 
 ## Route
 

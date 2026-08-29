@@ -10,17 +10,18 @@ import Langlands.IntegralClosureTower
 /-!
 # The tower step, instantiated at `O_{K_2}` — producing `K_3`'s Eisenstein polynomial
 
-`ROADMAP.md §62` left two independent gaps standing between the general `IsAdicComplete`/
-`IsDiscreteValuationRing` `RingEquiv` transport (`Langlands/IntegralClosureTower.lean`) and
-actually running `Langlands/LubinTateTowerStep.lean`'s `TowerStep` machinery at `O' := O_{K_2}`:
+Running `Langlands/LubinTateTowerStep.lean`'s `TowerStep` machinery at `O' := O_{K_2}` (on top of
+the general `IsAdicComplete`/`IsDiscreteValuationRing` `RingEquiv` transport of
+`Langlands/IntegralClosureTower.lean`) needs two more ingredients:
 
-1. **The missing `Algebra`/`IsScalarTower` composite** at `R := 𝒪[K]` (`isScalarTower_R_K_1_K_2`
-   below). This turns out to be free: Mathlib's `Algebra.ofSubsemiring` (`R` a subring of `K`,
-   `[Algebra K M]` in scope) and `Tower.subsemiring` (the accompanying `IsScalarTower R K M`)
-   already supply `Algebra R (baseChangeSplittingField P₂)` and `IsScalarTower R K (baseChangeSplittingField P₂)` automatically, once
-   `K_2.instAlgebraK` is activated via `letI`; the remaining `IsScalarTower R (K_1 P) (baseChangeSplittingField P₂)`
-   (not `R K (baseChangeSplittingField P₂)`) follows by `rfl`, since `K_2.algebraMap_K_eq`'s two-hop composite and
-   `Algebra.ofSubsemiring`'s composite agree definitionally.
+1. **The `Algebra`/`IsScalarTower` composite** at `R := 𝒪[K]` (`isScalarTower_R_K_1_K_2` below).
+   Mathlib's `Algebra.ofSubsemiring` (`R` a subring of `K`, `[Algebra K M]` in scope) and
+   `Tower.subsemiring` (the accompanying `IsScalarTower R K M`) already supply `Algebra R
+   (baseChangeSplittingField P₂)` and `IsScalarTower R K (baseChangeSplittingField P₂)`
+   automatically, once `K_2.instAlgebraK` is activated via `letI`; the remaining `IsScalarTower R
+   (K_1 P) (baseChangeSplittingField P₂)` (not `R K (baseChangeSplittingField P₂)`) follows by
+   `rfl`, since `K_2.algebraMap_K_eq`'s two-hop composite and `Algebra.ofSubsemiring`'s composite
+   agree definitionally.
 2. **The `baseChangeSplittingField`-level uniformizer.** `Langlands/EisensteinUniformizerAbstract.lean` provides the
    bare-Eisenstein analogue of `exists_irreducible_uniformizer_K_1`'s machinery, avoiding the
    `ValuativeRel (K_1 P)` diamond. `irreducible_of_isEisensteinAt_K_2` below applies it: the
@@ -31,7 +32,7 @@ actually running `Langlands/LubinTateTowerStep.lean`'s `TowerStep` machinery at 
    because it is not itself exported as a standalone lemma) and generates `baseChangeSplittingField P₂` over `K_1 P`
    (`hgen`, from `finrank_K_2_eq_residueCard`), so it is irreducible in `O_{K_2}`.
 
-With both closed, `exists_eisenstein_tower_step_K_2` runs `TowerStep`'s
+With both in hand, `exists_eisenstein_tower_step_K_2` runs `TowerStep`'s
 `exists_isWeierstrassFactorization_shifted` at `O' := O_{K_2}` (the `O_{K_1}`-relative spelling),
 `ψ := ` the three-hop composite `O → O_{K_1} → O_{K_2}` (`isLocalHom_comp_towerHom_K_2`, already
 built), `α' := ` the `baseChangeSplittingField`-uniformizer above — **producing a monic degree-`q` polynomial `P₃` over
@@ -40,22 +41,15 @@ Eisenstein polynomial.**
 
 ## What `exists_eisenstein_tower_step_K_2` still asks of its caller
 
-Its own conclusion mentions `maximalIdeal O_{K_2}` (via `IsDistinguishedAt`), so — as `§62`'s
-Obstacle 2 diagnosed — `[IsDiscreteValuationRing O_{K_2}]` must be an ambient hypothesis of the
-*statement itself*, not something derivable purely inside the proof: `O_{K_2}`'s `Algebra K
-(baseChangeSplittingField P₂)` structure needed to state that instance is only available once `K_2.instAlgebraK` is
+Its own conclusion mentions `maximalIdeal O_{K_2}` (via `IsDistinguishedAt`), so
+`[IsDiscreteValuationRing O_{K_2}]` must be an ambient hypothesis of the *statement itself*, not
+something derivable purely inside the proof: `O_{K_2}`'s `Algebra K (baseChangeSplittingField P₂)`
+structure needed to state that instance is only available once `K_2.instAlgebraK` is
 `letI`-activated, which cannot happen before the theorem's own return type is elaborated. In
 return, this instance genuinely *is* available at every call site that has already done the same
 `letI`/`haveI` staging this file's own proof does (`isAdicComplete_integralClosure_integralClosure`
 applied to the base-relative `NormedField.isAdicComplete_integralClosure_of_finiteDimensional`
 fact) — it is bookkeeping, not a new mathematical gap.
-
-## Relation to `ROADMAP.md`'s two-gap framing
-
-Both gaps recorded in `§62`'s "Next step" are closed by this file plus
-`Langlands/EisensteinUniformizerAbstract.lean`: `K_3`'s Eisenstein polynomial is produced. See
-`ROADMAP.md` for the full account of what this establishes about the tower's iterability past
-`baseChangeSplittingField`.
 -/
 
 noncomputable section
@@ -75,7 +69,7 @@ variable {K : Type*} [NontriviallyNormedField K] [IsUltrametricDist K] [Valuativ
 variable {P : O[X]}
   {P₂ : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)))[X]}
 
-/-- **`IsScalarTower R (K_1 P) (baseChangeSplittingField P₂)`, `R := 𝒪[K]`** — `§62`'s Obstacle 3, closed. `Algebra R
+/-- **`IsScalarTower R (K_1 P) (baseChangeSplittingField P₂)`, `R := 𝒪[K]`.** `Algebra R
 (K_1 P)` and `Algebra R (baseChangeSplittingField P₂)` both resolve automatically via Mathlib's `Algebra.ofSubsemiring`
 (`R` a `Subring K`) once `K_2.instAlgebraK` is active; the two composites `R → K → K_1 P → K_2 P₂`
 and `R → K_1 P → K_2 P₂` agree on the nose (`Algebra.ofSubsemiring`'s composite unfolds through
@@ -177,8 +171,7 @@ The conclusion also returns the generator `β' := ⟨β, hβint⟩` (the nested-
 `irreducible_of_isEisensteinAt_K_2` builds `hβirr` for), `Irreducible β'`, the Weierstrass equation
 `shifted f ψ β' = P₃ * u₃` for `ψ` the three-hop nested structure map `O → O_{K_1} → (nested O_{K_2})`
 this theorem's own proof already builds to call
-`exists_isWeierstrassFactorization_shifted`, and `Associated (P₃.coeff 0) β'` — previously discarded
-via `-` patterns (`ROADMAP.md §76`). This matches `exists_eisenstein_tower_step_K_1`'s own standard
+`exists_isWeierstrassFactorization_shifted`, and `Associated (P₃.coeff 0) β'`. This matches `exists_eisenstein_tower_step_K_1`'s own standard
 (see its docstring): downstream root-membership arguments at the `K_2 → K_3` step can rebuild `P₃`'s
 Eisenstein-shape data without re-invoking `exists_isWeierstrassFactorization_shifted` at a possibly
 different existential witness, and — new at this level — without losing `β'`/`heq₃` entirely, which

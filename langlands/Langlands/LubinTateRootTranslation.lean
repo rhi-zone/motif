@@ -4,14 +4,13 @@ import Langlands.LubinTateFormalGroupEvalAssoc
 /-!
 # `f` is an `F_π`-endomorphism, and roots of `f(X) = α` differ by `π`-torsion translation
 
-`ROADMAP.md` §50's Target 1 (`K_1⟮β⟯ = baseChangeSplittingField`) needs, per the classical argument: if `β, β'` both
+Showing `K_1⟮β⟯ = baseChangeSplittingField` needs, per the classical argument: if `β, β'` both
 solve `f(X) = α` for a fixed `α`, then `β` and `β'` differ by an `F_π`-translation by a `π`-torsion
 point, i.e. `β' = F_π(β, t)` for some `t ∈ piTorsion hπ hf 1` (the kernel of `eval f` itself, since
 `iter f 1 = f`). This file supplies that fact, plus the two ingredients it rests on:
 
 * `eval_f_FPiEval` : **`f` is `F_π`-additive**, `eval f (F_π(a, b)) = F_π(eval f a, eval f b)` —
-  the `n := 1` case of the already-closed `eval_iter_FPiEval` (`ROADMAP.md` §23's "Fact E"),
-  rewritten along `LubinTateIterate.iter_one`.
+  the `n := 1` case of `eval_iter_FPiEval`, rewritten along `LubinTateIterate.iter_one`.
 * `eq_of_FPiEval_eq_zero_left` : **`F_π`-cancellation**, `F_π(a, b) = 0 → F_π(a, c) = 0 → b = c`,
   for `a, b, c` in the maximal ideal. Proved directly from the raw evaluated group-law facts
   (`FPiEval_zero'`, `FPiEval_PhiInv_eq_zero`, `FPiEval_assoc`) — the same computation that
@@ -31,15 +30,14 @@ point, i.e. `β' = F_π(β, t)` for some `t ∈ piTorsion hπ hf 1` (the kernel 
   piTorsion hπ hf 1` with `β' = F_π(β, t')` — i.e. every pair of roots of `f(X) = α` differs by
   *some* `π`-torsion translate, directly, via `sub_mem_piTorsion_one_of_eval_f_eq` applied to the
   pair `(β', β)` followed by the same associativity/zero-law computation
-  `eq_of_FPiEval_eq_zero_left`'s proof uses. This closes item (5) of `ROADMAP.md` §50's Target-1
-  chain (the transitivity half; freeness is `eq_of_FPiEval_eq_left` above) — with **no
+  `eq_of_FPiEval_eq_zero_left`'s proof uses — with **no
   cardinality-matching argument needed**, unlike the level-`1` `(O/π)ˣ`-orbit-counting route.
 
 ## What this does not do
 
-This is items (4) and (5) of `ROADMAP.md` §50's six-item Target-1 chain ("an
-`AddGroup`/torsion-translation action on roots of `f(X) - α`", and its transitivity/freeness). It
-does **not** supply item (6) (reassembly into `K_1⟮β⟯ = ⊤`), which remains open.
+This file supplies the `AddGroup`/torsion-translation action on roots of `f(X) - α` and its
+transitivity/freeness (`eq_of_FPiEval_eq_left` and `exists_piTorsion_translate_of_eval_f_eq` above),
+but not their reassembly into `K_1⟮β⟯ = ⊤`, which remains open.
 -/
 
 @[expose] public section
@@ -56,8 +54,7 @@ variable {K : Type*} [NormedField K] [IsUltrametricDist K] [CompleteSpace K] [Al
 variable {π : O} {f : O⟦X⟧}
 
 /-- **`f` is `F_π`-additive**: `eval f (F_π(a, b)) = F_π(eval f a, eval f b)`, for `a, b` in the
-maximal ideal. The `n := 1` case of `eval_iter_FPiEval` (`ROADMAP.md` §23's "Fact E"), rewritten
-along `iter_one`. -/
+maximal ideal. The `n := 1` case of `eval_iter_FPiEval`, rewritten along `iter_one`. -/
 theorem eval_f_FPiEval (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (hπ : Irreducible π)
     (hf : IsLubinTatePoly π (residueCard O) f) {a b : K} (ha : ‖a‖ < 1) (hb : ‖b‖ < 1) :
     eval f (FPiEval hπ hf a b) = FPiEval hπ hf (eval f a) (eval f b) := by
@@ -114,8 +111,7 @@ theorem eval_f_PhiInv_eq_PhiInv_eval_f (hOK : ∀ c : O, ‖algebraMap O K c‖ 
 /-- **Roots of `f(X) = α` differ by `π`-torsion translation.** If `eval f β = eval f β' = α` (both
 `β, β'` in the maximal ideal), then `F_π(β, i_{F_π}(β'))` — "`β -_F β'`" — is a nonzero-or-zero
 `π`-torsion point, i.e. lies in `piTorsion hπ hf 1` (the kernel of `eval f` itself, since
-`iter f 1 = f`): `f(β -_F β') = f(β) -_F f(β') = α -_F α = 0`. This is item (4) of `ROADMAP.md`
-§50's Target-1 chain. -/
+`iter f 1 = f`): `f(β -_F β') = f(β) -_F f(β') = α -_F α = 0`. -/
 theorem sub_mem_piTorsion_one_of_eval_f_eq (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1)
     (hπ : Irreducible π) (hf : IsLubinTatePoly π (residueCard O) f) {β β' : K} (hβ : ‖β‖ < 1)
     (hβ' : ‖β'‖ < 1) (heq : eval f β = eval f β') :

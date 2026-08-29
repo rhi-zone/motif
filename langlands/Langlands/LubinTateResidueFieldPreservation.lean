@@ -9,11 +9,10 @@ import Langlands.LubinTateEisensteinQ
 /-!
 # `O_{K_1}` has the same residue field as `O`
 
-`ROADMAP.md` `§48` named residue-field preservation for `K_1 / K` as the sole remaining blocker to
-the Lubin-Tate tower step `K_1 → K_2`, and expected it to need a fresh `e · f = n` development plus
-a re-derivation in a formalism `K_1` does not live in.
-`Langlands/TotallyRamifiedResidueField.lean` shows the general fact needs neither; this file
-discharges its hypotheses at `K_1` itself.
+Residue-field preservation for `K_1 / K` is needed for the Lubin-Tate tower step `K_1 → K_2`.
+`Langlands/TotallyRamifiedResidueField.lean` proves the general fact (total ramification plus a
+uniformizer generator implies residue-field bijectivity, with no need for a fresh `e · f = n`
+development); this file discharges its hypotheses at `K_1` itself.
 
 The two hypotheses of
 `LocalField.residueField_map_bijective_of_isUniformizer` are `hram` (total ramification) and `hgen`
@@ -35,14 +34,14 @@ The two hypotheses of
 ## The one hypothesis left explicit: `hϖnorm`
 
 `hram` compares `‖ϖ‖` for a uniformizer `ϖ` of `𝒪[K] := (ValuativeRel.valuation K).valuationSubring`
-against `‖algebraMap O K π‖`. This arc's standing hypothesis package relates the abstract `O` to `K`
-only through `hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1` and `hπnorm : ‖algebraMap O K π‖ < 1` — which
-do **not** force `algebraMap O K π` to be a *uniformizer* of `𝒪[K]` (`hOK` is compatible with `O`'s
-image being a proper subring of the closed unit ball; this is `ROADMAP.md`'s long-tracked "gap 3",
-restated in `Langlands/LubinTateTowerStep.lean`'s module docstring). So `hϖnorm : ‖(ϖ : K)‖ =
+against `‖algebraMap O K π‖`. The standing hypotheses relating the abstract `O` to `K` are only
+`hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1` and `hπnorm : ‖algebraMap O K π‖ < 1` — which do **not**
+force `algebraMap O K π` to be a *uniformizer* of `𝒪[K]` (`hOK` is compatible with `O`'s image
+being a proper subring of the closed unit ball; see `Langlands/LubinTateTowerStep.lean`'s module
+docstring for that gap). So `hϖnorm : ‖(ϖ : K)‖ =
 ‖algebraMap O K π‖` is taken as an explicit hypothesis here rather than derived, exactly as
-`hOK`/`hπnorm` themselves are. At the arc's concrete instantiation (`O := v.adicCompletionIntegers
-F`, `K := v.adicCompletion F`) it is discharged by
+`hOK`/`hπnorm` themselves are. At the concrete instantiation `O := v.adicCompletionIntegers F`,
+`K := v.adicCompletion F`, it is discharged by
 `IsDedekindDomain.HeightOneSpectrum.valuationSubring_valuation_eq_adicCompletionIntegers`
 (`Langlands/LubinTateSplittingFieldDVR.lean`), which identifies `𝒪[K]` with `O` on the nose.
 
@@ -176,8 +175,7 @@ theorem residueField_map_bijective_K_1
   exact LocalField.residueField_map_bijective_of_isUniformizer K hϖ hram hgen
 
 /-- **The residue field of `K_1` is the residue field of `K`**, packaged as a `RingEquiv`. See
-`residueField_map_bijective_K_1`. This closes `ROADMAP.md` `§48`'s residue-field-preservation
-blocker for the Lubin-Tate tower. -/
+`residueField_map_bijective_K_1`. -/
 def residueFieldEquiv_K_1
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (hπ : Irreducible π)
     (hπnorm : ‖algebraMap O K π‖ < 1)

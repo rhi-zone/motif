@@ -14,29 +14,29 @@ standing `[IsFractionRing O K]` whenever `P.divX.natDegree ≥ 2` (`residueCard 
 forces `K` to already be `Frac(O)`, in which `Q := P.divX`'s image is irreducible (Gauss's lemma),
 hence cannot also split completely. `card_piTorsion_one_eq_residueCard` remains a logically valid
 `hsplit → …` implication but asserts nothing about any actual instantiation with a nontrivial residue
-field. **Do not build further theorems on `hsplit`**; see `Langlands.LubinTateSplittingField` for the
-replacement (`K_1` built as `Polynomial.SplittingField`, in which `Q` splits by construction) and
-`ROADMAP.md` for the full status. This warning does **not** apply to the rest of this file —
+field. **Do not build further theorems on `hsplit`**; use `Langlands.LubinTateSplittingField` instead
+(`K_1` built as `Polynomial.SplittingField`, in which `Q` splits by construction). This warning does
+**not** apply to the rest of this file —
 `norm_lt_one_of_aeval_divX_eq_zero`, `mem_piTorsion_one_of_root_divX_map`,
 `aeval_divX_map_eq_zero_of_mem_piTorsion_one_ne_zero`, and `norm_eq_rpow_of_mem_piTorsion_one_ne_zero`
 take no `hsplit` hypothesis and remain genuine, non-vacuous facts, reusable for `K_1` as-is.
 
 **Only `card_piTorsion_one_eq_residueCard` still carries `[IsFractionRing O K]`.** The rest of the
-file (and the whole spacing/mod-`π`/action/freeness chain built on it) now requires only
-`[FaithfulSMul O K]` — `algebraMap O K` injective. The root-valuation lemmas used to obtain the
-exact norm of a torsion point from `spectralNorm` via `Q`'s *irreducibility over `K`* (Gauss's
-lemma, hence `K = Frac(O)`); they now obtain it from `Langlands.EisensteinRootNorm`'s purely
-ultrametric Eisenstein-polygon computation, which needs no irreducibility and therefore survives in
-a *proper* extension of `Frac(O)` — in particular inside `Q`'s splitting field, where `Q` splits and
-irreducibility is false. That is exactly what makes the machinery reusable at
-`Langlands.LubinTateSplittingField.K_1`.
+file (and the whole spacing/mod-`π`/action/freeness chain built on it) requires only
+`[FaithfulSMul O K]` — `algebraMap O K` injective. The root-valuation lemmas obtain the
+exact norm of a torsion point from `Langlands.EisensteinRootNorm`'s purely
+ultrametric Eisenstein-polygon computation rather than from `spectralNorm` via `Q`'s
+*irreducibility over `K`* (Gauss's lemma, which would force `K = Frac(O)`). The ultrametric route
+needs no irreducibility and therefore survives in a *proper* extension of `Frac(O)` — in particular
+inside `Q`'s splitting field, where `Q` splits and irreducibility is false. That is exactly what
+makes the machinery reusable at `Langlands.LubinTateSplittingField.K_1`.
 
 # `|piTorsion hπ hf 1| = q`, given `Q := P.divX` splits completely inside `K`
 
-`ROADMAP.md` §33 closed separability of `Q := P.divX` (`P` the Weierstrass-preparation factor of a
-Lubin-Tate power series `f`), given two hypotheses (`IsUnit (P.divX.natDegree : O)`,
-`‖algebraMap O K π‖ < 1`), the first of which is now derived in general
-(`LubinTate.isUnit_natCast_of_add_one_eq_residueCard`, `Langlands/LubinTate.lean`) and true for
+Separability of `Q := P.divX` (`P` the Weierstrass-preparation factor of a
+Lubin-Tate power series `f`) needs two hypotheses (`IsUnit (P.divX.natDegree : O)`,
+`‖algebraMap O K π‖ < 1`). The first is derived in general
+(`LubinTate.isUnit_natCast_of_add_one_eq_residueCard`, `Langlands/LubinTate.lean`) and holds for
 `Q.natDegree = residueCard O - 1` specifically; the second remains an explicit hypothesis (see that
 file's docstring for why: no caller instantiating this repo's abstract Lubin-Tate `O`/`K` package
 against a concrete `HeightOneSpectrum`/`adicCompletion` pair exists yet, so the fact is genuinely
@@ -46,10 +46,9 @@ This file assembles the final root-counting step. `piTorsion hπ hf 1` is a lite
 subset of some auxiliary splitting field), so the correctly-scoped root-counting hypothesis is that
 `Q` **already splits completely inside `K` itself** — `(Q.map (algebraMap O K)).Splits` — rather
 than introducing an abstract splitting field `L` disconnected from `piTorsion`'s actual carrier.
-This is the design choice flagged as open in the task brief: given the choice between "any
-splitting field, treated purely algebraically" and "`K` itself already contains the roots", the
-second is the one that actually composes with `piTorsion : Set K` without a further transport step,
-and is adopted here. (It specializes the general `L / K` machinery of `LubinTateEisensteinQ.lean` at
+Between "any splitting field, treated purely algebraically" and "`K` itself already contains the
+roots", the second is the one that actually composes with `piTorsion : Set K` without a further
+transport step, and is adopted here. (It specializes the general `L / K` machinery of `LubinTateEisensteinQ.lean` at
 `L := K`, using the standing `Algebra.IsAlgebraic K K` instance any field trivially carries over
 itself and `spectralNorm_extends`/`Polynomial.coe_aeval_eq_eval` to identify `spectralNorm K K` and
 `Polynomial.aeval`-at-`K` with `K`'s own norm and `Polynomial.eval`.)
@@ -62,7 +61,7 @@ itself and `spectralNorm_extends`/`Polynomial.coe_aeval_eq_eval` to identify `sp
   (separability ⟹ no repeated roots) and `Polynomial.Splits.natDegree_eq_card_roots` (splitting ⟹
   root-count-with-multiplicity equals degree).
 * `LubinTate.card_piTorsion_one_eq_residueCard` : **`Nat.card (piTorsion hπ hf 1) = residueCard O`**
-  — the capstone of this whole thread's root-counting arc. Given a Weierstrass factorization
+  — the capstone root-count. Given a Weierstrass factorization
   `f = P * u`, `Q := P.divX` monic/Eisenstein/associate-constant-term (from
   `LubinTate.divX_isWeaklyEisensteinAt_and_associated`), a tame-degree witness (now automatic:
   `LubinTate.isUnit_natCast_of_add_one_eq_residueCard`), `‖algebraMap O K π‖ < 1` (still an explicit
@@ -74,8 +73,7 @@ itself and `spectralNorm_extends`/`Polynomial.coe_aeval_eq_eval` to identify `sp
 
 `[K_1 : K] = q - 1` and `Gal(K_1/K) ≅ (O/π)ˣ` are not attempted here: this file only pins down the
 *size* of the `π`-torsion point set, not the field extension `K_1 := K(F_π[π])` it generates
-(`Langlands.LubinTateFieldTower.K_1`) or its Galois-theoretic structure. See `ROADMAP.md`'s entry
-for this pass for the precise next step.
+(`Langlands.LubinTateFieldTower.K_1`) or its Galois-theoretic structure.
 -/
 
 @[expose] public section
@@ -166,10 +164,9 @@ inside `card_piTorsion_one_eq_residueCard`'s proof below), extracted standalone:
 `x` is a root of `Q`'s image, not that `Q` splits completely (`hsplit` is never used here — the
 proof only uses `norm_lt_one_of_aeval_divX_eq_zero`, `X_mul_divX_add`, and
 `eval_eq_zero_iff_aeval_eq_zero`). Reused by `card_piTorsion_one_eq_residueCard`'s own proof, and by
-`Langlands.LubinTateFieldTower`'s transport of `hsplit` down to `K_1 := K(F_π[π])`
-(`ROADMAP.md`'s `hsplit`/`K_1` framing question: `K_1`'s generators are exactly `Q`'s roots once
-`hsplit` holds for `K`, so this is the fact that makes those generators already lie in
-`piTorsion hπ hf 1`, hence — trivially — in `K_1` itself). -/
+`Langlands.LubinTateFieldTower`'s transport of `hsplit` down to `K_1 := K(F_π[π])`:
+`K_1`'s generators are exactly `Q`'s roots once `hsplit` holds for `K`, so this is the fact that
+makes those generators already lie in `piTorsion hπ hf 1`, hence — trivially — in `K_1` itself. -/
 theorem mem_piTorsion_one_of_root_divX_map [DecidableEq K]
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O} (hπ : Irreducible π)
     (hπnorm : ‖algebraMap O K π‖ < 1) {f : O⟦X⟧} (hf : IsLubinTatePoly π (residueCard O) f)
@@ -257,8 +254,7 @@ generically: `mem_piTorsion_one_of_root_divX_map` (a root of `Q`'s image is `π`
 with `ne_zero_of_aeval_divX_map_eq_zero` supplying the "roots are automatically nonzero" half needed
 to match up `piTorsion hπ hf 1 \ {0}` (not all of `piTorsion hπ hf 1`) with the root set. Reusable
 verbatim at any two fields related by an algebra map that preserves `piTorsion` membership, which is
-exactly what the `K_1 P → K_2` invariance argument (`ROADMAP.md` item 6) needs, instantiated once at
-each end. -/
+exactly what a `K_1 P → K_2` invariance argument needs, instantiated once at each end. -/
 theorem piTorsion_one_sdiff_zero_eq_roots_toFinset [DecidableEq K]
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O} (hπ : Irreducible π)
     (hπnorm : ‖algebraMap O K π‖ < 1) {f : O⟦X⟧} (hf : IsLubinTatePoly π (residueCard O) f)

@@ -3,11 +3,9 @@ import Langlands.LubinTateResidueUnitsAction
 /-!
 # Freeness of the `(O/π)ˣ`-action on nonzero `π`-torsion
 
-`ROADMAP.md` §37/§38 asked whether `eval (phiU hπ hf u) α = α` (α nonzero torsion) forces `u ≡ 1
-(mod π)`, flagging a *plausible* route via the same quadratic-bound technique used for the mod-`π`
-factoring (`eval_phiU_eq_of_dvd_sub`), but did not check it. This file checks it directly, and finds
-a genuinely *simpler* argument than the mod-`π` factoring needed: no minimum-spacing fact
-(`norm_sub_eq_rpow_of_mem_piTorsion_one_ne_zero_of_ne`) is required at all.
+`eval (phiU hπ hf u) α = α` (α nonzero torsion) forces `u ≡ 1 (mod π)`. This is provable by a
+genuinely *simpler* argument than the mod-`π` factoring (`eval_phiU_eq_of_dvd_sub`) needed: no
+minimum-spacing fact (`norm_sub_eq_rpow_of_mem_piTorsion_one_ne_zero_of_ne`) is required at all.
 
 ## Route
 

@@ -5,7 +5,7 @@ import Langlands.LubinTateSplittingFieldTorsion
 /-!
 # `[K_1 : K] = q - 1` — the degree of the Lubin-Tate splitting field
 
-This file closes the headline degree computation of the Lubin-Tate arc:
+This file proves the headline degree computation for the Lubin-Tate splitting field:
 
 **`Module.finrank K (K_1 P) = residueCard O - 1`**, for `K_1 P := (P.divX.map (algebraMap O
 K)).SplittingField` (`Langlands.LubinTateSplittingField`), `P` the Weierstrass distinguished factor
@@ -237,7 +237,7 @@ theorem exists_generator_K_1
 /-- **`Module.finrank K (K_1 P) = residueCard O - 1`** — the headline degree of the Lubin-Tate
 splitting field, `[K(F_π[π]) : K] = q - 1`.
 
-The hypotheses are exactly the standing ones of this arc: `K` is a complete nonarchimedean field
+The hypotheses are the standing ones throughout this Lubin-Tate development: `K` is a complete nonarchimedean field
 receiving `O` in its closed unit ball (`hOK`) with `π` a uniformizer of strictly smaller norm
 (`hπnorm`), `f` is a Lubin-Tate series for `π` (`hf`), and `f = P * u` is its Weierstrass
 factorization with `P` distinguished of degree `q` (`hu`, `heq`, `hPdist`, `hPdeg`). No `hsplit`

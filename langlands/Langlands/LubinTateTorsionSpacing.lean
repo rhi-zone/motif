@@ -6,10 +6,9 @@ import Langlands.NonarchimedeanMvPowerSeriesEvalFin2
 /-!
 # Minimum spacing of `piTorsion hπ hf 1`'s nonzero elements
 
-`ROADMAP.md` §38 flagged the missing "close ⟹ equal" step of the mod-`π` factoring as needing a
-genuine minimum-spacing / discreteness fact on `piTorsion hπ hf 1`'s distinct elements, and
-speculated it would need new ramification-theoretic (different/discriminant) infrastructure. This
-file finds a route avoiding any discriminant computation, using machinery already in the repo:
+The mod-`π` factoring's "close ⟹ equal" step needs a genuine minimum-spacing / discreteness fact
+on `piTorsion hπ hf 1`'s distinct elements. This file gets one without any discriminant
+computation, using machinery already in the repo:
 
 * `piTorsionAddCommGroup` (`Langlands.LubinTateTorsionGroup`): `piTorsion hπ hf 1` is an
   `AddCommGroup` under `F_π`-addition. For distinct nonzero `α, β`, the `F_π`-difference
@@ -30,8 +29,7 @@ Chaining these two quadratic approximations gives `‖γ - (α - β)‖ ≤ (max
 `P.divX.natDegree ≥ 1`). The ultrametric isosceles-triangle principle
 (`IsUltrametricDist.norm_add_eq_max_of_norm_ne_norm`) then forces `‖α - β‖ = ‖γ‖` exactly — an
 *exact* common spacing value for every pair of distinct nonzero torsion points, sharper than a mere
-lower bound, and needing only `q ≥ 2`, not the `q ≥ 3` a different (unrelated) bound in `ROADMAP.md`
-§38 estimated for a different comparison.
+lower bound, and needing only `q ≥ 2`.
 
 ## Main result
 
@@ -39,12 +37,10 @@ lower bound, and needing only `q ≥ 2`, not the `q ≥ 3` a different (unrelate
   hf 1`, `‖α - β‖ = ‖algebraMap O K π‖ ^ (1 / (P.divX.natDegree : ℝ))` exactly — the same value
   `norm_eq_rpow_of_mem_piTorsion_one_ne_zero` gives for `‖α‖`/`‖β‖` themselves.
 
-## What this does not do
-
-This file does not attempt the mod-`π` factoring itself (turning the quadratic closeness bound
-`norm_eval_sub_coeff_one_mul_le` applied to `phiU` into an exact equality `eval (phiU u) α = eval
-(phiU v) α`) — that is the next step, assembling this spacing fact with `coeff_one_phiU` and
-`mem_piTorsion_eval_phiU`. See `ROADMAP.md` for the precise remaining plan.
+This spacing fact is what makes the mod-`π` factoring possible: `Langlands/LubinTateModPiFactoring.lean`
+assembles it with `coeff_one_phiU` and `mem_piTorsion_eval_phiU` to turn the quadratic closeness
+bound `norm_eval_sub_coeff_one_mul_le` applied to `phiU` into the exact equality `eval (phiU u) α =
+eval (phiU v) α`.
 -/
 
 @[expose] public section

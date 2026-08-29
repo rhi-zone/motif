@@ -3,9 +3,9 @@ import Langlands.LubinTateModPiFactoring
 /-!
 # The `Oˣ`-action on nonzero `π`-torsion factors through a genuine `(O/π)ˣ`-action
 
-`ROADMAP.md` §39 closed the mod-`π` factoring fact `eval_phiU_eq_of_dvd_sub` — `u ≡ v (mod π)` in
-`Oˣ` forces `eval (phiU hπ hf u) α = eval (phiU hπ hf v) α` exactly, for `α` a nonzero element of
-`piTorsion hπ hf 1` — but did not assemble that into an actual `MulAction`. This file does: it
+The mod-`π` factoring fact `eval_phiU_eq_of_dvd_sub` — `u ≡ v (mod π)` in `Oˣ` forces `eval (phiU
+hπ hf u) α = eval (phiU hπ hf v) α` exactly, for `α` a nonzero element of `piTorsion hπ hf 1` —
+assembles into an actual `MulAction` of `(O/π)ˣ` on the torsion. This file does that assembly: it
 takes `IsLocalRing.ResidueField O` (already the repo's concrete model for `O/π` via `residueCard O
 := Nat.card (ResidueField O)`) as the model for `O/π`, packages the reduction homomorphism `Oˣ →*
 (ResidueField O)ˣ`, and lifts `piTorsionMulAction` along it.
@@ -32,8 +32,8 @@ takes `IsLocalRing.ResidueField O` (already the repo's concrete model for `O/π`
 
 ## What this does not do
 
-Freeness and transitivity of the resulting `(ResidueField O)ˣ`-action are not attempted here — see
-`ROADMAP.md`'s entry for this pass and the files that build on this one.
+Freeness and transitivity of the resulting `(ResidueField O)ˣ`-action are not attempted here; see
+`Langlands/LubinTateResidueUnitsFreeness.lean` and `Langlands/LubinTateResidueUnitsTransitivity.lean`.
 -/
 
 @[expose] public section

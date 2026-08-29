@@ -8,23 +8,22 @@ import Langlands.LubinTateTowerStepConcreteK2
 # `K_3`, a named convenience alias for the level-3 Lubin-Tate extension
 
 `Langlands/LubinTateTowerStepConcreteK2.lean`'s `exists_eisenstein_tower_step_K_2` produces `K_3`'s
-Eisenstein polynomial `P₃ : O_{K_2}[X]` but stops short of building `K_3` itself as a field object
-(`ROADMAP.md §63`, "Not yet done, and not claimed"). This file supplies it.
+Eisenstein polynomial `P₃ : O_{K_2}[X]` but stops short of building `K_3` itself as a field object.
+This file supplies it.
 
 **`K_3` is not an independent construction.** `LubinTate.baseChangeSplittingField` (`Langlands/
-LubinTateTowerStepConcrete.lean`, renamed from `K_2` — `ROADMAP.md` §92 — once its genuinely
-generic role across every tower level was recognized) is the general one-step splitting-field
-combinator. `K_3` is *literally* that same combinator, applied one level further:
+LubinTateTowerStepConcrete.lean`) is the general one-step splitting-field combinator, generic across
+every tower level. `K_3` is *literally* that same combinator, applied one level further:
 `K_3 P₃ := baseChangeSplittingField (K' := baseChangeSplittingField P₂) P₃`. Its `Field`/`Algebra K'`/
 `IsSplittingField` instances forward verbatim from `baseChangeSplittingField`'s own, via the definitional
 equality — no new content.
 
-`K_3` is kept, deliberately, as a thin `@[reducible]` name for this one concrete instantiation
-(`ROADMAP.md` §92 considered deleting it outright, in favor of writing `baseChangeSplittingField (K' :=
-baseChangeSplittingField P₂) P₃` at every call site, but found roughly 200 bare call sites of `K_3` across
-the `K_2 → K_3`-consuming files — `LubinTateTowerStepK3*.lean`, `LubinTateTowerStepLevelInvariance.lean`,
-and others — making that migration a large, risky mechanical sweep for no mathematical gain, since
-`K_3` was already `@[reducible]` and unfolds transparently wherever needed). Keeping the name is a
+`K_3` is kept, deliberately, as a thin `@[reducible]` name for this one concrete instantiation rather
+than writing `baseChangeSplittingField (K' := baseChangeSplittingField P₂) P₃` at every call site: there are
+roughly 200 bare call sites of `K_3` across the `K_2 → K_3`-consuming files
+(`LubinTateTowerStepK3*.lean`, `LubinTateTowerStepLevelInvariance.lean`, and others), making an
+inline-everywhere rewrite a large, risky mechanical sweep for no mathematical gain, since `K_3` is
+already `@[reducible]` and unfolds transparently wherever needed. Keeping the name is a
 readability/reviewability choice, not a claim that `K_3` is anything other than a named
 specialization of `baseChangeSplittingField`.
 
@@ -45,9 +44,9 @@ namespace LubinTate
 
 /-- **`K_3`, the level-3 Lubin-Tate extension**: `LubinTate.baseChangeSplittingField`'s general one-step splitting-field
 construction, instantiated one level further (`O' := O_{K_2}`, `K' := baseChangeSplittingField P₂`, in the concrete
-tower). Mirrors `LubinTate.baseChangeSplittingField`'s own definition, one level up — this file's whole point is that no
-new mathematical content is needed to *define* the field object itself, only to re-derive its
-degree/monogenicity/residue-field facts (see `ROADMAP.md` for the full account). -/
+tower). Mirrors `LubinTate.baseChangeSplittingField`'s own definition, one level up — no new mathematical content is
+needed to *define* the field object itself; only its degree/monogenicity/residue-field facts still need to be
+re-derived at this level. -/
 @[reducible] def K_3 {O' : Type*} [CommRing O'] {K' : Type*} [Field K'] [Algebra O' K']
     (P₃ : O'[X]) : Type _ :=
   baseChangeSplittingField (K' := K') P₃

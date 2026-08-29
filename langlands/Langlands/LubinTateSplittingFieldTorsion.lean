@@ -134,8 +134,7 @@ theorem separable_divX_map_K_1 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {
 /-- **The root count at `K_1`, non-vacuously: `Nat.card (piTorsion hπ hf 1 : Set (K_1 P)) =
 residueCard O`.** No `hsplit` hypothesis — `Q` splits over `K_1` by construction — and no
 `[IsFractionRing O (K_1 P)]`, which would be false. Every hypothesis here is a fact about the base
-`K` and the Weierstrass factorization of `f`, all of them satisfiable together (see `ROADMAP.md`'s
-non-vacuity check for this pass). -/
+`K` and the Weierstrass factorization of `f`, all satisfiable together. -/
 theorem card_piTorsion_one_K_1_eq_residueCard
     (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O} (hπ : Irreducible π)
     (hπnorm : ‖algebraMap O K π‖ < 1) {f : O⟦X⟧} (hf : IsLubinTatePoly π (residueCard O) f)

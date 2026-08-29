@@ -10,9 +10,9 @@ import Langlands.LubinTateWeierstrassPreparation
 /-!
 # `π^n`-torsion points of `F_π`, concretely defined
 
-`ROADMAP.md` §19 scoped `F_π[π^n] := {x | f^{(n)}(x) = 0}` as blocked on evaluating a power series
-at a concrete ring element. `Langlands.NonarchimedeanPowerSeriesEval.eval` (the from-scratch
-`NormedField`/`IsUltrametricDist`/`CompleteSpace` construction) now supplies that evaluation, so
+`F_π[π^n] := {x | f^{(n)}(x) = 0}` needs a concrete way to evaluate a power series at a ring
+element. `Langlands.NonarchimedeanPowerSeriesEval.eval` (the from-scratch
+`NormedField`/`IsUltrametricDist`/`CompleteSpace` construction) supplies that evaluation, so
 this file gives the definition, using `Langlands.LubinTateIterate.iter` (`f^{(n)}`, the `n`-fold
 iterate) directly.
 
@@ -112,8 +112,8 @@ closed unit ball). Transports the formal identity `FormalGroupInverse.subst_Phi_
 bivariate-outer eval-subst compatibility), using the univariate family `![X, PhiInv]` and
 `eval_X`/`norm_eval_le` to see `eval X x = x` and `‖eval (PhiInv hπ hf) x‖ ≤ ‖x‖ < 1` (so `Φ` is
 itself evaluable at the resulting point). This does **not** by itself show `PhiInv hπ hf` maps
-`π^n`-torsion to `π^n`-torsion — that needs the *same-arity* eval-subst compatibility
-`ROADMAP.md` re-scopes, not yet built. -/
+`π^n`-torsion to `π^n`-torsion — that needs the *same-arity* eval-subst compatibility, not yet
+built. -/
 theorem FPiEval_PhiInv_eq_zero (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) (hπ : Irreducible π)
     (hf : IsLubinTatePoly π (residueCard O) f) {x : K} (hx : ‖x‖ < 1) :
     FPiEval hπ hf x (eval (PhiInv hπ hf) x) = 0 := by
@@ -168,7 +168,7 @@ theorem FPiEval_PhiInv_eq_zero' (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) 
   rw [FPiEval_comm hOK hπ hf hInvNorm hx]
   exact FPiEval_PhiInv_eq_zero hOK hπ hf hx
 
-/-- **`ROADMAP.md` §23's "Fact E"**: the `[π^n]`-endomorphism `eval (iter f n)` commutes with
+/-- **"Fact E"**: the `[π^n]`-endomorphism `eval (iter f n)` commutes with
 concrete `F_π`-addition. Chains `LubinTateIterate.subst_iter_Phi`'s formal identity
 `(iter f n).subst Φ = Φ.subst (fun i ↦ (iter f n).subst (X i))` through `evalMv` at `y = ![a, b]`:
 the LHS matches `NonarchimedeanPowerSeriesEval.eval_subst_A`'s shape ("Lemma A") exactly, giving
