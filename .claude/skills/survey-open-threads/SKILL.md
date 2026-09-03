@@ -72,7 +72,7 @@ Run the grep over several keyword families (one pass each, union the hits):
 
 Strip task-notification and tooling noise. Then **deep-read** the ~10 highest-signal hits with `normalize sessions show <id> --json`. Also mine the in-tree investigation sources directly — they are pre-staged registries:
 
-- `docs/introspection/investigations/*/synthesis.md` — "Hypotheses no one tested" and "What we still don't know" sections are candidates almost verbatim.
+- `docs/automated-introspection/investigations/*/synthesis.md` — "Hypotheses no one tested" and "What we still don't know" sections are candidates almost verbatim.
 - Each project's `TODO.md` "Open questions" sections.
 - `docs/decisions/throughlines.md`, `docs/claude-code-guide.md`.
 
