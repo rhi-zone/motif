@@ -95,17 +95,6 @@
           }
         ]
       }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/tooling/claude-hooks/subagent-context-refresh.sh"
-          }
-        ]
-      }
     ]
   },
   "agent": "lily"
