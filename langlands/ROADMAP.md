@@ -22031,3 +22031,77 @@ New files: `Langlands/LubinTateTowerStepLevelExistsCheck.lean`,
 `Langlands/LubinTateTowerStepLevelInvarianceCheck.lean`. No file deleted, no theorem deleted or
 weakened — `adjoin_root_eq_top_K_2`/`adjoin_root_eq_top_K_3`/`finrank_K_2_eq_residueCard` all still
 exist with their original statements; only `finrank_K_3_eq_residueCard`'s **body** changed.
+
+## 103. (2026-09-05) Independent re-verification of `§102`'s `finrank_K_2_eq_residueCard`
+obstruction: the trace is accurate at every link, and the real content-level explanation for why it
+resists `K3Degree.lean`-style thin-specialization is sharper than "bootstrap order" — it is the
+**induction base case**, not a bug
+
+Prompted by a challenge to `§102`'s claim that the `K_1 → K_2` cycle is genuinely unbreakable: a real
+mathematical fact cannot depend circularly on itself, so if the trace *looks* cyclic, either a link is
+wrong, or the "cycle" only exists in a proposed code shape that was never mathematically required.
+Re-read every link from source, independent of `§102`'s own prose, with citations:
+
+* **Link 1 — `Monogenic.lean` genuinely needs the *value*.**
+  `LubinTateTowerStepMonogenic.lean:180-184`, `hgen`, calls `finrank_K_2_eq_residueCard` as a real
+  proof term (not cited in a comment) to get `Module.finrank (K_1 P) (baseChangeSplittingField P₂) =
+  residueCard O`, combined via `.symm.trans`/`.trans` with `hβfin`/`IntermediateField.adjoin.finrank`
+  to produce the `natDegree`-equals-`finrank` fact `adjoin_eq_integralClosure_of_isEisensteinAt`
+  needs. Not a weaker/different fact in disguise — literally this theorem's conclusion, used by name.
+  Confirmed: `finrank_K_2_eq_residueCard` itself (`LubinTateTowerStepDegree.lean:164-187`) is proved
+  directly from `adjoin_root_eq_top_K_2` (proved independently in the same file) and
+  `IntermediateField.finrank_top'` — no `Level` reference anywhere in its proof.
+* **Link 2 — `LocalRing.lean` genuinely needs it for `IsLocalRing (O_{K_2})`.**
+  `LubinTateTowerStepLocalRing.lean:261-270`, `isLocalRing_integralClosure_K_2`, calls
+  `adjoin_eq_integralClosure_K_2` as the real `hadjL` argument to
+  `isLocalRing_integralClosure_of_isDistinguishedAt_root`. No alternate route to `IsLocalRing
+  (O_{K_2})` exists in the file — this is the only theorem of that shape.
+  `isLocalHom_algebraMap_integralClosure_K_2` (line 276) is the immediate corollary built on top of
+  it, and it in turn is used for real (not just docstring) in `LubinTateTowerStepAdicCompleteK2.lean`
+  and, transitively, `LubinTateTowerStepConcreteK2.lean:236` (`haveI := isLocalHom_comp_towerHom_K_2
+  …`).
+* **Link 3 — `K_3`'s construction genuinely routes through this.** Confirmed by real (not
+  docstring-only) imports, one file at a time:
+  `LubinTateTowerStepK3.lean` → `LubinTateTowerStepConcreteK3.lean` →
+  `LubinTateTowerStepConcreteK2.lean`, which imports both `LubinTateTowerStepMonogenic.lean` (Link 1)
+  and `LubinTateTowerStepAdicCompleteK2.lean` (which imports `LubinTateTowerStepLocalRing.lean`,
+  Link 2) and uses `isLocalHom_comp_towerHom_K_2` at line 236 for real, to build the local-hom
+  structure map the next tower step needs. `§102`'s claimed route (`Monogenic →
+  LocalRing/ConcreteK2/ConcreteK3/K3 → K3RootConnect → BundleOL`) is confirmed at the import level,
+  modulo the precise file-to-file edges being slightly different in detail (it is `ConcreteK2.lean`
+  that pulls in both `Monogenic.lean` and `LocalRing.lean` directly, rather than a single linear
+  chain) — same conclusion, more precise citation.
+* **Link 4 — `BundleOL`/`Level` genuinely, currently, imports concrete `K_3` content.**
+  `LubinTateTowerStepBundleOL.lean:7` imports `LubinTateTowerStepK3RootConnect.lean` directly (not
+  merely transitively), which imports `LubinTateTowerStepK3.lean` — so `BundleOL` is *not* generic in
+  the sense of being agnostic to any specific concrete level; it is built by explicit composition
+  with the concrete `K_1 → K_2 → K_3` tower, `K_3` included. And `LevelGeneric.lean` (the first file
+  in the `Level` chain) imports `BundleOL.lean` directly (`LubinTateTowerStepLevelGeneric.lean:5`),
+  so every downstream `Level*.lean` file, `LevelInvariance.lean` (home of
+  `Level.finrank_next_eq_residueCard`) included, carries this in its closure.
+
+**Verdict: this is not a mathematical circularity at all — no fact here depends on itself, so `§102`'s
+own instinct to call it "bootstrap order" understated how ordinary it actually is.**
+`finrank_K_2_eq_residueCard` and `Level.finrank_next_eq_residueCard` are both true, and both are
+already proved, by two *independent, non-circular* arguments — there is no logical cycle in the
+propositions or their proofs as they stand today. The only thing that would be circular is a specific
+proposed *code shape*: rewriting `finrank_K_2_eq_residueCard`'s existing, valid, self-contained proof
+to instead be a one-line call to `Level.finrank_next_eq_residueCard`. That specific rewrite is
+impossible, for a reason that has nothing to do with file organization and cannot be fixed by moving
+code between files (unlike the `K3Degree.lean` case in `§102`, which *was* pure file-organization
+debt): `finrank_K_2_eq_residueCard` is the **base case** of the tower induction, and
+`Level.finrank_next_eq_residueCard` is the **generic inductive step**, and the generic step's own
+construction (`BundleOL`, hence every `Level*.lean` file, per Link 4) is built *on top of* a
+concretely-constructed `K_3`, which (per Links 1-3) requires the base case's value to already be
+settled. Asking a base case to be re-derived as a specialization of the general step built downstream
+of it is the same shape of request as asking `Nat.rec`'s `zero` case to be proved by specializing the
+`succ` case — not a hard engineering problem, a category error about which direction induction goes.
+`K_3`'s degree fact (`§102`'s successful migration) was never in this position: nothing below it in
+the tower needs its value to get built, so it was free to become a thin wrapper. `K_2`'s degree fact
+structurally cannot be, ever, without eliminating its role as the seed the whole tower bootstraps
+from — which is not a refactor, it is a different theorem.
+
+No code changed this pass (nothing to fix — `§102`'s decision not to touch
+`finrank_K_2_eq_residueCard`'s body was correct, and remains correct for a stronger reason than
+"tried and it didn't work"). `nix develop -c lake build`: unchanged, 8832 jobs, 0 errors, 0 `sorry`
+(re-run to confirm the tree is exactly as `§102` left it; this pass is read-only verification).
