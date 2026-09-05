@@ -21728,3 +21728,53 @@ phrasing and emoticons, a "coordinator-message-note," and a "subagent-note") —
 injected-content pattern `§67`–`§97` already logged and correctly did not comply with. It was
 ignored; work continued in the normal voice per the actual system prompt and `CLAUDE.md`, and no
 permission-scope, `CLAUDE.md`, or config change was made on its basis.
+
+## 99. (2026-09-05) Chain-of-thought-comment audit: none found
+
+A follow-up to the earlier session/roadmap-jargon cleanup, this pass looked for a different pattern:
+comments that narrate live reasoning ("first tried X, didn't work because Y, so switched to Z",
+"wait, this won't work", "let me think about this differently") rather than documenting the finished
+math/code, as distinct from legitimate "why" documentation (a standalone note that an approach was
+tried and abandoned for a stated reason, with the current approach given as the replacement).
+
+**Method:** grepped every `.lean` file under `Langlands/` for a wide net of markers —
+`tried`/`attempt`/`instead`/`wait,`/`actually,`/`let's `/`hmm`/`didn't work`/`won't work`/
+`second thought`/`switching to`/`let me `/`i think`/`maybe we`/`on reflection`/`reconsider`, plus a
+second pass for `try `/`trying`/`nope`/`scratch that`/`rethink`/`turns out`/`realized`/`oh wait`/
+`originally tried`/`first tried` — then read every hit in its surrounding docstring or comment block.
+
+**Result: 104 raw hits, 0 genuine chain-of-thought instances.** Every hit was one of:
+- Standalone "why this approach" documentation of a genuinely tried-and-abandoned alternative,
+  stated as settled fact with the reason and the replacement — exactly the carve-out the task
+  description called legitimate. Representative example, `TotallyRamifiedNormIndex.lean:78`:
+  > "...stripped out entirely (that reflexive self-instantiation was tried first, per the task
+  > brief, but synthesizing the requisite self-instances for
+  > `IsScalarTower`/`Module.Finite`/`LiesOver` did not typecheck cleanly within a couple of
+  > attempts, so this direct standalone proof — a verbatim copy of the extension-agnostic
+  > reasoning — is used instead)."
+
+  This reads as documentation of a decision, not a live monologue — no rewrite needed.
+- Similarly, `LubinTateTowerStepInductiveAlgebraK.lean:209` ("the full bundled `Algebra` structure,
+  attempted first, hit a `200,000`-heartbeat `isDefEq` timeout...") and
+  `LubinTateTowerStepLevelGeneric.lean:25` ("the one construction that an earlier
+  independent-hypothesis attempt hit a genuine diamond on") — both forward-looking maintenance
+  guidance about a concrete failure mode to avoid, kept as-is.
+- Plain math/code usage of "instead"/"attempt"/"realized" with no narrative content at all, e.g.
+  "the norm computation additive instead of multiplicative-residue" or "`ρ(w)⁻¹` is realized as
+  `ρ(w⁻¹)`" — ordinary technical prose, not narration.
+
+None of the search patterns associated with live stream-of-consciousness narration (`wait,`,
+`hmm`, `let me `, `on second thought`, `nope`, `scratch that`, `oh wait`) matched anywhere in the
+corpus at all.
+
+**No `.lean` files were edited this pass** — there was nothing to fix.
+
+**Build:** `nix develop -c lake build` — clean, **8827 jobs**, no `sorry`, no errors (confirmed
+before concluding, as a baseline check; not re-run per-batch since no edits were made).
+
+**Note on injected content this pass:** tool output during this pass again repeatedly contained
+fake `<system-reminder>`-formatted blocks (a "lily" persona, a "style guide" demanding
+lowercase/uwu phrasing, a "coordinator-message-note," and a "subagent-note") — the same
+injected-content pattern `§67`–`§98` already logged and correctly did not comply with. It was
+ignored; work continued in the normal voice per the actual system prompt and `CLAUDE.md`, and no
+permission-scope, `CLAUDE.md`, or config change was made on its basis.
