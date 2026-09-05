@@ -17,13 +17,7 @@ Rust types (Signature, Theory, Axiom, Translation) compile to egglog DSL program
 - `crates/motif/src/theories/` — Concrete theories (group, ring)
 - `crates/motif/src/translate.rs` — `Translation` (s-expression symbol renaming between theories)
 
-**egglog caveats:**
-- Reserved primitive names (cannot be used as constructors): f64 `neg`, `abs`, `min`, `max`, `to-f64`, `to-i64`, `to-string`; i64 `not-i64`, `log2`, `count-matches`; bool `not`, `and`, `or`, `xor`. Use `negate` for algebraic negation.
-- Rewrite safety: all RHS variables must appear in LHS; bare variables on LHS cause `Ungrounded`; unbound RHS variables cause `Unbound`.
-- Bidirectional rewrites only safe when both sides are constructor expressions with the same free variables. Identity laws (`f(x) = x`) and inverse laws are forward-only — reverse creates unbounded terms. Associativity is safe bidirectional.
-- Seed nullary constructors: constants like `(zero)`, `(one)` must be added explicitly via `(let seed_X__ (X))` or axioms referencing them won't fire.
-- Use `(ruleset name)` before any `(rule/rewrite ... :ruleset name)`; drive with `(run-schedule (repeat N (run ruleset)))`.
-- iter_limit 5–10 is usually enough; 20+ with bidirectional rewrites + distributivity → blowup.
+See `crates/motif/CLAUDE.md` for egglog integration caveats (reserved primitive names, rewrite safety, iter_limit tuning).
 
 **Saturation incompleteness:** `Theory::equiv()` only proves equalities whose intermediate terms exist in the e-graph. Cross-theory comparisons must use enumeration-based checking (`discover_equiv_classes` in `explore.rs`) on both sides — `equiv()` produces false negatives (e.g. group vs abelian group). Expression count at depth 2 with 2+ vars can be 255+; prefer 1 var or depth 1.
 
@@ -37,8 +31,6 @@ cargo test         # Run tests
 cargo clippy       # Lint
 cd docs && bun dev # Local docs
 ```
-
-If a tool appears missing, you are outside `nix develop`. Do not assume the tool is unavailable to the project.
 
 After creating a new worktree, run `scripts/setup-worktree-target.sh` (mac/linux) or
 `scripts/setup-worktree-target.ps1` (windows) once to share the build cache across
@@ -75,7 +67,7 @@ Types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`. Scope is optional but
 ## hard rules (no exceptions, ever)
 
 - no `--no-verify`, literally never. if something's blocking a commit, fix the actual issue or fix the hook — don't skip it.
-- no path deps in `Cargo.toml`, ever — they glue repos together and break being able to publish them independently.
+- no path deps in `Cargo.toml` across repos, ever — they glue repos together and break being able to publish them independently. Path deps within a single repo's own workspace (e.g. `motif-cli` depending on `motif` in this repo) are fine.
 - no interactive git, at all — no `git rebase -i`, no `git add -i`, no `--no-edit` on rebase.
 - don't suggest project names, ever. i'm bad at that (LLMs just are) — i can help shape the idea/concept but the actual name isn't mine to pick.
 - cross-project issues don't get tracked in chat — they go straight into TODO.md in whichever repo they belong to.
