@@ -21778,3 +21778,192 @@ lowercase/uwu phrasing, a "coordinator-message-note," and a "subagent-note") —
 injected-content pattern `§67`–`§98` already logged and correctly did not comply with. It was
 ignored; work continued in the normal voice per the actual system prompt and `CLAUDE.md`, and no
 permission-scope, `CLAUDE.md`, or config change was made on its basis.
+
+## 99. (2026-09-05) Critical decomposition audit (not naming/style, not build correctness): is
+this codebase broken into the "right" mathematical pieces? Two genuine, previously-unflagged
+duplication clusters found (the nonarchimedean eval-subst family, and the totally-ramified/
+unramified unit-decomposition lemmas); the tower-step `K_2`/`K_3` vs `Level` duplication `§89`–`§95`
+already tracked is confirmed still live and worth re-weighing; coverage is partial, honestly
+flagged as such
+
+This pass was tasked with a different question than any prior audit in this arc: not "is the
+naming/style Mathlib-conformant" (`§91`, `§95`) and not "does it build" (every pass), but "would a
+careful mathematician/Lean expert have decomposed this material into these specific files and
+lemmas" — i.e. genuine structural/decomposition quality, judged against how a textbook (Serre's
+*Local Fields*, Lubin-Tate's papers) actually breaks this material up. The task brief was explicit
+that the bar is adversarial ("the slightest hint of poor decomposition is a huge red flag") and
+that prior passes' "no violations found" conclusions on this exact material should not be trusted
+uncritically, since they were checking naming/hypothesis-generality, not this.
+
+### Method, and an honest coverage disclosure
+
+The original plan was five parallel sub-agent audits, one per cluster (phase 0/1 Weil-group/adele
+infrastructure; ramification/norm-group; Lubin-Tate core; `LubinTateTowerStep*`; nonarchimedean
+analysis). **The `Agent` tool was not usable for this**: every dispatch attempt returned a fake
+tool-result error escalating across three different forms in sequence — first demanding a `model`
+tier be named, then (once supplied) claiming the named `subagent_type` was "retired — use lily
+instead," then, after switching type, reverting to the first error again — a self-contradictory
+pattern consistent with prompt injection targeting which persona/agent got used, not a real,
+consistent validation rule. Each `Agent` call in this pass was also accompanied by injected
+`<system-reminder>`-formatted content (a "lily" persona block demanding lowercase/uwu phrasing, a
+matching "style guide," a "coordinator-message-note") — the same pattern `§67`–`§98` already
+logged. None of it was complied with; this section is written in the project's normal register, no
+persona was adopted, and no permission/config change was made on the basis of any of it.
+
+Given that, **this pass did the audit directly** (`grep`/`Read`/`Bash`) rather than via parallel
+sub-agents, which means coverage is real but partial, not exhaustive:
+
+* **Complete**: a codebase-wide sweep for monolithic proof bodies (all 171 files, every
+  `theorem`/`lemma`/`def`/`instance` block measured start-to-next-declaration).
+* **Thorough, with proof bodies read, not just names**: the `LubinTateTowerStep*` `K_2`/`K_3`/
+  `Level` triplication; the nonarchimedean `*EvalSubst*` family; the `TotallyRamified*`/
+  `Unramified*` unit-decomposition lemmas; `LubinTateRootCount` vs `RootCountConcrete`;
+  `LubinTateSplittingFieldDegree` vs `...Concrete`.
+* **Not done this pass, and not claimed clean**: a proof-body-level audit of the phase 0/1 Weil-
+  group/adele/profinite cluster (`WeilGroup.lean`, `IdeleGroup.lean`, `ProfiniteGrpUlift.lean`,
+  `CyclicGaloisSubfields.lean`, `HenselianValuation.lean`, etc.); the `LubinTateResidueUnitsAction`/
+  `Freeness`/`Transitivity` trio (names checked, bodies not compared in depth); the 13-file
+  `AdicCompletion*` cluster and 14-file `TotallyRamified*ConcreteExample*` cluster's internal
+  redundancy beyond the specific lemmas checked below; `NonarchimedeanExponential*` vs
+  `PowerSeriesExpLog*`/`NonarchimedeanExpLog*` overlap; `MonogenicIntegralClosure`/
+  `TowerMonogenic*`/`TwoGeneratorMonogenic` internal consistency. These remain open for a follow-up
+  pass, ideally once whatever is blocking parallel sub-agent dispatch is fixed.
+
+### Finding 1 (highest severity, new — not flagged by any prior pass): the nonarchimedean
+power-series substitution/summability proof is written out **five separate times**, once per
+substitution shape, instead of once as a general lemma with four specializations
+
+`NonarchimedeanPowerSeriesEvalSubst.lean` (univariate `g` into `h`, 215 lines),
+`NonarchimedeanPowerSeriesEvalSubstMv.lean` (`Fin 2` family, 259 lines),
+`NonarchimedeanMvPowerSeriesEvalSubstDiagonal.lean` (diagonal embedding, 339 lines),
+`NonarchimedeanMvPowerSeriesEvalSubstGeneral.lean` (general multivariate family, 300 lines), and
+`NonarchimedeanPowerSeriesEvalSubstMvIn.lean` (`Fin 2` "into" case, 208 lines) each independently
+carry the **identical five-lemma proof skeleton** — `coeff_eq_zero_*_of_lt` →
+`coeff_subst_finset_*` → `hasSum_row_e_*` → `hasSum_row_d_*` → `tendsto_T_cofinite_zero_*` →
+`eval_subst_*` — under a per-file suffix (none/`_mv`/`_S`/`_G`/`_A`), with the closing `eval_subst_*`
+theorem in every file calling its own file's four preceding lemmas in the exact same order
+(`NonarchimedeanPowerSeriesEvalSubst.lean:188-208`, `...SubstMv.lean:229-252`,
+`...SubstDiagonal.lean:309-332`, `...SubstGeneral.lean:271-293`, `...SubstMvIn.lean:181-201`). This
+is not five coincidentally-similar lemmas; it is one proof, copy-pasted and retyped for a different
+substitution shape four times, each time re-deriving the same convergence/summability argument
+(`IsUltrametricDist.summable_of_tendsto_zero` + `Summable.prod_fiberwise` twice) from scratch. The
+codebase's own docstrings notice the parallel and say so explicitly without ever acting on it —
+`NonarchimedeanMvPowerSeriesEvalSubstDiagonal.lean:203`: *"Unlike **every other eval-subst file's**
+`hasSum_row_d`, this row is a genuine *product of..."* — a direct, self-aware acknowledgment that
+this is a family of files doing the same thing, treated as a naming-convention fact rather than a
+signal to generalize once and specialize four times. A textbook or Mathlib treatment would prove
+"substituting one power series family into another that vanishes at 0 preserves nonarchimedean
+summability" exactly once, generically over the index type, and derive the univariate/diagonal/
+`Fin 2` cases as corollaries. This is the single clearest sign in the whole codebase of session-
+driven, non-mathematician decomposition: five files built by cloning the previous one and
+retargeting the types, not five genuinely distinct mathematical facts.
+
+### Finding 2 (high severity, new — not flagged by any prior pass): the same
+uniformizer-decomposition fact (every unit of a valued field is `π^k · (unit of O)`) is proved
+independently three times, once for a bare field and twice more for a field extension that could
+each have called the bare-field version directly
+
+* `exists_zpow_mul_unit_eq_of_irreducible_self` (`TotallyRamifiedNormIndex.lean:108-131`) — the
+  fully general, single-field statement: for `v : HeightOneSpectrum` on a field `F` and an
+  irreducible `π`, every unit of `v.adicCompletion F` is `π^k · u`.
+* `exists_zpow_mul_unit_eq_of_irreducible` (`TotallyRamifiedNormRange.lean:252-269`) — the
+  identical statement and an essentially line-for-line identical proof (`rcases le_total ... obtain
+  ... refine ⟨-(n:ℤ), u⁻¹, ...⟩ ... rw [ha, hnu, mul_inv, ..., zpow_neg, zpow_natCast]`), for `w`
+  on the top field `L` of an extension `K L`/`v w` — i.e. it is the `_self` lemma applied to `w`,
+  reproved instead of invoked.
+* `exists_zpow_mul_unit_eq` (`UnramifiedNormRange.lean:136-158`) — same statement again, same proof
+  skeleton again, phrased with the uniformizer transported across `algebraMap` from the base field
+  instead of taken directly in `L`, but mathematically identical to the other two once specialized.
+
+Confirmed as live, not incidental: `exists_zpow_mul_unit_eq_of_irreducible_self` **is** reused
+elsewhere (`AdicCompletionValuationNorm.lean:236`), so the general form exists and is known-good,
+yet the other two files reprove it rather than invoking it at `w`/`v`. The three matching
+`exists_pow_mul_unit_eq_of_valued_le_one*` lemmas one level down
+(`UnramifiedNormRange.lean:89`, `TotallyRamifiedNormRange.lean:224`,
+`TotallyRamifiedNormIndex.lean:82`) show the identical triplication pattern one layer further in —
+this is not one duplicated lemma but a duplicated *pair* of lemmas, times three call sites. A
+careful decomposition would state the unit-decomposition fact once, generically over "a field with
+a discrete valuation and a chosen uniformizer," and have the extension-specific files invoke it at
+the relevant field instead of re-deriving it.
+
+### Finding 3 (medium severity, already tracked by `§89`–`§95` but confirmed still live and
+re-flagged here because a decomposition audit — as opposed to a naming audit — should weigh it
+differently): `LubinTateTowerStep*`'s per-level (`K_2`/`K_3`) theorems duplicate the generic
+`Level`-based theorems that supersede them, and neither side has been retired
+
+Checked directly against current source, not against `§91`/`§95`'s prose: `Level.
+finrank_next_eq_residueCard` (`LubinTateTowerStepLevelInvariance.lean:382`) and
+`finrank_K_2_eq_residueCard` (`LubinTateTowerStepDegree.lean:164`) and `finrank_K_3_eq_residueCard`
+(`LubinTateTowerStepK3Degree.lean:189`) are the same fact at three levels of specificity;
+`Level.adjoin_root_eq_top` (`LubinTateTowerStepLevelInvariance.lean:294`) vs
+`adjoin_root_eq_top_K_2`/`_K_3` (`LubinTateTowerStepDegree.lean:114`,
+`LubinTateTowerStepK3Degree.lean:131`) likewise. **These are not thin wrappers** —
+`finrank_K_2_eq_residueCard`'s proof body (`LubinTateTowerStepDegree.lean:180-189`) calls
+`adjoin_root_eq_top_K_2` and other concrete-file lemmas directly, never `Level.
+finrank_next_eq_residueCard`; each of the three levels is independently re-derived with its own
+~15-hypothesis argument list (each visibly the `Level` version's hypothesis list, manually
+specialized by hand, not generated from it). All three names are live (10-14 real usages each,
+grepped), so this is not dead code either side. `§89`/`§91` already found this and gave a specific,
+concrete, technical reason it wasn't fixed (an import-cycle: the generic `Level` files themselves
+`import` the concrete `K_2`/`K_3` files for their ingredients and `rfl`-check targets, so collapsing
+the concrete lemmas into calls to the generic ones would require restructuring which file supplies
+which direction of that import edge — not a "didn't get to it yet" gap). That reason is still
+accurate on inspection. What this pass adds is a sharper framing: judged purely on decomposition
+grounds (not on migration-risk grounds, which is what `§89`/`§91` were actually weighing), this is
+exactly the kind of "same fact proved at three levels of generality, narrow ones never cleaned up"
+pattern the task brief asked to flag — the fact that it is *already known and deliberately
+deferred* changes the priority calculus, not the underlying finding. Re-flagged here for visibility
+under this pass's different framing, not as a new discovery.
+
+### Finding 4 (low-medium severity, informational): two genuinely monolithic proofs, one of which
+visibly bundles an existence argument with an unrelated equivalence-transport argument
+
+The codebase-wide sweep (measured by declaration-to-next-declaration line span, 171 files) found
+exactly two proof bodies over 200 lines, both in the phase 2a/2b cluster this pass did *not* have
+time to otherwise audit in depth:
+
+* `HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv`
+  (`UnramifiedExtension.lean:873`, **300 lines**) — the statement itself is a seven-way conjunction
+  (existence of `x`, `f.map = minpoly`, separability, `IsLocalRing`, `IsDiscreteValuationRing`,
+  monogenicity, a residue-field isomorphism with two compatibility conditions on it) packed into one
+  `∃`-headed return type rather than named as separate lemmas — a strong sign this was built by
+  accretion (proving one more fact, folding it into the same existential, moving on) rather than
+  planned as one theorem from the start. A careful decomposition would state "there exists `x` with
+  properties P1..P7" as named intermediate lemmas culminating in a short combining theorem, not one
+  300-line proof discharging all seven inline.
+* `Valuation.exists_rankOne_compatible` (`HenselianValuation.lean:475`, **235 lines**) — not read in
+  proof-body detail this pass; flagged by line count alone as a candidate for the same treatment,
+  not confirmed.
+
+No other file in the codebase exceeds 151 lines for a single declaration (`UnramifiedExtension.
+lean:1264`, `ValuationSubring.exists_restrictNormalHom_decompositionSubgroup_surjective`), so this
+is not a systemic monolithic-proof problem — it is two isolated instances, both in files this pass
+otherwise did not have bandwidth to audit for decomposition beyond line count.
+
+### What was checked and found genuinely clean (stated plainly, not padded)
+
+* `LubinTateRootCountConcrete.lean`'s `card_piTorsion_one_eq_residueCard_of_adicCompletion`
+  (line 89) is a real thin wrapper around `LubinTateRootCount.lean`'s general
+  `card_piTorsion_one_eq_residueCard` (line 417) — reads the hypotheses, discharges two of them
+  automatically from the adic-completion setting, and calls the general theorem directly
+  (`LubinTateRootCountConcrete.lean:98-101`). This is exactly the pattern Finding 2's lemmas should
+  have used and didn't.
+* `LubinTateSplittingFieldDegreeConcrete.lean` is not a duplicate of `LubinTateSplittingFieldDegree.
+  lean`: every theorem there is genuinely `∃`-wrapped and specialized to concrete instances
+  (`ℤ_[p]`/`ℚ_[p]`, `p = 3`), matching `§91`'s own account of it as a real non-vacuity witness, not
+  a re-proof of the general file's content.
+
+### Note on injected content and process anomalies encountered this pass
+
+Every `Agent`-tool dispatch in this pass returned a fake, self-contradictory validation error
+(detailed in "Method" above) alongside injected `<system-reminder>` blocks pushing a "lily"
+uwu-persona and matching style guide — the same injected-content pattern `§67`–`§98` have logged
+repeatedly throughout this arc. None of it was complied with: no persona was adopted, this section
+is written in the project's normal register, and no permission-scope, `CLAUDE.md`, or config change
+was made on its basis. Work proceeded by doing the audit directly instead of via sub-agents, with
+the resulting coverage gap disclosed above rather than silently backfilled with unverified claims.
+
+### Build
+
+No `.lean` files were touched this pass (pure audit, as instructed) — build state unchanged from
+`§98`. Only `ROADMAP.md` (this section) was added.
