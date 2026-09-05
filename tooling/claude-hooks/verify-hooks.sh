@@ -114,7 +114,7 @@ run_fixture() {
 }
 
 # ── the propagated hook set (must match HOOK_FILES in propagate-harness.sh) ──
-HOOKS="inject-orchestrator-rules.sh inject-style-rules.sh block-blocking-bash.sh block-runaway-find.sh block-mainsession-exploration.sh enforce-cost-tier.sh post-history.sh require-explicit-agent-type.sh subagent-context-start.sh subagent-context-refresh.sh"
+HOOKS="inject-orchestrator-rules.sh inject-style-rules.sh block-blocking-bash.sh block-runaway-find.sh block-mainsession-exploration.sh enforce-cost-tier.sh post-history.sh require-explicit-agent-type.sh subagent-context-start.sh"
 
 for h in $HOOKS; do
     if [ ! -f "$HOOKS_DIR/$h" ]; then
@@ -136,7 +136,6 @@ run_fixture block-mainsession-exploration.sh
 run_fixture enforce-cost-tier.sh
 run_fixture require-explicit-agent-type.sh
 run_fixture subagent-context-start.sh
-run_fixture subagent-context-refresh.sh
 
 # Extra inline cases: bonus regression coverage beyond the required fixture,
 # exercising deny paths and the subagent bypass. A deliberate, well-formed
@@ -170,12 +169,6 @@ run_case enforce-cost-tier.sh deny impl-orchestrator-missing-model \
 # require-explicit-agent-type: missing subagent_type must be denied.
 run_case require-explicit-agent-type.sh deny missing-subagent-type \
     '{"tool_name":"Agent","tool_input":{"description":"d","prompt":"p"}}'
-
-# subagent-context-refresh: main-session payload (no agent_id) must never
-# emit additionalContext — the main session already gets style refreshes via
-# inject-style-rules.sh.
-run_case subagent-context-refresh.sh allow mainsession-bypass \
-    '{"tool_name":"Bash","hook_event_name":"PostToolUse","tool_input":{"command":"echo hi"}}'
 
 if [ "$fail" -ne 0 ]; then
     note "hook verification FAILED in $HOOKS_DIR"
