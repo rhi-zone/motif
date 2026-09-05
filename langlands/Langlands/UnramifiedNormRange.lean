@@ -1,4 +1,5 @@
 import Langlands.UnramifiedNormSurjective
+import Langlands.AdicCompletionUniformizerDecomposition
 import Mathlib.RingTheory.DiscreteValuationRing.Basic
 
 /-!
@@ -85,45 +86,21 @@ has `Valued.v a ≤ 1` (i.e. `a` lies in `L₀`), it decomposes as `a = ϖ^n * u
 some unit `u` of `L₀`, where `ϖ` is the image of `π` in `L₀`. This is
 `IsDiscreteValuationRing.associated_pow_irreducible` (every nonzero element of a DVR is associated
 to a power of a fixed irreducible), transported from the ring-level `Associated` witness to a
-field-level unit equation via the algebra map `L₀ → w.adicCompletion L`. -/
+field-level unit equation via the algebra map `L₀ → w.adicCompletion L`. This is now a thin
+specialization of `Langlands.AdicCompletionUniformizerDecomposition`'s
+`exists_pow_mul_unit_eq_of_valued_le_one_of_irreducible`, applied at `F := L`, `v := w`, with the
+irreducible element taken to be `algebraMap π` (irreducible by `algebraMap_uniformizer_irreducible`,
+which is where `IsUnramified` is actually used — the general lemma itself needs no ramification
+hypothesis). -/
 theorem exists_pow_mul_unit_eq_of_valued_le_one (hU : IsUnramified K L v w) (hπ : Irreducible π)
     {a : (w.adicCompletion L)ˣ} (hle : Valued.v (a : w.adicCompletion L) ≤ 1) :
     ∃ (n : ℕ) (u : (w.adicCompletionIntegers L)ˣ),
       (a : w.adicCompletion L) =
         ((algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) π :
             w.adicCompletionIntegers L) : w.adicCompletion L) ^ n *
-          (u : w.adicCompletion L) := by
-  set x : w.adicCompletionIntegers L :=
-    ⟨(a : w.adicCompletion L), (mem_adicCompletionIntegers S L w).mpr hle⟩ with hxdef
-  have hx0 : x ≠ 0 := by
-    rw [Ne, ← ZeroMemClass.coe_eq_zero]
-    exact a.ne_zero
-  have hirr := algebraMap_uniformizer_irreducible K L v w hU hπ
-  obtain ⟨n, u₀, hu₀⟩ := IsDiscreteValuationRing.associated_pow_irreducible hx0 hirr
-  refine ⟨n, u₀⁻¹, ?_⟩
-  have hval : x =
-      (algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) π) ^ n *
-        ((u₀⁻¹ : (w.adicCompletionIntegers L)ˣ) : w.adicCompletionIntegers L) :=
-    (Units.eq_mul_inv_iff_mul_eq u₀).mpr hu₀
-  have hcast := congrArg (algebraMap (w.adicCompletionIntegers L) (w.adicCompletion L)) hval
-  simp only [map_mul, map_pow] at hcast
-  rw [hxdef] at hcast
-  exact hcast
-
-omit [Algebra.IsIntegral R S] in
-/-- The image under `algebraMap L₀ (w.adicCompletion L)` of a unit-inverse of `L₀` is the field
-inverse of the image: `L₀` need not be a field itself (only `w.adicCompletion L` is), so this does
-not follow from `Units.val_inv_eq_inv_val` (stated for units of a `DivisionMonoid`) — it is proved
-directly from `u.mul_inv` pushed through the ring hom `algebraMap L₀ (w.adicCompletion L)`. -/
-theorem algebraMap_coe_inv_eq (u : (w.adicCompletionIntegers L)ˣ) :
-    ((u⁻¹ : (w.adicCompletionIntegers L)ˣ) : w.adicCompletion L) =
-      ((u : w.adicCompletionIntegers L) : w.adicCompletion L)⁻¹ := by
-  have h1 : (u : w.adicCompletionIntegers L) *
-      ((u⁻¹ : (w.adicCompletionIntegers L)ˣ) : w.adicCompletionIntegers L) = 1 := u.mul_inv
-  have h2 : ((u : w.adicCompletionIntegers L) : w.adicCompletion L) *
-      (((u⁻¹ : (w.adicCompletionIntegers L)ˣ) : w.adicCompletionIntegers L) :
-        w.adicCompletion L) = 1 := by exact_mod_cast h1
-  exact eq_inv_of_mul_eq_one_right h2
+          (u : w.adicCompletion L) :=
+  exists_pow_mul_unit_eq_of_valued_le_one_of_irreducible w
+    (algebraMap_uniformizer_irreducible K L v w hU hπ) hle
 
 omit [Module.Finite K L] [Algebra.IsIntegral R S]
   [Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)] in
@@ -132,28 +109,18 @@ omit [Module.Finite K L] [Algebra.IsIntegral R S]
 If `Valued.v a ≤ 1`, this is the base case (`exists_pow_mul_unit_eq_of_valued_le_one`) directly.
 Otherwise `Valued.v a⁻¹ ≤ 1` (`inv_le_one_of_one_le₀`), so the base case applies to `a⁻¹`, giving
 `a⁻¹ = ϖ^n * u`; inverting (`Units.val_inv_eq_inv_val`, `mul_inv`, `zpow_neg`/`zpow_natCast`) gives
-`a = ϖ^(-n) * u⁻¹`. -/
+`a = ϖ^(-n) * u⁻¹`. This is now a thin specialization of
+`Langlands.AdicCompletionUniformizerDecomposition`'s `exists_zpow_mul_unit_eq_of_irreducible`,
+applied at `F := L`, `v := w`, with the irreducible element `algebraMap π` (see
+`exists_pow_mul_unit_eq_of_valued_le_one`'s docstring). -/
 theorem exists_zpow_mul_unit_eq (hU : IsUnramified K L v w) (hπ : Irreducible π)
     (a : (w.adicCompletion L)ˣ) :
     ∃ (k : ℤ) (u : (w.adicCompletionIntegers L)ˣ),
       (a : w.adicCompletion L) =
         ((algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) π :
             w.adicCompletionIntegers L) : w.adicCompletion L) ^ k *
-          (u : w.adicCompletion L) := by
-  set ϖ : w.adicCompletion L :=
-    ((algebraMap (v.adicCompletionIntegers K) (w.adicCompletionIntegers L) π :
-        w.adicCompletionIntegers L) : w.adicCompletion L) with hϖdef
-  rcases le_total (Valued.v (a : w.adicCompletion L)) 1 with hle | hge
-  · obtain ⟨n, u, hnu⟩ := exists_pow_mul_unit_eq_of_valued_le_one K L v w hU hπ hle
-    exact ⟨(n : ℤ), u, by rw [hnu, zpow_natCast]⟩
-  · have hinv_le : Valued.v (((a⁻¹ : (w.adicCompletion L)ˣ) : w.adicCompletion L)) ≤ 1 := by
-      rw [Units.val_inv_eq_inv_val, map_inv₀]
-      exact inv_le_one_of_one_le₀ hge
-    obtain ⟨n, u, hnu⟩ := exists_pow_mul_unit_eq_of_valued_le_one K L v w hU hπ hinv_le
-    refine ⟨-(n : ℤ), u⁻¹, ?_⟩
-    rw [Units.val_inv_eq_inv_val] at hnu
-    have ha : (a : w.adicCompletion L) = ((a : w.adicCompletion L)⁻¹)⁻¹ := (inv_inv _).symm
-    rw [ha, hnu, mul_inv, ← algebraMap_coe_inv_eq L w u, zpow_neg, zpow_natCast, hϖdef]
+          (u : w.adicCompletion L) :=
+  exists_zpow_mul_unit_eq_of_irreducible w (algebraMap_uniformizer_irreducible K L v w hU hπ) a
 
 end Decomposition
 

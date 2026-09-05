@@ -1,6 +1,7 @@
 import Langlands.TotallyRamifiedNormSurjective
 import Langlands.PrincipalUnitsFiltrationAdicCompletion
 import Langlands.UnramifiedNormRange
+import Langlands.AdicCompletionUniformizerDecomposition
 
 /-!
 # The totally ramified norm group: exact range, and a tame lower bound at `U_K^{(1)}`
@@ -206,68 +207,18 @@ theorem uniformizerUnit_norm_mem_range (h : IsTotallyRamified K L v w)
       MonoidHom.range (localNormMap K L v w) :=
   ⟨(coe_ne_zero_of_irreducible L w hπL).isUnit.unit, localNormMap_irreducibleUnit_eq K L v w h hπL⟩
 
-/-! ### The uniformizer-power decomposition, directly in terms of `π_L` -/
+/-! ### The uniformizer-power decomposition, directly in terms of `π_L`
 
-section Decomposition
-
-omit [Module.Finite K L] [Algebra.IsIntegral R S]
-  [Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)]
-  [Finite (ResidueField (w.adicCompletionIntegers L))] in
-/-- **Base case of the uniformizer-power decomposition, using `π_L` directly.** If a unit `a` of
-`w.adicCompletion L` has `Valued.v a ≤ 1` (i.e. `a` lies in `L₀`), it decomposes as `a = π_L^n * u`
-for some `n : ℕ` and unit `u` of `L₀`, for *any* irreducible `π_L : L₀` — no ramification
-hypothesis is needed. This is `Langlands.UnramifiedNormRange`'s
-`exists_pow_mul_unit_eq_of_valued_le_one` with the outer `algebraMap K₀ L₀` layer dropped: there
-`π` had to be lifted from `K₀` and irreducibility of the lift needed `IsUnramified`
-(`algebraMap_uniformizer_irreducible`), which is false once the extension ramifies; here `π_L` is
-already an element of `L₀`, so its irreducibility is simply the hypothesis. -/
-theorem exists_pow_mul_unit_eq_of_valued_le_one_of_irreducible
-    {πL : w.adicCompletionIntegers L} (hπL : Irreducible πL)
-    {a : (w.adicCompletion L)ˣ} (hle : Valued.v (a : w.adicCompletion L) ≤ 1) :
-    ∃ (n : ℕ) (u : (w.adicCompletionIntegers L)ˣ),
-      (a : w.adicCompletion L) =
-        ((πL : w.adicCompletionIntegers L) : w.adicCompletion L) ^ n * (u : w.adicCompletion L) := by
-  set x : w.adicCompletionIntegers L :=
-    ⟨(a : w.adicCompletion L), (mem_adicCompletionIntegers S L w).mpr hle⟩ with hxdef
-  have hx0 : x ≠ 0 := by
-    rw [Ne, ← ZeroMemClass.coe_eq_zero]
-    exact a.ne_zero
-  obtain ⟨n, u₀, hu₀⟩ := IsDiscreteValuationRing.associated_pow_irreducible hx0 hπL
-  refine ⟨n, u₀⁻¹, ?_⟩
-  have hval : x = πL ^ n * ((u₀⁻¹ : (w.adicCompletionIntegers L)ˣ) : w.adicCompletionIntegers L) :=
-    (Units.eq_mul_inv_iff_mul_eq u₀).mpr hu₀
-  have hcast := congrArg (algebraMap (w.adicCompletionIntegers L) (w.adicCompletion L)) hval
-  simp only [map_mul, map_pow] at hcast
-  rw [hxdef] at hcast
-  exact hcast
-
-omit [Module.Finite K L] [Algebra.IsIntegral R S]
-  [Algebra.IsSeparable (v.adicCompletion K) (w.adicCompletion L)]
-  [Finite (ResidueField (w.adicCompletionIntegers L))] in
-/-- **The uniformizer-power decomposition, using `π_L` directly.** Every unit `a` of
-`w.adicCompletion L` decomposes as `a = π_L^k * u` for some `k : ℤ` and some unit `u` of `L₀`, for
-any irreducible `π_L : L₀` — the totally-ramified-file counterpart of
-`Langlands.UnramifiedNormRange`'s `exists_zpow_mul_unit_eq`, again with no ramification
-hypothesis. -/
-theorem exists_zpow_mul_unit_eq_of_irreducible
-    {πL : w.adicCompletionIntegers L} (hπL : Irreducible πL) (a : (w.adicCompletion L)ˣ) :
-    ∃ (k : ℤ) (u : (w.adicCompletionIntegers L)ˣ),
-      (a : w.adicCompletion L) =
-        ((πL : w.adicCompletionIntegers L) : w.adicCompletion L) ^ k * (u : w.adicCompletion L) := by
-  rcases le_total (Valued.v (a : w.adicCompletion L)) 1 with hle | hge
-  · obtain ⟨n, u, hnu⟩ := exists_pow_mul_unit_eq_of_valued_le_one_of_irreducible L w hπL hle
-    exact ⟨(n : ℤ), u, by rw [hnu, zpow_natCast]⟩
-  · have hinv_le : Valued.v (((a⁻¹ : (w.adicCompletion L)ˣ) : w.adicCompletion L)) ≤ 1 := by
-      rw [Units.val_inv_eq_inv_val, map_inv₀]
-      exact inv_le_one_of_one_le₀ hge
-    obtain ⟨n, u, hnu⟩ :=
-      exists_pow_mul_unit_eq_of_valued_le_one_of_irreducible L w hπL hinv_le
-    refine ⟨-(n : ℤ), u⁻¹, ?_⟩
-    rw [Units.val_inv_eq_inv_val] at hnu
-    have ha : (a : w.adicCompletion L) = ((a : w.adicCompletion L)⁻¹)⁻¹ := (inv_inv _).symm
-    rw [ha, hnu, mul_inv, ← algebraMap_coe_inv_eq L w u, zpow_neg, zpow_natCast]
-
-end Decomposition
+Both the base case (`a ∈ L₀`) and the full `zpow` decomposition are exactly
+`Langlands.AdicCompletionUniformizerDecomposition`'s single-field
+`exists_pow_mul_unit_eq_of_valued_le_one_of_irreducible`/`exists_zpow_mul_unit_eq_of_irreducible`
+applied at `F := L`, `v := w` — no ramification hypothesis is needed here either, for the same
+reason that general lemma needs none: `π_L` is already an element of `L₀`, so its irreducibility
+is simply the hypothesis, not something to derive from an `algebraMap K₀ L₀` lift (contrast
+`Langlands.UnramifiedNormRange`'s `exists_pow_mul_unit_eq_of_valued_le_one`/
+`exists_zpow_mul_unit_eq`, which *do* need `IsUnramified` because their uniformizer is transported
+from `K₀`). Nothing is proved in this file for this step any more; the names below are the
+imported general lemmas, specialized at each call site. -/
 
 /-! ### The exact norm-group range, in terms of `N(U_L)` -/
 
@@ -291,7 +242,7 @@ theorem localNormMap_range_eq_of_isTotallyRamified (h : IsTotallyRamified K L v 
         (w.adicCompletionIntegers L).units.map (localNormMap K L v w) := by
   apply le_antisymm
   · rintro _ ⟨a, rfl⟩
-    obtain ⟨k, u, hku⟩ := exists_zpow_mul_unit_eq_of_irreducible L w hπL a
+    obtain ⟨k, u, hku⟩ := exists_zpow_mul_unit_eq_of_irreducible w hπL a
     set embed : (w.adicCompletionIntegers L)ˣ →* (w.adicCompletion L)ˣ :=
       Units.map (algebraMap (w.adicCompletionIntegers L) (w.adicCompletion L)) with hembeddef
     have ha : a = (coe_ne_zero_of_irreducible L w hπL).isUnit.unit ^ k * embed u := by
