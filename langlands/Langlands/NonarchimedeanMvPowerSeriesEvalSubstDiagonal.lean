@@ -2,6 +2,7 @@ import Mathlib.RingTheory.MvPowerSeries.Substitution
 import Mathlib.RingTheory.PowerSeries.Substitution
 import Langlands.NonarchimedeanPowerSeriesEvalSubst
 import Langlands.NonarchimedeanMvPowerSeriesEvalFin2
+import Langlands.NonarchimedeanCofiniteTendstoOfDegreeBound
 
 /-!
 # Same-arity diagonal eval-subst compatibility
@@ -242,10 +243,10 @@ theorem hasSum_row_d_S {g : PowerSeries R} {Φ : MvPowerSeries (Fin 2) R}
   exact h2
 
 omit [CompleteSpace K] in
-/-- **`T` tends to `0` along `cofinite` on `(Fin 2 →₀ ℕ) × (Fin 2 →₀ ℕ)`**: the uniform bound
-`‖T (d, m)‖ ≤ (max ‖y 0‖ ‖y 1‖) ^ m.degree` together with `coeff_eq_zero_diag_pow_of_lt`
-(`T (d, m) = 0` when `m.degree < d.degree`) confine `{(d, m) : ‖T (d, m)‖ ≥ ε}` to a finite box,
-via `Finsupp.finite_of_degree_lt` on both factors. -/
+/-- **`T` tends to `0` along `cofinite` on `(Fin 2 →₀ ℕ) × (Fin 2 →₀ ℕ)`**: a direct application
+of `tendsto_zero_cofinite_of_degree_bound`, with both `wt`/`deg := Finsupp.degree`,
+`r := max ‖y 0‖ ‖y 1‖`, the uniform bound `‖T (d, m)‖ ≤ r ^ m.degree`, and exact vanishing from
+`coeff_eq_zero_diag_pow_of_lt` (`T (d, m) = 0` when `m.degree < d.degree`). -/
 theorem tendsto_T_cofinite_zero_S {g : PowerSeries R} {Φ : MvPowerSeries (Fin 2) R}
     (hΦ : ∀ n, ‖algebraMap R K (MvPowerSeries.coeff n Φ)‖ ≤ 1)
     (hg0 : PowerSeries.constantCoeff g = 0)
@@ -255,52 +256,24 @@ theorem tendsto_T_cofinite_zero_S {g : PowerSeries R} {Φ : MvPowerSeries (Fin 2
       (fun p : (Fin 2 →₀ ℕ) × (Fin 2 →₀ ℕ) ↦ algebraMap R K (MvPowerSeries.coeff p.1 Φ) *
         evalSummandMv (diagEmbed g 0 ^ (p.1 0) * diagEmbed g 1 ^ (p.1 1)) y p.2)
       Filter.cofinite (nhds 0) := by
-  rw [Metric.tendsto_nhds]
-  intro ε hε
-  rw [Filter.eventually_cofinite]
-  set r := max ‖y 0‖ ‖y 1‖ with hrdef
-  have hr0 : (0 : ℝ) ≤ r := le_trans (norm_nonneg _) (le_max_left _ _)
-  have hr1 : r < 1 := max_lt hy0 hy1
-  obtain ⟨D, hD⟩ := exists_pow_lt_of_lt_one hε hr1
-  have hbound : ∀ p : (Fin 2 →₀ ℕ) × (Fin 2 →₀ ℕ),
-      ‖algebraMap R K (MvPowerSeries.coeff p.1 Φ) *
-        evalSummandMv (diagEmbed g 0 ^ (p.1 0) * diagEmbed g 1 ^ (p.1 1)) y p.2‖ ≤
-        r ^ p.2.degree := by
-    intro p
-    rw [norm_mul]
-    calc ‖algebraMap R K (MvPowerSeries.coeff p.1 Φ)‖ *
-          ‖evalSummandMv (diagEmbed g 0 ^ (p.1 0) * diagEmbed g 1 ^ (p.1 1)) y p.2‖
-        ≤ 1 * r ^ p.2.degree :=
-          mul_le_mul (hΦ p.1) (norm_evalSummandMv_le
-            (coeff_bound_mul_mv (coeff_bound_pow_mv (coeff_bound_diagEmbed 0 hg) (p.1 0))
-              (coeff_bound_pow_mv (coeff_bound_diagEmbed 1 hg) (p.1 1))) y p.2)
-            (norm_nonneg _) zero_le_one
-      _ = r ^ p.2.degree := one_mul _
-  have hfin : Set.Finite {p : (Fin 2 →₀ ℕ) × (Fin 2 →₀ ℕ) |
-      Finsupp.degree p.1 ≤ D ∧ Finsupp.degree p.2 < D} := by
-    have heq : {p : (Fin 2 →₀ ℕ) × (Fin 2 →₀ ℕ) |
-        Finsupp.degree p.1 ≤ D ∧ Finsupp.degree p.2 < D} =
-        {d : Fin 2 →₀ ℕ | Finsupp.degree d ≤ D} ×ˢ {m : Fin 2 →₀ ℕ | Finsupp.degree m < D} := rfl
-    rw [heq]
-    exact (Finsupp.finite_of_degree_le (σ := Fin 2) D).prod
-      (Finsupp.finite_of_degree_lt (σ := Fin 2) D)
-  refine hfin.subset ?_
-  intro p hp
-  simp only [Set.mem_setOf_eq, not_lt, dist_eq_norm, sub_zero] at hp
-  have hnd : Finsupp.degree p.2 < D := by
-    by_contra hge
-    push Not at hge
-    have := pow_le_pow_of_le_one hr0 hr1.le hge
-    linarith [hbound p, hD]
-  have hd : Finsupp.degree p.1 ≤ Finsupp.degree p.2 := by
-    by_contra hlt
-    push Not at hlt
-    have hz : algebraMap R K (MvPowerSeries.coeff p.1 Φ) *
-        evalSummandMv (diagEmbed g 0 ^ (p.1 0) * diagEmbed g 1 ^ (p.1 1)) y p.2 = 0 := by
+  have hr0 : (0 : ℝ) ≤ max ‖y 0‖ ‖y 1‖ := le_trans (norm_nonneg _) (le_max_left _ _)
+  have hr1 : max ‖y 0‖ ‖y 1‖ < 1 := max_lt hy0 hy1
+  exact tendsto_zero_cofinite_of_degree_bound _ Finsupp.degree Finsupp.degree hr0 hr1
+    (fun p => by
+      rw [norm_mul]
+      calc ‖algebraMap R K (MvPowerSeries.coeff p.1 Φ)‖ *
+            ‖evalSummandMv (diagEmbed g 0 ^ (p.1 0) * diagEmbed g 1 ^ (p.1 1)) y p.2‖
+          ≤ 1 * (max ‖y 0‖ ‖y 1‖) ^ p.2.degree :=
+            mul_le_mul (hΦ p.1) (norm_evalSummandMv_le
+              (coeff_bound_mul_mv (coeff_bound_pow_mv (coeff_bound_diagEmbed 0 hg) (p.1 0))
+                (coeff_bound_pow_mv (coeff_bound_diagEmbed 1 hg) (p.1 1))) y p.2)
+              (norm_nonneg _) zero_le_one
+        _ = (max ‖y 0‖ ‖y 1‖) ^ p.2.degree := one_mul _)
+    (fun p (hlt : p.2.degree < p.1.degree) => by
       unfold evalSummandMv
-      rw [coeff_eq_zero_diag_pow_of_lt hg0 hlt, map_zero, zero_mul, mul_zero]
-    rw [hz] at hp; simp at hp; linarith
-  exact ⟨by omega, hnd⟩
+      rw [coeff_eq_zero_diag_pow_of_lt hg0 hlt, map_zero, zero_mul, mul_zero])
+    (fun D => Finsupp.finite_of_degree_le (σ := Fin 2) D)
+    (fun D => Finsupp.finite_of_degree_lt (σ := Fin 2) D)
 
 set_option maxHeartbeats 1000000 in
 /-- **Same-arity diagonal eval-subst compatibility.**

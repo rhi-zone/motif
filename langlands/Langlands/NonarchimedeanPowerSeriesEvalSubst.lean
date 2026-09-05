@@ -1,6 +1,7 @@
 import Mathlib.RingTheory.PowerSeries.Order
 import Mathlib.RingTheory.PowerSeries.Substitution
 import Langlands.NonarchimedeanPowerSeriesEval
+import Langlands.NonarchimedeanCofiniteTendstoOfDegreeBound
 
 /-!
 # Evaluation commutes with substitution: `eval (g.subst h) x = eval g (eval h x)`
@@ -136,50 +137,29 @@ theorem hasSum_row_d {g h : PowerSeries R}
   rwa [eval_pow hh hx d] at h2
 
 omit [CompleteSpace K] in
-/-- **`T` tends to `0` along `cofinite` on `ℕ × ℕ`**: the uniform bound `‖T (d, e)‖ ≤ ‖x‖ ^ e` (any
-`d`) together with `coeff_eq_zero_pow_of_lt` (`T (d, e) = 0` when `e < d`) confine
-`{(d, e) : ‖T (d, e)‖ ≥ ε}` to `Finset.range D ×ˢ Finset.range D` for a suitable `D`. -/
+/-- **`T` tends to `0` along `cofinite` on `ℕ × ℕ`**: a direct application of
+`tendsto_zero_cofinite_of_degree_bound` (`Langlands.NonarchimedeanCofiniteTendstoOfDegreeBound`),
+with both `wt`/`deg` the identity on `ℕ`, `r := ‖x‖`, the uniform bound `‖T (d, e)‖ ≤ ‖x‖ ^ e` (any
+`d`), and exact vanishing from `coeff_eq_zero_pow_of_lt` (`T (d, e) = 0` when `e < d`). -/
 theorem tendsto_T_cofinite_zero {g h : PowerSeries R}
     (hg : ∀ n, ‖algebraMap R K (PowerSeries.coeff n g)‖ ≤ 1)
     (hh0 : PowerSeries.constantCoeff h = 0)
     (hh : ∀ n, ‖algebraMap R K (PowerSeries.coeff n h)‖ ≤ 1) {x : K} (hx : ‖x‖ < 1) :
     Filter.Tendsto
       (fun p : ℕ × ℕ => algebraMap R K (PowerSeries.coeff p.1 g) * evalSummand (h ^ p.1) x p.2)
-      Filter.cofinite (nhds 0) := by
-  rw [Metric.tendsto_nhds]
-  intro ε hε
-  rw [Filter.eventually_cofinite]
-  obtain ⟨D, hD⟩ := exists_pow_lt_of_lt_one hε hx
-  have hbound : ∀ p : ℕ × ℕ,
-      ‖algebraMap R K (PowerSeries.coeff p.1 g) * evalSummand (h ^ p.1) x p.2‖ ≤ ‖x‖ ^ p.2 := by
-    intro p
-    rw [norm_mul]
-    calc ‖algebraMap R K (PowerSeries.coeff p.1 g)‖ * ‖evalSummand (h ^ p.1) x p.2‖
-        ≤ 1 * ‖x‖ ^ p.2 :=
-          mul_le_mul (hg p.1) (norm_evalSummand_le (coeff_bound_pow hh p.1) x p.2)
-            (norm_nonneg _) zero_le_one
-      _ = ‖x‖ ^ p.2 := one_mul _
-  have hsub :
-      {p : ℕ × ℕ | ¬ dist
-        (algebraMap R K (PowerSeries.coeff p.1 g) * evalSummand (h ^ p.1) x p.2) 0 < ε} ⊆
-      (Finset.range D ×ˢ Finset.range D : Finset (ℕ × ℕ)) := by
-    intro p hp
-    simp only [Set.mem_setOf_eq, not_lt, dist_eq_norm, sub_zero] at hp
-    have he : p.2 < D := by
-      by_contra hge
-      push Not at hge
-      have := pow_le_pow_of_le_one (norm_nonneg x) hx.le hge
-      linarith [hbound p, hD]
-    have hd : p.1 ≤ p.2 := by
-      by_contra hlt
-      push Not at hlt
-      have hz : algebraMap R K (PowerSeries.coeff p.1 g) * evalSummand (h ^ p.1) x p.2 = 0 := by
-        unfold evalSummand
-        rw [coeff_eq_zero_pow_of_lt hh0 hlt, map_zero, zero_mul, mul_zero]
-      rw [hz] at hp; simp at hp; linarith
-    simp only [Finset.coe_product, Finset.coe_range, Set.mem_prod, Set.mem_Iio]
-    exact ⟨lt_of_le_of_lt hd he, he⟩
-  exact ((Finset.range D ×ˢ Finset.range D).finite_toSet).subset hsub
+      Filter.cofinite (nhds 0) :=
+  tendsto_zero_cofinite_of_degree_bound _ id id (norm_nonneg x) hx
+    (fun p => by
+      rw [norm_mul]
+      calc ‖algebraMap R K (PowerSeries.coeff p.1 g)‖ * ‖evalSummand (h ^ p.1) x p.2‖
+          ≤ 1 * ‖x‖ ^ p.2 :=
+            mul_le_mul (hg p.1) (norm_evalSummand_le (coeff_bound_pow hh p.1) x p.2)
+              (norm_nonneg _) zero_le_one
+        _ = ‖x‖ ^ p.2 := one_mul _)
+    (fun p (hlt : p.2 < p.1) => by
+      unfold evalSummand
+      rw [coeff_eq_zero_pow_of_lt hh0 hlt, map_zero, zero_mul, mul_zero])
+    (fun D => Set.finite_Iic D) (fun D => Set.finite_Iio D)
 
 set_option maxHeartbeats 1000000 in
 /-- **Evaluation commutes with substitution**, univariate-into-univariate:

@@ -1,6 +1,7 @@
 import Mathlib.RingTheory.PowerSeries.Substitution
 import Langlands.NonarchimedeanPowerSeriesEvalSubst
 import Langlands.NonarchimedeanMvPowerSeriesEvalFin2
+import Langlands.NonarchimedeanCofiniteTendstoOfDegreeBound
 
 /-!
 # Univariate-outer eval-subst compatibility: `eval g (evalMv Φ y) = evalMv (g.subst Φ) y`
@@ -122,10 +123,10 @@ theorem hasSum_row_d_A {g : PowerSeries R} {Φ : MvPowerSeries (Fin 2) R}
   rwa [evalMv_pow hΦ hy0 hy1 d] at h2
 
 omit [CompleteSpace K] in
-/-- **`T` tends to `0` along `cofinite` on `ℕ × (Fin 2 →₀ ℕ)`**: the uniform bound
-`‖T (d, n)‖ ≤ (max ‖y 0‖ ‖y 1‖) ^ n.degree` together with `coeff_eq_zero_pow_of_lt_mv`
-(`T (d, n) = 0` when `n.degree < d`) confine `{(d, n) : ‖T (d, n)‖ ≥ ε}` to a finite box, via
-`Set.finite_Iio`/`Finsupp.finite_of_degree_lt`. -/
+/-- **`T` tends to `0` along `cofinite` on `ℕ × (Fin 2 →₀ ℕ)`**: a direct application of
+`tendsto_zero_cofinite_of_degree_bound`, with `wt := id`, `deg := Finsupp.degree`,
+`r := max ‖y 0‖ ‖y 1‖`, the uniform bound `‖T (d, n)‖ ≤ r ^ n.degree`, and exact vanishing from
+`coeff_eq_zero_pow_of_lt_mv` (`T (d, n) = 0` when `n.degree < d`). -/
 theorem tendsto_T_cofinite_zero_A {g : PowerSeries R} {Φ : MvPowerSeries (Fin 2) R}
     (hg : ∀ n, ‖algebraMap R K (PowerSeries.coeff n g)‖ ≤ 1)
     (hΦ0 : MvPowerSeries.constantCoeff Φ = 0)
@@ -135,44 +136,20 @@ theorem tendsto_T_cofinite_zero_A {g : PowerSeries R} {Φ : MvPowerSeries (Fin 2
       (fun p : ℕ × (Fin 2 →₀ ℕ) ↦ algebraMap R K (PowerSeries.coeff p.1 g) *
         evalSummandMv (Φ ^ p.1) y p.2)
       Filter.cofinite (nhds 0) := by
-  rw [Metric.tendsto_nhds]
-  intro ε hε
-  rw [Filter.eventually_cofinite]
-  set r := max ‖y 0‖ ‖y 1‖ with hrdef
-  have hr0 : (0 : ℝ) ≤ r := le_trans (norm_nonneg _) (le_max_left _ _)
-  have hr1 : r < 1 := max_lt hy0 hy1
-  obtain ⟨D, hD⟩ := exists_pow_lt_of_lt_one hε hr1
-  have hbound : ∀ p : ℕ × (Fin 2 →₀ ℕ),
-      ‖algebraMap R K (PowerSeries.coeff p.1 g) * evalSummandMv (Φ ^ p.1) y p.2‖ ≤
-        r ^ p.2.degree := by
-    intro p
-    rw [norm_mul]
-    calc ‖algebraMap R K (PowerSeries.coeff p.1 g)‖ * ‖evalSummandMv (Φ ^ p.1) y p.2‖
-        ≤ 1 * r ^ p.2.degree :=
-          mul_le_mul (hg p.1) (norm_evalSummandMv_le (coeff_bound_pow_mv hΦ p.1) y p.2)
-            (norm_nonneg _) zero_le_one
-      _ = r ^ p.2.degree := one_mul _
-  have hfin : Set.Finite {p : ℕ × (Fin 2 →₀ ℕ) | p.1 < D ∧ Finsupp.degree p.2 < D} := by
-    have heq : {p : ℕ × (Fin 2 →₀ ℕ) | p.1 < D ∧ Finsupp.degree p.2 < D} =
-        {d : ℕ | d < D} ×ˢ {n : Fin 2 →₀ ℕ | Finsupp.degree n < D} := rfl
-    rw [heq]
-    exact (Set.finite_Iio D).prod (Finsupp.finite_of_degree_lt (σ := Fin 2) D)
-  refine hfin.subset ?_
-  intro p hp
-  simp only [Set.mem_setOf_eq, not_lt, dist_eq_norm, sub_zero] at hp
-  have hnd : Finsupp.degree p.2 < D := by
-    by_contra hge
-    push Not at hge
-    have := pow_le_pow_of_le_one hr0 hr1.le hge
-    linarith [hbound p, hD]
-  have hd : p.1 ≤ p.2.degree := by
-    by_contra hlt
-    push Not at hlt
-    have hz : algebraMap R K (PowerSeries.coeff p.1 g) * evalSummandMv (Φ ^ p.1) y p.2 = 0 := by
+  have hr0 : (0 : ℝ) ≤ max ‖y 0‖ ‖y 1‖ := le_trans (norm_nonneg _) (le_max_left _ _)
+  have hr1 : max ‖y 0‖ ‖y 1‖ < 1 := max_lt hy0 hy1
+  exact tendsto_zero_cofinite_of_degree_bound _ id Finsupp.degree hr0 hr1
+    (fun p => by
+      rw [norm_mul]
+      calc ‖algebraMap R K (PowerSeries.coeff p.1 g)‖ * ‖evalSummandMv (Φ ^ p.1) y p.2‖
+          ≤ 1 * (max ‖y 0‖ ‖y 1‖) ^ p.2.degree :=
+            mul_le_mul (hg p.1) (norm_evalSummandMv_le (coeff_bound_pow_mv hΦ p.1) y p.2)
+              (norm_nonneg _) zero_le_one
+        _ = (max ‖y 0‖ ‖y 1‖) ^ p.2.degree := one_mul _)
+    (fun p (hlt : p.2.degree < p.1) => by
       unfold evalSummandMv
-      rw [coeff_eq_zero_pow_of_lt_mv hΦ0 hlt, map_zero, zero_mul, mul_zero]
-    rw [hz] at hp; simp at hp; linarith
-  exact ⟨by omega, hnd⟩
+      rw [coeff_eq_zero_pow_of_lt_mv hΦ0 hlt, map_zero, zero_mul, mul_zero])
+    (fun D => Set.finite_Iic D) (fun D => Finsupp.finite_of_degree_lt (σ := Fin 2) D)
 
 set_option maxHeartbeats 1000000 in
 /-- **Univariate-outer eval-subst compatibility.**

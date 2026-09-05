@@ -1,6 +1,7 @@
 import Mathlib.RingTheory.MvPowerSeries.Order
 import Langlands.NonarchimedeanPowerSeriesEvalSubst
 import Langlands.NonarchimedeanMvPowerSeriesEvalFin2
+import Langlands.NonarchimedeanCofiniteTendstoOfDegreeBound
 
 /-!
 # Bivariate-outer eval-subst compatibility: `eval (Φ.subst A) x = evalMv Φ (fun i ↦ eval (A i) x)`
@@ -172,55 +173,31 @@ theorem hasSum_row_d_mv {Φ : MvPowerSeries (Fin 2) R} {A : Fin 2 → PowerSerie
   rwa [Fin.prod_univ_two]
 
 omit [CompleteSpace K] in
-/-- **`T` tends to `0` along `cofinite` on `(Fin 2 →₀ ℕ) × ℕ`**: the uniform bound
-`‖T (d, e)‖ ≤ ‖x‖ ^ e` together with `coeff_eq_zero_prod_family_of_lt` (`T (d, e) = 0` when
-`e < d.degree`) confine `{(d, e) : ‖T (d, e)‖ ≥ ε}` to a finite box, via
-`Finsupp.finite_of_degree_le`/`Set.Finite.prod`. -/
+/-- **`T` tends to `0` along `cofinite` on `(Fin 2 →₀ ℕ) × ℕ`**: a direct application of
+`tendsto_zero_cofinite_of_degree_bound`, with `wt := Finsupp.degree`, `deg := id`, `r := ‖x‖`, the
+uniform bound `‖T (d, e)‖ ≤ ‖x‖ ^ e`, and exact vanishing from `coeff_eq_zero_prod_family_of_lt`
+(`T (d, e) = 0` when `e < d.degree`). -/
 theorem tendsto_T_cofinite_zero_mv {Φ : MvPowerSeries (Fin 2) R} {A : Fin 2 → PowerSeries R}
     (hΦ : ∀ n, ‖algebraMap R K (MvPowerSeries.coeff n Φ)‖ ≤ 1)
     (hA0 : PowerSeries.constantCoeff (A 0) = 0) (hA1 : PowerSeries.constantCoeff (A 1) = 0)
     (hA : ∀ i n, ‖algebraMap R K (PowerSeries.coeff n (A i))‖ ≤ 1) {x : K} (hx : ‖x‖ < 1) :
     Filter.Tendsto (fun p : (Fin 2 →₀ ℕ) × ℕ ↦ algebraMap R K (MvPowerSeries.coeff p.1 Φ) *
         evalSummand (A 0 ^ (p.1 0) * A 1 ^ (p.1 1)) x p.2)
-      Filter.cofinite (nhds 0) := by
-  rw [Metric.tendsto_nhds]
-  intro ε hε
-  rw [Filter.eventually_cofinite]
-  obtain ⟨D, hD⟩ := exists_pow_lt_of_lt_one hε hx
-  have hbound : ∀ p : (Fin 2 →₀ ℕ) × ℕ,
-      ‖algebraMap R K (MvPowerSeries.coeff p.1 Φ) *
-        evalSummand (A 0 ^ (p.1 0) * A 1 ^ (p.1 1)) x p.2‖ ≤ ‖x‖ ^ p.2 := by
-    intro p
-    rw [norm_mul]
-    calc ‖algebraMap R K (MvPowerSeries.coeff p.1 Φ)‖ *
-          ‖evalSummand (A 0 ^ (p.1 0) * A 1 ^ (p.1 1)) x p.2‖
-        ≤ 1 * ‖x‖ ^ p.2 :=
-          mul_le_mul (hΦ p.1) (norm_evalSummand_le
-            (coeff_bound_mul (coeff_bound_pow (hA 0) (p.1 0)) (coeff_bound_pow (hA 1) (p.1 1)))
-            x p.2) (norm_nonneg _) zero_le_one
-      _ = ‖x‖ ^ p.2 := one_mul _
-  have hfin : Set.Finite {p : (Fin 2 →₀ ℕ) × ℕ | Finsupp.degree p.1 ≤ D ∧ p.2 < D} := by
-    have : {p : (Fin 2 →₀ ℕ) × ℕ | Finsupp.degree p.1 ≤ D ∧ p.2 < D} =
-        {d : Fin 2 →₀ ℕ | Finsupp.degree d ≤ D} ×ˢ {e : ℕ | e < D} := rfl
-    rw [this]
-    exact (Finsupp.finite_of_degree_le D).prod (Set.finite_Iio D)
-  refine hfin.subset ?_
-  intro p hp
-  simp only [Set.mem_setOf_eq, not_lt, dist_eq_norm, sub_zero] at hp
-  have he : p.2 < D := by
-    by_contra hge
-    push Not at hge
-    have := pow_le_pow_of_le_one (norm_nonneg x) hx.le hge
-    linarith [hbound p, hD]
-  have hd : Finsupp.degree p.1 ≤ p.2 := by
-    by_contra hlt
-    push Not at hlt
-    have hz : algebraMap R K (MvPowerSeries.coeff p.1 Φ) *
-        evalSummand (A 0 ^ (p.1 0) * A 1 ^ (p.1 1)) x p.2 = 0 := by
+      Filter.cofinite (nhds 0) :=
+  tendsto_zero_cofinite_of_degree_bound _ Finsupp.degree id (norm_nonneg x) hx
+    (fun p => by
+      rw [norm_mul]
+      calc ‖algebraMap R K (MvPowerSeries.coeff p.1 Φ)‖ *
+            ‖evalSummand (A 0 ^ (p.1 0) * A 1 ^ (p.1 1)) x p.2‖
+          ≤ 1 * ‖x‖ ^ p.2 :=
+            mul_le_mul (hΦ p.1) (norm_evalSummand_le
+              (coeff_bound_mul (coeff_bound_pow (hA 0) (p.1 0)) (coeff_bound_pow (hA 1) (p.1 1)))
+              x p.2) (norm_nonneg _) zero_le_one
+        _ = ‖x‖ ^ p.2 := one_mul _)
+    (fun p (hlt : p.2 < Finsupp.degree p.1) => by
       unfold evalSummand
-      rw [coeff_eq_zero_prod_family_of_lt hA0 hA1 hlt, map_zero, zero_mul, mul_zero]
-    rw [hz] at hp; simp at hp; linarith
-  exact ⟨by omega, he⟩
+      rw [coeff_eq_zero_prod_family_of_lt hA0 hA1 hlt, map_zero, zero_mul, mul_zero])
+    (fun D => Finsupp.finite_of_degree_le D) (fun D => Set.finite_Iio D)
 
 set_option maxHeartbeats 1000000 in
 /-- **Bivariate-outer eval-subst compatibility.** `eval (MvPowerSeries.subst A Φ) x = evalMv Φ

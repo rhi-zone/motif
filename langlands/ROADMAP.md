@@ -21674,3 +21674,204 @@ otherwise did not have bandwidth to audit for decomposition beyond line count.
 
 No `.lean` files were touched this pass (pure audit, as instructed) — build state unchanged from
 `§98`. Only `ROADMAP.md` (this section) was added.
+
+## 101. (2026-09-05) Follow-up on `§99` Finding 4: acting on the two flagged monolithic proofs —
+one partial extraction, one left monolithic with root-cause reasoning, both backed by reading the
+proof body first, not by the line-count flag alone
+
+`§99` Finding 4 flagged two proofs over 200 lines by line count alone (one read only for its
+top-level conjunct shape, one not read at all) and asked for a real decision — extract stage lemmas
+or document why not — backed by actually reading the dependency structure, not by "it was hard."
+Both proofs were read in full this pass; the actual dependency graph, not the guessed stage
+boundaries in the handoff, determined what got split.
+
+### `HenselianLocalRing.exists_isDiscreteValuationRing_integralClosure_residueField_equiv`
+(`UnramifiedExtension.lean`, was 875 lines from `:873` to `:1147`) — two stages extracted, four
+stages left fused, for a concrete reason specific to each boundary
+
+Reading the proof (not just the conjunct list) showed the six intermediate objects it builds —
+`x`, `K' := K⟮x⟯`, `xC`, `C := integralClosure R K'`, `ψ : AdjoinRoot f →+* C`, `e := RingEquiv.
+ofBijective ψ _` — split into two groups by a concrete criterion: does a later step consume the
+object's *value* (via `set`-transparency, `show`/`rfl` unfolding) or only a *proposition about* it.
+
+* `x` is consumed only propositionally past its construction (`hxint`, `hminpoly`, `hK'sep` are the
+  only things later code touches) — genuinely separable. Extracted as
+  `HenselianLocalRing.map_eq_minpoly_and_isSeparable_of_aeval_eq_zero` (`:858`, ~40 lines): given a
+  root `x` of `f` (`hfx : aeval x f = 0`), returns `f.map (algebraMap R K) = minpoly K x` and
+  `Algebra.IsSeparable K K⟮x⟯`. Needs nothing about `L` beyond the scalar tower `R → K → L` — no
+  `IsAlgClosed L`, unlike the parent theorem, since it takes the already-produced root as a
+  hypothesis rather than manufacturing one via `IsAlgClosed.exists_root`.
+* `xC`/`C`'s monogenicity is similarly separable *as a proposition* (`Algebra.adjoin R {xC} = ⊤` is
+  exactly the theorem's own monogenicity conjunct) but `xC`'s *value* is consumed later three more
+  times: `hcompeq`'s root case and `hyxC` both `show`-unfold `algebraMap C L xC` down through `x'`
+  to `x`, relying on `xC` being definitionally `⟨x', _⟩`. Extracted anyway, by adding that fact as an
+  explicit third conjunct (`hxCL : algebraMap K' L (algebraMap C K' xC) = x`) rather than leaving it
+  to defeq — `HenselianLocalRing.exists_adjoin_eq_top_integralClosure_of_root` (`:903`, ~90 lines):
+  given `x`, `hfx`, `hminpoly`, `hK'sep`, returns `xC`, `Algebra.adjoin R {xC} = ⊤`,
+  `aeval xC f = 0`, and `hxCL`. The two call sites that used to `show`/`rfl` through `xC`'s
+  structure now `exact hxCL`/`hxCL.symm` directly (`UnramifiedExtension.lean:1131-1134`,
+  `1193-1198` in the post-edit file).
+* `ψ`, `e` were **not** extracted. Building `ψ` needs `φ` (the embedding from
+  `exists_ringHom_adjoinRoot_map_of_isAlgClosed`, already itself a separate lemma) paired with the
+  *same* `x` stage A produced — `φ` is an arbitrary existential witness, not reconstructible
+  independently of that specific `obtain`, so a `ψ`-building lemma would need `φ`, `hφinj`,
+  `hφroot`, `hφcomp` threaded in as four more explicit parameters on top of `xC`/`hCtop`. Worse: the
+  two final compatibility conjuncts (`heroot`, `hec`) are proved by unfolding `e := RingEquiv.
+  ofBijective ψ _` and `ψ := AdjoinRoot.lift (algebraMap R C) xC _` via `show`/`rfl`
+  (`UnramifiedExtension.lean:1186-1188`, `1216-1218` pre-edit numbering) — splitting `ψ`/`e`'s
+  construction from the compatibility proofs that consume their definitional shape would force
+  *both* facts out as explicit lemma conclusions anyway, since nothing downstream could re-derive
+  them from an opaque `e`. That is pure interface bureaucracy (export exactly what unfolding already
+  gives you, for free, in the same proof) with no reuse benefit — nothing else in the file needs "an
+  iso `AdjoinRoot f ≃+* C` built this particular way" as a freestanding fact. Kept fused; documented
+  here rather than forced apart to hit a lemma-count target.
+* Net effect: the main theorem's body (stages A–B, C moved out) shrank from ~275 lines to ~185
+  lines; the two extracted lemmas are independently reusable statements in their own right (the
+  first needs no `IsAlgClosed L` at all, the second is exactly the monogenicity conjunct with its
+  witness's residue pinned down), not thin renamings of the same inline code.
+
+### `Valuation.exists_rankOne_compatible` (`HenselianValuation.lean`, was 235 lines from `:475` to
+`:701`, in namespace `LocalField` — `§99`'s citation dropped the namespace) — one stage extracted,
+the rest left fused because the return type has no internal conjuncts to align a split with
+
+Unlike the `UnramifiedExtension` proof, this theorem's conclusion is a single `∃ hR, ∀ x, ...` — no
+multi-way conjunction to hang stage boundaries on. The proof's own docstring already labels a
+7-step decomposition (Step 1, Step 2, Steps 3a–3g); reading the body confirmed Step 1 is the one
+genuine seam:
+
+* **Step 1** (`hRK`, `hRK_compat`, was `HenselianValuation.lean:480-514`) builds a `Compatible`,
+  norm-matching `RankOne (valuation K)` instance using only `[NontriviallyNormedField K]
+  [IsUltrametricDist K] [ValuativeRel K] [(NormedField.valuation (K := K)).Compatible]` — no
+  mention of `L` or `A` anywhere in it. The docstring already says as much: "this is the statement
+  for the base field itself, i.e. the case `L = K`, `A = 𝒪[K]`." Nothing later unfolds through
+  `hRK`'s `set`-transparent definition (`eK`/`hRK_def`) — every later use is via the `RankOne` API
+  (`hRK.hom'`, `hRK.strictMono'`, `hRK.toIsNontrivial`) — so it returns cleanly as an opaque
+  instance. Extracted as `LocalField.exists_rankOne_compatible_self` (`:449`, ~35 lines, stated
+  purely over `K`); the parent theorem's Step 1 is now `obtain ⟨hRK, hRK_compat⟩ :=
+  exists_rankOne_compatible_self K`.
+* **Step 2 and Steps 3a–3g were not extracted.** Step 2 (`hequiv`, ~10 lines) is small and
+  inherently about the relationship between `A`, `K`, `L` — nothing to gain by naming it separately.
+  Steps 3a–3g are one continuous `MulArchimedean`-transfer argument: `hvA_nontrivial → hbound →
+  hArchK/hKbound/hKboundPos/hAanchorPos → hLtoK → hMArchA → hMArchA' → hR → v'/v1/v2 → t → hom2 →
+  hR'` is a strict linear dependency chain (verified by reading it, not assumed from the docstring's
+  bullet grouping) with no conjunct in the return type to align a boundary against and no
+  sub-result any other declaration in the file references. Any split here would need to export 10+
+  tightly-coupled local objects (`hArchK`, the three bound lemmas, `hMArchA`, `v'`/`v1`/`v2`, `t`)
+  across a lemma boundary purely to satisfy a stage-count target, not because any piece is
+  independently meaningful — the same "bureaucracy, not encapsulation" call as `ψ`/`e` above.
+* Net effect: the theorem's body shrank by the ~35 lines of Step 1, now a named, independently
+  statable base-field fact; Steps 2–3g remain exactly as continuous as the docstring already
+  described them, which is the honest state of that argument.
+
+### Build
+
+Verified incrementally per `CLAUDE.md`: after the `UnramifiedExtension.lean` edits,
+`lake build Langlands.UnramifiedExtension` (2989 jobs) before touching `HenselianValuation.lean`;
+after that file's edit, `lake build Langlands.HenselianValuation` (2565 jobs); both clean. A
+concurrent, unrelated session was independently editing `NonarchimedeanPowerSeriesEvalSubst(Mv)?
+.lean` and several `LubinTateTowerStepLevel*.lean` files in this same non-isolated checkout during
+this pass (visible via `git status`/`git diff` on files this pass never touched) and transiently
+left the whole-tree `lake build` failing on those unrelated files mid-edit; a subsequent full
+`lake build` succeeded end-to-end at **8832 jobs, 0 errors** once that concurrent work settled. No
+`sorry`, no change to either theorem's statement (hypotheses or conclusion, both checked
+line-for-line against the pre-edit source).
+
+## 100. (2026-09-05) Fixing `§99`'s two confirmed, high-severity decomposition findings: the
+uniformizer-decomposition triplication (Finding 2) unified into a single generic lemma, and the
+eval-subst family's (Finding 1) shared "confine to a finite box" summability argument factored
+out once instead of five times; the `K_2`/`K_3`-vs-`Level` triplication (Finding 3) left alone as
+directed, since `§89`/`§91`'s import-cycle reason is unchanged
+
+### Finding 2: `exists_zpow_mul_unit_eq*` triplication
+
+The three near-identical proofs — `exists_zpow_mul_unit_eq_of_irreducible_self`
+(`TotallyRamifiedNormIndex.lean`), `exists_zpow_mul_unit_eq_of_irreducible`
+(`TotallyRamifiedNormRange.lean`), `exists_zpow_mul_unit_eq` (`UnramifiedNormRange.lean`), plus
+their `_of_valued_le_one` base cases — are now proved exactly once, in a new file
+`Langlands/AdicCompletionUniformizerDecomposition.lean`: for a field `F`, fraction field of a
+Dedekind domain `A`, place `v`, and any irreducible `π : v.adicCompletionIntegers F`, every unit of
+`v.adicCompletion F` is `π^k · u`. This file sits low in the import graph (only
+`Langlands.NormMap`, for the `IsDiscreteValuationRing (v.adicCompletionIntegers F)` instance, plus
+Mathlib) — below all three consumers, avoiding the import-cycle problem `§89`/`§91` hit for the
+`K_2`/`K_3`/`Level` case, since here nothing downstream needs to be imported by the general lemma.
+
+* `TotallyRamifiedNormIndex.lean`'s two `_self`-suffixed theorems are now one-line aliases of the
+  general lemma (kept under their original names since Task 3 in that file and
+  `AdicCompletionValuationNorm.lean` already call them by name).
+* `TotallyRamifiedNormRange.lean`'s two theorems (`π_L` already an `L₀`-element, no ramification
+  hypothesis) are deleted outright — the general lemma applied at `w` *is* the statement, verbatim,
+  once `L`/`w` replace the general lemma's `F`/`v`; call sites are unchanged (same names, imported
+  rather than locally proved).
+* `UnramifiedNormRange.lean`'s two theorems (uniformizer transported via `algebraMap K₀ L₀`, so
+  *do* need `IsUnramified`, to show the transported element is still irreducible) become one-line
+  wrappers: `algebraMap_uniformizer_irreducible` supplies the irreducibility, then the general
+  lemma is invoked directly. Its now-orphaned `algebraMap_coe_inv_eq` helper (only ever used inside
+  the old hand-written `zpow` proof) is deleted as dead code.
+
+Before/after: 163 lines removed across the three consumer files, 96 lines added (new shared file
+plus the thinned call sites) — net 67 fewer lines, and zero remaining independent re-derivations of
+the decomposition argument. Committed separately (`refactor(langlands): unify triplicated
+uniformizer-decomposition lemmas`) before this section was written.
+
+### Finding 1: the eval-subst five-file skeleton
+
+Read all five files' full proof bodies (not just names) to determine what is genuinely shared
+versus genuinely file-specific, rather than assuming either "fully unifiable" or "leave it" without
+checking:
+
+* `NonarchimedeanPowerSeriesEvalSubst.lean` (univariate `g` into `h`, τ = σ = one index each, `ℕ`)
+* `NonarchimedeanPowerSeriesEvalSubstMv.lean` (`Fin 2` outer family, univariate target)
+* `NonarchimedeanMvPowerSeriesEvalSubstDiagonal.lean` (diagonal `Fin 2 → Fin 2` embedding)
+* `NonarchimedeanMvPowerSeriesEvalSubstGeneral.lean` (arbitrary finite `τ`/`σ`, arbitrary family)
+* `NonarchimedeanPowerSeriesEvalSubstMvIn.lean` (univariate outer, one `Fin 2` substitutand)
+
+**What is genuinely one shared fact, extracted once:** every file's `tendsto_T_cofinite_zero_*`
+step — "given a uniform norm bound `‖T (i, k)‖ ≤ r ^ deg k` and exact vanishing `T (i, k) = 0`
+whenever `deg k < wt i`, with `r < 1` and both `{i | wt i ≤ D}`/`{k | deg k < D}` finite for every
+`D`, then `T` tends to `0` along `cofinite`" — is *literally* the same argument in all five files,
+differing only in what `ι`, `κ`, `wt`, and `deg` are instantiated to (`ℕ`/`id` in the univariate
+files, `τ →₀ ℕ`/`Finsupp.degree` in the multivariate ones). This is now
+`tendsto_zero_cofinite_of_degree_bound` in a new file
+`Langlands/NonarchimedeanCofiniteTendstoOfDegreeBound.lean` (64 lines, Mathlib-only dependencies —
+no `Langlands` imports, so it needed no import-graph surgery), and each of the five files'
+`tendsto_T_cofinite_zero_*` is now a direct application of it, supplying only the file-specific
+bound/vanishing proofs and the `wt`/`deg`/`r` instantiation. Net: 214 lines removed across the five
+files, 96 lines added at the call sites, plus the 64-line shared lemma — a 118-line reduction in
+actual duplicated proof text (214 − 96), confirmed by `git diff --stat` on all five files.
+
+**What is documented as a real, not-forced, remaining duplication, and precisely why:** the deeper
+"prove `eval`/`subst` compatibility once, specialize four times" version the `§99` finding
+described is **not** fully realized. `NonarchimedeanMvPowerSeriesEvalSubstGeneral.lean`'s own
+docstring already claims `eval_subst_G` "subsumes `NonarchimedeanPowerSeriesEval.eval_subst_A` (`τ`
+a one-point type) and `NonarchimedeanMvPowerSeriesEvalFin2.eval_subst_S` (`A` diagonal)" — a claim
+that is mathematically true but was never executed as an actual specialization, because doing so
+needs a bridging fact this codebase does not yet have: `eval`/`evalMv` are two *independently
+built* pieces of infrastructure (`NonarchimedeanPowerSeriesEval` predates
+`NonarchimedeanMvPowerSeriesEval`), not one defined as a specialization of the other at `σ = Unit`,
+so nothing currently connects `eval g x` to `evalMv (g : MvPowerSeries Unit R) (fun _ ↦ x)`
+(likewise for `evalMv (diagEmbed g i) y = eval g (y i)`, needed to reduce `eval_subst_S`). Building
+that bridge — proving `eval`/`evalMv` agree at a one-point (or embedded-axis) index, generically
+enough to reduce all four of `eval_subst`/`eval_subst_mv`/`eval_subst_S`/`eval_subst_A` to
+`eval_subst_G` — is exactly the kind of comparably-sized undertaking this codebase's own docstrings
+already flag elsewhere (e.g. `NonarchimedeanPowerSeriesEvalSubst.lean`'s own "What this does not
+do" section, about the bivariate-outer case, before `EvalSubstMv` was written to close it). Forcing
+it into this pass risked either an unverified partial proof or a much larger, riskier change than
+the "confine to a finite box" extraction above; it is recorded here as the concrete next step for
+whoever picks this up, not silently dropped. The five `hasSum_row_e_*`/`coeff_subst_finset_*`
+steps and the five top-level `eval_subst_*` theorems remain independently proved for the same
+underlying reason — they are downstream of the same missing bridge.
+
+### Finding 3: `K_2`/`K_3` vs `Level` — untouched, as directed
+
+Left alone per the task brief (a real import-cycle reason, not inertia — see `§89`/`§91` and
+`§99`'s re-statement of it). Nothing in this pass changes that assessment.
+
+### Build
+
+Verified incrementally: a plain `lake build` baseline (8827 jobs, 0 errors) was taken before any
+edit. After Finding 2's three-file change plus the new shared file, `lake build` on the affected
+files then a full `lake build` both passed with 0 errors, 0 `sorry` (8828 jobs). After Finding 1's
+five-file change plus its new shared file, a full `lake build` again passed with 0 errors, 0
+`sorry` (8832 jobs) — the job count rose slightly net (two new small shared-lemma files were added
+even though the consumer files shrank), not fell, since job count here counts files/declarations
+replayed rather than lines of proof text.

@@ -1,5 +1,6 @@
 import Mathlib.RingTheory.MvPowerSeries.Substitution
 import Langlands.NonarchimedeanMvPowerSeriesEval
+import Langlands.NonarchimedeanCofiniteTendstoOfDegreeBound
 
 /-!
 # General eval-subst compatibility: `evalMv (Φ.subst A) z = evalMv Φ (fun i ↦ evalMv (A i) z)`
@@ -192,11 +193,10 @@ theorem hasSum_row_d_G {Φ : MvPowerSeries τ R} {A : τ → MvPowerSeries σ R}
   rwa [evalMv_prod_pow hA hz d] at h2
 
 omit [Nonempty τ] [CompleteSpace K] in
-/-- **`T` tends to `0` along `cofinite` on `(τ →₀ ℕ) × (σ →₀ ℕ)`**: the uniform bound
-`‖T (d, n)‖ ≤ (Finset.univ.sup' _ fun j => ‖z j‖) ^ n.degree` together with
-`coeff_eq_zero_prod_pow_of_degree_lt` (`T (d, n) = 0` when `n.degree < d.degree`) confine
-`{(d, n) : ‖T (d, n)‖ ≥ ε}` to a finite box, via `Finsupp.finite_of_degree_le`/
-`Finsupp.finite_of_degree_lt`. -/
+/-- **`T` tends to `0` along `cofinite` on `(τ →₀ ℕ) × (σ →₀ ℕ)`**: a direct application of
+`tendsto_zero_cofinite_of_degree_bound`, with both `wt`/`deg := Finsupp.degree`,
+`r := Finset.univ.sup' _ fun j => ‖z j‖`, the uniform bound `‖T (d, n)‖ ≤ r ^ n.degree`, and exact
+vanishing from `coeff_eq_zero_prod_pow_of_degree_lt` (`T (d, n) = 0` when `n.degree < d.degree`). -/
 theorem tendsto_T_cofinite_zero_G {Φ : MvPowerSeries τ R} {A : τ → MvPowerSeries σ R}
     (hΦ : ∀ d, ‖algebraMap R K (MvPowerSeries.coeff d Φ)‖ ≤ 1)
     (hA0 : ∀ i, MvPowerSeries.constantCoeff (A i) = 0)
@@ -206,50 +206,25 @@ theorem tendsto_T_cofinite_zero_G {Φ : MvPowerSeries τ R} {A : τ → MvPowerS
       (fun p : (τ →₀ ℕ) × (σ →₀ ℕ) ↦ algebraMap R K (MvPowerSeries.coeff p.1 Φ) *
         evalSummandMv (∏ i, A i ^ (p.1 i)) z p.2)
       Filter.cofinite (nhds 0) := by
-  rw [Metric.tendsto_nhds]
-  intro ε hε
-  rw [Filter.eventually_cofinite]
   set r := Finset.univ.sup' Finset.univ_nonempty fun j => ‖z j‖ with hrdef
   have hr0 : (0 : ℝ) ≤ r := le_trans (norm_nonneg (z (Classical.arbitrary σ)))
     (Finset.le_sup' (fun j => ‖z j‖) (Finset.mem_univ (Classical.arbitrary σ)))
   have hr1 : r < 1 := (Finset.sup'_lt_iff Finset.univ_nonempty).mpr (fun j _ ↦ hz j)
-  obtain ⟨D, hD⟩ := exists_pow_lt_of_lt_one hε hr1
-  have hbound : ∀ p : (τ →₀ ℕ) × (σ →₀ ℕ),
-      ‖algebraMap R K (MvPowerSeries.coeff p.1 Φ) *
-        evalSummandMv (∏ i, A i ^ (p.1 i)) z p.2‖ ≤ r ^ p.2.degree := by
-    intro p
-    rw [norm_mul]
-    calc ‖algebraMap R K (MvPowerSeries.coeff p.1 Φ)‖ *
-          ‖evalSummandMv (∏ i, A i ^ (p.1 i)) z p.2‖
-        ≤ 1 * r ^ p.2.degree :=
-          mul_le_mul (hΦ p.1) (norm_evalSummandMv_le
-            (coeff_bound_prod_mv (fun i ↦ coeff_bound_pow_mv (hA i) (p.1 i)) Finset.univ) z p.2)
-            (norm_nonneg _) zero_le_one
-      _ = r ^ p.2.degree := one_mul _
-  have hfin : Set.Finite {p : (τ →₀ ℕ) × (σ →₀ ℕ) |
-      Finsupp.degree p.1 ≤ D ∧ Finsupp.degree p.2 < D} := by
-    have heq : {p : (τ →₀ ℕ) × (σ →₀ ℕ) |
-        Finsupp.degree p.1 ≤ D ∧ Finsupp.degree p.2 < D} =
-        {d : τ →₀ ℕ | Finsupp.degree d ≤ D} ×ˢ {n : σ →₀ ℕ | Finsupp.degree n < D} := rfl
-    rw [heq]
-    exact (Finsupp.finite_of_degree_le (σ := τ) D).prod (Finsupp.finite_of_degree_lt (σ := σ) D)
-  refine hfin.subset ?_
-  intro p hp
-  simp only [Set.mem_setOf_eq, not_lt, dist_eq_norm, sub_zero] at hp
-  have hnd : Finsupp.degree p.2 < D := by
-    by_contra hge
-    push Not at hge
-    have := pow_le_pow_of_le_one hr0 hr1.le hge
-    linarith [hbound p, hD]
-  have hd : Finsupp.degree p.1 ≤ Finsupp.degree p.2 := by
-    by_contra hlt
-    push Not at hlt
-    have hzz : algebraMap R K (MvPowerSeries.coeff p.1 Φ) *
-        evalSummandMv (∏ i, A i ^ (p.1 i)) z p.2 = 0 := by
+  exact tendsto_zero_cofinite_of_degree_bound _ Finsupp.degree Finsupp.degree hr0 hr1
+    (fun p => by
+      rw [norm_mul]
+      calc ‖algebraMap R K (MvPowerSeries.coeff p.1 Φ)‖ *
+            ‖evalSummandMv (∏ i, A i ^ (p.1 i)) z p.2‖
+          ≤ 1 * r ^ p.2.degree :=
+            mul_le_mul (hΦ p.1) (norm_evalSummandMv_le
+              (coeff_bound_prod_mv (fun i ↦ coeff_bound_pow_mv (hA i) (p.1 i)) Finset.univ) z p.2)
+              (norm_nonneg _) zero_le_one
+        _ = r ^ p.2.degree := one_mul _)
+    (fun p (hlt : p.2.degree < p.1.degree) => by
       unfold evalSummandMv
-      rw [coeff_eq_zero_prod_pow_of_degree_lt hA0 hlt, map_zero, zero_mul, mul_zero]
-    rw [hzz] at hp; simp at hp; linarith
-  exact ⟨by omega, hnd⟩
+      rw [coeff_eq_zero_prod_pow_of_degree_lt hA0 hlt, map_zero, zero_mul, mul_zero])
+    (fun D => Finsupp.finite_of_degree_le (σ := τ) D)
+    (fun D => Finsupp.finite_of_degree_lt (σ := σ) D)
 
 omit [DecidableEq σ] [Fintype τ] [Nonempty τ] [DecidableEq τ] [CompleteSpace K] in
 /-- **Every component of the substituted family evaluates into the maximal ideal**, so the outer
