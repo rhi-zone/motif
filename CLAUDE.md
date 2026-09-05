@@ -17,11 +17,7 @@ Rust types (Signature, Theory, Axiom, Translation) compile to egglog DSL program
 - `crates/motif/src/theories/` — Concrete theories (group, ring)
 - `crates/motif/src/translate.rs` — `Translation` (s-expression symbol renaming between theories)
 
-See `crates/motif/CLAUDE.md` for egglog integration caveats (reserved primitive names, rewrite safety, iter_limit tuning).
-
-**Saturation incompleteness:** `Theory::equiv()` only proves equalities whose intermediate terms exist in the e-graph. Cross-theory comparisons must use enumeration-based checking (`discover_equiv_classes` in `explore.rs`) on both sides — `equiv()` produces false negatives (e.g. group vs abelian group). Expression count at depth 2 with 2+ vars can be 255+; prefer 1 var or depth 1.
-
-**Discover module:** per-axiom decomposition keeps candidate products small; results joined via partial-assignment merging. Do NOT put many expressions in one e-graph with ring axioms (distributivity blows up) — use one e-graph per check (2 exprs each).
+See `crates/motif/CLAUDE.md` for egglog integration caveats, saturation incompleteness, and the discover module — all specific to that crate.
 
 ## Development
 
