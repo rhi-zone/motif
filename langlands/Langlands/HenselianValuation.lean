@@ -437,6 +437,54 @@ variable (K : Type*) [NontriviallyNormedField K] [IsUltrametricDist K] [Valuativ
   [(NormedField.valuation (K := K)).Compatible]
   {L : Type*} [Field L] [Algebra K L]
 
+/-- **The base-field case** (`L = K`, `A = 𝒪[K]`) of `exists_rankOne_compatible`, extracted as a
+standalone lemma: Step 1 of that proof, in the docstring below. It needs nothing about `L` or `A` —
+only the `Compatible` `ValuativeRel K` structure — so it is stated and proved purely over `K`.
+`ValuativeRel.IsNontrivial K` and `ValuativeRel.IsRankLeOne K` come from the `Compatible` instance
+(`ValuativeRel.isNontrivial_iff_isNontrivial`, `ValuativeRel.IsRankLeOne.of_compatible_mulArchimedean`),
+giving a `RankLeOneStruct` built from `NormedField.valuation`'s own `RankOne` embedding transported
+across `ValueGroupWithZero.orderMonoidIso`; `Valuation.RankOne.ofRankLeOneStruct` turns that into the
+`RankOne (valuation K)` instance, and unwinding the embedding chain shows its `hom'` matches `‖·‖`
+exactly. -/
+theorem exists_rankOne_compatible_self :
+    ∃ hRK : RankOne (valuation K), ∀ x : K, (hRK.hom' ((valuation K).restrict x) : ℝ) = ‖x‖ := by
+  haveI hvK_nontrivial : ValuativeRel.IsNontrivial K :=
+    (ValuativeRel.isNontrivial_iff_isNontrivial (NormedField.valuation (K := K))).mpr inferInstance
+  haveI hvK_rankLeOne : ValuativeRel.IsRankLeOne K :=
+    ValuativeRel.IsRankLeOne.of_compatible_mulArchimedean (NormedField.valuation (K := K))
+  set eK : ValuativeRel.RankLeOneStruct K :=
+    { emb := (RankOne.hom (NormedField.valuation (K := K))).comp
+        (ValuativeRel.ValueGroupWithZero.orderMonoidIso
+          (NormedField.valuation (K := K))).toMonoidWithZeroHom
+      strictMono := (RankOne.strictMono (NormedField.valuation (K := K))).comp
+        (ValuativeRel.ValueGroupWithZero.orderMonoidIso_strictMono
+          (NormedField.valuation (K := K))) } with heK
+  set hRK : RankOne (valuation K) := Valuation.RankOne.ofRankLeOneStruct eK with hRK_def
+  have hRK_compat : ∀ x : K, (hRK.hom' ((valuation K).restrict x) : ℝ) = ‖x‖ := by
+    intro x
+    have hgoal : hRK.hom' ((valuation K).restrict x)
+        = RankOne.hom (NormedField.valuation (K := K))
+            ((NormedField.valuation (K := K)).restrict x) := by
+      show (eK.emb.comp MonoidWithZeroHom.ValueGroup₀.embedding)
+        ((valuation K).restrict x) = _
+      rw [MonoidWithZeroHom.comp_apply, Valuation.embedding_restrict, heK]
+      show (RankOne.hom (NormedField.valuation (K := K))).comp
+        (ValuativeRel.ValueGroupWithZero.orderMonoidIso
+          (NormedField.valuation (K := K))).toMonoidWithZeroHom (valuation K x) = _
+      rw [MonoidWithZeroHom.comp_apply]
+      congr 1
+      show ValuativeRel.ValueGroupWithZero.orderMonoidIso
+        (NormedField.valuation (K := K)) (valuation K x) = _
+      rw [ValuativeRel.ValueGroupWithZero.orderMonoidIso_valuation_eq_restrict₀,
+        ← Valuation.restrict_def]
+    rw [hgoal]
+    have hfun : RankOne.hom (NormedField.valuation (K := K)) =
+        MonoidWithZeroHom.ValueGroup₀.embedding
+          (f := MonoidWithZeroHom.ofClass (NormedField.valuation (K := K))) := rfl
+    rw [hfun, Valuation.embedding_restrict, NormedField.valuation_apply]
+    rfl
+  exact ⟨hRK, hRK_compat⟩
+
 /-- A `ValuationSubring A` of an algebraic extension `L / K` with
 `A.comap (algebraMap K L) = 𝒪[K]` admits a `RankOne` structure on `A.valuation` whose embedding
 `A.ValueGroup → ℝ≥0` is normalized to the `NontriviallyNormedField` structure on `K`: pulling it
@@ -476,42 +524,9 @@ theorem exists_rankOne_compatible [Algebra.IsAlgebraic K L]
     (A : ValuationSubring L) (hA : A.comap (algebraMap K L) = (valuation K).valuationSubring) :
     ∃ hR : RankOne A.valuation, ∀ x : K,
       (hR.hom' (A.valuation.restrict (algebraMap K L x)) : ℝ) = ‖x‖ := by
-  -- **Step 1**: build the `Compatible`, norm-matching `RankOne (valuation K)` instance.
-  haveI hvK_nontrivial : ValuativeRel.IsNontrivial K :=
-    (ValuativeRel.isNontrivial_iff_isNontrivial (NormedField.valuation (K := K))).mpr inferInstance
-  haveI hvK_rankLeOne : ValuativeRel.IsRankLeOne K :=
-    ValuativeRel.IsRankLeOne.of_compatible_mulArchimedean (NormedField.valuation (K := K))
-  set eK : ValuativeRel.RankLeOneStruct K :=
-    { emb := (RankOne.hom (NormedField.valuation (K := K))).comp
-        (ValuativeRel.ValueGroupWithZero.orderMonoidIso
-          (NormedField.valuation (K := K))).toMonoidWithZeroHom
-      strictMono := (RankOne.strictMono (NormedField.valuation (K := K))).comp
-        (ValuativeRel.ValueGroupWithZero.orderMonoidIso_strictMono
-          (NormedField.valuation (K := K))) } with heK
-  set hRK : RankOne (valuation K) := Valuation.RankOne.ofRankLeOneStruct eK with hRK_def
-  have hRK_compat : ∀ x : K, (hRK.hom' ((valuation K).restrict x) : ℝ) = ‖x‖ := by
-    intro x
-    have hgoal : hRK.hom' ((valuation K).restrict x)
-        = RankOne.hom (NormedField.valuation (K := K))
-            ((NormedField.valuation (K := K)).restrict x) := by
-      show (eK.emb.comp MonoidWithZeroHom.ValueGroup₀.embedding)
-        ((valuation K).restrict x) = _
-      rw [MonoidWithZeroHom.comp_apply, Valuation.embedding_restrict, heK]
-      show (RankOne.hom (NormedField.valuation (K := K))).comp
-        (ValuativeRel.ValueGroupWithZero.orderMonoidIso
-          (NormedField.valuation (K := K))).toMonoidWithZeroHom (valuation K x) = _
-      rw [MonoidWithZeroHom.comp_apply]
-      congr 1
-      show ValuativeRel.ValueGroupWithZero.orderMonoidIso
-        (NormedField.valuation (K := K)) (valuation K x) = _
-      rw [ValuativeRel.ValueGroupWithZero.orderMonoidIso_valuation_eq_restrict₀,
-        ← Valuation.restrict_def]
-    rw [hgoal]
-    have hfun : RankOne.hom (NormedField.valuation (K := K)) =
-        MonoidWithZeroHom.ValueGroup₀.embedding
-          (f := MonoidWithZeroHom.ofClass (NormedField.valuation (K := K))) := rfl
-    rw [hfun, Valuation.embedding_restrict, NormedField.valuation_apply]
-    rfl
+  -- **Step 1**: the `Compatible`, norm-matching `RankOne (valuation K)` instance, from
+  -- `exists_rankOne_compatible_self`.
+  obtain ⟨hRK, hRK_compat⟩ := exists_rankOne_compatible_self K
   -- **Step 2**: relate `A.valuation` restricted to `K` to `valuation K` via the fact that two
   -- valuations on a field with the same valuation subring are equivalent
   -- (`Valuation.isEquiv_iff_valuationSubring`).
