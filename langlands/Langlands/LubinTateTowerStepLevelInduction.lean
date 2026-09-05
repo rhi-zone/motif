@@ -2,7 +2,7 @@
 Copyright (c) 2026 rhizone. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import Langlands.LubinTateTowerStepLevelExists
+import Langlands.LubinTateTowerStepLevelExistsCheck
 
 /-!
 # The `∀ n` Lubin-Tate tower-step induction, generic over `TowerStep`

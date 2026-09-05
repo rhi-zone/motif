@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Langlands.LubinTateTowerStepK3RootConnect
 import Langlands.LubinTateSplittingFieldDegree
+import Langlands.LubinTateTowerStepLevelInvariance
 
 /-!
 # `K2P2⟮γ⟯ = K_3` and `[K_3 : baseChangeSplittingField] = q`
@@ -183,9 +184,15 @@ theorem adjoin_root_eq_top_K_3 (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {
 /-- **`Module.finrank (K2P2 P₂) (K_3 P₃) = residueCard O`** — `[K_3 : baseChangeSplittingField] = q`. Takes `hγfin : Module.finrank (K2P2 P₂)
 (K2P2 P₂)⟮γ⟯ = residueCard O` as an external hypothesis (see the module docstring for why — the
 existence of such a `γ` at a *concrete* `P₃` needs `exists_eisenstein_tower_step_K_2`'s output
-transported from the nested `O_{K_2}` spelling, out of scope here); `adjoin_root_eq_top_K_3`
-upgrades the same `γ` to `(K2P2 P₂)⟮γ⟯ = ⊤`, so `IntermediateField.finrank_top'` identifies
-`Module.finrank (K2P2 P₂) (K_3 P₃)` with `Module.finrank (K2P2 P₂) (K2P2 P₂)⟮γ⟯`. -/
+transported from the nested `O_{K_2}` spelling, out of scope here).
+
+**A genuine thin specialization** (`ROADMAP.md §100`) of `Level.finrank_next_eq_residueCard`
+(`Langlands/LubinTateTowerStepLevelInvariance.lean`) at `level_K_2`: the two are `rfl`-equal
+(`Langlands/LubinTateTowerStepLevelInvarianceCheck.lean`), and this theorem's body is now literally
+that call, not an independent re-derivation via `adjoin_root_eq_top_K_3`. Importing
+`LevelInvariance.lean` here is safe — `K3Degree.lean` is not (and, after `§100`'s
+`LevelExists`/`LevelDegree`/`LevelInvariance` check-extraction, no longer needs to be) in the import
+closure of any `Level*.lean` file, so no cycle results. -/
 theorem finrank_K_3_eq_residueCard (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O}
     (hπ : Irreducible π) (hπnorm : ‖algebraMap O K π‖ < 1) {f : O⟦X⟧}
     (hf : IsLubinTatePoly π (residueCard O) f) {u : O⟦X⟧} (hu : IsUnit u)
@@ -208,11 +215,10 @@ theorem finrank_K_3_eq_residueCard (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 
       residueCard O := by
   letI := K_2.instAlgebraK (K := K) (P := P) P₂
   letI := K_3.instAlgebraO (K := K) (P := P) P₂ P₃ hOK
-  have htop := adjoin_root_eq_top_K_3 (K := K) (P := P) P₂ P₃ hOK hπ hπnorm hf hu heq hPdist hPdeg
-    β' u₃ hu₃ heq₃ hβ'irr hP₃dist hassoc hdeg hβ'norm hγroot
-  rw [← IntermediateField.finrank_top' (F := K2P2 (K := K) P₂)
-    (E := K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃), ← htop]
-  exact hγfin
+  exact Level.finrank_next_eq_residueCard (level_K_2 (K := K) (P := P) P₂) P₃ hOK
+    (hnorm_K_K_2 (K := K) (P := P) P₂) hπ hπnorm hf hu heq hPdist hPdeg
+    (Level.splits_next (level_K_1 (K := K) (P := P)) P₂ hOK (splits_divX_map_K_1 (K := K) P))
+    hu₃ heq₃ hβ'irr hP₃dist hassoc hdeg hβ'norm hγroot hγfin
 
 end LubinTate
 

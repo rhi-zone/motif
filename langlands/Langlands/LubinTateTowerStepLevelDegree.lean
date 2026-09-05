@@ -3,8 +3,6 @@ Copyright (c) 2026 rhizone. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Langlands.LubinTateTowerStepLevelSplits
-import Langlands.LubinTateTowerStepDegree
-import Langlands.LubinTateTowerStepK3Degree
 
 /-!
 # `F_π(β, algebraMap t) ∈ lvl.L⟮β⟯`, generically in `Level`
@@ -133,35 +131,6 @@ theorem Level.FPiEval_algebraMap_mem_adjoin (lvl : Level K) (Pn : lvl.OL[X])
       ((lvl.L⟮β⟯ : IntermediateField lvl.L (baseChangeSplittingField (K' := lvl.L) Pn)).toSubalgebra))
     hsum hmem
   rwa [Subalgebra.mem_toSubmodule, IntermediateField.mem_toSubalgebra] at hres
-
-omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (IsLocalRing.ResidueField O)] in
-/-- **`K_1 → K_2`, `rfl`-recovery.** The generic lemma, applied at `level_K_1`, types exactly as
-`FPiEval_algebraMap_mem_adjoin`'s own statement, and the two fully-applied proof terms are
-`rfl`-equal (proof irrelevance witnessing the two *statements* elaborate to the same `Prop`). -/
-example {P : O[X]}
-    (P₂ : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)))[X])
-    (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O} (hπ : Irreducible π) {f : O⟦X⟧}
-    (hf : IsLubinTatePoly π (residueCard O) f)
-    {β : baseChangeSplittingField (K' := K_1 (K := K) P) P₂} (hβ : ‖β‖ < 1) {t : K_1 (K := K) P} (ht : ‖t‖ < 1) :
-    Level.FPiEval_algebraMap_mem_adjoin (level_K_1 (K := K) (P := P)) P₂ hOK
-        (hnorm_K_K_1 (K := K) (P := P)) hπ hf hβ ht =
-      FPiEval_algebraMap_mem_adjoin hOK hπ hf hβ ht := rfl
-
-omit [IsDomain O] [IsDiscreteValuationRing O] [Finite (IsLocalRing.ResidueField O)] in
-/-- **`K_2 → K_3`, `rfl`-recovery.** The generic lemma, applied at `level_K_2`, types exactly as
-`FPiEval_algebraMap_mem_adjoin_K3`'s own statement (`Langlands/LubinTateTowerStepK3Degree.lean`),
-and the two proof terms are `rfl`-equal. -/
-example {P : O[X]}
-    (P₂ : (↥(integralClosure ↥(ValuativeRel.valuation K).valuationSubring (K_1 (K := K) P)))[X])
-    [IsLocalRing (O_K2 (K := K) P₂)] [IsDiscreteValuationRing (O_K2 (K := K) P₂)]
-    (P₃ : (O_K2 (K := K) P₂)[X])
-    (hOK : ∀ c : O, ‖algebraMap O K c‖ ≤ 1) {π : O} (hπ : Irreducible π) {f : O⟦X⟧}
-    (hf : IsLubinTatePoly π (residueCard O) f)
-    {γ : K_3 (O' := O_K2 (K := K) P₂) (K' := K2P2 (K := K) P₂) P₃} (hγ : ‖γ‖ < 1)
-    {t : K2P2 (K := K) P₂} (ht : ‖t‖ < 1) :
-    Level.FPiEval_algebraMap_mem_adjoin (level_K_2 (K := K) (P := P) P₂) P₃ hOK
-        (hnorm_K_K_2 (K := K) (P := P) P₂) hπ hf hγ ht =
-      FPiEval_algebraMap_mem_adjoin_K3 (K := K) (P := P) P₂ P₃ hOK hπ hf hγ ht := rfl
 
 end LubinTate
 

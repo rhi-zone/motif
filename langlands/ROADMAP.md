@@ -21875,3 +21875,159 @@ five-file change plus its new shared file, a full `lake build` again passed with
 `sorry` (8832 jobs) — the job count rose slightly net (two new small shared-lemma files were added
 even though the consumer files shrank), not fell, since job count here counts files/declarations
 replayed rather than lines of proof text.
+
+## 102. (2026-09-05) The `§89`/`§91`/`§99` Finding 3 import cycle is actually broken, on the
+`K_2 → K_3` half: `finrank_K_3_eq_residueCard` is now a genuine one-line thin specialization of
+`Level.finrank_next_eq_residueCard`, not an independent re-derivation. The `K_1 → K_2` half
+(`finrank_K_2_eq_residueCard`) is confirmed to hit a real, different, deeper obstruction —
+not the same cycle restated, and not solved by the same fix
+
+Every prior pass touching this (`§89`, `§91`, `§99` Finding 3) treated "it's an import cycle" as the
+stopping point. This pass's brief was explicit that this should not be accepted without actually
+attempting to break the cycle first — most import cycles are fixable by finding the minimal shared
+piece and pulling it down a layer, and that was never tried here. It was tried this pass, for real,
+and it **worked halfway**: one genuine obstruction is broken, and the other is now precisely
+diagnosed rather than lumped in with the first as "the same import cycle."
+
+### What the cycle actually was, read from the real import graph, not from `§89`'s prose
+
+`§89` stated the cycle as "`Level*.lean`'s closure contains the whole concrete tower, so no concrete
+theorem in it can import `Level` back." That is true but imprecise about *why*, and imprecision is
+exactly what let three prior passes treat it as one indivisible blocker. Read directly (a from-
+source transitive-closure script, not the prior passes' summaries):
+
+* `LubinTateTowerStepLevelExists.lean`, `LubinTateTowerStepLevelDegree.lean`, and
+  `LubinTateTowerStepLevelInvariance.lean` — three separate files, each in the closure of every
+  downstream `Level*.lean` file — each carried a **direct** `import` of
+  `LubinTateTowerStepK3Degree.lean` (and, for `LevelExists.lean`, also
+  `LubinTateTowerStepConcreteK2Flat.lean`) that existed **only** to house that file's own concrete
+  `rfl`-check `example`s (checking a generic theorem against the real hand-named `K_2`/`K_3`
+  theorem it specializes). None of the three files' actual generic content — the real `theorem
+  Level.*` declarations — used anything from those imports; grepped directly, confirmed by reading
+  each file's non-check sections line by line.
+* Separately, and unrelated to those three edges: `LubinTateTowerStepDegree.lean` (the `K_1 → K_2`
+  file) is *also* pulled into `BundleOL`'s closure a second way, through a real mathematical
+  dependency that has nothing to do with checks: `LubinTateTowerStepMonogenic.lean`'s proof of
+  `adjoin_eq_integralClosure_K_2` (line 183) calls `finrank_K_2_eq_residueCard` to derive `hgen`;
+  `adjoin_eq_integralClosure_K_2` is called for real (not just cited in prose) by
+  `LubinTateTowerStepLocalRing.lean:270` to prove `IsLocalRing (O_K2 …)`; that fact is required for
+  `K_3`'s own construction, which `K3RootConnect.lean` (imported by `BundleOL.lean`) needs. This
+  path does **not** go through `K3Degree.lean` at all — it is `LubinTateTowerStepDegree.lean`
+  specifically, pulled in via `Monogenic → LocalRing/ConcreteK2/ConcreteK3/K3 → K3RootConnect →
+  BundleOL`.
+
+These are two structurally different obstructions that happened to be described together as "the
+import cycle." Only the first is an accident of file organization (checks living in the wrong
+file). The second is a real, load-bearing mathematical dependency.
+
+### Fix 1 (worked): extract the three check-only import edges into separate `*Check.lean` files
+
+Three new files, each importing the corresponding `Level*.lean` file plus whatever concrete file(s)
+its checks need, holding exactly the `example`s (and, for `LevelExists.lean`, four real theorems
+that exist only to state those checks — `exists_eisenstein_tower_step_K_2_flat'_of_Level`,
+`exists_piTorsion_translate_of_aeval_P₂_eq_zero_of_Level`, `adjoin_eq_integralClosure_K_2_of_Level`,
+`exists_eisenstein_tower_step_K_3`) moved verbatim, unchanged, out of the original file:
+
+* `Langlands/LubinTateTowerStepLevelExistsCheck.lean` (from `LevelExists.lean`'s `ConcreteCheck`
+  section) — drops `LevelExists.lean`'s `LubinTateTowerStepConcreteK2Flat`/
+  `LubinTateTowerStepK3Degree` imports.
+* `Langlands/LubinTateTowerStepLevelDegreeCheck.lean` (from `LevelDegree.lean`'s two closing
+  `example`s) — drops `LevelDegree.lean`'s `LubinTateTowerStepDegree`/`LubinTateTowerStepK3Degree`
+  imports.
+* `Langlands/LubinTateTowerStepLevelInvarianceCheck.lean` (from `LevelInvariance.lean`'s four
+  closing `example`s) — `LevelInvariance.lean` had no explicit import of `Degree`/`K3Degree` of its
+  own; it resolved those names only because `LevelDegree.lean` re-exported them transitively, so
+  removing that edge from `LevelDegree.lean` required this extraction too, or the names would have
+  gone out of scope.
+
+`exists_eisenstein_tower_step_K_3` is consumed for real by `LubinTateTowerStepLevelInduction.lean`
+(`§90`'s `n = 2` check), so that file's import was repointed from `LevelExists.lean` to
+`LevelExistsCheck.lean`. `Langlands.lean` gained three new import lines.
+
+**Confirmed by re-running the closure script after this change, not assumed**:
+`LubinTateTowerStepK3Degree.lean` is now absent from the transitive closure of every single
+`Level*.lean` file (`BundleOL`, `LevelGeneric`, `LevelConnect`, `LevelExists`, `LevelSplits`,
+`LevelDegree`, `LevelInvariance` — checked individually, all zero). It genuinely stopped being an
+accidental passenger.
+
+### Fix 2 (worked, the actual migration): `finrank_K_3_eq_residueCard`'s body is now a real call to `Level.finrank_next_eq_residueCard`
+
+With `K3Degree.lean` outside every `Level*.lean` file's closure, `K3Degree.lean` importing
+`LubinTateTowerStepLevelInvariance.lean` creates no cycle (checked: `LevelInvariance.lean`'s own
+closure does not contain `K3Degree.lean`, and `K3Degree.lean`'s pre-existing closure via
+`K3RootConnect.lean` does not contain any `Level*.lean` file — the two closures are disjoint). Added
+that import, and replaced `finrank_K_3_eq_residueCard`'s body — previously an independent
+`adjoin_root_eq_top_K_3` + `IntermediateField.finrank_top'` re-derivation — with the literal call
+`Level.finrank_next_eq_residueCard (level_K_2 …) P₃ … (Level.splits_next (level_K_1 …) P₂ hOK
+(splits_divX_map_K_1 …)) …`, i.e. exactly the term `§89`/`§90`'s own `rfl`-check (now in
+`LevelInvarianceCheck.lean`) already proved equal to the old body. **Same name, same statement,
+body genuinely replaced by a specialization** — the exact form of migration `§89` said could not be
+done for this class of theorem. `nix develop -c lake build Langlands.LubinTateTowerStepK3Degree`
+and a full `lake build` both pass, 0 errors, 0 `sorry`. `adjoin_root_eq_top_K_3` (no longer called
+from here) is still called for real elsewhere (`K3RootConnect.lean`, `LevelInvariance.lean`), so
+nothing went dead.
+
+### What did NOT close, and precisely why — `finrank_K_2_eq_residueCard` is a genuine mathematical bootstrap dependency, not a file-organization artifact
+
+Attempted the identical fix one level down: import `LevelInvariance.lean` into
+`LubinTateTowerStepDegree.lean` and replace `finrank_K_2_eq_residueCard`'s body with
+`Level.finrank_next_eq_residueCard (level_K_1 …) …`. **Not done, because it is not the same
+situation as `K3Degree.lean`** — re-checked directly rather than assumed by analogy:
+
+`LubinTateTowerStepDegree.lean` is *still* in `BundleOL`'s transitive closure after Fix 1, via the
+real mathematical path traced above (`Monogenic.lean:183` → `LocalRing.lean:270` → `K3`'s own
+construction → `K3RootConnect.lean` → `BundleOL.lean`). Unlike the `K3Degree.lean` edges, this one
+is not check-only scaffolding that can be moved to a separate file — `Monogenic.lean`'s proof of
+`adjoin_eq_integralClosure_K_2` genuinely needs `finrank_K_2_eq_residueCard`'s **value** (the actual
+`hgen` fact it computes) as a real proof ingredient, and `adjoin_eq_integralClosure_K_2` is a real
+prerequisite (not a check) for `IsLocalRing (O_K2 …)`, which `K_3`'s own definition needs. Making
+`finrank_K_2_eq_residueCard`'s body call `Level.finrank_next_eq_residueCard` would therefore require
+`LubinTateTowerStepDegree.lean` to import `LevelInvariance.lean`, which imports (transitively)
+`BundleOL.lean`, which imports `K3RootConnect.lean`, which imports (transitively, via
+`K3 → ConcreteK3 → ConcreteK2`) `Monogenic.lean`, which imports `LubinTateTowerStepDegree.lean` —
+a genuine cycle, traced edge by edge, not merely asserted.
+
+This is a real **bootstrap-order** obstruction, not an organizational one: constructing `K_3`'s ring
+of integers (needed before `Level`'s `K_2 → K_3` machinery can even be *stated*, since `BundleOL`
+needs `K_3` to exist as a concrete type to build `level_K_2`) requires `adjoin_eq_integralClosure_K_2`
+to already hold, which requires `finrank_K_2_eq_residueCard`'s value to already exist as an
+independently-provable fact — independent specifically of the generic `Level` machinery, since that
+machinery is defined *later*, on top of the fully-built concrete tower. `Level.finrank_next_eq_
+residueCard` cannot be moved earlier in the file order to break this, either: its own proof
+(`LevelInvariance.lean:382-405`) depends on `Level.adjoin_root_eq_top`, which depends on the full
+`Level` chain (`Generic → Connect → Exists → Splits → Degree → Invariance`), whose `Exists` stage in
+turn depends on `BundleOL`, which is the very thing waiting on `finrank_K_2_eq_residueCard`. Moving
+type/def-only content down a layer — the fix that worked for `K3Degree.lean` — does not apply here,
+because what is needed downstream is not a type or a definition; it is this specific theorem's
+already-computed **truth value**, produced by a route (`adjoin_root_eq_top_K_2`, proved directly and
+independently in `Degree.lean` itself, never invoking `Level`) that has to exist before the generic
+machinery that would supersede it can be built at all.
+
+**This is not the same finding as `§89`'s.** `§89` reported one cycle covering (implicitly) both
+`finrank_K_2_eq_residueCard` and `finrank_K_3_eq_residueCard` alike, with no distinction between
+them. This pass found they are different in kind: the `K_3` case's cycle was an accident (check code
+in the wrong file) and is now fixed; the `K_2` case's cycle is load-bearing bootstrap order and, on
+the evidence gathered this pass, is not fixable by any file-reorganization — only by either (a)
+independently re-deriving `hgen` at the `K_1 → K_2` depth by some route that itself does not need
+`finrank_K_2_eq_residueCard` (not attempted — no such route is evident, since
+`adjoin_root_eq_top_K_2`/`finrank_K_2_eq_residueCard` *are* the base-case computation everything
+else bootstraps from), or (b) accepting the `_of_Level` companion-declaration pattern `§89` already
+proposed as the permanent form of "migration" for this one theorem specifically, not as a stand-in
+for the whole class.
+
+### Build
+
+`nix develop -c lake build`: clean, **8832 jobs**, 0 errors, 0 `sorry`, before and after (this
+pass's edits changed which file holds five `example`s/four thin-check theorems, not how many
+top-level declarations exist net — see `§91`'s own note that job count does not track file/line
+count reliably in this build). `grep -rn '\bsorry\b'` across `Langlands/*.lean`, filtered for prose
+mentions of the word, finds zero real `sorry` tactics, before and after. Files changed: `Langlands.lean`
+(four new import lines), `Langlands/LubinTateTowerStepLevelExists.lean`,
+`Langlands/LubinTateTowerStepLevelDegree.lean`, `Langlands/LubinTateTowerStepLevelInvariance.lean`,
+`Langlands/LubinTateTowerStepLevelInduction.lean` (import repointed), `Langlands/
+LubinTateTowerStepK3Degree.lean` (the actual migration + docstring), `ROADMAP.md` (this section).
+New files: `Langlands/LubinTateTowerStepLevelExistsCheck.lean`,
+`Langlands/LubinTateTowerStepLevelDegreeCheck.lean`,
+`Langlands/LubinTateTowerStepLevelInvarianceCheck.lean`. No file deleted, no theorem deleted or
+weakened — `adjoin_root_eq_top_K_2`/`adjoin_root_eq_top_K_3`/`finrank_K_2_eq_residueCard` all still
+exist with their original statements; only `finrank_K_3_eq_residueCard`'s **body** changed.
